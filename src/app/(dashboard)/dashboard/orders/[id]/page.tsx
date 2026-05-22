@@ -1,0 +1,384 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import {
+  Banknote,
+  CalendarClock,
+  CreditCard,
+  ReceiptText,
+  Table2,
+  UtensilsCrossed,
+} from "lucide-react";
+
+import { prisma } from "@/lib/db/prisma";
+import { getCurrentUser } from "@/lib/auth/get-current-user";
+
+import { PrintReceiptButton } from "@/components/orders/print-receipt-button";
+import { CloseOrderButton } from "@/components/orders/close-order-button";
+import { MoveTableButton } from "@/components/orders/move-table-button";
+import { CancelOrderButton } from "@/components/orders/cancel-order-button";
+
+import {
+  formatCurrency,
+  formatDateTime,
+  formatOrderNumber,
+} from "@/lib/utils/format";
+
+type OrderDetailPageProps = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
+function getStatusStyle(status: string) {
+  if (status === "COMPLETED") return "bg-neutral-100 text-neutral-700";
+  if (status === "CANCELLED") return "bg-red-100 text-red-700";
+  if (status === "PENDING_PAYMENT") return "bg-yellow-100 text-yellow-700";
+  if (status === "PAID") return "bg-blue-100 text-blue-700";
+  if (status === "PREPARING") return "bg-orange-100 text-orange-700";
+  if (status === "READY") return "bg-green-100 text-green-700";
+  if (status === "SERVED") return "bg-purple-100 text-purple-700";
+
+  return "bg-neutral-100 text-neutral-700";
+}
+
+export default async function OrderDetailPage({
+  params,
+}: OrderDetailPageProps) {
+  const { id } = await params;
+
+  const user = await getCurrentUser();
+
+  if (!user) {
+    notFound();
+  }
+
+  const restaurant = await prisma.restaurant.findFirst({
+    where:
+      user.role === "OWNER"
+        ? { ownerId: user.id }
+        : { id: user.restaurantId ?? "" },
+  });
+
+  if (!restaurant) {
+    notFound();
+  }
+
+  const order = await prisma.order.findFirst({
+    where: {
+      id,
+      restaurantId: restaurant.id,
+    },
+    include: {
+      restaurant: true,
+      payment: true,
+      table: true,
+      items: {
+        include: {
+          menuItem: true,
+        },
+      },
+    },
+  });
+
+  if (!order) {
+    notFound();
+  }
+
+  const currency = order.restaurant.currency ?? "IDR";
+  const timezone = order.restaurant.timezone ?? "Asia/Makassar";
+  const orderPrefix = order.restaurant.orderPrefix ?? "ORD";
+  const receiptFooter =
+    order.restaurant.receiptFooter ?? "Thank you for your order.";
+
+  const isDineIn = order.type === "DINE_IN";
+  const canMoveTable =
+    order.type === "DINE_IN" &&
+    order.status !== "COMPLETED" &&
+    order.status !== "CANCELLED";
+
+  const canCancel =
+    order.status !== "COMPLETED" && order.status !== "CANCELLED";
+
+  const canClose = order.status === "SERVED";
+
+  return (
+    <section className="w-full space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Order Detail</h1>
+
+        <p className="mt-2 text-neutral-500">
+          Review receipt, payment, table, and order status.
+        </p>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
+        <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 border-b border-neutral-200 pb-6 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-neutral-100">
+                <ReceiptText className="h-6 w-6 text-neutral-700" />
+              </div>
+
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">
+                  Receipt {formatOrderNumber(order.orderNumber, orderPrefix)}
+                </h2>
+
+                <p className="mt-1 text-sm text-neutral-500">
+                  {order.restaurant.name}
+                </p>
+              </div>
+            </div>
+
+            <span
+              className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(
+                order.status,
+              )}`}
+            >
+              {order.status}
+            </span>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl bg-neutral-50 p-4">
+              <div className="flex items-center gap-2 text-sm text-neutral-500">
+                <CalendarClock className="h-4 w-4" />
+                Date
+              </div>
+
+              <p className="mt-2 font-semibold">
+                {formatDateTime(order.createdAt, timezone)}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-neutral-50 p-4">
+              <div className="flex items-center gap-2 text-sm text-neutral-500">
+                <UtensilsCrossed className="h-4 w-4" />
+                Order Type
+              </div>
+
+              <p className="mt-2 font-semibold">
+                {isDineIn ? "Dine In" : "Takeaway"}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-neutral-50 p-4">
+              <div className="flex items-center gap-2 text-sm text-neutral-500">
+                <CreditCard className="h-4 w-4" />
+                Payment
+              </div>
+
+              <p className="mt-2 font-semibold">{order.paymentMethod}</p>
+            </div>
+
+            <div className="rounded-2xl bg-neutral-50 p-4">
+              <div className="flex items-center gap-2 text-sm text-neutral-500">
+                <Banknote className="h-4 w-4" />
+                Total
+              </div>
+
+              <p className="mt-2 text-lg font-bold">
+                {formatCurrency(order.total, currency)}
+              </p>
+            </div>
+          </div>
+
+          {isDineIn && order.table && (
+            <div className="mt-6 rounded-3xl border border-neutral-200 bg-white p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-100">
+                  <Table2 className="h-5 w-5 text-neutral-700" />
+                </div>
+
+                <div>
+                  <p className="text-sm text-neutral-500">Dining Table</p>
+                  <p className="text-lg font-bold">Table {order.table.name}</p>
+                </div>
+
+                <span className="ml-auto rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-600">
+                  {order.table.capacity} seats
+                </span>
+              </div>
+            </div>
+          )}
+
+          {order.status === "CANCELLED" && order.cancelReason && (
+            <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 p-5">
+              <p className="text-xs font-bold uppercase tracking-wide text-red-700">
+                Cancellation Reason
+              </p>
+
+              <p className="mt-2 text-sm text-red-600">
+                {order.cancelReason}
+              </p>
+            </div>
+          )}
+
+          <div className="mt-6 overflow-hidden rounded-3xl border border-neutral-200">
+            <div className="border-b border-neutral-200 bg-neutral-50 px-5 py-4">
+              <h3 className="font-bold">Order Items</h3>
+            </div>
+
+            <div className="divide-y divide-neutral-100">
+              {order.items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-4 px-5 py-4"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">
+                      {item.menuItem.name}
+                    </p>
+
+                    <p className="mt-1 text-sm text-neutral-500">
+                      {item.quantity} × {formatCurrency(item.price, currency)}
+                    </p>
+                  </div>
+
+                  <p className="shrink-0 font-bold">
+                    {formatCurrency(item.subtotal, currency)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <aside className="space-y-6">
+          <div className="print-area rounded-3xl border border-neutral-200 bg-white p-6 text-sm shadow-sm">
+            <div className="text-center">
+              <h2 className="text-3xl font-bold tracking-[0.2em] text-neutral-800">
+                RECEIPT
+              </h2>
+
+              <p className="mt-3 font-semibold">{order.restaurant.name}</p>
+
+              {order.restaurant.address && (
+                <p className="text-neutral-500">{order.restaurant.address}</p>
+              )}
+
+              {order.restaurant.phone && (
+                <p className="text-neutral-500">
+                  Tel: {order.restaurant.phone}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-5 space-y-1 border-t border-dashed pt-3">
+              <div className="flex justify-between gap-4">
+                <span>Receipt No</span>
+                <span>{formatOrderNumber(order.orderNumber, orderPrefix)}</span>
+              </div>
+
+              <div className="flex justify-between gap-4">
+                <span>Status</span>
+                <span>{order.status}</span>
+              </div>
+
+              <div className="flex justify-between gap-4">
+                <span>Date</span>
+                <span className="text-right">
+                  {formatDateTime(order.createdAt, timezone)}
+                </span>
+              </div>
+
+              <div className="flex justify-between gap-4">
+                <span>Order Type</span>
+                <span>{isDineIn ? "Dine In" : "Takeaway"}</span>
+              </div>
+
+              {isDineIn && order.table && (
+                <div className="flex justify-between gap-4">
+                  <span>Table</span>
+                  <span>Table {order.table.name}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 border-t border-dashed pt-3">
+              <div className="space-y-3">
+                {order.items.map((item) => (
+                  <div key={item.id}>
+                    <div className="flex justify-between gap-4">
+                      <span>{item.menuItem.name}</span>
+                      <span>{formatCurrency(item.subtotal, currency)}</span>
+                    </div>
+
+                    <p className="text-xs text-neutral-500">
+                      {item.quantity} × {formatCurrency(item.price, currency)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-1 border-t border-dashed pt-3">
+              <div className="flex justify-between">
+                <span>Payment</span>
+                <span>{order.paymentMethod}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>Payment Status</span>
+                <span>{order.payment?.status ?? "-"}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>Paid</span>
+                <span>{formatCurrency(order.amountPaid, currency)}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>Change</span>
+                <span>{formatCurrency(order.changeAmount, currency)}</span>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-1 border-t border-dashed pt-3">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>{formatCurrency(order.subtotal, currency)}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>Tax</span>
+                <span>{formatCurrency(order.taxAmount, currency)}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>Service</span>
+                <span>{formatCurrency(order.serviceAmount, currency)}</span>
+              </div>
+
+              <div className="mt-2 flex justify-between border-t border-dashed pt-2 text-base font-bold">
+                <span>Total</span>
+                <span>{formatCurrency(order.total, currency)}</span>
+              </div>
+            </div>
+
+            <div className="mt-6 text-center text-sm tracking-wide text-neutral-600">
+              {receiptFooter}
+            </div>
+          </div>
+
+          <div className="space-y-3 print:hidden">
+            {canMoveTable && <MoveTableButton orderId={order.id} />}
+
+            {canClose && <CloseOrderButton orderId={order.id} />}
+
+            {canCancel && <CancelOrderButton orderId={order.id} />}
+
+            <PrintReceiptButton />
+
+            <Link
+              href="/dashboard/orders"
+              className="block w-full rounded-2xl border border-neutral-200 bg-white py-3 text-center font-semibold transition hover:bg-neutral-50"
+            >
+              Back to Orders
+            </Link>
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
