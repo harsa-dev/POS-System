@@ -2,6 +2,8 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser } from "../lib/auth.js";
 import { OPS_ROLES, MANAGEMENT_ROLES, MANAGEMENT_AND_SERVER_ROLES, ERR } from "../lib/constants.js";
+import { realtime } from "../lib/realtime.js";
+import { REALTIME_EVENTS } from "../lib/realtime-events.js";
 
 const router = Router();
 
@@ -96,6 +98,11 @@ router.patch("/tables/:id/mark-clean", async (req, res) => {
     if (table.status !== "CLEANING") return void res.status(400).json({ success: false, message: "Table is not cleaning" });
     const updated = await prisma.diningTable.update({ where: { id }, data: { status: "AVAILABLE" } });
     res.json({ success: true, data: updated });
+
+    realtime.broadcast(restaurant.id, REALTIME_EVENTS.TABLE_UPDATED, {
+      id,
+      status: "AVAILABLE",
+    });
   } catch {
     res.status(500).json({ success: false, message: "Failed to clean table" });
   }

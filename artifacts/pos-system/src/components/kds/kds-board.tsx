@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { ChefHat, Clock, Loader2, UtensilsCrossed } from "lucide-react";
 import { formatDateTime, formatOrderNumber } from "@/lib/utils/format";
+import { useRealtime } from "@/lib/use-realtime";
+import { ConnectionStatusBadge } from "@/components/ui/connection-status";
+import { playNewOrderChime } from "@/lib/beep";
 
 type Order = {
   id: string;
@@ -68,6 +71,8 @@ function ElapsedBadge({ createdAt }: { createdAt: string }) {
 
 export function KDSBoard() {
   const queryClient = useQueryClient();
+  // Track known order IDs so we only notify on genuinely new tickets
+  const knownOrderIds = useRef<Set<string>>(new Set());
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["kitchen-orders"],
@@ -76,10 +81,34 @@ export function KDSBoard() {
       if (!res.ok) throw new Error("Failed to fetch kitchen orders");
       return res.json();
     },
-    refetchInterval: 10000,
-    staleTime: 5000,
+    // SSE handles instant updates; polling is a safety fallback every 60 s
+    refetchInterval: 60_000,
+    staleTime: 10_000,
     refetchOnWindowFocus: false,
   });
+
+  const { status: realtimeStatus } = useRealtime({
+    invalidateKeys: [["kitchen-orders"]],
+    onOrderCreated: (event) => {
+      // Only chime + toast for new kitchen-relevant orders (PAID status)
+      if (!knownOrderIds.current.has(event.id)) {
+        playNewOrderChime();
+        toast("🍽️ New order incoming", {
+          description: `Order #${event.orderNumber} is ready for the kitchen`,
+          duration: 5000,
+        });
+      }
+    },
+  });
+
+  const orders = useMemo<Order[]>(() => {
+    if (!data?.success) return [];
+    const all = data.data as Order[];
+    const kitchen = all.filter((o) => KITCHEN_STATUSES.includes(o.status));
+    // Sync known IDs with current data
+    kitchen.forEach((o) => knownOrderIds.current.add(o.id));
+    return kitchen;
+  }, [data]);
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -106,11 +135,6 @@ export function KDSBoard() {
     },
   });
 
-  const orders = useMemo<Order[]>(() => {
-    if (!data?.success) return [];
-    return (data.data as Order[]).filter((o) => KITCHEN_STATUSES.includes(o.status));
-  }, [data]);
-
   if (isLoading) return <KDSSkeleton />;
 
   if (error) {
@@ -124,104 +148,115 @@ export function KDSBoard() {
 
   if (orders.length === 0) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-neutral-200 bg-white py-20 text-center"
-      >
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-100">
-          <ChefHat className="h-8 w-8 text-neutral-400" />
+      <div className="space-y-3">
+        <div className="flex justify-end">
+          <ConnectionStatusBadge status={realtimeStatus} />
         </div>
-        <p className="mt-4 text-lg font-semibold text-neutral-700">Kitchen is all clear</p>
-        <p className="mt-1 text-sm text-neutral-400">New orders will appear here automatically.</p>
-      </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-neutral-200 bg-white py-20 text-center"
+        >
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-100">
+            <ChefHat className="h-8 w-8 text-neutral-400" />
+          </div>
+          <p className="mt-4 text-lg font-semibold text-neutral-700">Kitchen is all clear</p>
+          <p className="mt-1 text-sm text-neutral-400">New orders will appear here automatically.</p>
+        </motion.div>
+      </div>
     );
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      <AnimatePresence mode="popLayout">
-        {orders.map((order) => {
-          const timezone = order.restaurant?.timezone ?? "Asia/Makassar";
-          const orderPrefix = order.restaurant?.orderPrefix ?? "ORD";
-          const isDineIn = order.type === "DINE_IN";
-          const isPending = updateMutation.isPending && updateMutation.variables?.id === order.id;
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <ConnectionStatusBadge status={realtimeStatus} />
+      </div>
 
-          return (
-            <motion.div
-              key={order.id}
-              layout
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.2 }}
-              className={`rounded-3xl border bg-white p-4 shadow-sm ${
-                order.status === "PREPARING"
-                  ? "border-orange-200 ring-1 ring-orange-100"
-                  : "border-neutral-200"
-              }`}
-            >
-              <div className="border-b border-neutral-100 pb-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-semibold">
-                    {formatOrderNumber(order.orderNumber, orderPrefix)}
-                  </h2>
-                  <div className="flex items-center gap-1.5">
-                    <ElapsedBadge createdAt={order.createdAt} />
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                      order.status === "PAID"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-orange-100 text-orange-700"
-                    }`}>
-                      {order.status === "PAID" ? "Queued" : "Cooking"}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <AnimatePresence mode="popLayout">
+          {orders.map((order) => {
+            const timezone = order.restaurant?.timezone ?? "Asia/Makassar";
+            const orderPrefix = order.restaurant?.orderPrefix ?? "ORD";
+            const isDineIn = order.type === "DINE_IN";
+            const isPending = updateMutation.isPending && updateMutation.variables?.id === order.id;
+
+            return (
+              <motion.div
+                key={order.id}
+                layout
+                initial={{ opacity: 0, scale: 0.92, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: -8 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className={`rounded-3xl border bg-white p-4 shadow-sm ${
+                  order.status === "PREPARING"
+                    ? "border-orange-200 ring-1 ring-orange-100"
+                    : "border-neutral-200"
+                }`}
+              >
+                <div className="border-b border-neutral-100 pb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-sm font-semibold">
+                      {formatOrderNumber(order.orderNumber, orderPrefix)}
+                    </h2>
+                    <div className="flex items-center gap-1.5">
+                      <ElapsedBadge createdAt={order.createdAt} />
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        order.status === "PAID"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-orange-100 text-orange-700"
+                      }`}>
+                        {order.status === "PAID" ? "Queued" : "Cooking"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-2 text-xs text-neutral-500">
+                    <span>{formatDateTime(order.createdAt, timezone)}</span>
+                    <span>•</span>
+                    <span className="inline-flex items-center gap-1">
+                      <UtensilsCrossed className="h-3 w-3" />
+                      {isDineIn ? `Table ${order.table?.name ?? "?"}` : "Takeaway"}
                     </span>
                   </div>
                 </div>
-                <div className="mt-1.5 flex flex-wrap gap-2 text-xs text-neutral-500">
-                  <span>{formatDateTime(order.createdAt, timezone)}</span>
-                  <span>•</span>
-                  <span className="inline-flex items-center gap-1">
-                    <UtensilsCrossed className="h-3 w-3" />
-                    {isDineIn ? `Table ${order.table?.name ?? "?"}` : "Takeaway"}
-                  </span>
+
+                <div className="mt-3 space-y-2">
+                  {order.items.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between rounded-xl bg-neutral-50 px-3 py-2 text-sm">
+                      <span className="font-medium text-neutral-800">{item.menuItem.name}</span>
+                      <span className="font-bold text-neutral-600">×{item.quantity}</span>
+                    </div>
+                  ))}
                 </div>
-              </div>
 
-              <div className="mt-3 space-y-2">
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between rounded-xl bg-neutral-50 px-3 py-2 text-sm">
-                    <span className="font-medium text-neutral-800">{item.menuItem.name}</span>
-                    <span className="font-bold text-neutral-600">×{item.quantity}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-3 border-t border-neutral-100 pt-3">
-                {order.status === "PAID" && (
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => updateMutation.mutate({ id: order.id, status: "PREPARING" })}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
-                  >
-                    {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Start Cooking"}
-                  </button>
-                )}
-                {order.status === "PREPARING" && (
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => updateMutation.mutate({ id: order.id, status: "READY" })}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-green-600 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark as Ready"}
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
+                <div className="mt-3 border-t border-neutral-100 pt-3">
+                  {order.status === "PAID" && (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => updateMutation.mutate({ id: order.id, status: "PREPARING" })}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
+                    >
+                      {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Start Cooking"}
+                    </button>
+                  )}
+                  {order.status === "PREPARING" && (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => updateMutation.mutate({ id: order.id, status: "READY" })}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-green-600 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark as Ready"}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

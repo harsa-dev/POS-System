@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { CheckCheck, Loader2, ShoppingBag, Sparkles } from "lucide-react";
 import { formatDateTime, formatOrderNumber } from "@/lib/utils/format";
+import { useRealtime } from "@/lib/use-realtime";
+import { ConnectionStatusBadge } from "@/components/ui/connection-status";
+import { playBeep } from "@/lib/beep";
 
 type Order = {
   id: string;
@@ -61,8 +64,9 @@ export function ServingBoard() {
       if (!res.ok) throw new Error("Failed to fetch orders");
       return res.json();
     },
-    refetchInterval: 5000,
-    staleTime: 3000,
+    // SSE drives updates; polling is a 60 s safety fallback
+    refetchInterval: 60_000,
+    staleTime: 10_000,
     refetchOnWindowFocus: false,
   });
 
@@ -73,9 +77,22 @@ export function ServingBoard() {
       if (!res.ok) throw new Error("Failed to fetch tables");
       return res.json();
     },
-    refetchInterval: 5000,
-    staleTime: 3000,
+    refetchInterval: 60_000,
+    staleTime: 10_000,
     refetchOnWindowFocus: false,
+  });
+
+  const { status: realtimeStatus } = useRealtime({
+    invalidateKeys: [["serving-orders"], ["serving-tables"]],
+    onOrderUpdated: (event) => {
+      if (event.status === "READY") {
+        playBeep(660, 200, 0.2);
+        toast("✅ Order ready to serve", {
+          description: `Order #${event.orderNumber} is ready for delivery`,
+          duration: 5000,
+        });
+      }
+    },
   });
 
   const serveMutation = useMutation({
@@ -124,9 +141,12 @@ export function ServingBoard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Serving Board</h1>
-        <p className="mt-1 text-sm text-neutral-500">Deliver ready orders and manage table turnover</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Serving Board</h1>
+          <p className="mt-1 text-sm text-neutral-500">Deliver ready orders and manage table turnover</p>
+        </div>
+        <ConnectionStatusBadge status={realtimeStatus} className="mt-1 shrink-0" />
       </div>
 
       <AnimatePresence>
@@ -204,10 +224,10 @@ export function ServingBoard() {
                     <motion.div
                       key={order.id}
                       layout
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
+                      initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ duration: 0.2 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
                       className="rounded-xl border border-green-200 bg-green-50 p-4"
                     >
                       <div className="flex items-start justify-between gap-3">

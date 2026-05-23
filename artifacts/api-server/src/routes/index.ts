@@ -11,6 +11,7 @@ import attendanceRouter from "./attendance.js";
 import analyticsRouter from "./analytics.js";
 import paymentsRouter from "./payments.js";
 import miscRouter from "./misc.js";
+import eventsRouter from "./events.js";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(attendanceRouter);
 router.use(analyticsRouter);
 router.use(paymentsRouter);
 router.use(miscRouter);
+router.use(eventsRouter);
 
 export default router;

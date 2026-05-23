@@ -8,6 +8,8 @@ import {
   ERR,
   PAYMENT_METHODS,
 } from "../lib/constants.js";
+import { realtime } from "../lib/realtime.js";
+import { REALTIME_EVENTS } from "../lib/realtime-events.js";
 
 const router = Router();
 
@@ -234,6 +236,12 @@ router.post("/orders", async (req, res) => {
     });
 
     res.status(201).json({ success: true, message: "Order created successfully", data: order });
+
+    realtime.broadcast(restaurant.id, REALTIME_EVENTS.ORDER_CREATED, {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err?.message ?? "Failed to create order" });
   }
@@ -415,6 +423,12 @@ router.patch("/orders/:id/status", async (req, res) => {
     });
 
     res.json({ success: true, message: "Order status updated" });
+
+    realtime.broadcast(restaurant.id, REALTIME_EVENTS.ORDER_UPDATED, {
+      id,
+      orderNumber: existingOrder.orderNumber,
+      status,
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err?.message ?? "Failed to update order status" });
   }
