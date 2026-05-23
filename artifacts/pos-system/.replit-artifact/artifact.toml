@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "POS System"
+version = "1.0.0"
+id = "artifacts/pos-system"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20639
+
+[services.development]
+run = "pnpm --filter @workspace/pos-system run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pos-system", "run", "build" ]
+publicDir = "artifacts/pos-system/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20639"
+BASE_PATH = "/"
