@@ -57,7 +57,6 @@ async function buildAll() {
       "onnxruntime-node",
       "@tensorflow/*",
       "@prisma/client",
-      "@prisma/client-runtime-utils",
       "@mikro-orm/*",
       "@grpc/*",
       "@swc/*",

@@ -17,7 +17,7 @@ The system focuses on:
 * Cross*device responsive experience
 * Future customer application integration
 
-The long-term vision is to evolve the system into a complete restaurant ecosystem including:
+The long*term vision is to evolve the system into a complete restaurant ecosystem including:
 
 * Internal POS system
 * Kitchen display system
