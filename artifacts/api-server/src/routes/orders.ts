@@ -177,22 +177,78 @@ router.post("/orders", async (req, res) => {
 
             // Deduct stock immediately for cash orders
             if (isCash) {
+              // Step 1: aggregate total required qty per inventory item across
+              // all order lines. One ingredient can appear in multiple recipes
+              // (e.g. two menu items both use the same ingredient), so we must
+              // sum before checking — not check each recipe independently.
+              const requiredQtyMap = new Map<string, number>();
               for (const item of items) {
                 const mi = menuItems.find((m) => m.id === item.menuItemId)!;
                 for (const recipe of mi.recipes) {
                   const qty = recipe.quantityNeeded * item.quantity;
-                  // Bug #2: reject if stock is insufficient before decrementing.
-                  // currentStock was fetched pre-transaction; catches the common
-                  // case where inventory is genuinely depleted.
-                  if (recipe.inventoryItem.currentStock < qty) {
-                    throw Object.assign(
-                      new Error(
-                        `Insufficient stock for "${recipe.inventoryItem.name}". ` +
-                        `Available: ${recipe.inventoryItem.currentStock}, required: ${qty}.`,
-                      ),
-                      { code: "INSUFFICIENT_STOCK" },
-                    );
-                  }
+                  requiredQtyMap.set(
+                    recipe.inventoryItemId,
+                    (requiredQtyMap.get(recipe.inventoryItemId) ?? 0) + qty,
+                  );
+                }
+              }
+
+              // Step 2: SELECT ... FOR UPDATE — acquire an exclusive row-level
+              // lock on every InventoryItem row needed by this order before
+              // reading currentStock.
+              //
+              // Why raw SQL?
+              //   Prisma's query API has no FOR UPDATE option on any find*
+              //   method. tx.$queryRaw participates in the same database
+              //   transaction, so locks are held until commit or rollback.
+              //
+              // Why sort by id?
+              //   Acquiring locks in a consistent global order across all
+              //   concurrent transactions prevents circular waits (deadlocks).
+              //
+              // How this fixes the race:
+              //   Two concurrent requests for the same ingredient serialize at
+              //   this point. The second request blocks here until the first
+              //   transaction commits. It then reads the already-decremented
+              //   currentStock from the locked row and rejects if stock is now
+              //   insufficient — eliminating the TOCTOU race condition.
+              const sortedIds = [...requiredQtyMap.keys()].sort();
+              const lockedStockMap = new Map<
+                string,
+                { id: string; currentStock: number; name: string }
+              >();
+              for (const invId of sortedIds) {
+                const rows = await tx.$queryRaw<
+                  { id: string; currentStock: number; name: string }[]
+                >`
+                  SELECT id, "currentStock", name
+                  FROM "InventoryItem"
+                  WHERE id = ${invId}::uuid
+                  FOR UPDATE
+                `;
+                if (rows[0]) lockedStockMap.set(invId, rows[0]);
+              }
+
+              // Step 3: check currentStock from the freshly-locked rows, not
+              // from the pre-transaction snapshot captured in menuItems above.
+              for (const [invId, totalQty] of requiredQtyMap) {
+                const locked = lockedStockMap.get(invId)!;
+                if (locked.currentStock < totalQty) {
+                  throw Object.assign(
+                    new Error(
+                      `Insufficient stock for "${locked.name}". ` +
+                      `Available: ${locked.currentStock}, required: ${totalQty}.`,
+                    ),
+                    { code: "INSUFFICIENT_STOCK" },
+                  );
+                }
+              }
+
+              // Step 4: stock confirmed — decrement and record movements.
+              for (const item of items) {
+                const mi = menuItems.find((m) => m.id === item.menuItemId)!;
+                for (const recipe of mi.recipes) {
+                  const qty = recipe.quantityNeeded * item.quantity;
                   await tx.inventoryItem.update({
                     where: { id: recipe.inventoryItemId },
                     data: { currentStock: { decrement: qty } },
