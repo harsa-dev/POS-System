@@ -1,5 +1,3 @@
-Gue bikin versi yang bisa langsung lo copy jadi `design.md`. Ini udah level “serius dipakai project beneran”, bukan notes random hasil overthinking jam 2 pagi sambil ngeliatin error Prisma. Struktur beginian yang bikin project masih bisa hidup pas fiturnya udah puluhan.
-
 # POS SYSTEM * ENTERPRISE DESIGN DOCUMENT
 
 ## PROJECT OVERVIEW
@@ -19,7 +17,7 @@ The system focuses on:
 * Cross*device responsive experience
 * Future customer application integration
 
-The long*term vision is to evolve the system into a complete restaurant ecosystem including:
+The long-term vision is to evolve the system into a complete restaurant ecosystem including:
 
 * Internal POS system
 * Kitchen display system
