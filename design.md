@@ -1,25 +1,25 @@
 Gue bikin versi yang bisa langsung lo copy jadi `design.md`. Ini udah level “serius dipakai project beneran”, bukan notes random hasil overthinking jam 2 pagi sambil ngeliatin error Prisma. Struktur beginian yang bikin project masih bisa hidup pas fiturnya udah puluhan.
 
-# POS SYSTEM - ENTERPRISE DESIGN DOCUMENT
+# POS SYSTEM * ENTERPRISE DESIGN DOCUMENT
 
 ## PROJECT OVERVIEW
 
-This project is a modern enterprise-grade POS (Point of Sale) system designed for restaurants, cafes, coffee shops, and scalable F&B businesses.
+This project is a modern enterprise*grade POS (Point of Sale) system designed for restaurants, cafes, coffee shops, and scalable F&B businesses.
 
 The system focuses on:
 
 * Fast operational workflow
-* Real-time order processing
-* Multi-role employee management
+* Real*time order processing
+* Multi*role employee management
 * Inventory tracking
 * Payment processing
 * Analytics and reporting
 * Security and auditability
 * Scalable architecture
-* Cross-device responsive experience
+* Cross*device responsive experience
 * Future customer application integration
 
-The long-term vision is to evolve the system into a complete restaurant ecosystem including:
+The long*term vision is to evolve the system into a complete restaurant ecosystem including:
 
 * Internal POS system
 * Kitchen display system
@@ -28,10 +28,10 @@ The long-term vision is to evolve the system into a complete restaurant ecosyste
 * Analytics dashboard
 * Customer ordering application
 * QR ordering system
-* Multi-branch management
-* SaaS-ready architecture
+* Multi*branch management
+* SaaS*ready architecture
 
-The customer application and POS system will share the same backend architecture and database domain model so customer orders can directly enter the POS workflow in real-time.
+The customer application and POS system will share the same backend architecture and database domain model so customer orders can directly enter the POS workflow in real*time.
 
 ---
 
@@ -100,17 +100,17 @@ Because humans absolutely love creating two separate systems that hate each othe
 
 ## Frontend
 
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
-- Lucide React
-- Framer Motion
-- TanStack Query
-- Zustand if needed
-- React Hook Form
-- Zod
+* Next.js
+* React
+* TypeScript
+* Tailwind CSS
+* shadcn/ui
+* Lucide React
+* Framer Motion
+* TanStack Query
+* Zustand if needed
+* React Hook Form
+* Zod
 
 ---
 
@@ -147,7 +147,7 @@ Because humans absolutely love creating two separate systems that hate each othe
 * Reduce human error
 * Increase order accuracy
 * Centralize business data
-* Support multi-device operations
+* Support multi*device operations
 * Enable future scaling
 
 ---
@@ -159,8 +159,8 @@ Because humans absolutely love creating two separate systems that hate each othe
 * Clean codebase
 * Secure APIs
 * Fast UI performance
-* Real-time synchronization
-* Enterprise-grade structure
+* Real*time synchronization
+* Enterprise*grade structure
 
 ---
 
@@ -245,8 +245,8 @@ Can:
 * Logout
 * Session management
 * Password reset
-* Multi-factor authentication (future)
-* Role-based access
+* Multi*factor authentication (future)
+* Role*based access
 
 ---
 
@@ -271,7 +271,7 @@ Can:
 * Kitchen display
 * Cooking timer
 * Order priority
-* Real-time updates
+* Real*time updates
 * Preparation tracking
 
 ---
@@ -343,7 +343,7 @@ Tracks:
 
 # ENTERPRISE FEATURES
 
-## Multi-Branch Support
+## Multi*Branch Support
 
 * Multiple restaurants
 * Branch analytics
@@ -352,7 +352,7 @@ Tracks:
 
 ---
 
-## Real-Time Synchronization
+## Real*Time Synchronization
 
 * Kitchen updates instantly
 * Payment updates instantly
@@ -412,10 +412,10 @@ The application must work comfortably on:
 Focus:
 
 * High information density
-* Multi-panel layout
+* Multi*panel layout
 * Fast operational workflow
 * Keyboard shortcuts
-* Split-screen dashboard
+* Split*screen dashboard
 
 ---
 
@@ -423,10 +423,10 @@ Focus:
 
 Focus:
 
-* Touch-friendly controls
+* Touch*friendly controls
 * Kitchen usage
 * Serving workflow
-* Medium-density layout
+* Medium*density layout
 
 ---
 
@@ -462,33 +462,33 @@ Focus:
 
 The project must use:
 
-- shadcn/ui as the main component foundation
-- Tailwind CSS for styling
-- Lucide React for icons
-- Framer Motion for smooth animation
-- React Hook Form for forms
-- Zod for form validation
+* shadcn/ui as the main component foundation
+* Tailwind CSS for styling
+* Lucide React for icons
+* Framer Motion for smooth animation
+* React Hook Form for forms
+* Zod for form validation
 
 shadcn/ui components should be customized consistently based on the project design system.
 
 Recommended components:
 
-- Button
-- Card
-- Dialog
-- Sheet
-- Dropdown Menu
-- Table
-- Tabs
-- Badge
-- Input
-- Select
-- Form
-- Toast
-- Skeleton
-- Alert
-- Command
-- Popover
+* Button
+* Card
+* Dialog
+* Sheet
+* Dropdown Menu
+* Table
+* Tabs
+* Badge
+* Input
+* Select
+* Form
+* Toast
+* Skeleton
+* Alert
+* Command
+* Popover
 
 ---
 
@@ -498,29 +498,29 @@ Every page that fetches data must have proper loading states.
 
 Required loading UI:
 
-- Dashboard metric skeleton
-- Order card skeleton
-- Table row skeleton
-- Menu item skeleton
-- Inventory list skeleton
-- Analytics chart skeleton
-- Payment summary skeleton
-- Kitchen order skeleton
-- Serving order skeleton
+* Dashboard metric skeleton
+* Order card skeleton
+* Table row skeleton
+* Menu item skeleton
+* Inventory list skeleton
+* Analytics chart skeleton
+* Payment summary skeleton
+* Kitchen order skeleton
+* Serving order skeleton
 
 Rules:
 
-- Do not show blank pages while loading.
-- Do not use random spinning loaders everywhere.
-- Use skeleton UI for content-heavy screens.
-- Use small spinners only for button actions.
+* Do not show blank pages while loading.
+* Do not use random spinning loaders everywhere.
+* Use skeleton UI for content*heavy screens.
+* Use small spinners only for button actions.
 
 Example usage:
 
-- Page loading: skeleton layout
-- Button submitting: small loading spinner
-- Data refreshing: subtle loading indicator
-- Empty result: empty state component
+* Page loading: skeleton layout
+* Button submitting: small loading spinner
+* Data refreshing: subtle loading indicator
+* Empty result: empty state component
 
 ---
 
@@ -530,28 +530,28 @@ The application should use smooth, subtle, and purposeful animations.
 
 Use Framer Motion for:
 
-- Page transitions
-- Modal/dialog appearance
-- Sidebar expand/collapse
-- Card hover interaction
-- List item enter/exit animation
-- Toast notification
-- Order status update feedback
-- Dashboard metric update
+* Page transitions
+* Modal/dialog appearance
+* Sidebar expand/collapse
+* Card hover interaction
+* List item enter/exit animation
+* Toast notification
+* Order status update feedback
+* Dashboard metric update
 
 Animation rules:
 
-- Keep animation fast and smooth.
-- Avoid excessive motion.
-- Do not make operational workflows slower.
-- Prioritize clarity over decoration.
-- Disable or reduce animation for users who prefer reduced motion.
+* Keep animation fast and smooth.
+* Avoid excessive motion.
+* Do not make operational workflows slower.
+* Prioritize clarity over decoration.
+* Disable or reduce animation for users who prefer reduced motion.
 
 Recommended animation duration:
 
-Fast interaction: 100ms - 150ms
-Normal transition: 200ms - 300ms
-Page transition: 300ms - 500ms
+Fast interaction: 100ms * 150ms
+Normal transition: 200ms * 300ms
+Page transition: 300ms * 500ms
 
 ## RESPONSIVE COMPONENT BEHAVIOR
 
@@ -559,50 +559,50 @@ Every component must support desktop, tablet, and mobile layouts.
 
 # Desktop
 
-- Sidebar navigation
-- Data tables
-- Multi-column dashboard
-- Full analytics charts
-- Keyboard-friendly workflow
+* Sidebar navigation
+* Data tables
+* Multi*column dashboard
+* Full analytics charts
+* Keyboard*friendly workflow
 
 # Tablet
-- Collapsible sidebar
-- Touch-friendly cards
-- Split layout when possible
-- Larger buttons
+* Collapsible sidebar
+* Touch*friendly cards
+* Split layout when possible
+* Larger buttons
 
 # Mobile
 
-- Bottom navigation
-- Card-based layout
-- Simplified tables
-- Large tap targets
-- Sticky action buttons
-- Minimal modal usage
+* Bottom navigation
+* Card*based layout
+* Simplified tables
+* Large tap targets
+* Sticky action buttons
+* Minimal modal usage
 
 ## UI STATE REQUIREMENTS
 
 Every major screen must handle:
 
-Loading state
-Empty state
-Error state
-Success state
-Disabled state
-Pending state
-Offline or connection issue state
+* Loading state
+* Empty state
+* Error state
+* Success state
+* Disabled state
+* Pending state
+* Offline or connection issue state
 
 # Required reusable components:
 
-LoadingSkeleton
-EmptyState
-ErrorState
-PageHeader
-StatusBadge
-ConfirmDialog
-DataTable
-ResponsiveShell
-ActionButton
+* LoadingSkeleton
+* EmptyState
+* ErrorState
+* PageHeader
+* StatusBadge
+* ConfirmDialog
+* DataTable
+* ResponsiveShell
+* ActionButton
 
 ## UX QUALITY STANDARD
 
@@ -610,16 +610,16 @@ A page is not considered finished if it only displays data.
 
 A finished page must include:
 
-Clear title
-Clear primary action
-Loading skeleton
-Empty state
-Error state
-Responsive layout
-Toast feedback
-Accessible buttons
-Consistent spacing
-Smooth interaction
+* Clear title
+* Clear primary action
+* Loading skeleton
+* Empty state
+* Error state
+* Responsive layout
+* Toast feedback
+* Accessible buttons
+* Consistent spacing
+* Smooth interaction
 
 ## Visual Principles
 
@@ -674,7 +674,7 @@ Smooth interaction
 
 ## Payment Security
 
-* PCI-DSS aware architecture
+* PCI*DSS aware architecture
 * No raw card storage
 * Secure payment gateway integration
 
@@ -862,8 +862,8 @@ If one file contains:
 
 ## Files
 
-order-card.tsx
-payment-summary.tsx
+order*card.tsx
+payment*summary.tsx
 inventory.service.ts
 
 ---
@@ -920,7 +920,7 @@ Used for:
 
 ---
 
-# REAL-TIME SYSTEM PLAN
+# REAL*TIME SYSTEM PLAN
 
 ## Phase 1
 
@@ -937,7 +937,7 @@ Used for:
 
 ---
 
-## Real-Time Features
+## Real*Time Features
 
 * Kitchen updates
 * Serving updates
@@ -987,7 +987,7 @@ Analytics and reporting.
 
 ## Phase 7
 
-Real-time infrastructure.
+Real*time infrastructure.
 
 ---
 
@@ -1086,7 +1086,7 @@ Before deployment:
 ## Frontend
 
 * Fast page load
-* Minimal re-render
+* Minimal re*render
 * Lazy loading
 * Optimized images
 
@@ -1144,35 +1144,35 @@ A feature is considered done when:
 
 A feature is considered done when:
 
-- UI completed
-- API completed
-- Validation completed
-- Error handling completed
-- Permission completed
-- Loading skeleton added
-- Empty state added
-- Error state added
-- Smooth animation added where useful
-- Mobile responsive completed
-- Tablet responsive completed
-- Desktop responsive completed
-- Tested
-- Documented
+* UI completed
+* API completed
+* Validation completed
+* Error handling completed
+* Permission completed
+* Loading skeleton added
+* Empty state added
+* Error state added
+* Smooth animation added where useful
+* Mobile responsive completed
+* Tablet responsive completed
+* Desktop responsive completed
+* Tested
+* Documented
 
 “Works on my machine” is not considered done.
 That is merely the opening ceremony of future suffering.
 
 ---
 
-# LONG-TERM VISION
+# LONG*TERM VISION
 
-The long-term target is to evolve this system into:
+The long*term target is to evolve this system into:
 
 * Enterprise restaurant platform
-* Multi-branch ecosystem
+* Multi*branch ecosystem
 * Customer ordering ecosystem
 * SaaS POS platform
-* Mobile-first business platform
+* Mobile*first business platform
 
 Potential future expansion:
 
