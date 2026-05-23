@@ -9,6 +9,7 @@ import shiftsRouter from "./shifts.js";
 import employeesRouter from "./employees.js";
 import attendanceRouter from "./attendance.js";
 import analyticsRouter from "./analytics.js";
+import paymentsRouter from "./payments.js";
 import miscRouter from "./misc.js";
 
 const router: IRouter = Router();
@@ -23,6 +24,7 @@ router.use(shiftsRouter);
 router.use(employeesRouter);
 router.use(attendanceRouter);
 router.use(analyticsRouter);
+router.use(paymentsRouter);
 router.use(miscRouter);
 
 export default router;

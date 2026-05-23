@@ -4,7 +4,10 @@ import type { Request, Response, NextFunction } from "express";
 import { prisma } from "./prisma.js";
 
 const getSecret = () => {
-  const secretKey = process.env.JWT_SECRET ?? "default-secret-change-me";
+  const secretKey = process.env.JWT_SECRET;
+  if (!secretKey) {
+    throw new Error("JWT_SECRET environment variable is required but was not set.");
+  }
   return new TextEncoder().encode(secretKey);
 };
 

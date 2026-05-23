@@ -1,8 +1,29 @@
 import { Router } from "express";
-import { createWriteStream, mkdirSync } from "fs";
+import { mkdirSync } from "fs";
 import path from "path";
+import multer from "multer";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getCurrentUser, getRestaurantForUser } from "../lib/auth.js";
+
+const UPLOADS_DIR = path.resolve("data/uploads");
+mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || ".jpg";
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) cb(null, true);
+    else cb(new Error("Only image files are allowed"));
+  },
+});
 
 const router = Router();
 
@@ -177,16 +198,24 @@ router.get("/payments", async (req, res) => {
   }
 });
 
-// Image upload (basic)
-router.post("/uploads/menu-image", async (req, res) => {
-  try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
-    if (!user) return;
-    // Simple placeholder - just return a placeholder URL
-    res.status(201).json({ success: true, data: { url: "/placeholder.png" } });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to upload image" });
-  }
+// Image upload — stores file to disk and returns an accessible URL
+router.post("/uploads/menu-image", (req, res, next) => {
+  upload.single("file")(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message ?? "Upload failed" });
+    }
+    try {
+      const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+      if (!user) return;
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: "No file provided" });
+      }
+      const url = `/api/media/${req.file.filename}`;
+      res.status(201).json({ success: true, data: { url } });
+    } catch {
+      res.status(500).json({ success: false, message: "Failed to upload image" });
+    }
+  });
 });
 
 export default router;
