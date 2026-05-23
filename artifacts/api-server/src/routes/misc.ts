@@ -198,24 +198,33 @@ router.get("/payments", async (req, res) => {
   }
 });
 
-// Image upload — stores file to disk and returns an accessible URL
-router.post("/uploads/menu-image", (req, res, next) => {
-  upload.single("file")(req, res, async (err) => {
-    if (err) {
-      return res.status(400).json({ success: false, message: err.message ?? "Upload failed" });
-    }
-    try {
-      const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
-      if (!user) return;
-      if (!req.file) {
-        return res.status(400).json({ success: false, message: "No file provided" });
+// Image upload — auth check BEFORE multer writes anything to disk
+router.post(
+  "/uploads/menu-image",
+  // 1. Verify auth first — reject unauthenticated callers before any file I/O
+  async (req, res, next) => {
+    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    if (!user) return; // requireRole already sent 401/403
+    (req as Record<string, unknown>)._authedUser = user;
+    next();
+  },
+  // 2. Only now let multer write to disk
+  (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, message: (err as Error).message ?? "Upload failed" });
       }
-      const url = `/api/media/${req.file.filename}`;
-      res.status(201).json({ success: true, data: { url } });
-    } catch {
-      res.status(500).json({ success: false, message: "Failed to upload image" });
+      next();
+    });
+  },
+  // 3. Handle the upload response
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No file provided" });
     }
-  });
-});
+    const url = `/api/media/${req.file.filename}`;
+    res.status(201).json({ success: true, data: { url } });
+  },
+);
 
 export default router;
