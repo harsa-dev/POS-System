@@ -47,3 +47,10 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+node_modules
+.next
+.env
+dist
+build
+coverage
