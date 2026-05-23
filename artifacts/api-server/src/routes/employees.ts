@@ -2,17 +2,18 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getCurrentUser } from "../lib/auth.js";
+import { OWNER_ONLY, EMPLOYEE_ROLES, ERR } from "../lib/constants.js";
 
 const router = Router();
 
 router.get("/employees", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER"]);
+    const user = await requireRole(req, res, OWNER_ONLY);
     if (!user) return;
     const restaurant = await prisma.restaurant.findFirst({ where: { ownerId: user.id } });
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const employees = await prisma.user.findMany({
-      where: { restaurantId: restaurant.id, role: { in: ["MANAGER", "CASHIER", "KITCHEN", "SERVER"] } },
+      where: { restaurantId: restaurant.id, role: { in: EMPLOYEE_ROLES } },
       select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
       orderBy: { createdAt: "desc" },
     });
@@ -24,12 +25,12 @@ router.get("/employees", async (req, res) => {
 
 router.post("/employees", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER"]);
+    const user = await requireRole(req, res, OWNER_ONLY);
     if (!user) return;
     const restaurant = await prisma.restaurant.findFirst({ where: { ownerId: user.id } });
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { name, email, password, role } = req.body ?? {};
-    const allowedRoles = ["MANAGER", "CASHIER", "KITCHEN", "SERVER"];
+    const allowedRoles = EMPLOYEE_ROLES;
     if (!name || !email || !password || !role || !allowedRoles.includes(role))
       return void res.status(400).json({ success: false, message: "Invalid employee data" });
     if (password.length < 6) return void res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
@@ -52,13 +53,13 @@ router.patch("/employees/:id", async (req, res) => {
     if (!currentUser) return void res.status(401).json({ success: false, message: "Unauthorized" });
     if (currentUser.role !== "OWNER") return void res.status(403).json({ success: false, message: "Only owner can update employee" });
     const restaurant = await prisma.restaurant.findFirst({ where: { ownerId: currentUser.id } });
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { id } = req.params;
     if (id === currentUser.id) return void res.status(400).json({ success: false, message: "Owner cannot update themselves here" });
     const existing = await prisma.user.findFirst({ where: { id, restaurantId: restaurant.id } });
     if (!existing) return void res.status(404).json({ success: false, message: "Employee not found" });
     const { name, role, isActive } = req.body ?? {};
-    const allowedRoles = ["MANAGER", "CASHIER", "KITCHEN", "SERVER"];
+    const allowedRoles = EMPLOYEE_ROLES;
     if (role && !allowedRoles.includes(role)) return void res.status(400).json({ success: false, message: "Invalid employee role" });
     const employee = await prisma.user.update({
       where: { id },
@@ -81,7 +82,7 @@ router.delete("/employees/:id", async (req, res) => {
     if (!currentUser) return void res.status(401).json({ success: false, message: "Unauthorized" });
     if (currentUser.role !== "OWNER") return void res.status(403).json({ success: false, message: "Only owner can deactivate employee" });
     const restaurant = await prisma.restaurant.findFirst({ where: { ownerId: currentUser.id } });
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { id } = req.params;
     if (id === currentUser.id) return void res.status(400).json({ success: false, message: "Owner cannot deactivate themselves" });
     const existing = await prisma.user.findFirst({ where: { id, restaurantId: restaurant.id } });
@@ -99,7 +100,7 @@ router.patch("/employees/:id/reset-password", async (req, res) => {
     if (!currentUser) return void res.status(401).json({ success: false, message: "Unauthorized" });
     if (currentUser.role !== "OWNER") return void res.status(403).json({ success: false, message: "Only owner can reset password" });
     const restaurant = await prisma.restaurant.findFirst({ where: { ownerId: currentUser.id } });
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { id } = req.params;
     const password = String(req.body?.password ?? "");
     if (password.length < 6) return void res.status(400).json({ success: false, message: "Password must be at least 6 characters" });

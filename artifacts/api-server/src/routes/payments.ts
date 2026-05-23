@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser, getCurrentUser } from "../lib/auth.js";
+import { POS_ROLES, ERR } from "../lib/constants.js";
 
 const router = Router();
 
@@ -11,11 +12,11 @@ const router = Router();
 // Returns: { success, redirectUrl }
 router.post("/payments/create-transaction", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "CASHIER"]);
+    const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
-      return void res.status(404).json({ success: false, message: "Restaurant not found" });
+      return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     if (!restaurant.midtransEnabled || !restaurant.midtransServerKey)
       return void res.status(400).json({ success: false, message: "Midtrans is not enabled for this restaurant" });
@@ -28,7 +29,7 @@ router.post("/payments/create-transaction", async (req, res) => {
       where: { id: String(orderId), restaurantId: restaurant.id },
     });
     if (!order)
-      return void res.status(404).json({ success: false, message: "Order not found" });
+      return void res.status(404).json({ success: false, message: ERR.ORDER_NOT_FOUND });
 
     const serverKey = restaurant.midtransServerKey;
     const isProduction = process.env.MIDTRANS_ENV === "production";
@@ -109,7 +110,7 @@ router.post("/payments/midtrans-webhook", async (req, res) => {
     });
 
     if (!order || !order.restaurant)
-      return void res.status(404).json({ success: false, message: "Order not found" });
+      return void res.status(404).json({ success: false, message: ERR.ORDER_NOT_FOUND });
 
     const serverKey = order.restaurant.midtransServerKey;
     if (!serverKey)

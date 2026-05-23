@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser } from "../lib/auth.js";
+import {
+  ALL_ROLES,
+  POS_ROLES,
+  OPS_ROLES,
+  ERR,
+  PAYMENT_METHODS,
+} from "../lib/constants.js";
 
 const router = Router();
 
@@ -17,19 +24,13 @@ const allowedTransitions: Record<string, string[]> = {
 // GET /api/orders
 router.get("/orders", async (req, res) => {
   try {
-    const user = await requireRole(req, res, [
-      "OWNER",
-      "MANAGER",
-      "CASHIER",
-      "KITCHEN",
-      "SERVER",
-    ]);
+    const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
       return void res
         .status(404)
-        .json({ success: false, message: "Restaurant not found" });
+        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const { status, type, limit, page } = req.query as Record<string, string>;
     const take = Number(limit ?? 50);
@@ -61,13 +62,13 @@ router.get("/orders", async (req, res) => {
 // POST /api/orders
 router.post("/orders", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "CASHIER"]);
+    const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
       return void res
         .status(404)
-        .json({ success: false, message: "Restaurant not found" });
+        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const body = req.body ?? {};
     const paymentMethod = String(body.paymentMethod ?? "").toUpperCase();
@@ -93,14 +94,14 @@ router.post("/orders", async (req, res) => {
     if (!currentShift)
       return void res
         .status(400)
-        .json({ success: false, message: "Please open shift before creating order" });
+        .json({ success: false, message: ERR.NO_OPEN_SHIFT });
 
     // Validate payment method
     const paymentEnabledMap: Record<string, boolean> = {
-      CASH: restaurant.cashEnabled,
-      QRIS: restaurant.qrisEnabled,
-      CARD: restaurant.cardEnabled,
-      TRANSFER: restaurant.transferEnabled,
+      [PAYMENT_METHODS.CASH]: restaurant.cashEnabled,
+      [PAYMENT_METHODS.QRIS]: restaurant.qrisEnabled,
+      [PAYMENT_METHODS.CARD]: restaurant.cardEnabled,
+      [PAYMENT_METHODS.TRANSFER]: restaurant.transferEnabled,
     };
     if (!paymentEnabledMap[paymentMethod])
       return void res
@@ -140,7 +141,7 @@ router.post("/orders", async (req, res) => {
     const serviceAmount = Math.round(subtotal * (restaurant.serviceRate / 100));
     const total = subtotal + taxAmount + serviceAmount;
 
-    const isCash = paymentMethod === "CASH";
+    const isCash = paymentMethod === PAYMENT_METHODS.CASH;
     const finalAmountPaid = isCash ? amountPaid : total;
     if (isCash && finalAmountPaid < total)
       return void res.status(400).json({ success: false, message: "Insufficient payment amount" });
@@ -241,17 +242,11 @@ router.post("/orders", async (req, res) => {
 // GET /api/orders/:id
 router.get("/orders/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, [
-      "OWNER",
-      "MANAGER",
-      "CASHIER",
-      "KITCHEN",
-      "SERVER",
-    ]);
+    const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
-      return void res.status(404).json({ success: false, message: "Restaurant not found" });
+      return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const order = await prisma.order.findFirst({
       where: { id: req.params.id, restaurantId: restaurant.id },
@@ -263,7 +258,7 @@ router.get("/orders/:id", async (req, res) => {
       },
     });
     if (!order)
-      return void res.status(404).json({ success: false, message: "Order not found" });
+      return void res.status(404).json({ success: false, message: ERR.ORDER_NOT_FOUND });
 
     res.json({ success: true, data: order });
   } catch {
@@ -274,17 +269,11 @@ router.get("/orders/:id", async (req, res) => {
 // PATCH /api/orders/:id/status
 router.patch("/orders/:id/status", async (req, res) => {
   try {
-    const user = await requireRole(req, res, [
-      "OWNER",
-      "MANAGER",
-      "KITCHEN",
-      "SERVER",
-      "CASHIER",
-    ]);
+    const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
-      return void res.status(404).json({ success: false, message: "Restaurant not found" });
+      return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const { id } = req.params;
     const status = req.body?.status as string;
@@ -309,7 +298,7 @@ router.patch("/orders/:id/status", async (req, res) => {
       },
     });
     if (!existingOrder)
-      return void res.status(404).json({ success: false, message: "Order not found" });
+      return void res.status(404).json({ success: false, message: ERR.ORDER_NOT_FOUND });
 
     if (!allowedTransitions[existingOrder.status]?.includes(status))
       return void res
@@ -390,7 +379,7 @@ router.patch("/orders/:id/status", async (req, res) => {
 
       if (
         isCancelling &&
-        existingOrder.paymentMethod === "CASH" &&
+        existingOrder.paymentMethod === PAYMENT_METHODS.CASH &&
         existingOrder.payment?.status === "PAID" &&
         existingOrder.shiftId
       ) {
@@ -434,11 +423,11 @@ router.patch("/orders/:id/status", async (req, res) => {
 // PATCH /api/orders/:id/move-table
 router.patch("/orders/:id/move-table", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "CASHIER", "SERVER"]);
+    const user = await requireRole(req, res, OPS_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
-      return void res.status(404).json({ success: false, message: "Restaurant not found" });
+      return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const { id } = req.params;
     const tableId = String(req.body?.tableId ?? "");
@@ -448,7 +437,7 @@ router.patch("/orders/:id/move-table", async (req, res) => {
       where: { id, restaurantId: restaurant.id },
       include: { table: true },
     });
-    if (!order) return void res.status(404).json({ success: false, message: "Order not found" });
+    if (!order) return void res.status(404).json({ success: false, message: ERR.ORDER_NOT_FOUND });
     if (order.type !== "DINE_IN") return void res.status(400).json({ success: false, message: "Only dine-in orders can move tables" });
     if (order.status === "COMPLETED" || order.status === "CANCELLED")
       return void res.status(400).json({ success: false, message: "Cannot move completed order" });

@@ -1,15 +1,16 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser } from "../lib/auth.js";
+import { POS_ROLES, ERR } from "../lib/constants.js";
 
 const router = Router();
 
 router.get("/shifts", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "CASHIER"]);
+    const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const shifts = await prisma.shift.findMany({
       where: { restaurantId: restaurant.id },
       include: {
@@ -26,10 +27,10 @@ router.get("/shifts", async (req, res) => {
 
 router.post("/shifts/open", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "CASHIER"]);
+    const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const openingCash = Number(req.body?.openingCash ?? 0);
     if (openingCash < 0) return void res.status(400).json({ success: false, message: "Opening cash cannot be negative" });
     const existing = await prisma.shift.findFirst({
@@ -53,10 +54,10 @@ router.post("/shifts/open", async (req, res) => {
 
 router.get("/shifts/current", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "CASHIER"]);
+    const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const shift = await prisma.shift.findFirst({
       where: { userId: user.id, restaurantId: restaurant.id, status: "OPEN" },
       include: { orders: true },
@@ -70,10 +71,10 @@ router.get("/shifts/current", async (req, res) => {
 
 router.patch("/shifts/:id/close", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "CASHIER"]);
+    const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { id } = req.params;
     const shift = await prisma.shift.findFirst({
       where: { id, restaurantId: restaurant.id },

@@ -2,6 +2,8 @@
 
 import type { ElementType } from "react";
 import { Link, useLocation } from "wouter";
+import { ROUTES } from "@/constants/routes";
+import { ROLES } from "@/constants/roles";
 import {
   BarChart3,
   BellRing,
@@ -48,10 +50,10 @@ const menuGroups: MenuGroup[] = [
     title: "Overview",
     items: [
       {
-        href: "/dashboard",
+        href: ROUTES.DASHBOARD,
         label: "Dashboard",
         icon: LayoutDashboard,
-        roles: ["OWNER", "MANAGER"],
+        roles: [ROLES.OWNER, ROLES.MANAGER],
       },
     ],
   },
@@ -59,34 +61,34 @@ const menuGroups: MenuGroup[] = [
     title: "Operations",
     items: [
       {
-        href: "/dashboard/checkout",
+        href: ROUTES.CHECKOUT,
         label: "Cashier",
         icon: ShoppingCart,
-        roles: ["OWNER", "MANAGER", "CASHIER"],
+        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.CASHIER],
       },
       {
-        href: "/dashboard/orders",
+        href: ROUTES.ORDERS,
         label: "Orders",
         icon: ClipboardList,
-        roles: ["OWNER", "MANAGER", "CASHIER"],
+        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.CASHIER],
       },
       {
-        href: "/dashboard/kds",
+        href: ROUTES.KDS,
         label: "Kitchen (KDS)",
         icon: ChefHat,
-        roles: ["OWNER", "MANAGER", "KITCHEN"],
+        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.KITCHEN],
       },
       {
-        href: "/dashboard/serving",
+        href: ROUTES.SERVING,
         label: "Serving",
         icon: BellRing,
-        roles: ["OWNER", "MANAGER", "SERVER", "CASHIER"],
+        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.SERVER, ROLES.CASHIER],
       },
       {
-        href: "/dashboard/tables",
+        href: ROUTES.TABLES,
         label: "Tables",
         icon: Table2,
-        roles: ["OWNER", "MANAGER", "SERVER", "CASHIER"],
+        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.SERVER, ROLES.CASHIER],
       },
     ],
   },
@@ -94,40 +96,40 @@ const menuGroups: MenuGroup[] = [
     title: "Management",
     items: [
       {
-        href: "/dashboard/menu",
+        href: ROUTES.MENU,
         label: "Menu",
         icon: UtensilsCrossed,
-        roles: ["OWNER", "MANAGER"],
+        roles: [ROLES.OWNER, ROLES.MANAGER],
       },
       {
-        href: "/dashboard/inventory",
+        href: ROUTES.INVENTORY,
         label: "Inventory",
         icon: Package,
-        roles: ["OWNER", "MANAGER"],
+        roles: [ROLES.OWNER, ROLES.MANAGER],
       },
       {
-        href: "/dashboard/payments",
+        href: ROUTES.PAYMENTS,
         label: "Payments",
         icon: CreditCard,
-        roles: ["OWNER", "MANAGER"],
+        roles: [ROLES.OWNER, ROLES.MANAGER],
       },
       {
-        href: "/dashboard/employees",
+        href: ROUTES.EMPLOYEES,
         label: "Employees",
         icon: Users,
-        roles: ["OWNER"],
+        roles: [ROLES.OWNER],
       },
       {
-        href: "/dashboard/attendance",
+        href: ROUTES.ATTENDANCE,
         label: "Attendance",
         icon: CalendarClock,
-        roles: ["OWNER", "MANAGER", "CASHIER", "KITCHEN", "SERVER"],
+        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.CASHIER, ROLES.KITCHEN, ROLES.SERVER],
       },
       {
-        href: "/dashboard/shifts",
+        href: ROUTES.SHIFTS,
         label: "Shifts",
         icon: ReceiptText,
-        roles: ["OWNER", "MANAGER", "CASHIER"],
+        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.CASHIER],
       },
     ],
   },
@@ -135,10 +137,10 @@ const menuGroups: MenuGroup[] = [
     title: "Business",
     items: [
       {
-        href: "/dashboard/analytics",
+        href: ROUTES.ANALYTICS,
         label: "Analytics",
         icon: BarChart3,
-        roles: ["OWNER", "MANAGER"],
+        roles: [ROLES.OWNER, ROLES.MANAGER],
       },
     ],
   },
@@ -146,16 +148,16 @@ const menuGroups: MenuGroup[] = [
     title: "System",
     items: [
       {
-        href: "/dashboard/audit-logs",
+        href: ROUTES.AUDIT_LOGS,
         label: "Audit Logs",
         icon: ListChecks,
-        roles: ["OWNER", "MANAGER"],
+        roles: [ROLES.OWNER, ROLES.MANAGER],
       },
       {
-        href: "/dashboard/settings",
+        href: ROUTES.SETTINGS,
         label: "Settings",
         icon: Settings,
-        roles: ["OWNER"],
+        roles: [ROLES.OWNER],
       },
     ],
   },
@@ -195,7 +197,7 @@ function SidebarContent({
       credentials: "include",
     });
 
-    window.location.href = "/login";
+    window.location.href = ROUTES.LOGIN;
   }
 
   return (
@@ -249,7 +251,7 @@ function SidebarContent({
                 const Icon = item.icon;
 
                 const isActive =
-                  item.href === "/dashboard"
+                  item.href === ROUTES.DASHBOARD
                     ? pathname === item.href
                     : pathname.startsWith(item.href);
 

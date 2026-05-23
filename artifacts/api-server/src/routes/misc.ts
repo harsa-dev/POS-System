@@ -4,6 +4,7 @@ import path from "path";
 import multer from "multer";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getCurrentUser, getRestaurantForUser } from "../lib/auth.js";
+import { MANAGEMENT_ROLES, OWNER_ONLY, ERR } from "../lib/constants.js";
 
 const UPLOADS_DIR = path.resolve("data/uploads");
 mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -30,10 +31,10 @@ const router = Router();
 // Settings
 router.get("/settings", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     res.json({ success: true, data: restaurant });
   } catch {
     res.status(500).json({ success: false, message: "Failed to fetch settings" });
@@ -42,10 +43,10 @@ router.get("/settings", async (req, res) => {
 
 router.patch("/settings", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER"]);
+    const user = await requireRole(req, res, OWNER_ONLY);
     if (!user) return;
     const restaurant = await prisma.restaurant.findFirst({ where: { ownerId: user.id } });
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const body = req.body ?? {};
     const updated = await prisma.restaurant.update({
       where: { id: restaurant.id },
@@ -84,10 +85,10 @@ router.get("/restaurants", async (req, res) => {
 // Audit logs
 router.get("/audit-logs", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER"]);
+    const user = await requireRole(req, res, OWNER_ONLY);
     if (!user) return;
     const restaurant = await prisma.restaurant.findFirst({ where: { ownerId: user.id } });
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const logs = await prisma.auditLog.findMany({
       where: { restaurantId: restaurant.id },
       include: { user: { select: { name: true, email: true, role: true } } },
@@ -103,10 +104,10 @@ router.get("/audit-logs", async (req, res) => {
 // Recipes
 router.get("/recipes", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const recipes = await prisma.recipe.findMany({
       where: { menuItem: { restaurantId: restaurant.id } },
       include: { menuItem: true, inventoryItem: true },
@@ -120,10 +121,10 @@ router.get("/recipes", async (req, res) => {
 
 router.post("/recipes", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { menuItemId, inventoryItemId, quantityNeeded } = req.body ?? {};
     if (!menuItemId || !inventoryItemId || quantityNeeded === undefined)
       return void res.status(400).json({ success: false, message: "menuItemId, inventoryItemId, quantityNeeded required" });
@@ -141,10 +142,10 @@ router.post("/recipes", async (req, res) => {
 
 router.patch("/recipes/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { id } = req.params;
     const { quantityNeeded } = req.body ?? {};
     const recipe = await prisma.recipe.findFirst({
@@ -164,10 +165,10 @@ router.patch("/recipes/:id", async (req, res) => {
 
 router.delete("/recipes/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { id } = req.params;
     const recipe = await prisma.recipe.findFirst({
       where: { id, menuItem: { restaurantId: restaurant.id } },
@@ -186,7 +187,7 @@ router.get("/payments", async (req, res) => {
     const user = await getCurrentUser(req);
     if (!user) return void res.status(401).json({ success: false, message: "Unauthorized" });
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const payments = await prisma.payment.findMany({
       where: { order: { restaurantId: restaurant.id } },
       include: { order: true },
@@ -203,7 +204,7 @@ router.post(
   "/uploads/menu-image",
   // 1. Verify auth first — reject unauthenticated callers before any file I/O
   async (req, res, next) => {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return; // requireRole already sent 401/403
     (req as Record<string, unknown>)._authedUser = user;
     next();

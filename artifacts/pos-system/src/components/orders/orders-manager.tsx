@@ -17,6 +17,10 @@ import {
   formatDateTime,
   formatOrderNumber,
 } from "@/lib/utils/format";
+import {
+  ORDER_STATUS_COLORS,
+  ORDER_STATUS_LABELS,
+} from "@/features/orders/constans/order-status";
 
 type OrderItem = {
   id: string;
@@ -40,26 +44,13 @@ type Order = {
   restaurant?: { currency?: string; timezone?: string; orderPrefix?: string };
 };
 
-const statusOptions = [
-  "ALL",
-  "PENDING_PAYMENT",
-  "PAID",
-  "PREPARING",
-  "READY",
-  "SERVED",
-  "COMPLETED",
-  "CANCELLED",
-];
+const statusOptions = ["ALL", ...Object.keys(ORDER_STATUS_LABELS)];
 
 function getStatusStyle(status: string) {
-  if (status === "COMPLETED") return "bg-neutral-100 text-neutral-700";
-  if (status === "CANCELLED") return "bg-red-100 text-red-700";
-  if (status === "PENDING_PAYMENT") return "bg-yellow-100 text-yellow-700";
-  if (status === "PAID") return "bg-blue-100 text-blue-700";
-  if (status === "PREPARING") return "bg-orange-100 text-orange-700";
-  if (status === "READY") return "bg-green-100 text-green-700";
-  if (status === "SERVED") return "bg-purple-100 text-purple-700";
-  return "bg-neutral-100 text-neutral-700";
+  return (
+    ORDER_STATUS_COLORS[status as keyof typeof ORDER_STATUS_COLORS] ??
+    "bg-neutral-100 text-neutral-700"
+  );
 }
 
 function OrdersSkeleton() {

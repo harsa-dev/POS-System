@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ROLE_COLORS, EMPLOYEE_ROLES } from "@/constants/roles";
 import {
   Check,
   Pencil,
@@ -23,16 +24,13 @@ type Employee = {
   createdAt: string;
 };
 
-const roles: EmployeeRole[] = ["MANAGER", "CASHIER", "KITCHEN", "SERVER"];
+const roles = EMPLOYEE_ROLES as EmployeeRole[];
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 type RoleFilter = "ALL" | EmployeeRole;
 
 function getRoleColor(role: EmployeeRole) {
-  if (role === "MANAGER") return "bg-blue-100 text-blue-700";
-  if (role === "CASHIER") return "bg-violet-100 text-violet-700";
-  if (role === "KITCHEN") return "bg-orange-100 text-orange-700";
-  return "bg-emerald-100 text-emerald-700";
+  return ROLE_COLORS[role] ?? "bg-neutral-100 text-neutral-700";
 }
 
 function getInitial(name: string) {

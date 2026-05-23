@@ -1,24 +1,20 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser } from "../lib/auth.js";
+import { MANAGEMENT_AND_KITCHEN_ROLES, MANAGEMENT_ROLES, POS_ROLES, ERR } from "../lib/constants.js";
 
 const router = Router();
 
 // GET /api/menu-items
 router.get("/menu-items", async (req, res) => {
   try {
-    const user = await requireRole(req, res, [
-      "OWNER",
-      "MANAGER",
-      "CASHIER",
-      "KITCHEN",
-    ]);
+    const user = await requireRole(req, res, MANAGEMENT_AND_KITCHEN_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
       return void res
         .status(404)
-        .json({ success: false, message: "Restaurant not found" });
+        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const menuItems = await prisma.menuItem.findMany({
       where: { restaurantId: restaurant.id, isAvailable: true },
@@ -60,13 +56,13 @@ router.get("/menu-items", async (req, res) => {
 // POST /api/menu-items
 router.post("/menu-items", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
       return void res
         .status(404)
-        .json({ success: false, message: "Restaurant not found" });
+        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const { name, description, price, imageUrl, categoryId } = req.body ?? {};
     if (!name || price === undefined)
@@ -108,13 +104,13 @@ router.post("/menu-items", async (req, res) => {
 // PATCH /api/menu-items/:id
 router.patch("/menu-items/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
       return void res
         .status(404)
-        .json({ success: false, message: "Restaurant not found" });
+        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const { id } = req.params;
     const existing = await prisma.menuItem.findFirst({
@@ -150,13 +146,13 @@ router.patch("/menu-items/:id", async (req, res) => {
 // DELETE /api/menu-items/:id
 router.delete("/menu-items/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
       return void res
         .status(404)
-        .json({ success: false, message: "Restaurant not found" });
+        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const { id } = req.params;
     const existing = await prisma.menuItem.findFirst({
@@ -194,17 +190,13 @@ router.delete("/menu-items/:id", async (req, res) => {
 // GET /api/categories
 router.get("/categories", async (req, res) => {
   try {
-    const user = await requireRole(req, res, [
-      "OWNER",
-      "MANAGER",
-      "CASHIER",
-    ]);
+    const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
       return void res
         .status(404)
-        .json({ success: false, message: "Restaurant not found" });
+        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const categories = await prisma.category.findMany({
       where: { restaurantId: restaurant.id },
@@ -219,13 +211,13 @@ router.get("/categories", async (req, res) => {
 // POST /api/categories
 router.post("/categories", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
       return void res
         .status(404)
-        .json({ success: false, message: "Restaurant not found" });
+        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const name = String(req.body?.name ?? "").trim();
     if (!name)
@@ -245,13 +237,13 @@ router.post("/categories", async (req, res) => {
 // PATCH /api/categories/:id
 router.patch("/categories/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
       return void res
         .status(404)
-        .json({ success: false, message: "Restaurant not found" });
+        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const { id } = req.params;
     const name = String(req.body?.name ?? "").trim();
@@ -278,13 +270,13 @@ router.patch("/categories/:id", async (req, res) => {
 // DELETE /api/categories/:id
 router.delete("/categories/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant)
       return void res
         .status(404)
-        .json({ success: false, message: "Restaurant not found" });
+        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const { id } = req.params;
     const existing = await prisma.category.findFirst({

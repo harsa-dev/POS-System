@@ -1,4 +1,5 @@
 import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
+import { ROUTES, API } from "@/constants/routes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -63,7 +64,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchUser() {
     try {
-      const res = await fetch("/api/auth/me", { credentials: "include" });
+      const res = await fetch(API.AUTH_ME, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setUser(data.data);
@@ -97,7 +98,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) return <Redirect to="/login" />;
+  if (!user) return <Redirect to={ROUTES.LOGIN} />;
 
   return (
     <DashboardShell userName={user.name} role={user.role}>
@@ -109,37 +110,37 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
-      <Route path="/"><Redirect to="/login" /></Route>
-      <Route path="/login">
+      <Route path={ROUTES.ROOT}><Redirect to={ROUTES.LOGIN} /></Route>
+      <Route path={ROUTES.LOGIN}>
         <main className="flex min-h-screen items-center justify-center bg-neutral-50">
           <LoginForm />
         </main>
       </Route>
-      <Route path="/register">
+      <Route path={ROUTES.REGISTER}>
         <main className="flex min-h-screen items-center justify-center bg-neutral-50">
           <RegisterForm />
         </main>
       </Route>
-      <Route path="/dashboard"><ProtectedRoute><DashboardHome /></ProtectedRoute></Route>
-      <Route path="/dashboard/checkout"><ProtectedRoute><CheckoutPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/orders"><ProtectedRoute><OrdersPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/orders/:id">
+      <Route path={ROUTES.DASHBOARD}><ProtectedRoute><DashboardHome /></ProtectedRoute></Route>
+      <Route path={ROUTES.CHECKOUT}><ProtectedRoute><CheckoutPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.ORDERS}><ProtectedRoute><OrdersPage /></ProtectedRoute></Route>
+      <Route path={`${ROUTES.ORDERS}/:id`}>
         {(params) => <ProtectedRoute><OrderDetailPage id={params.id} /></ProtectedRoute>}
       </Route>
-      <Route path="/dashboard/menu"><ProtectedRoute><MenuPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/tables"><ProtectedRoute><TablesPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/kds"><ProtectedRoute><KDSPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/analytics"><ProtectedRoute><AnalyticsPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/payments/success"><ProtectedRoute><PaymentSuccessPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/payments/error"><ProtectedRoute><PaymentErrorPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/payments"><ProtectedRoute><PaymentsPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/inventory"><ProtectedRoute><InventoryPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/employees"><ProtectedRoute><EmployeesPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/attendance"><ProtectedRoute><AttendancePage /></ProtectedRoute></Route>
-      <Route path="/dashboard/shifts"><ProtectedRoute><ShiftsPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/settings"><ProtectedRoute><SettingsPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/serving"><ProtectedRoute><ServingPage /></ProtectedRoute></Route>
-      <Route path="/dashboard/audit-logs"><ProtectedRoute><AuditLogsPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.MENU}><ProtectedRoute><MenuPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.TABLES}><ProtectedRoute><TablesPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.KDS}><ProtectedRoute><KDSPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.ANALYTICS}><ProtectedRoute><AnalyticsPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.PAYMENTS_SUCCESS}><ProtectedRoute><PaymentSuccessPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.PAYMENTS_ERROR}><ProtectedRoute><PaymentErrorPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.PAYMENTS}><ProtectedRoute><PaymentsPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.INVENTORY}><ProtectedRoute><InventoryPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.EMPLOYEES}><ProtectedRoute><EmployeesPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.ATTENDANCE}><ProtectedRoute><AttendancePage /></ProtectedRoute></Route>
+      <Route path={ROUTES.SHIFTS}><ProtectedRoute><ShiftsPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.SETTINGS}><ProtectedRoute><SettingsPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.SERVING}><ProtectedRoute><ServingPage /></ProtectedRoute></Route>
+      <Route path={ROUTES.AUDIT_LOGS}><ProtectedRoute><AuditLogsPage /></ProtectedRoute></Route>
       <Route>
         <div className="flex min-h-screen items-center justify-center">
           <h1 className="text-2xl font-bold">404 - Page Not Found</h1>

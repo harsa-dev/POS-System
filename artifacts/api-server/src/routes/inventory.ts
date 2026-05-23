@@ -1,15 +1,16 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser } from "../lib/auth.js";
+import { MANAGEMENT_ROLES, ERR } from "../lib/constants.js";
 
 const router = Router();
 
 router.get("/inventory-items", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const items = await prisma.inventoryItem.findMany({
       where: { restaurantId: restaurant.id },
       orderBy: { createdAt: "desc" },
@@ -22,10 +23,10 @@ router.get("/inventory-items", async (req, res) => {
 
 router.post("/inventory-items", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { name, sku, type, unit, currentStock, minimumStock, costPerUnit } = req.body ?? {};
     if (!name || !type || !unit) return void res.status(400).json({ success: false, message: "Name, type and unit required" });
     const item = await prisma.inventoryItem.create({
@@ -48,10 +49,10 @@ router.post("/inventory-items", async (req, res) => {
 
 router.patch("/inventory-items/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { id } = req.params;
     const existing = await prisma.inventoryItem.findFirst({ where: { id, restaurantId: restaurant.id } });
     if (!existing) return void res.status(404).json({ success: false, message: "Inventory item not found" });
@@ -76,10 +77,10 @@ router.patch("/inventory-items/:id", async (req, res) => {
 
 router.delete("/inventory-items/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { id } = req.params;
     const existing = await prisma.inventoryItem.findFirst({ where: { id, restaurantId: restaurant.id } });
     if (!existing) return void res.status(404).json({ success: false, message: "Inventory item not found" });
@@ -93,10 +94,10 @@ router.delete("/inventory-items/:id", async (req, res) => {
 // Stock movements
 router.get("/inventory", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const movements = await prisma.stockMovement.findMany({
       where: { inventoryItem: { restaurantId: restaurant.id } },
       include: { inventoryItem: true },
@@ -110,10 +111,10 @@ router.get("/inventory", async (req, res) => {
 
 router.post("/inventory", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { inventoryItemId, type, quantity, note, reason } = req.body ?? {};
     if (!inventoryItemId || !type || quantity === undefined)
       return void res.status(400).json({ success: false, message: "inventoryItemId, type and quantity required" });

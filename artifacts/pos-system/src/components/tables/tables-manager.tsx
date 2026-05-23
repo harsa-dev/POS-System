@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { TABLE_STATUS_COLORS } from "@/constants/table-status";
 
 type DiningTable = {
   id: string;
@@ -106,12 +107,7 @@ export function TablesManager() {
   }
 
   function getStatusStyle(status: string) {
-    if (status === "AVAILABLE") return "bg-green-100 text-green-700";
-    if (status === "OCCUPIED") return "bg-red-100 text-red-700";
-    if (status === "RESERVED") return "bg-blue-100 text-blue-700";
-    if (status === "CLEANING") return "bg-yellow-100 text-yellow-700";
-
-    return "bg-neutral-100 text-neutral-700";
+    return TABLE_STATUS_COLORS[status] ?? "bg-neutral-100 text-neutral-700";
   }
 
   useEffect(() => {

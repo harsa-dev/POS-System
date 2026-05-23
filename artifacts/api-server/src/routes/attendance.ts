@@ -1,15 +1,16 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser } from "../lib/auth.js";
+import { ALL_ROLES, MANAGEMENT_ROLES, OWNER_ONLY, ERR } from "../lib/constants.js";
 
 const router = Router();
 
 router.get("/attendance", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "CASHIER", "KITCHEN", "SERVER"]);
+    const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const attendances = await prisma.attendance.findMany({
       where: { restaurantId: restaurant.id },
       include: { user: { select: { name: true, email: true, role: true } } },
@@ -23,10 +24,10 @@ router.get("/attendance", async (req, res) => {
 
 router.post("/attendance/clock-in", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "CASHIER", "KITCHEN", "SERVER"]);
+    const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const open = await prisma.attendance.findFirst({
       where: { userId: user.id, restaurantId: restaurant.id, clockOutAt: null },
     });
@@ -57,10 +58,10 @@ router.post("/attendance/clock-in", async (req, res) => {
 
 router.post("/attendance/clock-out", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "CASHIER", "KITCHEN", "SERVER"]);
+    const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const active = await prisma.attendance.findFirst({
       where: { userId: user.id, restaurantId: restaurant.id, clockOutAt: null },
       orderBy: { clockInAt: "desc" },
@@ -84,10 +85,10 @@ router.post("/attendance/clock-out", async (req, res) => {
 
 router.get("/attendance/settings", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const setting = await prisma.attendanceSetting.upsert({
       where: { restaurantId: restaurant.id },
       update: {},
@@ -101,10 +102,10 @@ router.get("/attendance/settings", async (req, res) => {
 
 router.patch("/attendance/settings", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER"]);
+    const user = await requireRole(req, res, OWNER_ONLY);
     if (!user) return;
     const restaurant = await prisma.restaurant.findFirst({ where: { ownerId: user.id } });
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { workStartHour, workStartMinute, lateTolerance, overtimeAfterMinutes } = req.body ?? {};
     const setting = await prisma.attendanceSetting.upsert({
       where: { restaurantId: restaurant.id },

@@ -1,15 +1,24 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser } from "../lib/auth.js";
+import {
+  MANAGEMENT_ROLES,
+  MANAGEMENT_AND_KITCHEN_ROLES,
+  ACTIVE_KITCHEN_STATUSES,
+  ALL_ORDER_STATUSES,
+  DEFAULT_LOW_STOCK_THRESHOLD,
+  DEFAULT_LOW_STOCK_LIMIT,
+  ERR,
+} from "../lib/constants.js";
 
 const router = Router();
 
 router.get("/analytics/overview", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const completedOrders = await prisma.order.findMany({
       where: { restaurantId: restaurant.id, status: "COMPLETED" },
@@ -19,7 +28,7 @@ router.get("/analytics/overview", async (req, res) => {
     const totalOrders = completedOrders.length;
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
     const activeOrders = await prisma.order.count({
-      where: { restaurantId: restaurant.id, status: { in: ["PAID", "PREPARING", "READY"] } },
+      where: { restaurantId: restaurant.id, status: { in: [...ACTIVE_KITCHEN_STATUSES] } },
     });
     const allInventory = await prisma.inventoryItem.findMany({
       where: { restaurantId: restaurant.id },
@@ -34,10 +43,10 @@ router.get("/analytics/overview", async (req, res) => {
 
 router.get("/analytics/sales", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const orders = await prisma.order.findMany({
       where: { restaurantId: restaurant.id, status: "COMPLETED" },
       select: { createdAt: true, total: true },
@@ -57,10 +66,10 @@ router.get("/analytics/sales", async (req, res) => {
 
 router.get("/analytics/top-menu", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const items = await prisma.orderItem.groupBy({
       by: ["menuItemId"],
       where: { order: { restaurantId: restaurant.id, status: "COMPLETED" } },
@@ -82,10 +91,10 @@ router.get("/analytics/top-menu", async (req, res) => {
 
 router.get("/analytics/category-sales", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const orderItems = await prisma.orderItem.findMany({
       where: { order: { restaurantId: restaurant.id, status: "COMPLETED" } },
       select: { quantity: true, subtotal: true, menuItem: { select: { category: { select: { name: true } } } } },
@@ -106,10 +115,10 @@ router.get("/analytics/category-sales", async (req, res) => {
 
 router.get("/analytics/payment-method", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const grouped = await prisma.order.groupBy({
       by: ["paymentMethod"],
       where: { restaurantId: restaurant.id, status: "COMPLETED", paymentMethod: { not: "" } },
@@ -129,10 +138,10 @@ router.get("/analytics/payment-method", async (req, res) => {
 
 router.get("/analytics/peak-hours", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const orders = await prisma.order.findMany({
       where: { restaurantId: restaurant.id, status: "COMPLETED" },
       select: { createdAt: true },
@@ -148,16 +157,16 @@ router.get("/analytics/peak-hours", async (req, res) => {
 
 router.get("/analytics/order-status", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const orders = await prisma.order.groupBy({
       by: ["status"],
       where: { restaurantId: restaurant.id },
       _count: { status: true },
     });
-    const allStatuses = ["PENDING_PAYMENT", "PAID", "PREPARING", "READY", "SERVED", "COMPLETED", "CANCELLED"];
+    const allStatuses = [...ALL_ORDER_STATUSES];
     const data = allStatuses.map((status) => {
       const found = orders.find((o) => o.status === status);
       return { status, total: found?._count.status ?? 0 };
@@ -170,10 +179,10 @@ router.get("/analytics/order-status", async (req, res) => {
 
 router.get("/analytics/kitchen-performance", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const completedOrders = await prisma.order.findMany({
       where: { restaurantId: restaurant.id, status: "COMPLETED" },
       select: { createdAt: true, updatedAt: true },
@@ -196,10 +205,10 @@ router.get("/analytics/kitchen-performance", async (req, res) => {
 
 router.get("/analytics/live-orders", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "KITCHEN", "CASHIER"]);
+    const user = await requireRole(req, res, MANAGEMENT_AND_KITCHEN_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const now = Date.now();
     const orders = await prisma.order.findMany({
       where: { restaurantId: restaurant.id, status: { in: ["PAID", "PREPARING", "READY"] } },
@@ -222,14 +231,14 @@ router.get("/analytics/live-orders", async (req, res) => {
 
 router.get("/analytics/low-stock", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const items = await prisma.inventoryItem.findMany({
-      where: { restaurantId: restaurant.id, currentStock: { lte: 10 } },
+      where: { restaurantId: restaurant.id, currentStock: { lte: DEFAULT_LOW_STOCK_THRESHOLD } },
       orderBy: { currentStock: "asc" },
-      take: 8,
+      take: DEFAULT_LOW_STOCK_LIMIT,
     });
     res.json({ success: true, data: items });
   } catch {
@@ -239,10 +248,10 @@ router.get("/analytics/low-stock", async (req, res) => {
 
 router.get("/analytics/food-cost", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const orderItems = await prisma.orderItem.findMany({
       where: { order: { restaurantId: restaurant.id, status: "COMPLETED" } },
       select: { quantity: true, subtotal: true, menuItem: { select: { name: true, recipes: { select: { quantityNeeded: true, inventoryItem: { select: { costPerUnit: true } } } } } } },
@@ -269,10 +278,10 @@ router.get("/analytics/food-cost", async (req, res) => {
 
 router.get("/analytics/profit-margin", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const orderItems = await prisma.orderItem.findMany({
       where: { order: { restaurantId: restaurant.id, status: "COMPLETED" } },
       select: { quantity: true, subtotal: true, menuItem: { select: { name: true, recipes: { select: { quantityNeeded: true, inventoryItem: { select: { costPerUnit: true } } } } } } },
@@ -298,10 +307,10 @@ router.get("/analytics/profit-margin", async (req, res) => {
 
 router.get("/analytics/variance", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const orderItems = await prisma.orderItem.findMany({
       where: { order: { restaurantId: restaurant.id, status: "COMPLETED" } },
       select: { quantity: true, menuItem: { select: { recipes: { select: { inventoryItemId: true, quantityNeeded: true, inventoryItem: { select: { name: true } } } } } } },

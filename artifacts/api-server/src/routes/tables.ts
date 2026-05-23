@@ -1,15 +1,16 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser } from "../lib/auth.js";
+import { OPS_ROLES, MANAGEMENT_ROLES, MANAGEMENT_AND_SERVER_ROLES, ERR } from "../lib/constants.js";
 
 const router = Router();
 
 router.get("/tables", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "CASHIER", "SERVER"]);
+    const user = await requireRole(req, res, OPS_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const tables = await prisma.diningTable.findMany({
       where: { restaurantId: restaurant.id },
       orderBy: { createdAt: "desc" },
@@ -22,10 +23,10 @@ router.get("/tables", async (req, res) => {
 
 router.post("/tables", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const name = String(req.body?.name ?? "").trim();
     const capacity = Number(req.body?.capacity ?? 2);
     if (!name) return void res.status(400).json({ success: false, message: "Table name is required" });
@@ -41,10 +42,10 @@ router.post("/tables", async (req, res) => {
 
 router.patch("/tables/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { id } = req.params;
     const existing = await prisma.diningTable.findFirst({ where: { id, restaurantId: restaurant.id } });
     if (!existing) return void res.status(404).json({ success: false, message: "Table not found" });
@@ -66,10 +67,10 @@ router.patch("/tables/:id", async (req, res) => {
 
 router.delete("/tables/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER"]);
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { id } = req.params;
     const existing = await prisma.diningTable.findFirst({ where: { id, restaurantId: restaurant.id } });
     if (!existing) return void res.status(404).json({ success: false, message: "Table not found" });
@@ -85,10 +86,10 @@ router.delete("/tables/:id", async (req, res) => {
 
 router.patch("/tables/:id/mark-clean", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ["OWNER", "MANAGER", "SERVER"]);
+    const user = await requireRole(req, res, MANAGEMENT_AND_SERVER_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { id } = req.params;
     const table = await prisma.diningTable.findFirst({ where: { id, restaurantId: restaurant.id } });
     if (!table) return void res.status(404).json({ success: false, message: "Table not found" });
