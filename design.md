@@ -100,16 +100,17 @@ Because humans absolutely love creating two separate systems that hate each othe
 
 ## Frontend
 
-* Next.js
-* React
-* TypeScript
-* Tailwind CSS
-* Shadcn UI
-* Framer Motion
-* TanStack Query
-* Zustand (optional)
-* React Hook Form
-* Zod
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- Lucide React
+- Framer Motion
+- TanStack Query
+- Zustand if needed
+- React Hook Form
+- Zod
 
 ---
 
@@ -454,6 +455,171 @@ Focus:
 * Responsive layout
 
 ---
+
+# UI FRAMEWORK AND EXPERIENCE REQUIREMENTS
+
+## UI Framework
+
+The project must use:
+
+- shadcn/ui as the main component foundation
+- Tailwind CSS for styling
+- Lucide React for icons
+- Framer Motion for smooth animation
+- React Hook Form for forms
+- Zod for form validation
+
+shadcn/ui components should be customized consistently based on the project design system.
+
+Recommended components:
+
+- Button
+- Card
+- Dialog
+- Sheet
+- Dropdown Menu
+- Table
+- Tabs
+- Badge
+- Input
+- Select
+- Form
+- Toast
+- Skeleton
+- Alert
+- Command
+- Popover
+
+---
+
+# LOADING AND SKELETON UI
+
+Every page that fetches data must have proper loading states.
+
+Required loading UI:
+
+- Dashboard metric skeleton
+- Order card skeleton
+- Table row skeleton
+- Menu item skeleton
+- Inventory list skeleton
+- Analytics chart skeleton
+- Payment summary skeleton
+- Kitchen order skeleton
+- Serving order skeleton
+
+Rules:
+
+- Do not show blank pages while loading.
+- Do not use random spinning loaders everywhere.
+- Use skeleton UI for content-heavy screens.
+- Use small spinners only for button actions.
+
+Example usage:
+
+- Page loading: skeleton layout
+- Button submitting: small loading spinner
+- Data refreshing: subtle loading indicator
+- Empty result: empty state component
+
+---
+
+# ANIMATION REQUIREMENTS
+
+The application should use smooth, subtle, and purposeful animations.
+
+Use Framer Motion for:
+
+- Page transitions
+- Modal/dialog appearance
+- Sidebar expand/collapse
+- Card hover interaction
+- List item enter/exit animation
+- Toast notification
+- Order status update feedback
+- Dashboard metric update
+
+Animation rules:
+
+- Keep animation fast and smooth.
+- Avoid excessive motion.
+- Do not make operational workflows slower.
+- Prioritize clarity over decoration.
+- Disable or reduce animation for users who prefer reduced motion.
+
+Recommended animation duration:
+
+Fast interaction: 100ms - 150ms
+Normal transition: 200ms - 300ms
+Page transition: 300ms - 500ms
+
+## RESPONSIVE COMPONENT BEHAVIOR
+
+Every component must support desktop, tablet, and mobile layouts.
+
+# Desktop
+
+- Sidebar navigation
+- Data tables
+- Multi-column dashboard
+- Full analytics charts
+- Keyboard-friendly workflow
+
+# Tablet
+- Collapsible sidebar
+- Touch-friendly cards
+- Split layout when possible
+- Larger buttons
+
+# Mobile
+
+- Bottom navigation
+- Card-based layout
+- Simplified tables
+- Large tap targets
+- Sticky action buttons
+- Minimal modal usage
+
+## UI STATE REQUIREMENTS
+
+Every major screen must handle:
+
+Loading state
+Empty state
+Error state
+Success state
+Disabled state
+Pending state
+Offline or connection issue state
+
+# Required reusable components:
+
+LoadingSkeleton
+EmptyState
+ErrorState
+PageHeader
+StatusBadge
+ConfirmDialog
+DataTable
+ResponsiveShell
+ActionButton
+
+## UX QUALITY STANDARD
+
+A page is not considered finished if it only displays data.
+
+A finished page must include:
+
+Clear title
+Clear primary action
+Loading skeleton
+Empty state
+Error state
+Responsive layout
+Toast feedback
+Accessible buttons
+Consistent spacing
+Smooth interaction
 
 ## Visual Principles
 
@@ -976,14 +1142,22 @@ Avoid:
 
 A feature is considered done when:
 
-* UI completed
-* API completed
-* Validation completed
-* Error handling completed
-* Permission completed
-* Mobile responsive completed
-* Tested
-* Documented
+A feature is considered done when:
+
+- UI completed
+- API completed
+- Validation completed
+- Error handling completed
+- Permission completed
+- Loading skeleton added
+- Empty state added
+- Error state added
+- Smooth animation added where useful
+- Mobile responsive completed
+- Tablet responsive completed
+- Desktop responsive completed
+- Tested
+- Documented
 
 “Works on my machine” is not considered done.
 That is merely the opening ceremony of future suffering.
