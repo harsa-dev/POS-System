@@ -226,7 +226,6 @@ This project focuses on:
 
 # Folder Structure
 
-txt
 src/
  ├── app/
  │   ├── api/
@@ -297,7 +296,6 @@ Can access audit logs and operational reports.
 
 # Order Status Flow
 
-txt
 PENDING
 CONFIRMED
 PREPARING
@@ -309,7 +307,6 @@ COMPLETED
 
 Additional statuses:
 
-txt
 CANCELLED
 REFUNDED
 
