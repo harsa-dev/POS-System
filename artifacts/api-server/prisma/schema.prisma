@@ -189,6 +189,10 @@ model Order {
   items   OrderItem[]
   payment Payment?
 
+  // Bug #4 fix: enforce uniqueness at the DB level so concurrent transactions
+  // that compute the same orderNumber produce a P2002 (caught + retried in the
+  // route) instead of silently writing duplicate order numbers.
+  @@unique([restaurantId, orderNumber])
   @@index([restaurantId])
   @@index([status])
   @@index([createdAt])

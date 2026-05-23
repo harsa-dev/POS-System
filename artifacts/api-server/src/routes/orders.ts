@@ -122,7 +122,7 @@ router.post("/orders", async (req, res) => {
           select: {
             quantityNeeded: true,
             inventoryItemId: true,
-            inventoryItem: { select: { id: true, currentStock: true } },
+            inventoryItem: { select: { id: true, name: true, currentStock: true } },
           },
         },
       },
@@ -150,72 +150,113 @@ router.post("/orders", async (req, res) => {
 
     const changeAmount = isCash ? finalAmountPaid - total : 0;
 
-    const order = await prisma.$transaction(async (tx) => {
-      if (tableId) {
-        await tx.diningTable.update({
-          where: { id: tableId },
-          data: { status: "OCCUPIED" },
-        });
-      }
+    // Bug #4: wrap the transaction in a retry loop.
+    // If two concurrent requests compute the same orderNumber, the DB unique
+    // constraint (@@unique([restaurantId, orderNumber])) raises P2002. The
+    // entire $transaction is rolled back atomically, so no partial writes occur.
+    // A fresh attempt recomputes orderNumber from the latest row and succeeds.
+    const order = await (async () => {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          return await prisma.$transaction(async (tx) => {
+            if (tableId) {
+              await tx.diningTable.update({
+                where: { id: tableId },
+                data: { status: "OCCUPIED" },
+              });
+            }
 
-      // Deduct stock immediately for cash orders
-      if (isCash) {
-        for (const item of items) {
-          const mi = menuItems.find((m) => m.id === item.menuItemId)!;
-          for (const recipe of mi.recipes) {
-            const qty = recipe.quantityNeeded * item.quantity;
-            await tx.inventoryItem.update({
-              where: { id: recipe.inventoryItemId },
-              data: { currentStock: { decrement: qty } },
+            // Generate order number FIRST so it is available for StockMovement
+            // notes (Bug #7) and the order create below.
+            const lastOrder = await tx.order.findFirst({
+              where: { restaurantId: restaurant.id },
+              orderBy: { orderNumber: "desc" },
+              select: { orderNumber: true },
             });
-            await tx.stockMovement.create({
-              data: { inventoryItemId: recipe.inventoryItemId, type: "OUT", reason: "RECIPE_USAGE", quantity: qty },
+            const nextOrderNumber = (lastOrder?.orderNumber ?? 0) + 1;
+
+            // Deduct stock immediately for cash orders
+            if (isCash) {
+              for (const item of items) {
+                const mi = menuItems.find((m) => m.id === item.menuItemId)!;
+                for (const recipe of mi.recipes) {
+                  const qty = recipe.quantityNeeded * item.quantity;
+                  // Bug #2: reject if stock is insufficient before decrementing.
+                  // currentStock was fetched pre-transaction; catches the common
+                  // case where inventory is genuinely depleted.
+                  if (recipe.inventoryItem.currentStock < qty) {
+                    throw Object.assign(
+                      new Error(
+                        `Insufficient stock for "${recipe.inventoryItem.name}". ` +
+                        `Available: ${recipe.inventoryItem.currentStock}, required: ${qty}.`,
+                      ),
+                      { code: "INSUFFICIENT_STOCK" },
+                    );
+                  }
+                  await tx.inventoryItem.update({
+                    where: { id: recipe.inventoryItemId },
+                    data: { currentStock: { decrement: qty } },
+                  });
+                  // Bug #7: include order number in the note so cash-order
+                  // deductions are traceable in stock movement history.
+                  await tx.stockMovement.create({
+                    data: {
+                      inventoryItemId: recipe.inventoryItemId,
+                      type: "OUT",
+                      reason: "RECIPE_USAGE",
+                      quantity: qty,
+                      note: `Order #${nextOrderNumber}`,
+                    },
+                  });
+                }
+              }
+
+              // Bug #3: shift expectedCash update is now INSIDE the transaction —
+              // atomic with order creation. Previously this ran after the transaction
+              // committed, risking an orphaned order (no matching shift credit) on a
+              // server crash or DB error between the two operations.
+              await tx.shift.update({
+                where: { id: currentShift.id },
+                data: { expectedCash: { increment: total } },
+              });
+            }
+
+            return tx.order.create({
+              data: {
+                orderNumber: nextOrderNumber,
+                type: orderType,
+                subtotal,
+                taxAmount,
+                serviceAmount,
+                total,
+                paymentMethod,
+                amountPaid: finalAmountPaid,
+                changeAmount,
+                status: isCash ? "PAID" : "PENDING_PAYMENT",
+                inventoryDeducted: isCash,
+                restaurantId: restaurant.id,
+                tableId: orderType === "DINE_IN" ? tableId : null,
+                shiftId: currentShift.id,
+                items: { create: orderItemsData },
+              },
+              include: {
+                items: { include: { menuItem: true } },
+                table: true,
+                shift: true,
+              },
             });
-          }
+          });
+        } catch (err: any) {
+          // P2002 = unique constraint violation on orderNumber — safe to retry
+          // because the failed transaction is fully rolled back.
+          if (err?.code === "P2002" && attempt < 3) continue;
+          // INSUFFICIENT_STOCK is a business rule error, surface it immediately.
+          throw err;
         }
       }
-
-      // Generate order number
-      const lastOrder = await tx.order.findFirst({
-        where: { restaurantId: restaurant.id },
-        orderBy: { orderNumber: "desc" },
-        select: { orderNumber: true },
-      });
-      const nextOrderNumber = (lastOrder?.orderNumber ?? 0) + 1;
-
-      return tx.order.create({
-        data: {
-          orderNumber: nextOrderNumber,
-          type: orderType,
-          subtotal,
-          taxAmount,
-          serviceAmount,
-          total,
-          paymentMethod,
-          amountPaid: finalAmountPaid,
-          changeAmount,
-          status: isCash ? "PAID" : "PENDING_PAYMENT",
-          inventoryDeducted: isCash,
-          restaurantId: restaurant.id,
-          tableId: orderType === "DINE_IN" ? tableId : null,
-          shiftId: currentShift.id,
-          items: { create: orderItemsData },
-        },
-        include: {
-          items: { include: { menuItem: true } },
-          table: true,
-          shift: true,
-        },
-      });
-    });
-
-    // Update shift expected cash
-    if (isCash) {
-      await prisma.shift.update({
-        where: { id: currentShift.id },
-        data: { expectedCash: { increment: total } },
-      });
-    }
+      /* istanbul ignore next */
+      throw new Error("Failed to generate a unique order number after 3 attempts.");
+    })();
 
     // Audit log: order created
     await prisma.auditLog.create({

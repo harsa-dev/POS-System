@@ -6,7 +6,6 @@ import {
   MANAGEMENT_AND_KITCHEN_ROLES,
   ACTIVE_KITCHEN_STATUSES,
   ALL_ORDER_STATUSES,
-  DEFAULT_LOW_STOCK_THRESHOLD,
   DEFAULT_LOW_STOCK_LIMIT,
   ERR,
 } from "../lib/constants.js";
@@ -235,11 +234,16 @@ router.get("/analytics/low-stock", async (req, res) => {
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    const items = await prisma.inventoryItem.findMany({
-      where: { restaurantId: restaurant.id, currentStock: { lte: DEFAULT_LOW_STOCK_THRESHOLD } },
+    // Bug #5 fix: filter by each item's own minimumStock, not a flat constant.
+    // The flat DEFAULT_LOW_STOCK_THRESHOLD (10) ignored custom per-item thresholds.
+    // Matches the same logic used in analytics/overview.
+    const allItems = await prisma.inventoryItem.findMany({
+      where: { restaurantId: restaurant.id },
       orderBy: { currentStock: "asc" },
-      take: DEFAULT_LOW_STOCK_LIMIT,
     });
+    const items = allItems
+      .filter((i) => i.currentStock <= i.minimumStock)
+      .slice(0, DEFAULT_LOW_STOCK_LIMIT);
     res.json({ success: true, data: items });
   } catch {
     res.status(500).json({ success: false, message: "Failed to fetch low stock" });

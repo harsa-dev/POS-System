@@ -21,9 +21,12 @@ router.post("/payments/create-transaction", async (req, res) => {
     if (!restaurant.midtransEnabled || !restaurant.midtransServerKey)
       return void res.status(400).json({ success: false, message: "Midtrans is not enabled for this restaurant" });
 
-    const { orderId, total, customerName } = req.body ?? {};
-    if (!orderId || !total)
-      return void res.status(400).json({ success: false, message: "orderId and total are required" });
+    // Bug #1 fix: only orderId is required from the client; total is taken from
+    // the authoritative order record, never from the request body. This prevents
+    // a caller from submitting a manipulated charge amount to Midtrans.
+    const { orderId, customerName } = req.body ?? {};
+    if (!orderId)
+      return void res.status(400).json({ success: false, message: "orderId is required" });
 
     const order = await prisma.order.findFirst({
       where: { id: String(orderId), restaurantId: restaurant.id },
@@ -42,7 +45,7 @@ router.post("/payments/create-transaction", async (req, res) => {
     const snapBody = {
       transaction_details: {
         order_id: order.id,
-        gross_amount: Number(total),
+        gross_amount: order.total, // always use the DB total, never the client-supplied value
       },
       customer_details: {
         first_name: String(customerName || "Customer"),
@@ -89,6 +92,15 @@ router.post("/payments/create-transaction", async (req, res) => {
 // POST /api/payments/midtrans-webhook
 // Receives Midtrans payment status notifications, verifies the signature,
 // and updates the order + payment record accordingly.
+//
+// Bug #6 — Webhook AuditLog gap (documented, not yet fixed):
+// When Midtrans settles or expires a payment the order status is updated here
+// without writing an AuditLog entry. The AuditLog schema requires a non-null
+// userId, and webhooks have no authenticated actor. Resolution options:
+//   (a) Create a dedicated system/bot User row and use its ID for webhook logs.
+//   (b) Make AuditLog.userId nullable in the schema (requires a migration).
+// Until one of those is chosen, payment webhook status changes are NOT audited.
+// All other status transitions (via PATCH /orders/:id/status) are audited.
 router.post("/payments/midtrans-webhook", async (req, res) => {
   try {
     const body = req.body ?? {};
