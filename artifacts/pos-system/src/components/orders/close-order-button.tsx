@@ -1,7 +1,9 @@
 "use client";
 
-import { useLocation } from "wouter";
 import { useState } from "react";
+import { useLocation } from "wouter";
+import { toast } from "sonner";
+import { CheckCircle, Loader2 } from "lucide-react";
 
 type CloseOrderButtonProps = {
   orderId: string;
@@ -13,27 +15,19 @@ export function CloseOrderButton({ orderId }: CloseOrderButtonProps) {
 
   async function closeOrder() {
     setIsLoading(true);
-
     const res = await fetch(`/api/orders/${orderId}/status`, {
       method: "PATCH",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        status: "COMPLETED",
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "COMPLETED" }),
     });
-
     const data = await res.json();
-
     setIsLoading(false);
-
     if (!data.success) {
-      alert(data.message || "Failed to close order");
+      toast.error(data.message || "Failed to close order");
       return;
     }
-
+    toast.success("Order completed successfully");
     navigate(window.location.pathname);
   }
 
@@ -41,9 +35,9 @@ export function CloseOrderButton({ orderId }: CloseOrderButtonProps) {
     <button
       onClick={closeOrder}
       disabled={isLoading}
-      className="w-full rounded-md bg-green-600 py-3 text-white print:hidden disabled:opacity-60"
+      className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white transition hover:bg-green-700 print:hidden disabled:opacity-60"
     >
-      {isLoading ? "Closing..." : "Close Order"}
+      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle className="h-4 w-4" />Close Order</>}
     </button>
   );
 }

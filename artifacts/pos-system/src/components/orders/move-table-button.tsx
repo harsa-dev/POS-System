@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 type DiningTable = {
   id: string;
@@ -40,7 +41,7 @@ export function MoveTableButton({ orderId }: MoveTableButtonProps) {
 
   async function moveTable() {
     if (!selectedTableId) {
-      alert("Please select a table");
+      toast.warning("Please select a table");
       return;
     }
 
@@ -49,28 +50,19 @@ export function MoveTableButton({ orderId }: MoveTableButtonProps) {
     const res = await fetch(`/api/orders/${orderId}/move-table`, {
       method: "PATCH",
       credentials: "include",
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-
-      body: JSON.stringify({
-        tableId: selectedTableId,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tableId: selectedTableId }),
     });
 
     const data = await res.json();
-
     setIsLoading(false);
 
     if (!data.success) {
-      alert(data.message || "Failed to move table");
-
+      toast.error(data.message || "Failed to move table");
       return;
     }
 
-    alert("Table moved successfully");
-
+    toast.success("Table moved successfully");
     window.location.reload();
   }
 

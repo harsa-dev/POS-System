@@ -173,12 +173,12 @@ export function CheckoutModal({
 
   function handleConfirm() {
     if (isCash && finalAmountPaid < total) {
-      alert("Amount paid is not enough");
+      import("sonner").then(({ toast }) => toast.error("Amount paid is not enough"));
       return;
     }
 
     if (orderType === "DINE_IN" && !tableId) {
-      alert("Please select a table");
+      import("sonner").then(({ toast }) => toast.error("Please select a table for dine-in"));
       return;
     }
 

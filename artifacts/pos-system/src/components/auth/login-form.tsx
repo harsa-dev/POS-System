@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { toast } from "sonner";
 import { useAuth } from "@/App";
 
 export function LoginForm() {
@@ -20,7 +21,7 @@ export function LoginForm() {
     if (isLoading) return;
 
     if (!emailValue.trim() || !passwordValue.trim()) {
-      alert("Email dan password wajib diisi.");
+      toast.error("Email and password are required");
       return;
     }
 
@@ -42,7 +43,7 @@ export function LoginForm() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        alert(data.message || "Login gagal.");
+        toast.error(data.message || "Login failed");
         return;
       }
 
@@ -50,7 +51,7 @@ export function LoginForm() {
       navigate("/dashboard");
     } catch (error) {
       console.error("[LOGIN_FORM_ERROR]", error);
-      alert("Terjadi error saat login.");
+      toast.error("An error occurred during login");
     } finally {
       setIsLoading(false);
     }

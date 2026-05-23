@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Link } from "wouter";
+import { toast } from "sonner";
 
 export function RegisterForm() {
   const [name, setName] = useState("");
@@ -32,11 +33,11 @@ export function RegisterForm() {
     setIsLoading(false);
 
     if (!data.success) {
-      alert(data.message || "Register failed");
+      toast.error(data.message || "Registration failed");
       return;
     }
 
-    alert("Register success. Silakan login.");
+    toast.success("Account created! Please sign in.");
     window.location.href = "/login";
   }
 

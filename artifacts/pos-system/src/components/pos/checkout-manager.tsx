@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 
 import { Cart } from "@/components/pos/cart";
 import { CheckoutModal } from "@/components/pos/checkout-modal";
@@ -11,13 +12,8 @@ type MenuItem = {
   id: string;
   name: string;
   price: number;
-
   imageUrl?: string | null;
-
-  availabilityStatus:
-    | "AVAILABLE"
-    | "OUT_OF_STOCK"
-    | "NO_RECIPE";
+  availabilityStatus: "AVAILABLE" | "OUT_OF_STOCK" | "NO_RECIPE";
 };
 
 type CartItem = {
@@ -73,33 +69,24 @@ export function CheckoutManager() {
   async function fetchMenuItems() {
     const res = await fetch("/api/menu-items", { credentials: "include" });
     const data = await res.json();
-
-    if (data.success) {
-      setMenuItems(data.data);
-    }
+    if (data.success) setMenuItems(data.data);
   }
 
   async function fetchTables() {
     const res = await fetch("/api/tables", { credentials: "include" });
     const data = await res.json();
-
-    if (data.success) {
-      setTables(data.data);
-    }
+    if (data.success) setTables(data.data);
   }
 
   async function fetchSettings() {
     const res = await fetch("/api/settings", { credentials: "include" });
     const data = await res.json();
-
     if (data.success) {
       setTaxRate(data.data.taxRate ?? 0);
       setServiceRate(data.data.serviceRate ?? 0);
-
       setCurrency(data.data.currency ?? "IDR");
       setTimezone(data.data.timezone ?? "Asia/Makassar");
       setOrderPrefix(data.data.orderPrefix ?? "ORD");
-
       setPaymentSettings({
         cashEnabled: data.data.cashEnabled ?? true,
         qrisEnabled: data.data.qrisEnabled ?? false,
@@ -111,51 +98,27 @@ export function CheckoutManager() {
   }
 
   function addToCart(menuItem: MenuItem) {
-
     setCart((prev) => {
       const existing = prev.find((item) => item.menuItemId === menuItem.id);
-      if (existing) {      
+      if (existing) {
         return prev.map((item) =>
-          item.menuItemId === menuItem.id
-            ? {
-                ...item,
-                quantity: item.quantity + 1,
-              }
-            : item,
+          item.menuItemId === menuItem.id ? { ...item, quantity: item.quantity + 1 } : item,
         );
       }
-
-      return [
-        ...prev,
-        {
-          menuItemId: menuItem.id,
-          name: menuItem.name,
-          price: menuItem.price,
-          quantity: 1,
-        },
-      ];
+      return [...prev, { menuItemId: menuItem.id, name: menuItem.name, price: menuItem.price, quantity: 1 }];
     });
   }
 
   function increaseQuantity(menuItemId: string) {
     const menuItem = menuItems.find((item) => item.id === menuItemId);
-
     if (!menuItem) return;
-
     addToCart(menuItem);
   }
 
   function decreaseQuantity(menuItemId: string) {
     setCart((prev) =>
       prev
-        .map((item) =>
-          item.menuItemId === menuItemId
-            ? {
-                ...item,
-                quantity: item.quantity - 1,
-              }
-            : item,
-        )
+        .map((item) => (item.menuItemId === menuItemId ? { ...item, quantity: item.quantity - 1 } : item))
         .filter((item) => item.quantity > 0),
     );
   }
@@ -166,17 +129,13 @@ export function CheckoutManager() {
 
   function openCheckout() {
     if (!cart.length) {
-      alert("Cart is empty");
+      toast.warning("Cart is empty", { description: "Add items before checking out." });
       return;
     }
-
     setIsCheckoutOpen(true);
   }
 
-  const subtotal = useMemo(() => {
-    return cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  }, [cart]);
-
+  const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
   const taxAmount = Math.round(subtotal * (taxRate / 100));
   const serviceAmount = Math.round(subtotal * (serviceRate / 100));
   const total = subtotal + taxAmount + serviceAmount;
@@ -188,77 +147,60 @@ export function CheckoutManager() {
     tableId: string | null,
   ) {
     if (!cart.length) {
-      alert("Cart is empty");
+      toast.error("Cart is empty");
       return;
     }
 
     if (orderType === "DINE_IN" && !tableId) {
-      alert("Please select a table for dine-in order");
+      toast.error("Please select a table for dine-in order");
       return;
     }
 
     if (paymentMethod === "CASH" && amountPaid < total) {
-      alert("Amount paid is not enough");
+      toast.error("Insufficient payment amount", { description: `Need at least ${total.toLocaleString()}` });
       return;
     }
 
     setIsLoading(true);
 
-    const res = await fetch("/api/orders", {
+    const orderRes = await fetch("/api/orders", {
       method: "POST",
       credentials: "include",
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         paymentMethod,
         amountPaid,
         orderType,
         tableId,
-
-        items: cart.map((item) => ({
-          menuItemId: item.menuItemId,
-          quantity: item.quantity,
-        })),
+        items: cart.map((item) => ({ menuItemId: item.menuItemId, quantity: item.quantity })),
       }),
     });
 
-    const data = await res.json();
+    const data = await orderRes.json();
 
     if (!data.success) {
       setIsLoading(false);
-
-      alert(data.message || "Checkout failed");
+      toast.error(data.message || "Checkout failed");
       return;
     }
 
     if (paymentMethod === "CASH") {
       setIsLoading(false);
-
       const orderId = data.data.id;
-
       setCart([]);
       setIsCheckoutOpen(false);
-
       fetchMenuItems();
       fetchSettings();
       fetchTables();
-
+      toast.success("Order created successfully");
       navigate(`/dashboard/orders/${orderId}`);
-
       return;
     }
 
     const paymentRes = await fetch("/api/payments/create-transaction", {
       credentials: "include",
       method: "POST",
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         orderId: data.data.id,
         total: data.data.total,
@@ -267,11 +209,10 @@ export function CheckoutManager() {
     });
 
     const paymentData = await paymentRes.json();
-
     setIsLoading(false);
 
     if (!paymentData.success) {
-      alert("Failed to create payment transaction");
+      toast.error("Failed to create payment transaction");
       return;
     }
 
@@ -287,12 +228,7 @@ export function CheckoutManager() {
   return (
     <>
       <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
-        <MenuGrid
-          menuItems={menuItems}
-          currency={currency}
-          onAddToCart={addToCart}
-        />
-
+        <MenuGrid menuItems={menuItems} currency={currency} onAddToCart={addToCart} />
         <Cart
           items={cart}
           total={total}

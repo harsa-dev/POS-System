@@ -1,0 +1,308 @@
+```txt
+You are working on my Enterprise POS System project.
+
+First, read and understand:
+- README.md
+- design.md
+- Prisma schema
+- folder structure
+- order-related API routes
+- inventory-related API routes
+- analytics-related API routes
+- cashier page
+- kitchen page
+- serving page
+- payment page
+- dashboard analytics page
+
+Project goals:
+- maintainable architecture
+- enterprise-grade structure
+- responsive UI/UX
+- scalable feature-based architecture
+- smooth operational workflow
+- proper loading/error/success states
+- smooth animations
+- mobile/tablet/desktop support
+
+Main task:
+Analyze, fix, and complete the full operational order lifecycle while improving the UI/UX experience.
+
+==================================================
+FULL ORDER FLOW TO VERIFY
+==================================================
+
+Cashier creates order
+→ Kitchen receives order
+→ Kitchen updates status
+→ Serving receives READY order
+→ Server marks as SERVED
+→ Cashier processes payment
+→ Order becomes COMPLETED
+→ Inventory stock decreases
+→ Stock movement is created
+→ Dashboard analytics updates
+→ Audit log records actions
+
+==================================================
+THINGS TO VERIFY
+==================================================
+
+1. Order creation works correctly
+2. Order status flow works correctly:
+   - PENDING
+   - CONFIRMED
+   - PREPARING
+   - READY
+   - SERVED
+   - PAID
+   - COMPLETED
+
+3. Kitchen receives order correctly
+4. Serving receives READY order correctly
+5. Payment is saved correctly
+6. Inventory stock decreases correctly
+7. Stock movement history is created
+8. Dashboard analytics updates correctly:
+   - total sales
+   - total revenue
+   - total orders
+   - best-selling menu
+   - inventory usage
+9. Audit logs are created correctly
+
+==================================================
+UI/UX REQUIREMENTS
+==================================================
+
+The project must include enterprise-quality UI/UX improvements.
+
+Add and improve:
+
+==================================================
+LOADING STATES
+==================================================
+
+Every data-fetching page must have proper loading states.
+
+Required skeletons:
+- Dashboard skeleton
+- Order list skeleton
+- Kitchen order skeleton
+- Serving order skeleton
+- Inventory skeleton
+- Analytics skeleton
+- Payment skeleton
+- Table skeleton
+- Menu skeleton
+
+Rules:
+- Do not show blank pages while loading
+- Use skeleton components instead of random spinners
+- Loading must feel smooth and responsive
+
+==================================================
+TOAST SYSTEM
+==================================================
+
+Add toast notifications for important actions:
+
+Success examples:
+- Order created
+- Status updated
+- Payment successful
+- Inventory updated
+
+Error examples:
+- Payment failed
+- Invalid order status
+- Failed API request
+- Unauthorized action
+
+Requirements:
+- Use consistent toast styling
+- Toast must not block workflow
+- Toast must support success/error/warning/info
+
+==================================================
+EMPTY STATES
+==================================================
+
+Add proper empty states for:
+- No orders
+- No inventory
+- No analytics data
+- No payments
+- No kitchen queue
+- No serving queue
+
+Empty state must include:
+- icon
+- title
+- short description
+- optional action button
+
+==================================================
+ERROR STATES
+==================================================
+
+Add reusable error UI:
+- API failure
+- Server error
+- Permission error
+- Network error
+
+Must include:
+- readable message
+- retry button if possible
+
+==================================================
+ANIMATION REQUIREMENTS
+==================================================
+
+Use smooth and subtle animations.
+
+Recommended:
+- Framer Motion
+- smooth modal animation
+- smooth sidebar transition
+- card hover animation
+- list enter/exit animation
+- smooth dashboard updates
+- toast animation
+
+Rules:
+- animations must be fast
+- animations must not reduce operational speed
+- avoid excessive motion
+- prioritize usability
+
+==================================================
+RESPONSIVE REQUIREMENTS
+==================================================
+
+The UI must work properly on:
+- desktop
+- tablet
+- mobile
+
+Desktop:
+- sidebar navigation
+- multi-column layout
+- keyboard-friendly workflow
+
+Tablet:
+- collapsible sidebar
+- touch-friendly layout
+
+Mobile:
+- bottom navigation if needed
+- simplified layout
+- large touch targets
+- responsive tables/cards
+
+==================================================
+CODE QUALITY RULES
+==================================================
+
+- Do not rewrite the entire project
+- Do not destroy existing architecture
+- Follow design.md strictly
+- Follow feature-based architecture
+- Preserve current business logic unless broken
+- Make incremental safe fixes
+- Reuse components whenever possible
+- Keep components modular and maintainable
+
+==================================================
+IMPORTANT ANALYSIS TASK
+==================================================
+
+Before editing files:
+
+1. Analyze the current implementation
+2. Identify:
+   - broken flow
+   - duplicated logic
+   - missing loading states
+   - missing skeletons
+   - missing toast feedback
+   - missing empty states
+   - missing responsive behavior
+   - bad component structure
+   - inventory issues
+   - analytics issues
+   - missing audit logs
+3. Explain problems clearly
+4. Create a safe implementation plan
+
+==================================================
+IMPLEMENTATION TASKS
+==================================================
+
+Implement only the necessary fixes and improvements for:
+
+A. Full order lifecycle
+B. Inventory deduction
+C. Stock movement logging
+D. Analytics update
+E. Audit logging
+F. Loading skeletons
+G. Toast system
+H. Empty states
+I. Error states
+J. Responsive improvements
+K. Smooth animations
+
+==================================================
+AFTER IMPLEMENTATION
+==================================================
+
+Provide:
+
+1. Summary of issues found
+2. Files changed
+3. Why each file was changed
+4. Manual testing steps
+5. Remaining risks
+6. Suggested next improvements
+
+==================================================
+MANUAL TEST SCENARIO
+==================================================
+
+Inventory example:
+- Chicken stock = 100
+
+Create order:
+- Chicken Rice
+- Quantity = 2
+
+Expected result:
+- Order created
+- Kitchen receives order
+- Kitchen updates status
+- Serving receives READY order
+- Payment succeeds
+- Order completed
+- Chicken stock decreases
+- Stock movement created
+- Analytics updated
+- Toast notifications appear
+- Skeleton loading appears correctly
+- Responsive layout works
+- Audit logs created
+
+==================================================
+FINAL RULE
+==================================================
+
+Do not fake success.
+
+If a feature is not implemented yet:
+- clearly explain it
+- explain the safest implementation plan first
+
+Avoid huge refactors.
+Fix one flow at a time.
+```
