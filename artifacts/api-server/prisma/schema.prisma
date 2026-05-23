@@ -456,4 +456,5 @@ enum StockMovementReason {
   EXPIRED
   MANUAL_ADJUSTMENT
   DAMAGED
+  RETURN
 }
