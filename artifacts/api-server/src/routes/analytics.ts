@@ -21,9 +21,11 @@ router.get("/analytics/overview", async (req, res) => {
     const activeOrders = await prisma.order.count({
       where: { restaurantId: restaurant.id, status: { in: ["PAID", "PREPARING", "READY"] } },
     });
-    const lowStockItems = await prisma.inventoryItem.count({
-      where: { restaurantId: restaurant.id, currentStock: { lte: 10 } },
+    const allInventory = await prisma.inventoryItem.findMany({
+      where: { restaurantId: restaurant.id },
+      select: { currentStock: true, minimumStock: true },
     });
+    const lowStockItems = allInventory.filter((i) => i.currentStock <= i.minimumStock).length;
     res.json({ success: true, data: { totalRevenue, totalOrders, averageOrderValue, activeOrders, lowStockItems } });
   } catch {
     res.status(500).json({ success: false, message: "Failed to fetch analytics overview" });

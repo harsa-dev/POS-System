@@ -1,0 +1,125 @@
+You are working on my Enterprise POS System project.
+
+Please read the project context first:
+- README.md
+- design.md
+- Prisma schema
+- order-related API routes
+- inventory-related API routes
+- analytics-related API routes
+- cashier page
+- kitchen page
+- serving page
+- payment page
+- dashboard analytics page
+
+Goal:
+Test and verify the full order lifecycle from order creation until completion.
+
+Main flow to verify:
+
+1. Create a new order from the cashier/POS flow.
+2. Add menu items to the order.
+3. Confirm that the order is saved correctly in the database.
+4. Move the order through the correct status flow:
+   - PENDING
+   - CONFIRMED
+   - PREPARING
+   - READY
+   - SERVED
+   - PAID
+   - COMPLETED
+5. Verify that kitchen view receives the order correctly.
+6. Verify that serving view receives READY orders correctly.
+7. Process payment for the order.
+8. Verify that payment data is saved correctly.
+9. Verify that inventory stock is reduced after the order/payment is completed.
+10. Verify that stock movement records are created.
+11. Verify that dashboard analytics changes after the completed order:
+   - total sales
+   - total orders
+   - revenue
+   - best-selling menu
+   - inventory usage if available
+12. Verify that audit logs are created for important actions.
+
+Important rules:
+- Do not rewrite the whole project.
+- Do not randomly change architecture.
+- Follow the existing design.md rules.
+- Follow the existing folder structure.
+- Preserve current business logic unless it is clearly broken.
+- Make small, safe, incremental fixes.
+- Explain every bug before fixing it.
+- After every fix, tell me which file was changed and why.
+
+Tasks:
+
+A. Analyze the current implementation.
+Find:
+- broken order status flow
+- missing inventory deduction
+- missing stock movement creation
+- missing payment update
+- broken analytics calculation
+- missing audit logs
+- wrong database relation
+- wrong API response format
+- wrong validation
+- wrong authorization
+
+B. Create a test checklist for the full flow.
+
+C. If automated testing already exists, add or update tests.
+If automated testing does not exist yet, create a simple manual test plan first.
+
+D. Then implement only the minimum required fixes to make this flow work:
+
+Cashier creates order
+→ Kitchen receives order
+→ Kitchen updates to READY
+→ Serving receives READY order
+→ Server marks as SERVED
+→ Cashier processes payment
+→ Order becomes COMPLETED
+→ Inventory stock decreases
+→ Stock movement is recorded
+→ Dashboard analytics updates
+
+E. After implementation, provide:
+1. Summary of bugs found
+2. Files changed
+3. Why each file was changed
+4. How to manually test the flow
+5. Any remaining risks or unfinished parts
+
+Manual testing scenario:
+
+Use one menu item that has inventory relation.
+Initial inventory stock example:
+- Item: Chicken
+- Stock: 100
+
+Create an order:
+- Menu item: Chicken Rice
+- Quantity: 2
+
+Expected result:
+- Order is created
+- Order status can move through the full lifecycle
+- Payment is saved
+- Order is completed
+- Chicken stock decreases based on recipe/ingredient usage
+- Stock movement record is created
+- Dashboard total sales increases
+- Dashboard total orders increases
+- Best-selling menu updates
+- Audit log records the action
+
+Do not fake success.
+If inventory deduction is not implemented yet, say clearly:
+"Inventory deduction is not implemented yet."
+Then propose the safest implementation plan before coding.
+
+Do not make huge refactors.
+Fix one flow at a time.

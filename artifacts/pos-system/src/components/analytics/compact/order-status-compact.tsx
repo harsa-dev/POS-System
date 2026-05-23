@@ -14,7 +14,7 @@ export function OrderStatusCompact() {
     queryKey: ["order-status-chart"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/order-status");
+      const res = await fetch("/api/analytics/order-status", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch order status analytics");

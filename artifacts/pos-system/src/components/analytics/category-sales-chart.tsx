@@ -28,7 +28,7 @@ export function CategorySalesChart() {
     queryKey: ["category-sales"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/category-sales");
+      const res = await fetch("/api/analytics/category-sales", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch category analytics");

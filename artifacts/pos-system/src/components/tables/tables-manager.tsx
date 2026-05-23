@@ -18,7 +18,7 @@ export function TablesManager() {
   const [isLoading, setIsLoading] = useState(false);
 
   async function fetchTables() {
-    const res = await fetch("/api/tables");
+    const res = await fetch("/api/tables", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {
@@ -39,6 +39,7 @@ export function TablesManager() {
     setIsLoading(true);
 
     const res = await fetch("/api/tables", {
+      credentials: "include",
       method: "POST",
       headers: {
         "Content-Type": "application/json",

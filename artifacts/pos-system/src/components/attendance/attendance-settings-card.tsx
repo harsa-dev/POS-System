@@ -48,7 +48,7 @@ export function AttendanceSettingsCard() {
   }, [setting.workStartHour, setting.workStartMinute, setting.lateTolerance]);
 
   async function fetchSetting() {
-    const res = await fetch("/api/attendance-settings");
+    const res = await fetch("/api/attendance-settings", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {
@@ -65,6 +65,7 @@ export function AttendanceSettingsCard() {
     setIsLoading(true);
 
     const res = await fetch("/api/attendance-settings", {
+      credentials: "include",
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

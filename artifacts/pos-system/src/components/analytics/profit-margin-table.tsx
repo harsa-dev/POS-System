@@ -20,7 +20,7 @@ export function ProfitMarginTable() {
     queryKey: ["profit-margin"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/profit-margin");
+      const res = await fetch("/api/analytics/profit-margin", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch profit margin analytics");

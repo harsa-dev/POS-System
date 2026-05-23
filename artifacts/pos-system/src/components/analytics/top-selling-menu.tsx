@@ -17,7 +17,7 @@ export function TopSellingMenu() {
     queryKey: ["top-selling-menu"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/top-menu");
+      const res = await fetch("/api/analytics/top-menu", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch top menu analytics");

@@ -57,7 +57,7 @@ export function EmployeesManager() {
   const [isLoading, setIsLoading] = useState(false);
 
   async function fetchEmployees() {
-    const res = await fetch("/api/employees");
+    const res = await fetch("/api/employees", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {
@@ -93,6 +93,7 @@ export function EmployeesManager() {
     setIsLoading(true);
 
     const res = await fetch("/api/employees", {
+      credentials: "include",
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -36,7 +36,7 @@ export function SalesChart() {
     queryKey: ["sales-chart"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/sales");
+      const res = await fetch("/api/analytics/sales", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch sales analytics");

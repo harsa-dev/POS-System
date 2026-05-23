@@ -18,7 +18,7 @@ export function FoodCostTable() {
     queryKey: ["food-cost-analytics"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/food-cost");
+      const res = await fetch("/api/analytics/food-cost", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch food cost analytics");

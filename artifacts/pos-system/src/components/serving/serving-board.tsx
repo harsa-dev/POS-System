@@ -44,7 +44,7 @@ export function ServingBoard() {
   const [cleaningTables, setCleaningTables] = useState<DiningTable[]>([]);
 
   async function fetchOrders() {
-    const res = await fetch("/api/orders");
+    const res = await fetch("/api/orders", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {
@@ -53,7 +53,7 @@ export function ServingBoard() {
   }
 
   async function fetchTables() {
-    const res = await fetch("/api/tables");
+    const res = await fetch("/api/tables", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {
@@ -70,8 +70,9 @@ export function ServingBoard() {
   }
 
   async function serveOrder(id: string) {
-    const res = await fetch(`/api/orders/${id}`, {
+    const res = await fetch(`/api/orders/${id}/status`, {
       method: "PATCH",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -93,6 +94,7 @@ export function ServingBoard() {
   async function markTableClean(id: string) {
     const res = await fetch(`/api/tables/${id}/mark-clean`, {
       method: "PATCH",
+      credentials: "include",
     });
 
     const data = await res.json();

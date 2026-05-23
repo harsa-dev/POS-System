@@ -43,7 +43,7 @@ export function AttendanceManager() {
   const [sessionFilter, setSessionFilter] = useState("ALL");
 
   async function fetchAttendances() {
-    const res = await fetch("/api/attendance");
+    const res = await fetch("/api/attendance", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {
@@ -55,6 +55,7 @@ export function AttendanceManager() {
     setIsLoading(true);
 
     const res = await fetch("/api/attendance/clock-in", {
+      credentials: "include",
       method: "POST",
     });
 
@@ -78,6 +79,7 @@ export function AttendanceManager() {
     setIsLoading(true);
 
     const res = await fetch("/api/attendance/clock-out", {
+      credentials: "include",
       method: "POST",
     });
 

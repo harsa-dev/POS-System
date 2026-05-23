@@ -49,7 +49,7 @@ export function SettingsManager() {
   const [isLoading, setIsLoading] = useState(false);
 
   async function fetchSettings() {
-    const res = await fetch("/api/settings");
+    const res = await fetch("/api/settings", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {
@@ -65,6 +65,7 @@ export function SettingsManager() {
     setIsLoading(true);
 
     const res = await fetch("/api/settings", {
+      credentials: "include",
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

@@ -214,6 +214,24 @@ router.post("/orders", async (req, res) => {
       });
     }
 
+    // Audit log: order created
+    await prisma.auditLog.create({
+      data: {
+        restaurantId: restaurant.id,
+        userId: user.id,
+        action: "CREATE",
+        entityType: "Order",
+        entityId: order.id,
+        changes: {
+          orderNumber: order.orderNumber,
+          status: order.status,
+          total: order.total,
+          paymentMethod: order.paymentMethod,
+          type: order.type,
+        },
+      },
+    });
+
     res.status(201).json({ success: true, message: "Order created successfully", data: order });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err?.message ?? "Failed to create order" });
@@ -361,7 +379,7 @@ router.patch("/orders/:id/status", async (req, res) => {
               data: {
                 inventoryItemId: recipe.inventoryItemId,
                 type: "IN",
-                reason: "WASTE",
+                reason: "RETURN",
                 quantity: qty,
                 note: `Cancelled order #${existingOrder.orderNumber}`,
               },
@@ -388,6 +406,23 @@ router.patch("/orders/:id/status", async (req, res) => {
           data: { status: status === "COMPLETED" ? "CLEANING" : "AVAILABLE" },
         });
       }
+    });
+
+    // Audit log: order status changed
+    await prisma.auditLog.create({
+      data: {
+        restaurantId: restaurant.id,
+        userId: user.id,
+        action: "UPDATE",
+        entityType: "Order",
+        entityId: id,
+        changes: {
+          orderNumber: existingOrder.orderNumber,
+          from: existingOrder.status,
+          to: status,
+          ...(isCancelling ? { cancelReason } : {}),
+        },
+      },
     });
 
     res.json({ success: true, message: "Order status updated" });

@@ -123,7 +123,7 @@ export function InventoryManager() {
   const [costPerUnit, setCostPerUnit] = useState("");
 
   async function fetchItems() {
-    const res = await fetch("/api/inventory-items");
+    const res = await fetch("/api/inventory-items", { credentials: "include" });
 
     const data = await res.json();
 
@@ -160,6 +160,7 @@ export function InventoryManager() {
     e.preventDefault();
 
     const res = await fetch("/api/inventory-items", {
+      credentials: "include",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -206,7 +207,7 @@ export function InventoryManager() {
   async function openHistoryModal(item: InventoryItem) {
     setSelectedItem(item);
 
-    const res = await fetch("/api/inventory");
+    const res = await fetch("/api/inventory", { credentials: "include" });
 
     const data = await res.json();
 
@@ -236,6 +237,7 @@ export function InventoryManager() {
     if (!selectedItem) return;
 
     const res = await fetch("/api/inventory", {
+      credentials: "include",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -261,7 +263,7 @@ export function InventoryManager() {
     fetchItems();
 
     if (selectedItem) {
-      const res = await fetch("/api/inventory");
+      const res = await fetch("/api/inventory", { credentials: "include" });
       const data = await res.json();
 
       if (data.success) {

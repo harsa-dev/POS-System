@@ -29,7 +29,7 @@ export function useMenuManager() {
 
   async function fetchMenuItems() {
     try {
-      const res = await fetch("/api/menu-items");
+      const res = await fetch("/api/menu-items", { credentials: "include" });
 
       const data = await res.json();
 
@@ -45,7 +45,7 @@ export function useMenuManager() {
 
   async function fetchCategories() {
     try {
-      const res = await fetch("/api/categories");
+      const res = await fetch("/api/categories", { credentials: "include" });
 
       const data = await res.json();
 
@@ -79,7 +79,7 @@ export function useMenuManager() {
 
   async function fetchRecipes() {
     try {
-      const res = await fetch("/api/recipes");
+      const res = await fetch("/api/recipes", { credentials: "include" });
 
       const data = await res.json();
 

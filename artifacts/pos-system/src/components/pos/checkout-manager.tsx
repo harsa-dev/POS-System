@@ -252,6 +252,7 @@ export function CheckoutManager() {
     }
 
     const paymentRes = await fetch("/api/payments/create-transaction", {
+      credentials: "include",
       method: "POST",
 
       headers: {

@@ -18,7 +18,7 @@ export function VarianceTable() {
     queryKey: ["variance-analytics"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/variance");
+      const res = await fetch("/api/analytics/variance", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch variance analytics");

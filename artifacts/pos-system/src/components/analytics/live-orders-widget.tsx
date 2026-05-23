@@ -17,7 +17,7 @@ export function LiveOrdersWidget() {
     queryKey: ["live-orders"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/live-orders");
+      const res = await fetch("/api/analytics/live-orders", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch live orders");

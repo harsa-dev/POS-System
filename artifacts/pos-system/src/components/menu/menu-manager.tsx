@@ -151,6 +151,7 @@ export function MenuManager() {
       formData.append("file", file);
 
       const res = await fetch("/api/uploads/menu-image", {
+        credentials: "include",
         method: "POST",
         body: formData,
       });
@@ -261,6 +262,7 @@ export function MenuManager() {
     setIsCategoryLoading(true);
 
     const res = await fetch("/api/categories", {
+      credentials: "include",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -352,7 +354,7 @@ export function MenuManager() {
     setRecipeQuantityNeeded("");
     setIsRecipeModalOpen(true);
 
-    const res = await fetch("/api/recipes");
+    const res = await fetch("/api/recipes", { credentials: "include" });
 
     const data = await res.json();
 
@@ -381,6 +383,7 @@ export function MenuManager() {
     setIsRecipeLoading(true);
 
     const res = await fetch("/api/recipes", {
+      credentials: "include",
       method: "POST",
       headers: {
         "Content-Type": "application/json",

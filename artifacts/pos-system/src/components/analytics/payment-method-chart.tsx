@@ -33,7 +33,7 @@ export function PaymentMethodChart() {
     queryKey: ["payment-methods"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/payment-methods");
+      const res = await fetch("/api/analytics/payment-methods", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch payment analytics");

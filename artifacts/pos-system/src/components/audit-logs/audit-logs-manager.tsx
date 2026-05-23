@@ -20,7 +20,7 @@ export function AuditLogsManager() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
 
   async function fetchLogs() {
-    const res = await fetch("/api/audit-logs");
+    const res = await fetch("/api/audit-logs", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {

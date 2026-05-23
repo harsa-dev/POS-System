@@ -19,7 +19,7 @@ export function PaymentsManager() {
   const [payments, setPayments] = useState<Payment[]>([]);
 
   async function fetchPayments() {
-    const res = await fetch("/api/payments");
+    const res = await fetch("/api/payments", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {

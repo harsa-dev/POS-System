@@ -16,7 +16,7 @@ export function KitchenPerformanceCard() {
     queryKey: ["kitchen-performance"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/kitchen-performance");
+      const res = await fetch("/api/analytics/kitchen-performance", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch kitchen analytics");

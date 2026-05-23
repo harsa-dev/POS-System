@@ -16,7 +16,7 @@ export function LowStockCompact() {
     queryKey: ["low-stock"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/low-stock");
+      const res = await fetch("/api/analytics/low-stock", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch low stock analytics");

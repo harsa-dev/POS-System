@@ -14,7 +14,7 @@ export function PeakHoursCompact() {
     queryKey: ["peak-hours"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/peak-hours");
+      const res = await fetch("/api/analytics/peak-hours", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch peak hours analytics");
