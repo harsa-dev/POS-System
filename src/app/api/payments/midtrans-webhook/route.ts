@@ -185,28 +185,6 @@ export async function POST(req: Request) {
           changeAmount: 0,
         },
       });
-
-      for (const item of order.items) {
-        await tx.menuItem.update({
-          where: {
-            id: item.menuItemId,
-          },
-          data: {
-            stock: {
-              decrement: item.quantity,
-            },
-          },
-        });
-
-        await tx.stockMovement.create({
-          data: {
-            menuItemId: item.menuItemId,
-            type: StockMovementType.OUT,
-            quantity: item.quantity,
-            note: `Midtrans order #${order.orderNumber}`,
-          },
-        });
-      }
     });
 
     return NextResponse.json({
