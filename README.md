@@ -1,5 +1,26 @@
 # Enterprise POS System
 
+# Enterprise Restaurant POS System
+
+Modern full-stack restaurant POS system designed for scalable restaurant operations, real-time kitchen workflow, inventory tracking, analytics, and future customer ordering integration.
+
+Built with:
+- React
+- Vite
+- Express
+- PostgreSQL
+- Prisma
+- shadcn/ui
+- TanStack Query
+- SSE realtime updates
+
+Focused on:
+- maintainable architecture
+- enterprise-grade workflow
+- responsive UI/UX
+- realtime operational systems
+- financial and inventory integrity
+
 Modern enterprise-grade POS (Point of Sale) system for restaurants, cafes, coffee shops, and scalable F&B businesses.
 
 This project is built using Next.js, TypeScript, Prisma, PostgreSQL, and shadcn/ui with a feature-based architecture focused on scalability, maintainability, security, and real-time operational workflow.
@@ -507,6 +528,67 @@ REDIS_URL=""
 SOCKET_URL=""
 SENTRY_DSN=""
 
+
+---
+
+## Realtime System
+
+The application uses Server-Sent Events (SSE) for realtime operational updates.
+
+Realtime features:
+- Kitchen order updates
+- Serving board updates
+- Live order synchronization
+- Connection status indicators
+- Automatic reconnect handling
+- Fallback polling for resilience
+
+Architecture:
+- SSE endpoint: `/api/events`
+- EventSource on frontend
+- TanStack Query invalidation pattern
+- Centralized realtime event constants
+
+Future scaling path:
+- Redis Pub/Sub adapter
+- Multi-instance broadcasting
+
+---
+
+## Financial & Inventory Integrity
+
+The system includes safeguards for operational integrity:
+
+- Server-authoritative payment totals
+- Atomic order + inventory + shift transactions
+- Negative stock prevention
+- Unique order number enforcement
+- Inventory movement traceability
+- Audit logging
+- Concurrency-safe order creation
+
+---
+
+## UI/UX
+
+The frontend prioritizes operational usability:
+
+- Responsive layouts
+- Skeleton loading states
+- Toast feedback system
+- Smooth realtime animations
+- Touch-friendly tablet UI
+- Multi-role dashboards
+- Realtime connection indicators
+
+---
+
+## Documentation
+
+Project documentation:
+- design.md
+- architecture.md
+- roadmap.md
 
 ---
 
