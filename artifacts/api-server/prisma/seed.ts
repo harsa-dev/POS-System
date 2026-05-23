@@ -170,6 +170,50 @@ async function main() {
     },
   });
 
+  // Add recipes to menu items so they show as AVAILABLE
+  const recipes = [
+    { menuItemId: "mi-nasi-goreng", inventoryItemId: "inv-beras",  quantityNeeded: 0.2 },
+    { menuItemId: "mi-nasi-goreng", inventoryItemId: "inv-minyak", quantityNeeded: 0.05 },
+    { menuItemId: "mi-mie-goreng",  inventoryItemId: "inv-minyak", quantityNeeded: 0.05 },
+    { menuItemId: "mi-ayam-bakar",  inventoryItemId: "inv-ayam",   quantityNeeded: 0.3 },
+    { menuItemId: "mi-ayam-bakar",  inventoryItemId: "inv-minyak", quantityNeeded: 0.02 },
+    { menuItemId: "mi-soto-ayam",   inventoryItemId: "inv-ayam",   quantityNeeded: 0.2 },
+    { menuItemId: "mi-es-teh",      inventoryItemId: "inv-teh",    quantityNeeded: 0.01 },
+    { menuItemId: "mi-es-teh",      inventoryItemId: "inv-gula",   quantityNeeded: 0.02 },
+    { menuItemId: "mi-es-jeruk",    inventoryItemId: "inv-gula",   quantityNeeded: 0.02 },
+    { menuItemId: "mi-kopi-hitam",  inventoryItemId: "inv-gula",   quantityNeeded: 0.01 },
+    { menuItemId: "mi-air-mineral", inventoryItemId: "inv-gula",   quantityNeeded: 0.001 },
+    { menuItemId: "mi-kerupuk",     inventoryItemId: "inv-minyak", quantityNeeded: 0.02 },
+    { menuItemId: "mi-tempe-goreng",inventoryItemId: "inv-minyak", quantityNeeded: 0.03 },
+  ];
+
+  for (const recipe of recipes) {
+    await prisma.recipe.upsert({
+      where: { menuItemId_inventoryItemId: { menuItemId: recipe.menuItemId, inventoryItemId: recipe.inventoryItemId } },
+      update: {},
+      create: recipe,
+    });
+  }
+
+  // Ensure each demo user has an open shift so they can create orders
+  for (const user of [owner, manager, cashier]) {
+    const existingShift = await prisma.shift.findFirst({
+      where: { userId: user.id, restaurantId: restaurant.id, status: "OPEN" },
+    });
+    if (!existingShift) {
+      await prisma.shift.create({
+        data: {
+          userId: user.id,
+          restaurantId: restaurant.id,
+          status: "OPEN",
+          openedAt: new Date(),
+          openingCash: 0,
+          expectedCash: 0,
+        },
+      });
+    }
+  }
+
   console.log("Seed complete:");
   console.log(`  Restaurant: ${restaurant.name} (id: ${restaurant.id})`);
   console.log(`  Owner: ${owner.email} (restaurantId: ${restaurant.id})`);

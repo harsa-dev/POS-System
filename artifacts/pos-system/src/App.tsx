@@ -44,13 +44,13 @@ type User = {
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
-  refetch: () => void;
+  refetch: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
-  refetch: () => {},
+  refetch: async () => {},
 });
 
 export function useAuth() {

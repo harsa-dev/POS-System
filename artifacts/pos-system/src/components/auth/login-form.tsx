@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { useAuth } from "@/App";
 
 export function LoginForm() {
   const [, navigate] = useLocation();
+  const { refetch } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,6 +46,7 @@ export function LoginForm() {
         return;
       }
 
+      await refetch();
       navigate("/dashboard");
     } catch (error) {
       console.error("[LOGIN_FORM_ERROR]", error);

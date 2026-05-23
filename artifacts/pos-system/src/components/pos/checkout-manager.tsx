@@ -71,7 +71,7 @@ export function CheckoutManager() {
   });
 
   async function fetchMenuItems() {
-    const res = await fetch("/api/menu-items");
+    const res = await fetch("/api/menu-items", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {
@@ -80,7 +80,7 @@ export function CheckoutManager() {
   }
 
   async function fetchTables() {
-    const res = await fetch("/api/tables");
+    const res = await fetch("/api/tables", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {
@@ -89,7 +89,7 @@ export function CheckoutManager() {
   }
 
   async function fetchSettings() {
-    const res = await fetch("/api/settings");
+    const res = await fetch("/api/settings", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {
@@ -206,6 +206,7 @@ export function CheckoutManager() {
 
     const res = await fetch("/api/orders", {
       method: "POST",
+      credentials: "include",
 
       headers: {
         "Content-Type": "application/json",

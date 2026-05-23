@@ -24,7 +24,7 @@ export function MoveTableButton({ orderId }: MoveTableButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   async function fetchTables() {
-    const res = await fetch("/api/tables");
+    const res = await fetch("/api/tables", { credentials: "include" });
 
     const data = await res.json();
 
@@ -48,6 +48,7 @@ export function MoveTableButton({ orderId }: MoveTableButtonProps) {
 
     const res = await fetch(`/api/orders/${orderId}/move-table`, {
       method: "PATCH",
+      credentials: "include",
 
       headers: {
         "Content-Type": "application/json",

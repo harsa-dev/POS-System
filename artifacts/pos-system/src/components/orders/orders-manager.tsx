@@ -79,7 +79,7 @@ export function OrdersManager() {
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   async function fetchOrders() {
-    const res = await fetch("/api/orders");
+    const res = await fetch("/api/orders", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {

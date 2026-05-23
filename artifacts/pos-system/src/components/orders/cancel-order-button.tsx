@@ -29,8 +29,9 @@ export function CancelOrderButton({ orderId }: CancelOrderButtonProps) {
     try {
       setIsLoading(true);
 
-      const res = await fetch(`/api/orders/${orderId}`, {
+      const res = await fetch(`/api/orders/${orderId}/status`, {
         method: "PATCH",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

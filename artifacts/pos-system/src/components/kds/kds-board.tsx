@@ -74,6 +74,7 @@ export function KDSBoard() {
       const res =
         await fetch(
           "/api/orders",
+          { credentials: "include" },
         );
 
       if (!res.ok) {
@@ -127,9 +128,10 @@ export function KDSBoard() {
       }) => {
         const res =
           await fetch(
-            `/api/orders/${id}`,
+            `/api/orders/${id}/status`,
             {
               method: "PATCH",
+              credentials: "include",
 
               headers: {
                 "Content-Type":
