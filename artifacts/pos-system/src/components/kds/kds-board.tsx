@@ -90,8 +90,10 @@ export function KDSBoard() {
   const { status: realtimeStatus } = useRealtime({
     invalidateKeys: [["kitchen-orders"]],
     onOrderCreated: (event) => {
-      // Only chime + toast for new kitchen-relevant orders (PAID status)
-      if (!knownOrderIds.current.has(event.id)) {
+      // Only chime + toast for PAID orders — cash orders land here immediately.
+      // PENDING_PAYMENT (card/QRIS) orders are excluded: they aren't kitchen-
+      // ready yet and must not trigger a false alert.
+      if (event.status === "PAID" && !knownOrderIds.current.has(event.id)) {
         playNewOrderChime();
         toast("🍽️ New order incoming", {
           description: `Order #${event.orderNumber} is ready for the kitchen`,

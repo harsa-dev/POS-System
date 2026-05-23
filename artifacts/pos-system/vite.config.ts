@@ -67,6 +67,21 @@ export default defineConfig({
       strict: true,
     },
     proxy: {
+      // SSE endpoint — must come before the generic /api catch-all.
+      // Forces Connection: keep-alive so http-proxy doesn't close the
+      // long-lived SSE stream, and disables response buffering.
+      "/api/events": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        headers: { Connection: "keep-alive" },
+        configure: (proxy) => {
+          proxy.on("proxyRes", (proxyRes) => {
+            // Disable any implicit buffering — pass chunks through immediately
+            proxyRes.headers["cache-control"] = "no-cache";
+            proxyRes.headers["x-accel-buffering"] = "no";
+          });
+        },
+      },
       "/api": {
         target: "http://localhost:8080",
         changeOrigin: true,
