@@ -1,0 +1,105 @@
+Now verify the financial and inventory integrity of the POS workflow.
+
+Focus only on:
+1. payment consistency
+2. inventory deduction
+3. stock movement logging
+4. analytics accuracy
+5. audit log integrity
+
+Do not implement unrelated features.
+
+==================================================
+VERIFY PAYMENT FLOW
+==================================================
+
+Check:
+- order total calculation
+- tax calculation
+- service charge calculation
+- partial payment handling
+- cash payment flow
+- card payment flow
+- QR payment flow
+- refund handling
+- payment status synchronization
+
+Verify:
+- no double payment
+- no negative totals
+- no incorrect status transition
+- no duplicate payment records
+
+==================================================
+VERIFY INVENTORY FLOW
+==================================================
+
+Check:
+- inventory deduction after successful order/payment
+- recipe/ingredient relation
+- stock movement creation
+- low stock detection
+- negative stock prevention
+
+Verify:
+- inventory decreases correctly
+- deduction quantity is accurate
+- inventory updates only once
+- failed payment does not reduce stock
+- cancelled order does not reduce stock
+
+==================================================
+VERIFY ANALYTICS
+==================================================
+
+Check:
+- total sales
+- total revenue
+- completed order count
+- best-selling menu
+- inventory usage
+
+Verify:
+- analytics only count valid completed payments/orders
+- cancelled/refunded orders excluded correctly
+- duplicate realtime events do not duplicate analytics
+
+==================================================
+VERIFY AUDIT LOGS
+==================================================
+
+Check:
+- order creation log
+- payment log
+- inventory update log
+- status update log
+- refund log
+
+Verify:
+- actor/user recorded correctly
+- timestamps correct
+- restaurantId attached correctly
+
+==================================================
+IMPORTANT RULES
+==================================================
+
+- Do not rewrite architecture
+- Do not create huge refactors
+- Make incremental fixes only
+- Explain bugs before fixing
+- Preserve current SSE structure
+- Preserve current feature-based architecture
+
+==================================================
+AFTER ANALYSIS
+==================================================
+
+Provide:
+1. bugs found
+2. risk severity
+3. files affected
+4. safest fix plan
+5. recommended implementation order
+
+Only implement fixes after the analysis is complete.
