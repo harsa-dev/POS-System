@@ -1,0 +1,81 @@
+Continue from the latest committed state.
+
+Implement Phase 5B only.
+
+Goals:
+1. Add safe-area support for modern mobile devices.
+2. Fix unsafe static viewport height usage.
+3. Improve mobile/tablet scrolling behavior.
+4. Remove hidden horizontal overflow traps.
+
+Do not touch:
+- backend
+- auth
+- SSE
+- analytics logic
+- inventory logic
+- payments logic
+- order logic
+- checkout flow
+- KDS logic
+- serving logic
+
+Focus only on:
+- dashboard-shell.tsx
+- sidebar.tsx
+- topbar.tsx
+- inventory-manager.tsx
+- employees-manager.tsx
+
+Requirements:
+
+1. Safe-area support
+- Add env(safe-area-inset-top/bottom/left/right) where appropriate.
+- Ensure Topbar content never collides with notches or Dynamic Island.
+- Ensure Sidebar content is safe on notched phones/tablets.
+- Ensure overlays and scroll containers clear the home indicator area.
+
+2. Replace unsafe viewport height patterns
+- Remove problematic:
+  - h-screen
+  - min-h-screen
+  - h-[calc(100vh-...)]
+- Use safer:
+  - min-h-[100svh]
+  - flex-1
+  - min-h-0
+  - svh/dvh where appropriate
+- Preserve existing layouts visually.
+
+3. Scroll behavior improvements
+- Remove invisible horizontal overflow traps caused by no-scrollbar.
+- Keep horizontal scrolling discoverable.
+- Preserve table usability on mobile/tablet.
+
+4. Topbar responsiveness
+- Reduce oversized mobile topbar height safely.
+- Preserve desktop appearance.
+- Ensure landscape phones remain usable.
+
+5. Tablet responsiveness
+- Improve md/lg breakpoint behavior without redesigning the whole shell.
+- Keep changes incremental and safe.
+
+Before editing:
+1. explain exact viewport-height strategy
+2. explain safe-area strategy
+3. explain scroll/overflow strategy
+4. identify highest-risk file before edits
+
+After implementation:
+1. files changed
+2. exact responsive fixes
+3. safe-area improvements
+4. viewport-height fixes
+5. scroll behavior improvements
+6. manual mobile/tablet test steps
+7. remaining responsive risks
+
+Do not implement unrelated features.
+Do not redesign layouts randomly.
+Keep changes reviewable and low-risk.

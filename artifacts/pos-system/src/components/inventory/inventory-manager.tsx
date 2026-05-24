@@ -291,7 +291,7 @@ export function InventoryManager() {
 
   return (
     <>
-      <div className="flex h-[calc(100vh-8rem)] min-h-0 flex-col gap-6 overflow-hidden">
+      <div className="flex h-[calc(100svh-8rem)] min-h-0 flex-col gap-6 overflow-hidden">
         {/* Page header */}
         <section className="shrink-0 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
@@ -359,7 +359,7 @@ export function InventoryManager() {
             </div>
           )}
 
-          <div className="min-h-0 flex-1 overflow-auto no-scrollbar">
+          <div className="min-h-0 flex-1 overflow-auto">
             {/* ── Mobile card list ── */}
             <div className="block divide-y divide-neutral-100 lg:hidden">
               {isFetching ? (

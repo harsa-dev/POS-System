@@ -237,7 +237,7 @@ export function EmployeesManager() {
 
   return (
     <>
-      <div className="flex h-[calc(100vh-8rem)] min-h-0 flex-col gap-6 overflow-hidden">
+      <div className="flex h-[calc(100svh-8rem)] min-h-0 flex-col gap-6 overflow-hidden">
         {/* Header */}
         <section className="shrink-0 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -328,7 +328,7 @@ export function EmployeesManager() {
             </div>
           )}
 
-          <div className="min-h-0 flex-1 overflow-auto no-scrollbar">
+          <div className="min-h-0 flex-1 overflow-auto">
             <table className="w-full min-w-[950px]">
               <thead className="sticky top-0 z-10 border-b border-neutral-200 bg-neutral-50">
                 <tr className="text-left text-sm text-neutral-500">
