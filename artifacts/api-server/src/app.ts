@@ -18,14 +18,24 @@ const allowedOrigins = new Set<string>();
 
 // Replit preview and deployment domains
 const replitDevDomain = process.env.REPLIT_DEV_DOMAIN;
-if (replitDevDomain) allowedOrigins.add(`https://${replitDevDomain}`);
+if (replitDevDomain) {
+  allowedOrigins.add(`https://${replitDevDomain}`);
+  // Also allow with common port suffixes used by Replit's proxy
+  for (const port of [3000, 5000, 8080, 20639]) {
+    allowedOrigins.add(`https://${replitDevDomain}:${port}`);
+  }
+}
 for (const d of (process.env.REPLIT_DOMAINS ?? "").split(",").map((s) => s.trim()).filter(Boolean)) {
   allowedOrigins.add(`https://${d}`);
+  for (const port of [3000, 5000, 8080, 20639]) {
+    allowedOrigins.add(`https://${d}:${port}`);
+  }
 }
 // Local development
 if (process.env.NODE_ENV !== "production") {
   allowedOrigins.add("http://localhost:20639");
   allowedOrigins.add("http://localhost:3000");
+  allowedOrigins.add("http://localhost:5000");
   allowedOrigins.add("http://localhost:5173");
 }
 
