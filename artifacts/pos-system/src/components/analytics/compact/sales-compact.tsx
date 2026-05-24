@@ -3,6 +3,7 @@
 import { TrendingUp } from "lucide-react";
 
 import { useAnalyticsOverview } from "@/hooks/use-analytics-overview";
+import { formatCurrency } from "@/lib/utils/format";
 
 export function SalesCompact() {
   const { data, isLoading } = useAnalyticsOverview();
@@ -16,7 +17,7 @@ export function SalesCompact() {
           <p className="text-sm font-medium text-neutral-500">Revenue</p>
 
           <h2 className="mt-2 text-2xl font-bold">
-            {isLoading ? "..." : `Rp ${revenue.toLocaleString()}`}
+            {isLoading ? "..." : formatCurrency(revenue)}
           </h2>
         </div>
 

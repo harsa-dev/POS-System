@@ -1,0 +1,72 @@
+Next task: analyze and improve analytics + UI/UX consistency.
+
+Do not touch auth, inventory locking, SSE, payment integrity, or database schema unless analytics bug requires it.
+
+Goals:
+1. Find and fix analytics errors.
+2. Improve UI/UX consistency across desktop, tablet, and mobile.
+3. Make the visual design feel like one unified product.
+4. Add smooth animations, skeleton states, empty states, and toast feedback where missing.
+
+Before editing:
+- Inspect analytics routes and analytics frontend pages.
+- Reproduce analytics error.
+- Check browser console and API logs.
+- Identify exact broken endpoint/component.
+- Explain root cause before fixing.
+
+Analytics checks:
+- total revenue
+- total orders
+- completed orders
+- best-selling menu
+- low stock
+- inventory usage
+- payment method breakdown
+- cancelled/refunded order exclusion
+- date filtering if available
+
+UI/UX checks:
+- inconsistent colors
+- inconsistent spacing
+- inconsistent cards
+- inconsistent typography
+- bad mobile layout
+- broken responsive tables
+- missing skeleton loading
+- missing empty states
+- missing error states
+- missing toast feedback
+- rough animations
+- pages that feel visually disconnected
+
+Design system requirements:
+- Use shadcn/ui components where possible.
+- Use one consistent color system.
+- Use consistent status badges.
+- Use consistent card style.
+- Use consistent spacing and border radius.
+- Use smooth but subtle Framer Motion animations if already installed.
+- Keep animations fast and not distracting.
+- Mobile must be usable, not just “shrunk desktop”.
+- Desktop/tablet/mobile should feel like the same product.
+
+Implementation rules:
+- Fix analytics bugs first.
+- Then improve UI/UX incrementally.
+- Do not rewrite the entire frontend.
+- Do not redesign everything randomly.
+- Do not add unnecessary dependencies.
+- Reuse existing components.
+- Create reusable UI components only when clearly useful.
+- Keep changes small and reviewable.
+
+After implementation:
+1. bugs found
+2. files changed
+3. analytics fixes
+4. UI/UX improvements
+5. responsive changes
+6. manual test steps
+7. screenshots/pages to inspect manually
+8. remaining risks
