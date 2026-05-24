@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { AlertTriangle, ShieldCheck } from "lucide-react";
@@ -34,21 +35,23 @@ export function VarianceCompact() {
 
   const varianceData: VarianceItem[] = data?.data ?? [];
 
-  const averageVariance =
-    varianceData.length > 0
-      ? Math.round(
-          varianceData.reduce(
-            (acc, item) => acc + Math.abs(item.variancePercentage),
-            0,
-          ) / varianceData.length,
-        )
-      : 0;
-
-  const criticalCount = varianceData.filter(
-    (item) => item.status === "CRITICAL",
-  ).length;
-
-  const isHealthy = criticalCount === 0 && averageVariance <= 5;
+  const { averageVariance, criticalCount, isHealthy } = useMemo(() => {
+    const avg =
+      varianceData.length > 0
+        ? Math.round(
+            varianceData.reduce(
+              (acc, item) => acc + Math.abs(item.variancePercentage),
+              0,
+            ) / varianceData.length,
+          )
+        : 0;
+    const critical = varianceData.filter((item) => item.status === "CRITICAL").length;
+    return {
+      averageVariance: avg,
+      criticalCount: critical,
+      isHealthy: critical === 0 && avg <= 5,
+    };
+  }, [varianceData]);
 
   return (
     <div className="flex h-full flex-col justify-between">

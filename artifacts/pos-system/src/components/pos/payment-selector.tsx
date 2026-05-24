@@ -49,7 +49,7 @@ export function PaymentSelector({
               onClick={() => onPaymentMethodChange(method.id)}
               className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${
                 active
-                  ? "border-black bg-black text-white"
+                  ? "border-primary bg-primary text-primary-foreground"
                   : "bg-white hover:bg-neutral-50"
               }`}
             >

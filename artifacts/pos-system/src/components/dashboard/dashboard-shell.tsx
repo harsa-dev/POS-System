@@ -30,12 +30,19 @@ export function DashboardShell({
 
   return (
     <div
-      className={`grid min-h-screen grid-cols-1 bg-neutral-50 transition-[grid-template-columns] duration-300 ${
+      className={`grid min-h-[100svh] grid-cols-1 bg-neutral-50 transition-[grid-template-columns] duration-300 ${
         isSidebarCollapsed
           ? "lg:grid-cols-[80px_minmax(0,1fr)]"
           : "lg:grid-cols-[288px_minmax(0,1fr)]"
       }`}
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[200] focus:rounded-xl focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg focus:outline-none"
+      >
+        Skip to main content
+      </a>
+
       <Sidebar
         role={role}
         userName={userName}
@@ -44,14 +51,18 @@ export function DashboardShell({
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
-      <div className="min-w-0 overflow-x-hidden">
+      <div className="flex min-w-0 flex-col overflow-x-hidden">
         <Topbar
           userName={userName}
           role={role}
           onToggleSidebar={handleToggleSidebar}
         />
 
-        <main className="min-w-0 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
+        <main
+          id="main-content"
+          className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8"
+          style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+        >
           {children}
         </main>
       </div>

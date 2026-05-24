@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 type RestaurantSettings = {
   id: string;
@@ -78,11 +79,11 @@ export function SettingsManager() {
     setIsLoading(false);
 
     if (!data.success) {
-      alert(data.message || "Failed to update settings");
+      toast.error(data.message || "Failed to update settings");
       return;
     }
 
-    alert("Settings updated");
+    toast.success("Settings updated");
     setSettings(data.data);
   }
 
@@ -433,7 +434,7 @@ export function SettingsManager() {
 
       <button
         disabled={isLoading}
-        className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
+        className="rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
         {isLoading ? "Saving..." : "Save Settings"}
       </button>

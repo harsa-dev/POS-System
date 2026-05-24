@@ -53,7 +53,7 @@ export function MenuToolbar({
             }
             className={`flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition ${
               viewMode === "table"
-                ? "bg-neutral-950 text-white"
+                ? "bg-primary text-primary-foreground"
                 : "text-neutral-600 hover:bg-neutral-100"
             }`}
           >
@@ -71,7 +71,7 @@ export function MenuToolbar({
             }
             className={`flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition ${
               viewMode === "grid"
-                ? "bg-neutral-950 text-white"
+                ? "bg-primary text-primary-foreground"
                 : "text-neutral-600 hover:bg-neutral-100"
             }`}
           >

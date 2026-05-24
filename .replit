@@ -11,13 +11,54 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "API Server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "POS Frontend"
+
+[[workflows.workflow]]
+name = "API Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd artifacts/api-server && PORT=8080 pnpm run dev"
+waitForPort = 8080
+
+[[workflows.workflow]]
+name = "POS Frontend"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd artifacts/pos-system && PORT=5000 BASE_PATH=/ pnpm run dev"
+waitForPort = 5000
+
 [agent]
-stack = "PNPM_WORKSPACE"
+stack = "BEST_EFFORT_FALLBACK"
 expertMode = true
 
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
 
 [[ports]]
 localPort = 8080
@@ -26,3 +67,11 @@ externalPort = 80
 [[ports]]
 localPort = 20639
 externalPort = 3000
+
+[userenv]
+
+[userenv.shared]
+JWT_SECRET = "254bcaff52a49dc29a3dcce7f53c2727fe1f1b545f896b7105487a6526facac6e8334fa6f22d35c892ec3bd6d00c0ab3"
+
+[nix]
+channel = "stable-25_05"

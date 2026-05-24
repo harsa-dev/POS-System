@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { ClipboardList } from "lucide-react";
@@ -30,14 +31,13 @@ export function OrderStatusCompact() {
 
   const statuses: StatusData[] = data?.data ?? [];
 
-  const totalOrders = statuses.reduce((acc, item) => acc + item.total, 0);
-
-  const activeStatuses = statuses.filter((item) => item.status !== "COMPLETED");
-
-  const activeOrders = activeStatuses.reduce(
-    (acc, item) => acc + item.total,
-    0,
-  );
+  const { totalOrders, activeOrders } = useMemo(() => {
+    const total = statuses.reduce((acc, item) => acc + item.total, 0);
+    const active = statuses
+      .filter((item) => item.status !== "COMPLETED")
+      .reduce((acc, item) => acc + item.total, 0);
+    return { totalOrders: total, activeOrders: active };
+  }, [statuses]);
 
   return (
     <div className="flex h-full flex-col justify-between">

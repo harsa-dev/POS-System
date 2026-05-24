@@ -82,7 +82,7 @@ export function CategoryManagerModal({
                 <button
                   type="button"
                   onClick={() => onSaveCategory(category.id)}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   <Check className="h-4 w-4" />
                 </button>

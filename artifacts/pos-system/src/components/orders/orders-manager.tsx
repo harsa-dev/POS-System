@@ -21,6 +21,11 @@ import {
   ORDER_STATUS_COLORS,
   ORDER_STATUS_LABELS,
 } from "@/features/orders/constans/order-status";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { DataPagination } from "@/components/shared/data-pagination";
+
+const PAGE_SIZE = 20;
 
 type OrderItem = {
   id: string;
@@ -106,6 +111,7 @@ export function OrdersManager() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   async function fetchOrders() {
     const res = await fetch("/api/orders", { credentials: "include" });
@@ -134,9 +140,18 @@ export function OrdersManager() {
     });
   }, [orders, search, statusFilter]);
 
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
+
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  const startIndex = (page - 1) * PAGE_SIZE;
+  const paginatedOrders = filteredOrders.slice(startIndex, startIndex + PAGE_SIZE);
 
   if (isLoading) return <OrdersSkeleton />;
 
@@ -153,8 +168,9 @@ export function OrdersManager() {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-500 shadow-sm sm:w-72">
-              <Search className="h-4 w-4 shrink-0" />
+              <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
               <input
+                aria-label="Search orders"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search order..."
@@ -163,8 +179,9 @@ export function OrdersManager() {
             </div>
 
             <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
-              <Filter className="h-4 w-4 shrink-0" />
+              <Filter className="h-4 w-4 shrink-0" aria-hidden="true" />
               <select
+                aria-label="Filter by status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="bg-transparent outline-none"
@@ -180,7 +197,7 @@ export function OrdersManager() {
         </div>
 
         <div className="divide-y divide-neutral-100">
-          {filteredOrders.map((order) => {
+          {paginatedOrders.map((order) => {
             const currency = order.restaurant?.currency ?? "IDR";
             const timezone = order.restaurant?.timezone ?? "Asia/Makassar";
             const orderPrefix = order.restaurant?.orderPrefix ?? "ORD";
@@ -249,9 +266,9 @@ export function OrdersManager() {
 
                   <div className="flex shrink-0 flex-col gap-3 xl:w-56 xl:items-end">
                     <p className="text-2xl font-bold">{formatCurrency(order.total, currency)}</p>
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(order.status)}`}>
-                      {order.status}
-                    </span>
+                    <StatusBadge className={getStatusStyle(order.status)}>
+                      {ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status}
+                    </StatusBadge>
                     {isDineIn && order.table && (
                       <div className="w-full rounded-2xl border bg-white p-3 text-sm xl:text-right">
                         <p className="text-xs text-neutral-500">Dining Table</p>
@@ -261,7 +278,7 @@ export function OrdersManager() {
                     )}
                     <Link
                       href={`/dashboard/orders/${order.id}`}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
                     >
                       <Eye className="h-4 w-4" />
                       View Receipt
@@ -273,19 +290,29 @@ export function OrdersManager() {
           })}
 
           {filteredOrders.length === 0 && (
-            <div className="p-10 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100">
-                <ReceiptText className="h-6 w-6 text-neutral-500" />
-              </div>
-              <p className="mt-4 font-semibold">No orders found.</p>
-              <p className="mt-1 text-sm text-neutral-500">
-                {search || statusFilter !== "ALL"
+            <EmptyState
+              icon={ReceiptText}
+              title="No orders found"
+              description={
+                search || statusFilter !== "ALL"
                   ? "Try changing your search or status filter."
-                  : "Orders will appear here once customers start placing them."}
-              </p>
-            </div>
+                  : "Orders will appear here once customers start placing them."
+              }
+            />
           )}
         </div>
+
+        {filteredOrders.length > PAGE_SIZE && (
+          <DataPagination
+            currentPage={page}
+            totalPages={totalPages}
+            startItem={startIndex + 1}
+            endItem={Math.min(startIndex + PAGE_SIZE, filteredOrders.length)}
+            totalItems={filteredOrders.length}
+            onPrevious={() => setPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+          />
+        )}
       </div>
     </div>
   );

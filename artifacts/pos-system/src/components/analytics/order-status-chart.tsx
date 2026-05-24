@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import {
@@ -69,20 +70,13 @@ export function OrderStatusChart() {
       false,
   });
 
-  const chartData: StatusData[] =
-    data?.data ?? [];
+  const chartData: StatusData[] = data?.data ?? [];
 
-  const visibleData =
-    chartData.filter(
-      (item) => item.total > 0,
-    );
-
-  const totalOrders =
-    visibleData.reduce(
-      (acc, item) =>
-        acc + item.total,
-      0,
-    );
+  const { visibleData, totalOrders } = useMemo(() => {
+    const visible = chartData.filter((item) => item.total > 0);
+    const total = visible.reduce((acc, item) => acc + item.total, 0);
+    return { visibleData: visible, totalOrders: total };
+  }, [chartData]);
 
   return (
     <section className="flex h-full flex-col overflow-hidden">

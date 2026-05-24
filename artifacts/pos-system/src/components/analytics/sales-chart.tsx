@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import {
@@ -53,6 +54,11 @@ export function SalesChart() {
   });
 
   const chartData: SalesData[] = data?.data ?? [];
+
+  const formatTooltipValue = useCallback(
+    (value: unknown) => formatCurrency(Number(value)),
+    [],
+  );
 
   return (
     <section className="flex h-full flex-col">
@@ -112,7 +118,7 @@ export function SalesChart() {
                   cursor={false}
                   content={
                     <ChartTooltipContent
-                      formatter={(value) => formatCurrency(Number(value))}
+                      formatter={formatTooltipValue}
                     />
                   }
                 />

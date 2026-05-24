@@ -128,7 +128,7 @@ export function MoveTableButton({ orderId }: MoveTableButtonProps) {
                 type="button"
                 onClick={moveTable}
                 disabled={isLoading || !selectedTableId}
-                className="w-full rounded-xl bg-black py-3 font-semibold text-white disabled:opacity-50"
+                className="w-full rounded-xl bg-primary py-3 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 {isLoading ? "Moving..." : "Confirm Move"}
               </button>

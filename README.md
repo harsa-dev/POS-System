@@ -1,142 +1,98 @@
-# Enterprise POS System
-
 # Enterprise Restaurant POS System
 
-Modern full-stack restaurant POS system designed for scalable restaurant operations, real-time kitchen workflow, inventory tracking, analytics, and future customer ordering integration.
+Modern full-stack restaurant POS system designed for scalable restaurant operations, real-time kitchen workflow, inventory tracking, analytics, employee management, and future customer ordering integration.
 
 Built with:
-- React
-- Vite
-- Express
-- PostgreSQL
-- Prisma
-- shadcn/ui
-- TanStack Query
-- SSE realtime updates
+
+* React
+* Vite
+* Express
+* PostgreSQL
+* Prisma
+* shadcn/ui
+* TanStack Query
+* Server-Sent Events (SSE)
 
 Focused on:
-- maintainable architecture
-- enterprise-grade workflow
-- responsive UI/UX
-- realtime operational systems
-- financial and inventory integrity
 
-Modern enterprise-grade POS (Point of Sale) system for restaurants, cafes, coffee shops, and scalable F&B businesses.
-
-This project is built using Next.js, TypeScript, Prisma, PostgreSQL, and shadcn/ui with a feature-based architecture focused on scalability, maintainability, security, and real-time operational workflow.
-
-The system is designed to support desktop, tablet, and mobile experiences while maintaining fast performance and clean enterprise architecture.
+* maintainable architecture
+* enterprise-grade workflows
+* responsive UI/UX
+* realtime operational systems
+* financial and inventory integrity
+* mobile-first operational usability
+* scalable frontend/backend structure
 
 ---
 
-# Project Vision
+# Features
 
-The long-term vision of this project is to become a complete restaurant ecosystem including:
+## POS & Checkout
 
-- Internal POS system
-- Kitchen display system
-- Serving workflow system
-- Inventory management system
-- Analytics dashboard
-- Employee management
-- Audit logging
-- Payment processing
-- Customer ordering application
-- QR ordering system
-- Multi-branch support
-- SaaS-ready architecture
+* Real-time order creation
+* Cash / QRIS / Card payment flow
+* Floating mobile cart access
+* Tablet-optimized checkout layout
+* Sticky checkout footer for mobile keyboards
+* Safe-area support for iOS devices
+* Tax and service calculation
+* Receipt-ready order flow
 
-The future customer application will share the same backend architecture and database system so customer orders can directly enter the operational workflow in real-time.
+## Kitchen Display System (KDS)
 
----
+* Real-time incoming orders via SSE
+* Live order status synchronization
+* Kitchen workflow tracking
+* Animated order transitions
+* Sound notifications
+* Connection status indicator
 
-# Core Features
+## Serving Board
 
-## Authentication System
+* Real-time serving updates
+* Ready-to-serve order tracking
+* Table cleaning workflow
+* Order serving status management
 
-- Login
-- Logout
-- Session management
-- Role-based access control
-- Protected routes
-- Secure authentication flow
+## Inventory Management
 
----
+* Stock tracking
+* Ingredient usage tracking
+* Recipe-based stock deduction
+* Low-stock monitoring
+* Inventory movement history
+* Concurrency-safe stock deduction
+* Row-level PostgreSQL locking
 
-## POS System
+## Analytics
 
-- Create order
-- Update order status
-- Table management
-- Split bill
-- Discount support
-- Tax calculation
-- Service charge
-- Receipt generation
-- Order notes
-- Order modifiers
+* Revenue analytics
+* Payment method breakdown
+* Best-selling items
+* Inventory insights
+* Low-stock analytics
+* Order statistics
+* Responsive analytics dashboard
 
----
+## Employee System
 
-## Kitchen System
+* Employee management
+* Attendance tracking
+* Shift management
+* Role-based permissions
+* Password reset flow
+* Activity tracking
 
-- Kitchen display queue
-- Real-time order updates
-- Cooking status management
-- Preparation tracking
-- Priority order handling
+## Operational Safety
 
----
-
-## Serving System
-
-- Ready order queue
-- Serving workflow
-- Table delivery tracking
-
----
-
-## Inventory System
-
-- Stock tracking
-- Stock movement history
-- Ingredient management
-- Low stock alerts
-- Inventory activity logging
-
----
-
-## Payment System
-
-- Cash payment
-- QR payment
-- Card payment
-- Refund support
-- Payment history
-
----
-
-## Analytics System
-
-- Revenue analytics
-- Sales analytics
-- Best-selling menu
-- Peak operational hours
-- Inventory analytics
-- Operational reporting
-
----
-
-## Audit System
-
-Tracks important activities such as:
-
-- Login activity
-- Order updates
-- Payment activity
-- Inventory changes
-- Employee changes
-- Security-related events
+* Atomic database transactions
+* Unique order number enforcement
+* Inventory integrity protection
+* Financial integrity validation
+* Audit logging
+* Protected routes
+* JWT authentication
+* HttpOnly cookie sessions
 
 ---
 
@@ -144,520 +100,275 @@ Tracks important activities such as:
 
 ## Frontend
 
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
-- Framer Motion
-- TanStack Query
-- React Hook Form
-- Zod
-- Lucide React
-
----
+* React 19
+* Vite
+* TypeScript 5.9
+* Tailwind CSS
+* shadcn/ui
+* Framer Motion
+* TanStack Query
+* Wouter
+* Sonner
+* Lucide React
 
 ## Backend
 
-- Next.js API Routes
-- Node.js
-- Prisma ORM
-- PostgreSQL
-- WebSocket / Socket.IO (planned)
+* Express 5
+* Node.js 24
+* Prisma 7
+* PostgreSQL
+* SSE realtime architecture
+* JWT authentication
+* bcryptjs
+
+## Tooling
+
+* pnpm workspaces
+* esbuild
+* Prisma Studio
+* ESLint
+* Prettier
 
 ---
 
-## Infrastructure
+# Architecture
 
-- Vercel
-- GitHub
-- Railway / Supabase / Neon
-- Docker (future)
-- Redis (future)
-- Sentry (future)
+## Frontend Structure
+
+```txt
+artifacts/pos-system/src/
+├── components/
+├── features/
+├── hooks/
+├── lib/
+├── pages/
+├── providers/
+└── types/
+```
+
+## Backend Structure
+
+```txt
+artifacts/api-server/src/
+├── routes/
+├── lib/
+├── middleware/
+├── constants/
+├── types/
+└── utils/
+```
+
+## Database
+
+* PostgreSQL
+* Prisma ORM
+* Transaction-safe order flow
+* Row-level locking for inventory integrity
+* Unique constraints for order numbers
+
+---
+
+# Realtime System
+
+The application uses Server-Sent Events (SSE) for operational realtime updates.
+
+Realtime features:
+
+* Kitchen order updates
+* Serving board synchronization
+* Live status changes
+* Auto reconnect handling
+* Connection indicators
+* Polling fallback strategy
+
+Architecture:
+
+* `/api/events`
+* EventSource frontend
+* TanStack Query invalidation
+* Centralized event constants
+
+Future scaling:
+
+* Redis Pub/Sub adapter
+* Horizontal scaling support
 
 ---
 
 # UI/UX Principles
 
-The application prioritizes:
-
-- Fast operational workflow
-- Responsive UI/UX
-- Smooth interactions
-- Minimal cognitive load
-- Clear hierarchy
-- Touch-friendly interface
-- Consistent design system
-- Skeleton loading states
-- Accessible interactions
-- Smooth animations using Framer Motion
-
-The UI must work properly on:
-
-- Desktop
-- Tablet
-- Mobile devices
+* Responsive desktop/tablet/mobile layouts
+* Operational-first interface design
+* Mobile checkout optimization
+* Touch-friendly controls
+* Skeleton loading states
+* Empty states
+* Error states
+* Toast feedback system
+* Consistent status badges
+* Consistent spacing and border radius
+* Safe-area support
+* Responsive viewport handling
+* Smooth but subtle animations
 
 ---
 
-# Responsive Design Goals
+# Security & Integrity
 
-## Desktop
+## Authentication
 
-- Multi-column dashboard
-- Sidebar navigation
-- Data-heavy layout
-- Keyboard-friendly workflow
+* JWT session tokens
+* HttpOnly cookies
+* Protected routes
+* Role-based authorization
 
----
+## Financial Integrity
 
-## Tablet
-
-- Touch-optimized controls
-- Collapsible sidebar
-- Medium-density layout
-
----
-
-## Mobile
-
-- Bottom navigation
-- Card-based layout
-- Simplified interactions
-- Large touch targets
-- Responsive tables
-
----
-
-# Architecture Goals
-
-This project focuses on:
-
-- Maintainability
-- Scalability
-- Modular architecture
-- Feature-based structure
-- Reusable components
-- Type safety
-- Clean separation of concerns
-- Enterprise-grade standards
-
----
-
-# Folder Structure
-
-src/
- ├── app/
- │   ├── api/
- │   ├── (auth)/
- │   └── (dashboard)/
- │
- ├── features/
- │   ├── orders/
- │   ├── inventory/
- │   ├── payments/
- │   ├── analytics/
- │   └── employees/
- │
- ├── components/
- │   ├── ui/
- │   ├── shared/
- │   └── layout/
- │
- ├── lib/
- │   ├── auth/
- │   ├── db/
- │   ├── permissions/
- │   └── validations/
- │
- ├── hooks/
- ├── types/
- └── constants/
-
----
-
-# User Roles
-
-## OWNER
-
-Full access to all systems.
-
----
-
-## MANAGER
-
-Operational management access.
-
----
-
-## CASHIER
-
-Handles orders and payments.
-
----
-
-## KITCHEN
-
-Handles kitchen preparation workflow.
-
----
-
-## SERVER
-
-Handles serving workflow.
-
----
-
-## AUDITOR
-
-Can access audit logs and operational reports.
-
----
-
-# Order Status Flow
-
-PENDING
-CONFIRMED
-PREPARING
-READY
-SERVED
-PAID
-COMPLETED
-
-
-Additional statuses:
-
-CANCELLED
-REFUNDED
-
----
-
-# Real-Time System Plan
-
-Future real-time implementation includes:
-
-* Kitchen synchronization
-* Serving synchronization
-* Payment updates
-* Customer order tracking
-* Inventory synchronization
-* Notification system
-
-Possible technologies:
-
-* WebSocket
-* Socket.IO
-* Redis pub/sub
-
----
-
-# Security Goals
-
-The application must include:
-
-* Password hashing
-* Role validation
-* Ownership validation
-* API protection
-* Secure environment variables
-* Secure session handling
-* Rate limiting
+* Server-authoritative payment totals
+* Atomic order transactions
+* Shift cash tracking
 * Audit logging
-* HTTPS-only deployment
+
+## Inventory Integrity
+
+* PostgreSQL row-level locking
+* Concurrency-safe stock deduction
+* Negative stock prevention
+* Inventory movement traceability
 
 ---
 
-# Development Philosophy
+# Performance Optimizations
 
-This project prioritizes:
+Implemented:
 
-* Clean architecture
-* Maintainable code
-* Long-term scalability
-* Enterprise-grade workflow
-* Clear business logic
-* Reusable systems
-* Consistent UI/UX
-* Responsive design
-* Proper validation
-* Safe refactoring
+* Mobile checkout optimization
+* Responsive viewport fixes
+* Safe-area support
+* Skeleton loading states
+* Unified toast system
+* Route-level UX improvements
 
----
+Planned:
 
-# Current Progress
-
-Currently implemented:
-
-* Authentication system
-* Dashboard layout
-* Sidebar navigation
-* Order workflow foundation
-* Kitchen workflow foundation
-* Serving workflow foundation
-* Analytics foundation
-* Inventory foundation
-* Role-based access foundation
-
-Currently improving:
-
-* Architecture cleanup
-* Responsive UI/UX
-* Performance optimization
-* Real-time workflow
-* Component modularization
-* Enterprise-grade structure
+* Route-level code splitting
+* Lazy image loading
+* Orders pagination
+* Rendering optimization
+* Bundle splitting
+* Query architecture improvements
 
 ---
 
-# Future Plans
+# Development Commands
 
-Planned future systems:
+## Frontend
 
-* Customer ordering application
-* QR ordering
-* Loyalty system
-* Multi-branch support
-* SaaS architecture
-* AI analytics
-* Smart inventory prediction
-* Reservation system
-* Delivery integration
-* Financial reporting
+```bash
+pnpm --filter @workspace/pos-system run dev
+```
 
----
+## Backend
 
-# Development Roadmap
-
-## Phase 1
-
-* Stabilize architecture
-* Clean folder structure
-* Improve maintainability
-
----
-
-## Phase 2
-
-* Complete order workflow
-* Complete cashier workflow
-* Complete kitchen workflow
-* Complete serving workflow
-
----
-
-## Phase 3
-
-* Payment integration
-* Inventory stabilization
-* Analytics improvements
-
----
-
-## Phase 4
-
-* Real-time synchronization
-* Performance optimization
-* Security hardening
-
----
-
-## Phase 5
-
-* Customer application
-* QR ordering
-* Multi-device synchronization
-
----
-
-# Scripts
-
-## Development
-
-bash
-pnpm dev
-
----
+```bash
+pnpm --filter @workspace/api-server run dev
+```
 
 ## Build
 
-bash
+```bash
 pnpm build
+```
 
+## Typecheck
 
----
-
-## Start Production
-
-bash
-pnpm start
-
-
----
+```bash
+pnpm typecheck
+```
 
 ## Prisma Generate
 
-bash
-pnpm prisma generate
+```bash
+pnpm run generate
+```
 
+## Prisma Studio
 
----
+```bash
+pnpm prisma studio
+```
 
-## Prisma Migration
+## Database Push (Development Only)
 
-bash
-pnpm prisma migrate dev
+```bash
+pnpm --filter @workspace/db run push
+```
 
+## Seed Database
 
----
-
-# Environment Variables
-
-Example:
-
-env
-DATABASE_URL=""
-NEXTAUTH_SECRET=""
-NEXTAUTH_URL=""
-
-
-Future variables:
-
-env
-REDIS_URL=""
-SOCKET_URL=""
-SENTRY_DSN=""
-
+```bash
+cd artifacts/api-server && pnpm exec tsx prisma/seed.ts
+```
 
 ---
 
-## Realtime System
+# Demo Accounts
 
-The application uses Server-Sent Events (SSE) for realtime operational updates.
+Password:
 
-Realtime features:
-- Kitchen order updates
-- Serving board updates
-- Live order synchronization
-- Connection status indicators
-- Automatic reconnect handling
-- Fallback polling for resilience
+```txt
+password123
+```
 
-Architecture:
-- SSE endpoint: `/api/events`
-- EventSource on frontend
-- TanStack Query invalidation pattern
-- Centralized realtime event constants
+Accounts:
 
-Future scaling path:
-- Redis Pub/Sub adapter
-- Multi-instance broadcasting
+* [owner@test.com](mailto:owner@test.com)
+* [manager@test.com](mailto:manager@test.com)
+* [cashier@test.com](mailto:cashier@test.com)
 
 ---
 
-## Financial & Inventory Integrity
+# Current Status
 
-The system includes safeguards for operational integrity:
+Current completed systems:
 
-- Server-authoritative payment totals
-- Atomic order + inventory + shift transactions
-- Negative stock prevention
-- Unique order number enforcement
-- Inventory movement traceability
-- Audit logging
-- Concurrency-safe order creation
-
----
-
-## UI/UX
-
-The frontend prioritizes operational usability:
-
-- Responsive layouts
-- Skeleton loading states
-- Toast feedback system
-- Smooth realtime animations
-- Touch-friendly tablet UI
-- Multi-role dashboards
-- Realtime connection indicators
+* Realtime SSE infrastructure
+* Transaction-safe order flow
+* Mobile checkout optimization
+* UI consistency system
+* Responsive operational UX
+* Inventory locking protection
+* Analytics improvements
+* Health endpoint
+* Unified toast/dialog system
 
 ---
 
-## Documentation
+# Long-Term Vision
 
-Project documentation:
-- design.md
-- architecture.md
-- roadmap.md
+Future roadmap:
 
----
-
-# Deployment
-
-Recommended deployment stack:
-
-* Vercel
-* PostgreSQL database
-* GitHub CI/CD
-* Cloudflare (optional)
-
-Before deployment:
-
-* Ensure build success
-* Validate environment variables
-* Test authentication
-* Test permissions
-* Test responsive layouts
-* Test production database migration
+* Customer ordering application
+* Shared database architecture
+* Multi-restaurant support
+* Redis realtime scaling
+* PWA/offline mode
+* Push notifications
+* Advanced analytics
+* Queue management
+* AI operational insights
+* Enterprise deployment pipeline
 
 ---
 
-# Documentation
+# Notes
 
-Project documentation:
+This project is designed as a long-term enterprise-grade restaurant operational platform, not just a CRUD portfolio application.
 
-* design.md
-* roadmap.md
-* architecture.md
-* api.md
-* database.md
+The focus is:
 
----
-
-# Definition of Done
-
-A feature is considered complete when:
-
-* UI completed
-* API completed
-* Validation completed
-* Error handling completed
-* Loading skeleton added
-* Empty state added
-* Mobile responsive completed
-* Tablet responsive completed
-* Desktop responsive completed
-* Tested
-* Documented
-
----
-
-# Final Notes
-
-This project is being built as a long-term scalable enterprise POS platform.
-
-The primary focus is building a stable operational workflow first:
-
-Login
-→ Create Order
-→ Kitchen
-→ Serving
-→ Payment
-→ Analytics
-
-
-All future systems will grow from this core workflow.
-
-The goal is not only to build features, but to build a maintainable and scalable system architecture suitable for real-world business operations.
-
-
+* operational reliability
+* maintainability
+* scalability
+* responsive usability
+* real-world workflow efficiency

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 type AttendanceSetting = {
   workStartHour: number;
@@ -78,11 +79,11 @@ export function AttendanceSettingsCard() {
     setIsLoading(false);
 
     if (!data.success) {
-      alert(data.message || "Failed to update attendance setting");
+      toast.error(data.message || "Failed to update attendance setting");
       return;
     }
 
-    alert("Attendance setting updated");
+    toast.success("Attendance setting updated");
   }
 
   useEffect(() => {
@@ -183,7 +184,7 @@ export function AttendanceSettingsCard() {
         type="button"
         onClick={saveSetting}
         disabled={isLoading}
-        className="mt-5 w-full rounded-xl bg-black py-3 font-semibold text-white disabled:opacity-50"
+        className="mt-5 w-full rounded-xl bg-primary py-3 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
         {isLoading ? "Saving..." : "Save Attendance Settings"}
       </button>

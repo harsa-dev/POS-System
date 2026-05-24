@@ -112,7 +112,7 @@ router.get("/analytics/category-sales", async (req, res) => {
   }
 });
 
-router.get("/analytics/payment-method", async (req, res) => {
+router.get(["/analytics/payment-method", "/analytics/payment-methods"], async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;

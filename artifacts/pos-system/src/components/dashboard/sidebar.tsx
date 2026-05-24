@@ -1,6 +1,6 @@
 "use client";
 
-import type { ElementType } from "react";
+import { type ElementType, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/roles";
@@ -184,12 +184,16 @@ function SidebarContent({
 }) {
   const [pathname] = useLocation();
 
-  const visibleGroups = menuGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => item.roles.includes(role)),
-    }))
-    .filter((group) => group.items.length > 0);
+  const visibleGroups = useMemo(
+    () =>
+      menuGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => item.roles.includes(role)),
+        }))
+        .filter((group) => group.items.length > 0),
+    [role],
+  );
 
   async function handleLogout() {
     await fetch("/api/auth/logout", {
@@ -325,9 +329,13 @@ export function Sidebar({
   return (
     <>
       <aside
-        className={`sticky top-0 z-40 hidden h-screen min-h-screen flex-col border-r border-neutral-200 bg-white transition-[width] duration-300 lg:flex ${
+        className={`sticky top-0 z-40 hidden h-[100svh] flex-col border-r border-neutral-200 bg-white transition-[width] duration-300 lg:flex ${
           isCollapsed ? "w-20" : "w-72"
         }`}
+        style={{
+          paddingLeft: "env(safe-area-inset-left)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
       >
         <SidebarContent
           role={role}
@@ -345,7 +353,14 @@ export function Sidebar({
             className="absolute inset-0 bg-black/40"
           />
 
-          <aside className="relative flex h-full w-72 flex-col border-r border-neutral-200 bg-white shadow-2xl">
+          <aside
+            className="relative flex h-full w-72 flex-col border-r border-neutral-200 bg-white shadow-2xl"
+            style={{
+              paddingTop: "env(safe-area-inset-top)",
+              paddingBottom: "env(safe-area-inset-bottom)",
+              paddingLeft: "env(safe-area-inset-left)",
+            }}
+          >
             <SidebarContent
               role={role}
               userName={userName}

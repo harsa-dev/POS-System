@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/format";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CategoryManagerModal } from "@/components/menu/category-manager-modal";
 import type {
   Category,
@@ -83,6 +84,12 @@ export function MenuManager() {
   const [isCategoryLoading, setIsCategoryLoading] = useState(false);
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description?: string;
+    variant?: "default" | "destructive";
+    onConfirm: () => void;
+  } | null>(null);
   const {
   menuItems,
   categories,
@@ -231,25 +238,22 @@ export function MenuManager() {
     fetchMenuItems();
   }
 
-  async function handleRemoveMenuItem(id: string) {
-    const confirmed = confirm("Remove this menu item?");
-
-    if (!confirmed) return;
-
-    const res = await fetch(`/api/menu-items/${id}`, {
-      method: "DELETE",
+  function handleRemoveMenuItem(id: string) {
+    setConfirmState({
+      title: "Remove menu item?",
+      description: "This item will be permanently removed from the menu.",
+      variant: "destructive",
+      onConfirm: async () => {
+        const res = await fetch(`/api/menu-items/${id}`, { method: "DELETE" });
+        const data = await res.json();
+        if (!data.success) {
+          toast.error(data.message || "Failed to remove menu item");
+          return;
+        }
+        toast.success("Menu item removed");
+        fetchMenuItems();
+      },
     });
-
-    const data = await res.json();
-
-    if (!data.success) {
-      toast.error(data.message || "Failed to remove menu item");
-      return;
-    }
-
-    toast.success("Menu item removed");
-
-    fetchMenuItems();
   }
 
   async function createCategory(e: FormEvent<HTMLFormElement>) {
@@ -326,26 +330,23 @@ export function MenuManager() {
     fetchMenuItems();
   }
 
-  async function deleteCategory(id: string) {
-    const confirmed = confirm("Delete this category?");
-
-    if (!confirmed) return;
-
-    const res = await fetch(`/api/categories/${id}`, {
-      method: "DELETE",
+  function deleteCategory(id: string) {
+    setConfirmState({
+      title: "Delete this category?",
+      description: "Menu items in this category will become uncategorized.",
+      variant: "destructive",
+      onConfirm: async () => {
+        const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
+        const data = await res.json();
+        if (!data.success) {
+          toast.error(data.message || "Failed to delete category");
+          return;
+        }
+        toast.success("Category deleted");
+        fetchCategories();
+        fetchMenuItems();
+      },
     });
-
-    const data = await res.json();
-
-    if (!data.success) {
-      toast.error(data.message || "Failed to delete category");
-      return;
-    }
-
-    toast.success("Category deleted");
-
-    fetchCategories();
-    fetchMenuItems();
   }
 
   async function openRecipeModal(menuItem: MenuItem) {
@@ -413,28 +414,25 @@ export function MenuManager() {
     fetchRecipes();
   }
 
-  async function deleteRecipe(id: string) {
-    const confirmed = confirm("Remove this recipe item?");
-
-    if (!confirmed) return;
-
-    const res = await fetch(`/api/recipes/${id}`, {
-      method: "DELETE",
+  function deleteRecipe(id: string) {
+    setConfirmState({
+      title: "Remove recipe ingredient?",
+      description: "This ingredient will be removed from the recipe.",
+      variant: "destructive",
+      onConfirm: async () => {
+        const res = await fetch(`/api/recipes/${id}`, { method: "DELETE" });
+        const data = await res.json();
+        if (!data.success) {
+          toast.error(data.message || "Failed to delete recipe item");
+          return;
+        }
+        toast.success("Recipe ingredient removed");
+        if (selectedMenuItem) {
+          await openRecipeModal(selectedMenuItem);
+          fetchRecipes();
+        }
+      },
     });
-
-    const data = await res.json();
-
-    if (!data.success) {
-      toast.error(data.message || "Failed to delete recipe item");
-      return;
-    }
-
-    toast.success("Recipe deleted");
-
-    if (selectedMenuItem) {
-      await openRecipeModal(selectedMenuItem);
-      fetchRecipes();
-    }
   }
 
   const filteredMenuItems = useMemo(() => {
@@ -582,6 +580,19 @@ export function MenuManager() {
         onImageUpload={handleImageUpload}
         onUploadImage={uploadImage}
         setIsDraggingImage={setIsDraggingImage}
+      />
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title ?? ""}
+        description={confirmState?.description}
+        variant={confirmState?.variant}
+        onConfirm={() => {
+          const action = confirmState?.onConfirm;
+          setConfirmState(null);
+          action?.();
+        }}
+        onCancel={() => setConfirmState(null)}
       />
 
       <RecipeBuilderModal

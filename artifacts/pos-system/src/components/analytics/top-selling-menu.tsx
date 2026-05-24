@@ -66,6 +66,7 @@ export function TopSellingMenu() {
                 <img
                   src={menu.imageUrl}
                   alt={menu.name}
+                  loading="lazy"
                   className="h-14 w-14 rounded-2xl object-cover"
                 />
               ) : (

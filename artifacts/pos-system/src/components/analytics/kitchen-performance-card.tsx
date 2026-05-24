@@ -103,14 +103,14 @@ export function KitchenPerformanceCard() {
             </p>
           </div>
 
-          <div className="rounded-2xl bg-neutral-950 p-4 text-white">
-            <p className="text-sm text-neutral-300">Completed Today</p>
+          <div className="rounded-2xl bg-primary p-4 text-primary-foreground">
+            <p className="text-sm text-primary-foreground/70">Completed Today</p>
 
             <p className="mt-3 text-4xl font-bold">
               {kitchenData.completedToday}
             </p>
 
-            <p className="mt-1 text-sm text-neutral-400">
+            <p className="mt-1 text-sm text-primary-foreground/70">
               Finished kitchen orders
             </p>
           </div>

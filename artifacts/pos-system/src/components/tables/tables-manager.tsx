@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { TABLE_STATUS_COLORS } from "@/constants/table-status";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { AlertCircle, RefreshCw, Table2 } from "lucide-react";
 
 type DiningTable = {
   id: string;
@@ -17,13 +23,30 @@ export function TablesManager() {
   const [tableNumber, setTableNumber] = useState("");
   const [capacity, setCapacity] = useState(2);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description?: string;
+    variant?: "default" | "destructive";
+    onConfirm: () => void;
+  } | null>(null);
 
   async function fetchTables() {
-    const res = await fetch("/api/tables", { credentials: "include" });
-    const data = await res.json();
-
-    if (data.success) {
-      setTables(data.data);
+    setIsFetching(true);
+    setFetchError(null);
+    try {
+      const res = await fetch("/api/tables", { credentials: "include" });
+      const data = await res.json();
+      if (data.success) {
+        setTables(data.data);
+      } else {
+        setFetchError(data.message || "Failed to load tables");
+      }
+    } catch {
+      setFetchError("Network error — could not load tables");
+    } finally {
+      setIsFetching(false);
     }
   }
 
@@ -31,9 +54,8 @@ export function TablesManager() {
     e.preventDefault();
 
     const name = tableNumber.trim();
-
     if (!name) {
-      alert("Table number is required");
+      toast.error("Table number is required");
       return;
     }
 
@@ -42,21 +64,15 @@ export function TablesManager() {
     const res = await fetch("/api/tables", {
       credentials: "include",
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        capacity,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, capacity }),
     });
 
     const data = await res.json();
-
     setIsLoading(false);
 
     if (!data.success) {
-      alert(data.message || "Failed to create table");
+      toast.error(data.message || "Failed to create table");
       return;
     }
 
@@ -67,43 +83,35 @@ export function TablesManager() {
 
   async function updateTable(
     id: string,
-    body: Partial<{
-      name: string;
-      capacity: number;
-      isActive: boolean;
-    }>,
+    body: Partial<{ name: string; capacity: number; isActive: boolean }>,
   ) {
     const res = await fetch(`/api/tables/${id}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
 
     const data = await res.json();
-
     if (!data.success) {
-      alert(data.message || "Failed to update table");
+      toast.error(data.message || "Failed to update table");
       return;
     }
 
     fetchTables();
   }
 
-  async function deactivateTable(id: string) {
-    const confirmed = confirm("Deactivate this table?");
-    if (!confirmed) return;
-
-    await updateTable(id, {
-      isActive: false,
+  function deactivateTable(id: string) {
+    setConfirmState({
+      title: "Deactivate this table?",
+      description:
+        "The table will be hidden from the floor view and cannot accept new orders.",
+      variant: "destructive",
+      onConfirm: () => updateTable(id, { isActive: false }),
     });
   }
 
-  async function reactivateTable(id: string) {
-    await updateTable(id, {
-      isActive: true,
-    });
+  function reactivateTable(id: string) {
+    updateTable(id, { isActive: true });
   }
 
   function getStatusStyle(status: string) {
@@ -116,127 +124,195 @@ export function TablesManager() {
 
   return (
     <div className="space-y-6">
+      {/* Add Table form */}
       <form
         onSubmit={handleSubmit}
-        className="grid gap-3 rounded-2xl border bg-white p-5"
+        className="grid gap-3 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm"
       >
         <h2 className="text-lg font-bold">Add Table</h2>
 
         <div className="grid gap-3 md:grid-cols-2">
           <input
+            id="table-number"
             type="text"
+            aria-label="Table number"
             placeholder="Table number, e.g. 1, 2, A1"
             value={tableNumber}
             onChange={(e) => setTableNumber(e.target.value)}
-            className="rounded-xl border px-3 py-2"
+            className="h-11 rounded-2xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-400"
             required
           />
 
           <input
+            id="table-capacity"
             type="number"
             min={1}
+            aria-label="Seating capacity"
             value={capacity}
             onChange={(e) => setCapacity(Number(e.target.value))}
-            className="rounded-xl border px-3 py-2"
+            className="h-11 rounded-2xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-400"
             required
           />
         </div>
 
         <button
           disabled={isLoading}
-          className="rounded-xl bg-black py-3 text-white disabled:opacity-60"
+          className="flex h-11 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
         >
           {isLoading ? "Creating..." : "Create Table"}
         </button>
       </form>
 
-      <div className="rounded-2xl border bg-white">
-        <div className="border-b p-5">
+      {/* Tables list */}
+      <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm">
+        <div className="border-b border-neutral-200 p-5">
           <h2 className="text-lg font-bold">Dining Tables</h2>
           <p className="mt-1 text-sm text-neutral-500">
             Manage table numbers and availability setup.
           </p>
         </div>
 
+        {fetchError && (
+          <div className="flex items-center gap-3 border-b border-red-100 bg-red-50 px-5 py-4">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+            <p className="flex-1 text-sm text-red-700">{fetchError}</p>
+            <button
+              type="button"
+              onClick={fetchTables}
+              className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Retry
+            </button>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
-              <tr className="border-b bg-neutral-50">
-                <th className="p-4">Table Number</th>
-                <th className="p-4">Capacity</th>
-                <th className="p-4">Current Status</th>
-                <th className="p-4">Active</th>
-                <th className="p-4">Created</th>
-                <th className="p-4">Action</th>
+              <tr className="border-b border-neutral-200 bg-neutral-50">
+                <th scope="col" className="p-4 font-medium text-neutral-500">
+                  Table Number
+                </th>
+                <th scope="col" className="p-4 font-medium text-neutral-500">Capacity</th>
+                <th scope="col" className="p-4 font-medium text-neutral-500">
+                  Current Status
+                </th>
+                <th scope="col" className="p-4 font-medium text-neutral-500">Active</th>
+                <th scope="col" className="p-4 font-medium text-neutral-500">Created</th>
+                <th scope="col" className="p-4 font-medium text-neutral-500">Action</th>
               </tr>
             </thead>
 
             <tbody>
-              {tables.map((table) => (
-                <tr key={table.id} className="border-b">
-                  <td className="p-4 font-medium">Table {table.name}</td>
-
-                  <td className="p-4">{table.capacity} seats</td>
-
-                  <td className="p-4">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusStyle(
-                        table.status,
-                      )}`}
+              {isFetching ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-neutral-100">
+                    <td className="p-4">
+                      <Skeleton className="h-4 w-24" />
+                    </td>
+                    <td className="p-4">
+                      <Skeleton className="h-4 w-16" />
+                    </td>
+                    <td className="p-4">
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </td>
+                    <td className="p-4">
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </td>
+                    <td className="p-4">
+                      <Skeleton className="h-4 w-20" />
+                    </td>
+                    <td className="p-4">
+                      <Skeleton className="h-8 w-20 rounded-lg" />
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <>
+                  {tables.map((table) => (
+                    <tr
+                      key={table.id}
+                      className="border-b border-neutral-100 transition hover:bg-neutral-50"
                     >
-                      {table.status}
-                    </span>
-                  </td>
+                      <td className="p-4 font-medium">Table {table.name}</td>
 
-                  <td className="p-4">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        table.isActive
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {table.isActive ? "ACTIVE" : "INACTIVE"}
-                    </span>
-                  </td>
+                      <td className="p-4">{table.capacity} seats</td>
 
-                  <td className="p-4 text-neutral-500">
-                    {new Date(table.createdAt).toLocaleDateString()}
-                  </td>
+                      <td className="p-4">
+                        <StatusBadge className={getStatusStyle(table.status)}>
+                          {table.status}
+                        </StatusBadge>
+                      </td>
 
-                  <td className="p-4">
-                    {table.isActive ? (
-                      <button
-                        type="button"
-                        onClick={() => deactivateTable(table.id)}
-                        className="rounded-lg bg-red-500 px-3 py-2 text-xs font-medium text-white"
-                      >
-                        Deactivate
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => reactivateTable(table.id)}
-                        className="rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white"
-                      >
-                        Reactivate
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      <td className="p-4">
+                        <StatusBadge
+                          className={
+                            table.isActive
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }
+                        >
+                          {table.isActive ? "ACTIVE" : "INACTIVE"}
+                        </StatusBadge>
+                      </td>
 
-              {tables.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-neutral-500">
-                    No tables yet.
-                  </td>
-                </tr>
+                      <td className="p-4 text-neutral-500">
+                        {new Date(table.createdAt).toLocaleDateString()}
+                      </td>
+
+                      <td className="p-4">
+                        {table.isActive ? (
+                          <button
+                            type="button"
+                            onClick={() => deactivateTable(table.id)}
+                            className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-600"
+                          >
+                            Deactivate
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => reactivateTable(table.id)}
+                            className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-green-700"
+                          >
+                            Reactivate
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+
+                  {tables.length === 0 && !fetchError && (
+                    <tr>
+                      <td colSpan={6}>
+                        <EmptyState
+                          icon={Table2}
+                          title="No tables yet"
+                          description="Add your first table using the form above."
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title ?? ""}
+        description={confirmState?.description}
+        variant={confirmState?.variant}
+        onConfirm={() => {
+          const action = confirmState?.onConfirm;
+          setConfirmState(null);
+          action?.();
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }

@@ -77,14 +77,14 @@ export function RegisterForm() {
 
       <button
         disabled={isLoading}
-        className="w-full rounded-md bg-black py-2 text-white disabled:opacity-50"
+        className="w-full rounded-md bg-primary py-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
         {isLoading ? "Creating..." : "Register"}
       </button>
 
       <p className="text-center text-sm text-neutral-500">
               sudah punya owner account?{" "}
-              <Link href="/login" className="font-medium text-black underline">
+              <Link href="/login" className="font-medium text-primary underline">
                 Sign up
               </Link>
             </p>

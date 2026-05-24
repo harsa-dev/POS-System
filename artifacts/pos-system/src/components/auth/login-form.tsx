@@ -102,7 +102,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full rounded-md bg-black py-2 text-white disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-md bg-primary py-2 text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isLoading ? "Signing in..." : "Sign In"}
       </button>
@@ -118,7 +118,7 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-neutral-500">
         Belum punya owner account?{" "}
-        <Link href="/register" className="font-medium text-black underline">
+        <Link href="/register" className="font-medium text-primary underline">
           Register
         </Link>
       </p>

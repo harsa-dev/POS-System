@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { Clock3 } from "lucide-react";
@@ -30,13 +31,14 @@ export function PeakHoursCompact() {
 
   const peakHours: PeakHour[] = data?.data ?? [];
 
-  const topHour = peakHours.reduce<PeakHour | undefined>((highest, current) => {
-    if (!highest) {
-      return current;
-    }
-
-    return current.total > highest.total ? current : highest;
-  }, undefined);
+  const topHour = useMemo(
+    () =>
+      peakHours.reduce<PeakHour | undefined>((highest, current) => {
+        if (!highest) return current;
+        return current.total > highest.total ? current : highest;
+      }, undefined),
+    [peakHours],
+  );
 
   return (
     <div className="flex h-full flex-col justify-between">
