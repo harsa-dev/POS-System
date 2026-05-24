@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { formatDateTime } from "@/lib/utils/format";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ClipboardList } from "lucide-react";
 
 type Attendance = {
   id: string;
@@ -25,16 +28,25 @@ type Attendance = {
   };
 };
 
+const ATTENDANCE_STATUS_COLORS: Record<string, string> = {
+  PRESENT: "bg-green-100 text-green-700",
+  LATE: "bg-red-100 text-red-700",
+  ABSENT: "bg-neutral-100 text-neutral-600",
+  LEAVE: "bg-blue-100 text-blue-700",
+};
+
+function getAttendanceStatusColor(status: string) {
+  return ATTENDANCE_STATUS_COLORS[status] ?? "bg-neutral-100 text-neutral-600";
+}
+
 function formatMinutes(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-
   return `${hours}h ${remainingMinutes}m`;
 }
 
 function getLiveDurationMinutes(clockInAt: string) {
   const clockIn = new Date(clockInAt);
-
   return Math.max(0, Math.floor((Date.now() - clockIn.getTime()) / 1000 / 60));
 }
 
@@ -53,7 +65,6 @@ export function AttendanceManager() {
   async function fetchAttendances() {
     const res = await fetch("/api/attendance", { credentials: "include" });
     const data = await res.json();
-
     if (data.success) {
       setAttendances(data.data);
     }
@@ -68,7 +79,6 @@ export function AttendanceManager() {
     });
 
     const data = await res.json();
-
     setIsLoading(false);
 
     if (!data.success) {
@@ -79,40 +89,54 @@ export function AttendanceManager() {
     fetchAttendances();
   }
 
-  function clockOut() {
-    setConfirmState({
-      title: "Clock out now?",
-      description: "Your current session will be recorded and closed.",
-      onConfirm: async () => {
-        setIsLoading(true);
-        const res = await fetch("/api/attendance/clock-out", {
-          credentials: "include",
-          method: "POST",
-        });
-        const data = await res.json();
-        setIsLoading(false);
-        if (!data.success) {
-          toast.error(data.message || "Failed to clock out");
-          return;
-        }
-        fetchAttendances();
-      },
+  async function clockOut() {
+    setIsLoading(true);
+
+    const res = await fetch("/api/attendance/clock-out", {
+      credentials: "include",
+      method: "POST",
     });
+
+    const data = await res.json();
+    setIsLoading(false);
+
+    if (!data.success) {
+      toast.error(data.message || "Failed to clock out");
+      return;
+    }
+
+    fetchAttendances();
   }
 
-  const activeAttendance = useMemo(() => {
-    return attendances.find((attendance) => !attendance.clockOutAt);
-  }, [attendances]);
+  async function deleteAttendance(id: string) {
+    const res = await fetch(`/api/attendance/${id}`, {
+      credentials: "include",
+      method: "DELETE",
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      toast.error(data.message || "Failed to delete attendance record");
+      return;
+    }
+
+    fetchAttendances();
+  }
+
+  const activeAttendance = attendances.find((a) => !a.clockOutAt) ?? null;
 
   const filteredAttendances = useMemo(() => {
     return attendances.filter((attendance) => {
+      const isActive = !attendance.clockOutAt;
+
       const matchStatus =
         statusFilter === "ALL" || attendance.status === statusFilter;
 
       const matchSession =
         sessionFilter === "ALL" ||
-        (sessionFilter === "ACTIVE" && !attendance.clockOutAt) ||
-        (sessionFilter === "CLOSED" && attendance.clockOutAt);
+        (sessionFilter === "ACTIVE" && isActive) ||
+        (sessionFilter === "CLOSED" && !isActive);
 
       return matchStatus && matchSession;
     });
@@ -124,44 +148,41 @@ export function AttendanceManager() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border bg-white p-5 shadow-sm">
+      {/* Clock in/out card */}
+      <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-bold">Attendance</h2>
-
             <p className="mt-1 text-sm text-neutral-500">
               Clock in before starting work and clock out when done.
             </p>
           </div>
 
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+          <StatusBadge
+            className={
               activeAttendance
                 ? "bg-green-100 text-green-700"
                 : "bg-neutral-200 text-neutral-700"
-            }`}
+            }
           >
             {activeAttendance ? "CLOCKED IN" : "NOT CLOCKED IN"}
-          </span>
+          </StatusBadge>
         </div>
 
         {activeAttendance && (
-          <div className="mt-5 grid gap-3 rounded-xl bg-neutral-50 p-4 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 rounded-2xl bg-neutral-50 p-4 sm:grid-cols-3">
             <div>
               <p className="text-sm text-neutral-500">Current Session</p>
-
               <p className="mt-1 font-semibold">
                 Started at {formatDateTime(activeAttendance.clockInAt)}
               </p>
-
               <p className="text-sm text-neutral-500">
-                {activeAttendance.user.name} • {activeAttendance.user.role}
+                {activeAttendance.user.name} · {activeAttendance.user.role}
               </p>
             </div>
 
             <div>
               <p className="text-sm text-neutral-500">Live Duration</p>
-
               <p className="mt-1 text-xl font-bold">
                 {formatMinutes(
                   getLiveDurationMinutes(activeAttendance.clockInAt),
@@ -171,7 +192,6 @@ export function AttendanceManager() {
 
             <div>
               <p className="text-sm text-neutral-500">Status</p>
-
               <p
                 className={`mt-1 text-xl font-bold ${
                   activeAttendance.status === "LATE"
@@ -190,7 +210,7 @@ export function AttendanceManager() {
             type="button"
             onClick={clockIn}
             disabled={isLoading || Boolean(activeAttendance)}
-            className="rounded-xl bg-black py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-11 items-center justify-center rounded-2xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? "Processing..." : "Clock In"}
           </button>
@@ -199,67 +219,58 @@ export function AttendanceManager() {
             type="button"
             onClick={clockOut}
             disabled={isLoading || !activeAttendance}
-            className="rounded-xl bg-red-600 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-11 items-center justify-center rounded-2xl bg-red-600 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? "Processing..." : "Clock Out"}
           </button>
         </div>
       </div>
 
+      {/* Stats row */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-neutral-500">Total Records</p>
-
           <p className="mt-2 text-3xl font-bold">{attendances.length}</p>
         </div>
 
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-neutral-500">Late Staff</p>
-
           <p className="mt-2 text-3xl font-bold text-red-600">
-            {
-              attendances.filter((attendance) => attendance.status === "LATE")
-                .length
-            }
+            {attendances.filter((a) => a.status === "LATE").length}
           </p>
         </div>
 
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-neutral-500">Active Sessions</p>
-
           <p className="mt-2 text-3xl font-bold text-green-700">
-            {attendances.filter((attendance) => !attendance.clockOutAt).length}
+            {attendances.filter((a) => !a.clockOutAt).length}
           </p>
         </div>
 
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-neutral-500">Total Overtime</p>
-
           <p className="mt-2 text-3xl font-bold text-orange-600">
             {formatMinutes(
-              attendances.reduce(
-                (acc, attendance) => acc + attendance.overtimeMinutes,
-                0,
-              ),
+              attendances.reduce((acc, a) => acc + a.overtimeMinutes, 0),
             )}
           </p>
         </div>
       </div>
 
-      <div className="rounded-2xl border bg-white shadow-sm">
-        <div className="border-b p-5">
+      {/* Attendance history table */}
+      <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm">
+        <div className="border-b border-neutral-200 p-5">
           <h2 className="text-lg font-bold">Attendance History</h2>
-
           <p className="mt-1 text-sm text-neutral-500">
             Staff clock-in, clock-out, duration, and overtime records.
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 border-b p-5 sm:flex-row">
+        <div className="flex flex-col gap-3 border-b border-neutral-200 p-5 sm:flex-row">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-xl border px-4 py-3 text-sm"
+            className="h-11 rounded-2xl border border-neutral-200 px-4 text-sm outline-none"
           >
             <option value="ALL">All Attendance Status</option>
             <option value="PRESENT">Present</option>
@@ -271,7 +282,7 @@ export function AttendanceManager() {
           <select
             value={sessionFilter}
             onChange={(e) => setSessionFilter(e.target.value)}
-            className="rounded-xl border px-4 py-3 text-sm"
+            className="h-11 rounded-2xl border border-neutral-200 px-4 text-sm outline-none"
           >
             <option value="ALL">All Sessions</option>
             <option value="ACTIVE">Active</option>
@@ -282,15 +293,15 @@ export function AttendanceManager() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1050px] text-left text-sm">
             <thead>
-              <tr className="border-b bg-neutral-50">
-                <th className="p-4">Staff</th>
-                <th className="p-4">Role</th>
-                <th className="p-4">Attendance</th>
-                <th className="p-4">Session</th>
-                <th className="p-4">Clock In</th>
-                <th className="p-4">Clock Out</th>
-                <th className="p-4">Duration</th>
-                <th className="p-4">Overtime</th>
+              <tr className="border-b border-neutral-200 bg-neutral-50">
+                <th className="p-4 font-medium text-neutral-500">Staff</th>
+                <th className="p-4 font-medium text-neutral-500">Role</th>
+                <th className="p-4 font-medium text-neutral-500">Attendance</th>
+                <th className="p-4 font-medium text-neutral-500">Session</th>
+                <th className="p-4 font-medium text-neutral-500">Clock In</th>
+                <th className="p-4 font-medium text-neutral-500">Clock Out</th>
+                <th className="p-4 font-medium text-neutral-500">Duration</th>
+                <th className="p-4 font-medium text-neutral-500">Overtime</th>
               </tr>
             </thead>
 
@@ -303,41 +314,38 @@ export function AttendanceManager() {
                   : attendance.workDurationMinutes;
 
                 return (
-                  <td key={attendance.id} className="border-b">
+                  <tr key={attendance.id} className="border-b border-neutral-100 transition hover:bg-neutral-50">
                     <td className="p-4">
                       <div>
                         <p className="font-medium">{attendance.user.name}</p>
-
                         <p className="text-xs text-neutral-500">
                           {attendance.user.email}
                         </p>
                       </div>
                     </td>
 
-                    <td className="p-4">{attendance.user.role}</td>
-
-                    <td className="p-4">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          attendance.status === "LATE"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
-                      >
-                        {attendance.status}
-                      </span>
+                    <td className="p-4 text-neutral-600">
+                      {attendance.user.role}
                     </td>
 
                     <td className="p-4">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      <StatusBadge
+                        className={getAttendanceStatusColor(attendance.status)}
+                      >
+                        {attendance.status}
+                      </StatusBadge>
+                    </td>
+
+                    <td className="p-4">
+                      <StatusBadge
+                        className={
                           isActive
                             ? "bg-green-100 text-green-700"
-                            : "bg-neutral-200 text-neutral-700"
-                        }`}
+                            : "bg-neutral-100 text-neutral-600"
+                        }
                       >
                         {isActive ? "ACTIVE" : "CLOSED"}
-                      </span>
+                      </StatusBadge>
                     </td>
 
                     <td className="p-4 text-neutral-500">
@@ -347,7 +355,7 @@ export function AttendanceManager() {
                     <td className="p-4 text-neutral-500">
                       {attendance.clockOutAt
                         ? formatDateTime(attendance.clockOutAt)
-                        : "-"}
+                        : "—"}
                     </td>
 
                     <td className="p-4">{formatMinutes(durationMinutes)}</td>
@@ -358,17 +366,21 @@ export function AttendanceManager() {
                           {formatMinutes(attendance.overtimeMinutes)}
                         </span>
                       ) : (
-                        "-"
+                        "—"
                       )}
                     </td>
-                  </td>
+                  </tr>
                 );
               })}
 
               {filteredAttendances.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-neutral-500">
-                    No attendance records yet.
+                  <td colSpan={8}>
+                    <EmptyState
+                      icon={ClipboardList}
+                      title="No attendance records"
+                      description="Records will appear after staff clock in."
+                    />
                   </td>
                 </tr>
               )}

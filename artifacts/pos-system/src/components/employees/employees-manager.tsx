@@ -5,6 +5,7 @@ import { ROLE_COLORS, EMPLOYEE_ROLES } from "@/constants/roles";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   AlertCircle,
   Check,
@@ -66,7 +67,10 @@ export function EmployeesManager() {
     variant?: "default" | "destructive";
     onConfirm: () => void;
   } | null>(null);
-  const [resetPasswordTarget, setResetPasswordTarget] = useState<{ id: string; name: string } | null>(null);
+  const [resetPasswordTarget, setResetPasswordTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState("");
 
   async function fetchEmployees() {
@@ -111,25 +115,16 @@ export function EmployeesManager() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-
     setIsLoading(true);
 
     const res = await fetch("/api/employees", {
       credentials: "include",
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        email,
-        password,
-        role,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password, role }),
     });
 
     const data = await res.json();
-
     setIsLoading(false);
 
     if (!data.success) {
@@ -142,7 +137,6 @@ export function EmployeesManager() {
     setPassword("");
     setRole("CASHIER");
     setIsCreateModalOpen(false);
-
     fetchEmployees();
   }
 
@@ -158,22 +152,15 @@ export function EmployeesManager() {
 
   async function updateEmployee(
     id: string,
-    body: Partial<{
-      name: string;
-      role: EmployeeRole;
-      isActive: boolean;
-    }>,
+    body: Partial<{ name: string; role: EmployeeRole; isActive: boolean }>,
   ) {
     const res = await fetch(`/api/employees/${id}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
 
     const data = await res.json();
-
     if (!data.success) {
       toast.error(data.message || "Failed to update employee");
       return false;
@@ -185,14 +172,8 @@ export function EmployeesManager() {
 
   async function saveName(id: string) {
     if (!editingName.trim()) return;
-
-    const success = await updateEmployee(id, {
-      name: editingName.trim(),
-    });
-
-    if (success) {
-      cancelEditName();
-    }
+    const success = await updateEmployee(id, { name: editingName.trim() });
+    if (success) cancelEditName();
   }
 
   async function updateRole(id: string, role: EmployeeRole) {
@@ -235,12 +216,15 @@ export function EmployeesManager() {
       toast.error("Password must be at least 6 characters");
       return;
     }
-    const res = await fetch(`/api/employees/${resetPasswordTarget.id}/reset-password`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: resetPasswordValue }),
-    });
+    const res = await fetch(
+      `/api/employees/${resetPasswordTarget.id}/reset-password`,
+      {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: resetPasswordValue }),
+      },
+    );
     const data = await res.json();
     if (!data.success) {
       toast.error(data.message || "Failed to reset password");
@@ -254,13 +238,13 @@ export function EmployeesManager() {
   return (
     <>
       <div className="flex h-[calc(100vh-8rem)] min-h-0 flex-col gap-6 overflow-hidden">
+        {/* Header */}
         <section className="shrink-0 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
                 Employees
               </h1>
-
               <p className="mt-2 text-sm text-neutral-500 sm:text-base">
                 Manage staff accounts, roles, and access status.
               </p>
@@ -269,7 +253,7 @@ export function EmployeesManager() {
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(true)}
-              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800"
+              className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800"
             >
               <Plus className="h-4 w-4" />
               Add Employee
@@ -277,6 +261,7 @@ export function EmployeesManager() {
           </div>
         </section>
 
+        {/* Employee list */}
         <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
           <div className="shrink-0 border-b border-neutral-200 p-6">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -284,16 +269,14 @@ export function EmployeesManager() {
                 <h2 className="text-2xl font-bold tracking-tight">
                   Employee List
                 </h2>
-
                 <p className="mt-1 text-sm text-neutral-500">
                   Search, filter, update roles, and manage employee accounts.
                 </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4">
+                <div className="flex h-11 min-w-0 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4">
                   <Search className="h-4 w-4 shrink-0 text-neutral-400" />
-
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -307,7 +290,7 @@ export function EmployeesManager() {
                   onChange={(e) =>
                     setStatusFilter(e.target.value as StatusFilter)
                   }
-                  className="h-12 rounded-2xl border border-neutral-200 bg-white px-4 text-sm outline-none"
+                  className="h-11 rounded-2xl border border-neutral-200 bg-white px-4 text-sm outline-none"
                 >
                   <option value="ALL">All Status</option>
                   <option value="ACTIVE">Active</option>
@@ -317,12 +300,12 @@ export function EmployeesManager() {
                 <select
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
-                  className="h-12 rounded-2xl border border-neutral-200 bg-white px-4 text-sm outline-none"
+                  className="h-11 rounded-2xl border border-neutral-200 bg-white px-4 text-sm outline-none"
                 >
                   <option value="ALL">All Roles</option>
-                  {roles.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
+                  {roles.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
                     </option>
                   ))}
                 </select>
@@ -370,9 +353,15 @@ export function EmployeesManager() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-5"><Skeleton className="h-6 w-20 rounded-full" /></td>
-                      <td className="px-6 py-5"><Skeleton className="h-6 w-16 rounded-full" /></td>
-                      <td className="px-6 py-5"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-6 py-5">
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                      </td>
+                      <td className="px-6 py-5">
+                        <Skeleton className="h-6 w-16 rounded-full" />
+                      </td>
+                      <td className="px-6 py-5">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
                       <td className="px-6 py-5">
                         <div className="flex justify-end gap-2">
                           <Skeleton className="h-10 w-10 rounded-xl" />
@@ -404,7 +393,6 @@ export function EmployeesManager() {
                                     }
                                     className="h-10 rounded-xl border border-neutral-200 px-3 text-sm outline-none"
                                   />
-
                                   <button
                                     type="button"
                                     onClick={() => saveName(employee.id)}
@@ -412,7 +400,6 @@ export function EmployeesManager() {
                                   >
                                     <Check className="h-4 w-4" />
                                   </button>
-
                                   <button
                                     type="button"
                                     onClick={cancelEditName}
@@ -427,7 +414,6 @@ export function EmployeesManager() {
                                     <p className="truncate font-semibold text-neutral-900">
                                       {employee.name}
                                     </p>
-
                                     <button
                                       type="button"
                                       onClick={() => startEditName(employee)}
@@ -436,7 +422,6 @@ export function EmployeesManager() {
                                       <Pencil className="h-3.5 w-3.5 text-neutral-500" />
                                     </button>
                                   </div>
-
                                   <p className="truncate text-sm text-neutral-500">
                                     {employee.email}
                                   </p>
@@ -456,28 +441,26 @@ export function EmployeesManager() {
                               )
                             }
                             disabled={!employee.isActive}
-                            className={`rounded-full border-0 px-3 py-1.5 text-xs font-semibold outline-none disabled:opacity-50 ${getRoleColor(
-                              employee.role,
-                            )}`}
+                            className={`rounded-full border-0 px-3 py-1.5 text-xs font-semibold outline-none disabled:opacity-50 ${getRoleColor(employee.role)}`}
                           >
-                            {roles.map((role) => (
-                              <option key={role} value={role}>
-                                {role}
+                            {roles.map((r) => (
+                              <option key={r} value={r}>
+                                {r}
                               </option>
                             ))}
                           </select>
                         </td>
 
                         <td className="px-6 py-5">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          <StatusBadge
+                            className={
                               employee.isActive
                                 ? "bg-green-100 text-green-700"
                                 : "bg-red-100 text-red-700"
-                            }`}
+                            }
                           >
                             {employee.isActive ? "ACTIVE" : "INACTIVE"}
-                          </span>
+                          </StatusBadge>
                         </td>
 
                         <td className="px-6 py-5 text-sm text-neutral-500">
@@ -499,7 +482,9 @@ export function EmployeesManager() {
                               <button
                                 type="button"
                                 title="Deactivate"
-                                onClick={() => deactivateEmployee(employee.id)}
+                                onClick={() =>
+                                  deactivateEmployee(employee.id)
+                                }
                                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 text-red-600 transition hover:bg-red-50"
                               >
                                 <ShieldAlert className="h-4 w-4" />
@@ -508,7 +493,9 @@ export function EmployeesManager() {
                               <button
                                 type="button"
                                 title="Reactivate"
-                                onClick={() => reactivateEmployee(employee.id)}
+                                onClick={() =>
+                                  reactivateEmployee(employee.id)
+                                }
                                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-green-200 text-green-600 transition hover:bg-green-50"
                               >
                                 <User2 className="h-4 w-4" />
@@ -521,10 +508,7 @@ export function EmployeesManager() {
 
                     {filteredEmployees.length === 0 && !fetchError && (
                       <tr>
-                        <td
-                          colSpan={5}
-                          className="px-6 py-16 text-center text-neutral-500"
-                        >
+                        <td colSpan={5} className="px-6 py-16 text-center text-neutral-500">
                           No employees found.
                         </td>
                       </tr>
@@ -579,7 +563,6 @@ export function EmployeesManager() {
                 <h2 className="text-2xl font-bold tracking-tight">
                   Add Employee
                 </h2>
-
                 <p className="mt-1 text-sm text-neutral-500">
                   Create a new employee account.
                 </p>
@@ -600,14 +583,13 @@ export function EmployeesManager() {
                   <label className="mb-2 block text-sm font-medium text-neutral-700">
                     Employee Name
                   </label>
-
                   <input
                     required
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="John Doe"
-                    className="h-12 w-full rounded-2xl border border-neutral-200 px-4 outline-none transition focus:border-neutral-400"
+                    className="h-11 w-full rounded-2xl border border-neutral-200 px-4 outline-none transition focus:border-neutral-400"
                   />
                 </div>
 
@@ -615,14 +597,13 @@ export function EmployeesManager() {
                   <label className="mb-2 block text-sm font-medium text-neutral-700">
                     Email
                   </label>
-
                   <input
                     required
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="john@example.com"
-                    className="h-12 w-full rounded-2xl border border-neutral-200 px-4 outline-none transition focus:border-neutral-400"
+                    className="h-11 w-full rounded-2xl border border-neutral-200 px-4 outline-none transition focus:border-neutral-400"
                   />
                 </div>
 
@@ -630,15 +611,14 @@ export function EmployeesManager() {
                   <label className="mb-2 block text-sm font-medium text-neutral-700">
                     Role
                   </label>
-
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value as EmployeeRole)}
-                    className="h-12 w-full rounded-2xl border border-neutral-200 px-4 outline-none"
+                    className="h-11 w-full rounded-2xl border border-neutral-200 px-4 outline-none"
                   >
-                    {roles.map((role) => (
-                      <option key={role} value={role}>
-                        {role}
+                    {roles.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
                       </option>
                     ))}
                   </select>
@@ -648,14 +628,13 @@ export function EmployeesManager() {
                   <label className="mb-2 block text-sm font-medium text-neutral-700">
                     Password
                   </label>
-
                   <input
                     required
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Minimum 6 characters"
-                    className="h-12 w-full rounded-2xl border border-neutral-200 px-4 outline-none transition focus:border-neutral-400"
+                    className="h-11 w-full rounded-2xl border border-neutral-200 px-4 outline-none transition focus:border-neutral-400"
                   />
                 </div>
               </div>
@@ -664,14 +643,13 @@ export function EmployeesManager() {
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="h-12 rounded-2xl border border-neutral-200 px-5 font-medium transition hover:bg-neutral-50"
+                  className="h-11 rounded-2xl border border-neutral-200 px-5 text-sm font-medium transition hover:bg-neutral-50"
                 >
                   Cancel
                 </button>
-
                 <button
                   disabled={isLoading}
-                  className="h-12 rounded-2xl bg-neutral-950 px-6 font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
+                  className="h-11 rounded-2xl bg-neutral-950 px-6 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
                 >
                   {isLoading ? "Creating..." : "Create Employee"}
                 </button>

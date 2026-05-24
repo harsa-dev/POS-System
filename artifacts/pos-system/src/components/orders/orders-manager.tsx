@@ -21,6 +21,8 @@ import {
   ORDER_STATUS_COLORS,
   ORDER_STATUS_LABELS,
 } from "@/features/orders/constans/order-status";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type OrderItem = {
   id: string;
@@ -249,9 +251,9 @@ export function OrdersManager() {
 
                   <div className="flex shrink-0 flex-col gap-3 xl:w-56 xl:items-end">
                     <p className="text-2xl font-bold">{formatCurrency(order.total, currency)}</p>
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(order.status)}`}>
-                      {order.status}
-                    </span>
+                    <StatusBadge className={getStatusStyle(order.status)}>
+                      {ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status}
+                    </StatusBadge>
                     {isDineIn && order.table && (
                       <div className="w-full rounded-2xl border bg-white p-3 text-sm xl:text-right">
                         <p className="text-xs text-neutral-500">Dining Table</p>
@@ -273,17 +275,15 @@ export function OrdersManager() {
           })}
 
           {filteredOrders.length === 0 && (
-            <div className="p-10 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100">
-                <ReceiptText className="h-6 w-6 text-neutral-500" />
-              </div>
-              <p className="mt-4 font-semibold">No orders found.</p>
-              <p className="mt-1 text-sm text-neutral-500">
-                {search || statusFilter !== "ALL"
+            <EmptyState
+              icon={ReceiptText}
+              title="No orders found"
+              description={
+                search || statusFilter !== "ALL"
                   ? "Try changing your search or status filter."
-                  : "Orders will appear here once customers start placing them."}
-              </p>
-            </div>
+                  : "Orders will appear here once customers start placing them."
+              }
+            />
           )}
         </div>
       </div>

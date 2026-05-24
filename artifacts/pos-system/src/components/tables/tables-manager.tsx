@@ -5,7 +5,9 @@ import { TABLE_STATUS_COLORS } from "@/constants/table-status";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { AlertCircle, RefreshCw, Table2 } from "lucide-react";
 
 type DiningTable = {
   id: string;
@@ -52,7 +54,6 @@ export function TablesManager() {
     e.preventDefault();
 
     const name = tableNumber.trim();
-
     if (!name) {
       toast.error("Table number is required");
       return;
@@ -63,17 +64,11 @@ export function TablesManager() {
     const res = await fetch("/api/tables", {
       credentials: "include",
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        capacity,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, capacity }),
     });
 
     const data = await res.json();
-
     setIsLoading(false);
 
     if (!data.success) {
@@ -88,22 +83,15 @@ export function TablesManager() {
 
   async function updateTable(
     id: string,
-    body: Partial<{
-      name: string;
-      capacity: number;
-      isActive: boolean;
-    }>,
+    body: Partial<{ name: string; capacity: number; isActive: boolean }>,
   ) {
     const res = await fetch(`/api/tables/${id}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
 
     const data = await res.json();
-
     if (!data.success) {
       toast.error(data.message || "Failed to update table");
       return;
@@ -115,16 +103,15 @@ export function TablesManager() {
   function deactivateTable(id: string) {
     setConfirmState({
       title: "Deactivate this table?",
-      description: "The table will be hidden from the floor view and cannot accept new orders.",
+      description:
+        "The table will be hidden from the floor view and cannot accept new orders.",
       variant: "destructive",
       onConfirm: () => updateTable(id, { isActive: false }),
     });
   }
 
-  async function reactivateTable(id: string) {
-    await updateTable(id, {
-      isActive: true,
-    });
+  function reactivateTable(id: string) {
+    updateTable(id, { isActive: true });
   }
 
   function getStatusStyle(status: string) {
@@ -137,9 +124,10 @@ export function TablesManager() {
 
   return (
     <div className="space-y-6">
+      {/* Add Table form */}
       <form
         onSubmit={handleSubmit}
-        className="grid gap-3 rounded-2xl border bg-white p-5"
+        className="grid gap-3 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm"
       >
         <h2 className="text-lg font-bold">Add Table</h2>
 
@@ -149,7 +137,7 @@ export function TablesManager() {
             placeholder="Table number, e.g. 1, 2, A1"
             value={tableNumber}
             onChange={(e) => setTableNumber(e.target.value)}
-            className="rounded-xl border px-3 py-2"
+            className="h-11 rounded-2xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-400"
             required
           />
 
@@ -158,21 +146,22 @@ export function TablesManager() {
             min={1}
             value={capacity}
             onChange={(e) => setCapacity(Number(e.target.value))}
-            className="rounded-xl border px-3 py-2"
+            className="h-11 rounded-2xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-400"
             required
           />
         </div>
 
         <button
           disabled={isLoading}
-          className="rounded-xl bg-black py-3 text-white disabled:opacity-60"
+          className="flex h-11 items-center justify-center rounded-2xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60"
         >
           {isLoading ? "Creating..." : "Create Table"}
         </button>
       </form>
 
-      <div className="rounded-2xl border bg-white">
-        <div className="border-b p-5">
+      {/* Tables list */}
+      <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm">
+        <div className="border-b border-neutral-200 p-5">
           <h2 className="text-lg font-bold">Dining Tables</h2>
           <p className="mt-1 text-sm text-neutral-500">
             Manage table numbers and availability setup.
@@ -197,56 +186,71 @@ export function TablesManager() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
-              <tr className="border-b bg-neutral-50">
-                <th className="p-4">Table Number</th>
-                <th className="p-4">Capacity</th>
-                <th className="p-4">Current Status</th>
-                <th className="p-4">Active</th>
-                <th className="p-4">Created</th>
-                <th className="p-4">Action</th>
+              <tr className="border-b border-neutral-200 bg-neutral-50">
+                <th className="p-4 font-medium text-neutral-500">
+                  Table Number
+                </th>
+                <th className="p-4 font-medium text-neutral-500">Capacity</th>
+                <th className="p-4 font-medium text-neutral-500">
+                  Current Status
+                </th>
+                <th className="p-4 font-medium text-neutral-500">Active</th>
+                <th className="p-4 font-medium text-neutral-500">Created</th>
+                <th className="p-4 font-medium text-neutral-500">Action</th>
               </tr>
             </thead>
 
             <tbody>
               {isFetching ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b">
-                    <td className="p-4"><Skeleton className="h-4 w-24" /></td>
-                    <td className="p-4"><Skeleton className="h-4 w-16" /></td>
-                    <td className="p-4"><Skeleton className="h-6 w-20 rounded-full" /></td>
-                    <td className="p-4"><Skeleton className="h-6 w-16 rounded-full" /></td>
-                    <td className="p-4"><Skeleton className="h-4 w-20" /></td>
-                    <td className="p-4"><Skeleton className="h-8 w-20 rounded-lg" /></td>
+                  <tr key={i} className="border-b border-neutral-100">
+                    <td className="p-4">
+                      <Skeleton className="h-4 w-24" />
+                    </td>
+                    <td className="p-4">
+                      <Skeleton className="h-4 w-16" />
+                    </td>
+                    <td className="p-4">
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </td>
+                    <td className="p-4">
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </td>
+                    <td className="p-4">
+                      <Skeleton className="h-4 w-20" />
+                    </td>
+                    <td className="p-4">
+                      <Skeleton className="h-8 w-20 rounded-lg" />
+                    </td>
                   </tr>
                 ))
               ) : (
                 <>
                   {tables.map((table) => (
-                    <tr key={table.id} className="border-b">
+                    <tr
+                      key={table.id}
+                      className="border-b border-neutral-100 transition hover:bg-neutral-50"
+                    >
                       <td className="p-4 font-medium">Table {table.name}</td>
 
                       <td className="p-4">{table.capacity} seats</td>
 
                       <td className="p-4">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusStyle(
-                            table.status,
-                          )}`}
-                        >
+                        <StatusBadge className={getStatusStyle(table.status)}>
                           {table.status}
-                        </span>
+                        </StatusBadge>
                       </td>
 
                       <td className="p-4">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        <StatusBadge
+                          className={
                             table.isActive
                               ? "bg-green-100 text-green-700"
                               : "bg-red-100 text-red-700"
-                          }`}
+                          }
                         >
                           {table.isActive ? "ACTIVE" : "INACTIVE"}
-                        </span>
+                        </StatusBadge>
                       </td>
 
                       <td className="p-4 text-neutral-500">
@@ -258,7 +262,7 @@ export function TablesManager() {
                           <button
                             type="button"
                             onClick={() => deactivateTable(table.id)}
-                            className="rounded-lg bg-red-500 px-3 py-2 text-xs font-medium text-white"
+                            className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-600"
                           >
                             Deactivate
                           </button>
@@ -266,7 +270,7 @@ export function TablesManager() {
                           <button
                             type="button"
                             onClick={() => reactivateTable(table.id)}
-                            className="rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white"
+                            className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-green-700"
                           >
                             Reactivate
                           </button>
@@ -277,8 +281,12 @@ export function TablesManager() {
 
                   {tables.length === 0 && !fetchError && (
                     <tr>
-                      <td colSpan={6} className="p-6 text-center text-neutral-500">
-                        No tables yet.
+                      <td colSpan={6}>
+                        <EmptyState
+                          icon={Table2}
+                          title="No tables yet"
+                          description="Add your first table using the form above."
+                        />
                       </td>
                     </tr>
                   )}

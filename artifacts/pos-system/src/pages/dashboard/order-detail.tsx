@@ -14,20 +14,18 @@ import { CloseOrderButton } from "@/components/orders/close-order-button";
 import { MoveTableButton } from "@/components/orders/move-table-button";
 import { CancelOrderButton } from "@/components/orders/cancel-order-button";
 import { formatCurrency, formatDateTime, formatOrderNumber } from "@/lib/utils/format";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from "@/features/orders/constans/order-status";
 
 type OrderDetailPageProps = {
   id: string;
 };
 
 function getStatusStyle(status: string) {
-  if (status === "COMPLETED") return "bg-neutral-100 text-neutral-700";
-  if (status === "CANCELLED") return "bg-red-100 text-red-700";
-  if (status === "PENDING_PAYMENT") return "bg-yellow-100 text-yellow-700";
-  if (status === "PAID") return "bg-blue-100 text-blue-700";
-  if (status === "PREPARING") return "bg-orange-100 text-orange-700";
-  if (status === "READY") return "bg-green-100 text-green-700";
-  if (status === "SERVED") return "bg-purple-100 text-purple-700";
-  return "bg-neutral-100 text-neutral-700";
+  return (
+    ORDER_STATUS_COLORS[status as keyof typeof ORDER_STATUS_COLORS] ??
+    "bg-neutral-100 text-neutral-700"
+  );
 }
 
 export default function OrderDetailPage({ id }: OrderDetailPageProps) {
@@ -106,9 +104,9 @@ export default function OrderDetailPage({ id }: OrderDetailPageProps) {
                 <p className="mt-1 text-sm text-neutral-500">{order.restaurant?.name}</p>
               </div>
             </div>
-            <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(order.status)}`}>
-              {order.status}
-            </span>
+            <StatusBadge className={getStatusStyle(order.status)}>
+              {ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status}
+            </StatusBadge>
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -254,7 +252,7 @@ export default function OrderDetailPage({ id }: OrderDetailPageProps) {
             <PrintReceiptButton />
             <Link
               href="/dashboard/orders"
-              className="block w-full rounded-2xl border border-neutral-200 bg-white py-3 text-center font-semibold transition hover:bg-neutral-50"
+              className="flex h-11 w-full items-center justify-center rounded-2xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50"
             >
               Back to Orders
             </Link>

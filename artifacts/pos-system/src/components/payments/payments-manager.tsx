@@ -2,7 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, RefreshCw, CreditCard, Banknote, Wallet, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  AlertCircle,
+  Banknote,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  RefreshCw,
+  Wallet,
+  XCircle,
+} from "lucide-react";
 
 type Payment = {
   id: string;
@@ -17,7 +28,10 @@ type Payment = {
   };
 };
 
-const STATUS_STYLES: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
+const STATUS_STYLES: Record<
+  string,
+  { label: string; className: string; icon: React.ReactNode }
+> = {
   PAID: {
     label: "Paid",
     className: "bg-green-100 text-green-700",
@@ -47,16 +61,20 @@ const METHOD_ICONS: Record<string, React.ReactNode> = {
   TRANSFER: <Wallet className="h-4 w-4" />,
 };
 
-function getStatusStyle(status: string) {
-  return STATUS_STYLES[status.toUpperCase()] ?? {
-    label: status,
-    className: "bg-neutral-100 text-neutral-500",
-    icon: null,
-  };
+function getStatusInfo(status: string) {
+  return (
+    STATUS_STYLES[status.toUpperCase()] ?? {
+      label: status,
+      className: "bg-neutral-100 text-neutral-500",
+      icon: null,
+    }
+  );
 }
 
 function getMethodIcon(method: string) {
-  return METHOD_ICONS[method.toUpperCase()] ?? <CreditCard className="h-4 w-4" />;
+  return METHOD_ICONS[method.toUpperCase()] ?? (
+    <CreditCard className="h-4 w-4" />
+  );
 }
 
 function formatDate(dateStr: string) {
@@ -103,20 +121,22 @@ export function PaymentsManager() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Page header */}
       <section className="shrink-0 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Payments
-          </h1>
-          <p className="mt-2 text-sm text-neutral-500 sm:text-base">
-            Review transaction history, methods, and payment statuses.
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Payments
+        </h1>
+        <p className="mt-2 text-sm text-neutral-500 sm:text-base">
+          Review transaction history, methods, and payment statuses.
+        </p>
       </section>
 
+      {/* Transaction list */}
       <section className="rounded-3xl border border-neutral-200 bg-white shadow-sm">
         <div className="border-b border-neutral-200 px-6 py-5">
-          <h2 className="text-xl font-bold tracking-tight">Transaction History</h2>
+          <h2 className="text-xl font-bold tracking-tight">
+            Transaction History
+          </h2>
           <p className="mt-1 text-sm text-neutral-500">
             All recorded payments across orders.
           </p>
@@ -154,19 +174,15 @@ export function PaymentsManager() {
             ))}
           </div>
         ) : payments.length === 0 && !fetchError ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100">
-              <CreditCard className="h-6 w-6 text-neutral-400" />
-            </div>
-            <p className="font-medium text-neutral-700">No payments yet</p>
-            <p className="max-w-xs text-sm text-neutral-400">
-              Completed orders with payments will appear here.
-            </p>
-          </div>
+          <EmptyState
+            icon={CreditCard}
+            title="No payments yet"
+            description="Completed orders with payments will appear here."
+          />
         ) : (
           <div className="divide-y divide-neutral-100">
             {payments.map((payment) => {
-              const statusInfo = getStatusStyle(payment.status);
+              const statusInfo = getStatusInfo(payment.status);
               const methodIcon = getMethodIcon(payment.method);
               const displayDate = payment.paidAt ?? payment.createdAt;
 
@@ -181,16 +197,18 @@ export function PaymentsManager() {
 
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <p className="truncate font-semibold text-neutral-900">
-                      Receipt #{String(payment.order.orderNumber).padStart(6, "0")}
+                      Receipt #
+                      {String(payment.order.orderNumber).padStart(6, "0")}
                     </p>
-                    <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-500">
                       <span className="capitalize">{payment.method}</span>
-                      {payment.provider && payment.provider !== payment.method && (
-                        <>
-                          <span>·</span>
-                          <span>{payment.provider}</span>
-                        </>
-                      )}
+                      {payment.provider &&
+                        payment.provider !== payment.method && (
+                          <>
+                            <span>·</span>
+                            <span>{payment.provider}</span>
+                          </>
+                        )}
                       <span>·</span>
                       <span>{formatDate(displayDate)}</span>
                       <span>{formatTime(displayDate)}</span>
@@ -201,12 +219,10 @@ export function PaymentsManager() {
                     <p className="font-bold text-neutral-900">
                       Rp {payment.order.total.toLocaleString()}
                     </p>
-                    <span
-                      className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusInfo.className}`}
-                    >
+                    <StatusBadge className={statusInfo.className}>
                       {statusInfo.icon}
                       {statusInfo.label}
-                    </span>
+                    </StatusBadge>
                   </div>
                 </div>
               );
