@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 
 type InventoryType = "INGREDIENT" | "PACKAGING" | "EQUIPMENT";
 
@@ -180,7 +181,7 @@ export function InventoryManager() {
     const data = await res.json();
 
     if (!data.success) {
-      alert(data.message || "Failed to create inventory item");
+      toast.error(data.message || "Failed to create inventory item");
 
       return;
     }
@@ -212,7 +213,7 @@ export function InventoryManager() {
     const data = await res.json();
 
     if (!data.success) {
-      alert(data.message || "Failed to fetch stock movements");
+      toast.error(data.message || "Failed to fetch stock movements");
       return;
     }
 
@@ -253,7 +254,7 @@ export function InventoryManager() {
     const data = await res.json();
 
     if (!data.success) {
-      alert(data.message || "Failed to create stock movement");
+      toast.error(data.message || "Failed to create stock movement");
 
       return;
     }

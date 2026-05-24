@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { formatCurrency, formatDateTime } from "@/lib/utils/format";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type Order = {
   id: string;
@@ -45,6 +47,12 @@ export function ShiftsManager() {
 
   const [lastSummary, setLastSummary] = useState<CloseShiftSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description?: string;
+    variant?: "default" | "destructive";
+    onConfirm: () => void;
+  } | null>(null);
 
   async function fetchCurrentShift() {
     const res = await fetch("/api/shifts/current", { credentials: "include" });
@@ -77,7 +85,7 @@ export function ShiftsManager() {
     setIsLoading(false);
 
     if (!data.success) {
-      alert(data.message || "Failed to open shift");
+      toast.error(data.message || "Failed to open shift");
       return;
     }
 
@@ -85,35 +93,35 @@ export function ShiftsManager() {
     refreshAll();
   }
 
-  async function closeShift(shiftId: string) {
+  function closeShift(shiftId: string) {
     if (!closingCash) {
-      alert("Closing cash is required");
+      toast.error("Closing cash is required");
       return;
     }
 
-    const confirmed = confirm("Close this shift?");
-    if (!confirmed) return;
-
-    setIsLoading(true);
-
-    const res = await fetch(`/api/shifts/${shiftId}/close`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ closingCash: Number(closingCash) }),
+    setConfirmState({
+      title: "Close this shift?",
+      description: "Cash totals will be finalized and the shift will be locked.",
+      variant: "destructive",
+      onConfirm: async () => {
+        setIsLoading(true);
+        const res = await fetch(`/api/shifts/${shiftId}/close`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ closingCash: Number(closingCash) }),
+        });
+        const data = await res.json();
+        setIsLoading(false);
+        if (!data.success) {
+          toast.error(data.message || "Failed to close shift");
+          return;
+        }
+        setLastSummary(data.data.summary ?? null);
+        setClosingCash("");
+        refreshAll();
+      },
     });
-
-    const data = await res.json();
-    setIsLoading(false);
-
-    if (!data.success) {
-      alert(data.message || "Failed to close shift");
-      return;
-    }
-
-    setLastSummary(data.data.summary ?? null);
-    setClosingCash("");
-    refreshAll();
   }
 
   const activeCashSales = useMemo(() => {
@@ -332,6 +340,19 @@ export function ShiftsManager() {
           </table>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title ?? ""}
+        description={confirmState?.description}
+        variant={confirmState?.variant}
+        onConfirm={() => {
+          const action = confirmState?.onConfirm;
+          setConfirmState(null);
+          action?.();
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }

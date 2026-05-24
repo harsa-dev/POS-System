@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 type RestaurantSettings = {
   id: string;
@@ -78,11 +79,11 @@ export function SettingsManager() {
     setIsLoading(false);
 
     if (!data.success) {
-      alert(data.message || "Failed to update settings");
+      toast.error(data.message || "Failed to update settings");
       return;
     }
 
-    alert("Settings updated");
+    toast.success("Settings updated");
     setSettings(data.data);
   }
 

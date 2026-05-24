@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { formatDateTime } from "@/lib/utils/format";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type Attendance = {
   id: string;
@@ -41,6 +43,12 @@ export function AttendanceManager() {
   const [isLoading, setIsLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [sessionFilter, setSessionFilter] = useState("ALL");
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description?: string;
+    variant?: "default" | "destructive";
+    onConfirm: () => void;
+  } | null>(null);
 
   async function fetchAttendances() {
     const res = await fetch("/api/attendance", { credentials: "include" });
@@ -64,35 +72,32 @@ export function AttendanceManager() {
     setIsLoading(false);
 
     if (!data.success) {
-      alert(data.message || "Failed to clock in");
+      toast.error(data.message || "Failed to clock in");
       return;
     }
 
     fetchAttendances();
   }
 
-  async function clockOut() {
-    const confirmed = confirm("Clock out now?");
-
-    if (!confirmed) return;
-
-    setIsLoading(true);
-
-    const res = await fetch("/api/attendance/clock-out", {
-      credentials: "include",
-      method: "POST",
+  function clockOut() {
+    setConfirmState({
+      title: "Clock out now?",
+      description: "Your current session will be recorded and closed.",
+      onConfirm: async () => {
+        setIsLoading(true);
+        const res = await fetch("/api/attendance/clock-out", {
+          credentials: "include",
+          method: "POST",
+        });
+        const data = await res.json();
+        setIsLoading(false);
+        if (!data.success) {
+          toast.error(data.message || "Failed to clock out");
+          return;
+        }
+        fetchAttendances();
+      },
     });
-
-    const data = await res.json();
-
-    setIsLoading(false);
-
-    if (!data.success) {
-      alert(data.message || "Failed to clock out");
-      return;
-    }
-
-    fetchAttendances();
   }
 
   const activeAttendance = useMemo(() => {
@@ -371,6 +376,19 @@ export function AttendanceManager() {
           </table>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title ?? ""}
+        description={confirmState?.description}
+        variant={confirmState?.variant}
+        onConfirm={() => {
+          const action = confirmState?.onConfirm;
+          setConfirmState(null);
+          action?.();
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }

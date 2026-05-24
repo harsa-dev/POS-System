@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { TABLE_STATUS_COLORS } from "@/constants/table-status";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type DiningTable = {
   id: string;
@@ -17,6 +19,12 @@ export function TablesManager() {
   const [tableNumber, setTableNumber] = useState("");
   const [capacity, setCapacity] = useState(2);
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description?: string;
+    variant?: "default" | "destructive";
+    onConfirm: () => void;
+  } | null>(null);
 
   async function fetchTables() {
     const res = await fetch("/api/tables", { credentials: "include" });
@@ -33,7 +41,7 @@ export function TablesManager() {
     const name = tableNumber.trim();
 
     if (!name) {
-      alert("Table number is required");
+      toast.error("Table number is required");
       return;
     }
 
@@ -56,7 +64,7 @@ export function TablesManager() {
     setIsLoading(false);
 
     if (!data.success) {
-      alert(data.message || "Failed to create table");
+      toast.error(data.message || "Failed to create table");
       return;
     }
 
@@ -84,19 +92,19 @@ export function TablesManager() {
     const data = await res.json();
 
     if (!data.success) {
-      alert(data.message || "Failed to update table");
+      toast.error(data.message || "Failed to update table");
       return;
     }
 
     fetchTables();
   }
 
-  async function deactivateTable(id: string) {
-    const confirmed = confirm("Deactivate this table?");
-    if (!confirmed) return;
-
-    await updateTable(id, {
-      isActive: false,
+  function deactivateTable(id: string) {
+    setConfirmState({
+      title: "Deactivate this table?",
+      description: "The table will be hidden from the floor view and cannot accept new orders.",
+      variant: "destructive",
+      onConfirm: () => updateTable(id, { isActive: false }),
     });
   }
 
@@ -237,6 +245,19 @@ export function TablesManager() {
           </table>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title ?? ""}
+        description={confirmState?.description}
+        variant={confirmState?.variant}
+        onConfirm={() => {
+          const action = confirmState?.onConfirm;
+          setConfirmState(null);
+          action?.();
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }

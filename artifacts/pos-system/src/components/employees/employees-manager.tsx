@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ROLE_COLORS, EMPLOYEE_ROLES } from "@/constants/roles";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Check,
   Pencil,
@@ -53,6 +55,14 @@ export function EmployeesManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description?: string;
+    variant?: "default" | "destructive";
+    onConfirm: () => void;
+  } | null>(null);
+  const [resetPasswordTarget, setResetPasswordTarget] = useState<{ id: string; name: string } | null>(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
 
   async function fetchEmployees() {
     const res = await fetch("/api/employees", { credentials: "include" });
@@ -109,7 +119,7 @@ export function EmployeesManager() {
     setIsLoading(false);
 
     if (!data.success) {
-      alert(data.message || "Failed to create employee");
+      toast.error(data.message || "Failed to create employee");
       return;
     }
 
@@ -151,7 +161,7 @@ export function EmployeesManager() {
     const data = await res.json();
 
     if (!data.success) {
-      alert(data.message || "Failed to update employee");
+      toast.error(data.message || "Failed to update employee");
       return false;
     }
 
@@ -175,61 +185,56 @@ export function EmployeesManager() {
     await updateEmployee(id, { role });
   }
 
-  async function deactivateEmployee(id: string) {
-    const confirmed = confirm("Deactivate this employee?");
-    if (!confirmed) return;
-
-    const res = await fetch(`/api/employees/${id}`, {
-      method: "DELETE",
-    });
-
-    const data = await res.json();
-
-    if (!data.success) {
-      alert(data.message || "Failed to deactivate employee");
-      return;
-    }
-
-    fetchEmployees();
-  }
-
-  async function reactivateEmployee(id: string) {
-    const confirmed = confirm("Reactivate this employee?");
-    if (!confirmed) return;
-
-    await updateEmployee(id, {
-      isActive: true,
-    });
-  }
-
-  async function resetPassword(id: string) {
-    const newPassword = prompt("Enter new password for this employee");
-
-    if (!newPassword) return;
-
-    if (newPassword.length < 6) {
-      alert("Password must be at least 6 characters");
-      return;
-    }
-
-    const res = await fetch(`/api/employees/${id}/reset-password`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
+  function deactivateEmployee(id: string) {
+    setConfirmState({
+      title: "Deactivate employee?",
+      description: "This employee will lose system access immediately.",
+      variant: "destructive",
+      onConfirm: async () => {
+        const res = await fetch(`/api/employees/${id}`, { method: "DELETE" });
+        const data = await res.json();
+        if (!data.success) {
+          toast.error(data.message || "Failed to deactivate employee");
+          return;
+        }
+        fetchEmployees();
       },
-      body: JSON.stringify({
-        password: newPassword,
-      }),
     });
+  }
 
-    const data = await res.json();
+  function reactivateEmployee(id: string) {
+    setConfirmState({
+      title: "Reactivate employee?",
+      description: "This employee will regain access to the system.",
+      onConfirm: () => updateEmployee(id, { isActive: true }),
+    });
+  }
 
-    if (!data.success) {
-      alert(data.message || "Failed to reset password");
+  function openResetPassword(employee: Employee) {
+    setResetPasswordTarget({ id: employee.id, name: employee.name });
+    setResetPasswordValue("");
+  }
+
+  async function doResetPassword() {
+    if (!resetPasswordTarget) return;
+    if (resetPasswordValue.length < 6) {
+      toast.error("Password must be at least 6 characters");
       return;
     }
-
-    alert("Password reset successfully");
+    const res = await fetch(`/api/employees/${resetPasswordTarget.id}/reset-password`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: resetPasswordValue }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      toast.error(data.message || "Failed to reset password");
+      return;
+    }
+    toast.success("Password reset successfully");
+    setResetPasswordTarget(null);
+    setResetPasswordValue("");
   }
 
   return (
@@ -430,7 +435,7 @@ export function EmployeesManager() {
                         <button
                           type="button"
                           title="Reset password"
-                          onClick={() => resetPassword(employee.id)}
+                          onClick={() => openResetPassword(employee)}
                           className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 transition hover:bg-neutral-100"
                         >
                           <RotateCcw className="h-4 w-4 text-neutral-600" />
@@ -475,6 +480,40 @@ export function EmployeesManager() {
           </div>
         </section>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title ?? ""}
+        description={confirmState?.description}
+        variant={confirmState?.variant}
+        onConfirm={() => {
+          const action = confirmState?.onConfirm;
+          setConfirmState(null);
+          action?.();
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
+
+      <ConfirmDialog
+        open={!!resetPasswordTarget}
+        title={`Reset password — ${resetPasswordTarget?.name ?? ""}`}
+        description="Enter a new password for this employee."
+        confirmLabel="Reset Password"
+        onConfirm={doResetPassword}
+        onCancel={() => {
+          setResetPasswordTarget(null);
+          setResetPasswordValue("");
+        }}
+      >
+        <input
+          type="password"
+          value={resetPasswordValue}
+          onChange={(e) => setResetPasswordValue(e.target.value)}
+          placeholder="Minimum 6 characters"
+          autoFocus
+          className="h-11 w-full rounded-xl border border-neutral-200 px-4 text-sm outline-none focus:border-neutral-400"
+        />
+      </ConfirmDialog>
 
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 type AttendanceSetting = {
   workStartHour: number;
@@ -78,11 +79,11 @@ export function AttendanceSettingsCard() {
     setIsLoading(false);
 
     if (!data.success) {
-      alert(data.message || "Failed to update attendance setting");
+      toast.error(data.message || "Failed to update attendance setting");
       return;
     }
 
-    alert("Attendance setting updated");
+    toast.success("Attendance setting updated");
   }
 
   useEffect(() => {
