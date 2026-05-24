@@ -181,7 +181,7 @@ export function ServingBoard() {
                       type="button"
                       disabled={isCleaning}
                       onClick={() => cleanMutation.mutate(table.id)}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
                     >
                       {isCleaning ? (
                         <>
@@ -285,7 +285,7 @@ export function ServingBoard() {
                         type="button"
                         disabled={isServing}
                         onClick={() => serveMutation.mutate(order.id)}
-                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
+                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
                       >
                         {isServing ? (
                           <>

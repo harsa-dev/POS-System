@@ -278,7 +278,7 @@ export function OrdersManager() {
                     )}
                     <Link
                       href={`/dashboard/orders/${order.id}`}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
                     >
                       <Eye className="h-4 w-4" />
                       View Receipt

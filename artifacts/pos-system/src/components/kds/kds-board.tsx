@@ -248,7 +248,7 @@ export function KDSBoard() {
                       type="button"
                       disabled={isPending}
                       onClick={() => updateMutation.mutate({ id: order.id, status: "PREPARING" })}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
                     >
                       {isPending ? (
                         <>

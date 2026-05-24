@@ -157,7 +157,7 @@ export function TablesManager() {
 
         <button
           disabled={isLoading}
-          className="flex h-11 items-center justify-center rounded-2xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60"
+          className="flex h-11 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
         >
           {isLoading ? "Creating..." : "Create Table"}
         </button>

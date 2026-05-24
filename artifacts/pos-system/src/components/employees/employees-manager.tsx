@@ -253,7 +253,7 @@ export function EmployeesManager() {
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(true)}
-              className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800"
+              className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" />
               Add Employee
@@ -413,7 +413,7 @@ export function EmployeesManager() {
                                     type="button"
                                     aria-label={`Save name for ${employee.name}`}
                                     onClick={() => saveName(employee.id)}
-                                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white"
+                                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                                   >
                                     <Check className="h-4 w-4" aria-hidden="true" />
                                   </button>
@@ -674,7 +674,7 @@ export function EmployeesManager() {
                 </button>
                 <button
                   disabled={isLoading}
-                  className="h-11 rounded-2xl bg-neutral-950 px-6 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
+                  className="h-11 rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
                 >
                   {isLoading ? "Creating..." : "Create Employee"}
                 </button>

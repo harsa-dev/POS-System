@@ -153,7 +153,7 @@ export default function DashboardHome() {
         })}
       </div>
 
-      <div className="rounded-3xl border bg-gradient-to-br from-black to-neutral-800 p-8 text-white shadow-sm">
+      <div className="rounded-3xl border bg-gradient-to-br from-primary to-primary/80 p-8 text-white shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10">
             <Utensils className="h-5 w-5 text-white" />

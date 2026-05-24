@@ -23,7 +23,7 @@ export function Topbar({ userName, role, onToggleSidebar }: TopbarProps) {
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-neutral-200 bg-white text-neutral-700 shadow-sm transition hover:bg-neutral-50 hover:text-black"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-neutral-200 bg-white text-neutral-700 shadow-sm transition hover:bg-neutral-50 hover:text-foreground"
             aria-label="Toggle sidebar"
           >
             <Menu className="h-5 w-5" strokeWidth={2.2} />

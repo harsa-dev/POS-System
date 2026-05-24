@@ -14,7 +14,7 @@ export default function PaymentErrorPage() {
         </p>
         <Link
           href="/dashboard/checkout"
-          className="mt-8 inline-flex w-full items-center justify-center rounded-2xl bg-black px-5 py-4 font-semibold text-white"
+          className="mt-8 inline-flex w-full items-center justify-center rounded-2xl bg-primary px-5 py-4 font-semibold text-primary-foreground hover:bg-primary/90"
         >
           Back to Checkout
         </Link>

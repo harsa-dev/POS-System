@@ -184,7 +184,7 @@ export function AttendanceSettingsCard() {
         type="button"
         onClick={saveSetting}
         disabled={isLoading}
-        className="mt-5 w-full rounded-xl bg-black py-3 font-semibold text-white disabled:opacity-50"
+        className="mt-5 w-full rounded-xl bg-primary py-3 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
         {isLoading ? "Saving..." : "Save Attendance Settings"}
       </button>

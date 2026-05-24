@@ -83,7 +83,7 @@ export function RecipeForm({
 
       <button
         disabled={isRecipeLoading}
-        className="h-12 rounded-2xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
+        className="h-12 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
       >
         {isRecipeLoading
           ? "Saving..."

@@ -230,7 +230,7 @@ export function ShiftsManager() {
             type="button"
             onClick={openShift}
             disabled={isLoading}
-            className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
+            className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
           >
             {isLoading ? "Opening..." : "Open Shift"}
           </button>

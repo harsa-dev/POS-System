@@ -124,7 +124,7 @@ export function Cart({
         type="button"
         onClick={onCheckout}
         disabled={items.length === 0 || isLoading}
-        className="w-full rounded-2xl bg-black py-4 font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-2xl bg-primary py-4 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
         {isLoading ? "Processing..." : "Checkout"}
       </Button>

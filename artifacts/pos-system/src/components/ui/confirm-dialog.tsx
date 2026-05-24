@@ -63,7 +63,7 @@ export function ConfirmDialog({
             className={`h-11 flex-1 rounded-xl px-5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
               variant === "destructive"
                 ? "bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500"
-                : "bg-neutral-950 text-white hover:bg-neutral-800 focus-visible:ring-neutral-500"
+                : "bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary/50"
             }`}
           >
             {confirmLabel}

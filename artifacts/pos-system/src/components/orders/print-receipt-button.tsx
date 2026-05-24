@@ -4,7 +4,7 @@ export function PrintReceiptButton() {
   return (
     <button
       onClick={() => window.print()}
-      className="mt-6 w-full rounded-md bg-black py-3 text-white print:hidden"
+      className="mt-6 w-full rounded-md bg-primary py-3 text-primary-foreground hover:bg-primary/90 print:hidden"
     >
       Print Receipt
     </button>

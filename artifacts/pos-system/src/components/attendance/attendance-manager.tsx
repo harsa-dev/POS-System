@@ -210,7 +210,7 @@ export function AttendanceManager() {
             type="button"
             onClick={clockIn}
             disabled={isLoading || Boolean(activeAttendance)}
-            className="flex h-11 items-center justify-center rounded-2xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-11 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? "Processing..." : "Clock In"}
           </button>

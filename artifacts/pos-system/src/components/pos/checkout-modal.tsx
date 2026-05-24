@@ -201,7 +201,7 @@ export function CheckoutModal({
                   onClick={() => setOrderType("TAKEAWAY")}
                   className={`flex items-center justify-center gap-2 rounded-2xl border p-4 font-medium transition ${
                     orderType === "TAKEAWAY"
-                      ? "border-black bg-black text-white"
+                      ? "border-primary bg-primary text-primary-foreground"
                       : "hover:bg-neutral-50"
                   }`}
                 >
@@ -215,7 +215,7 @@ export function CheckoutModal({
                   onClick={() => setOrderType("DINE_IN")}
                   className={`flex items-center justify-center gap-2 rounded-2xl border p-4 font-medium transition ${
                     orderType === "DINE_IN"
-                      ? "border-black bg-black text-white"
+                      ? "border-primary bg-primary text-primary-foreground"
                       : "hover:bg-neutral-50"
                   }`}
                 >
@@ -307,7 +307,7 @@ export function CheckoutModal({
                       onClick={() => setPaymentMethod(method.id)}
                       className={`flex items-center gap-3 rounded-2xl border p-4 transition ${
                         paymentMethod === method.id
-                          ? "border-black bg-black text-white"
+                          ? "border-primary bg-primary text-primary-foreground"
                           : "hover:bg-neutral-50"
                       }`}
                     >
@@ -386,7 +386,7 @@ export function CheckoutModal({
               type="button"
               onClick={() => setStep("payment")}
               disabled={!canProceedToPayment}
-              className="w-full rounded-2xl bg-black py-4 font-semibold text-white disabled:opacity-50"
+              className="w-full rounded-2xl bg-primary py-4 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               Continue to Payment
             </button>
@@ -398,7 +398,7 @@ export function CheckoutModal({
                 type="button"
                 onClick={handleConfirm}
                 disabled={isLoading || isInsufficient || enabledMethods.length === 0}
-                className="w-full rounded-2xl bg-black py-4 font-semibold text-white disabled:opacity-50"
+                className="w-full rounded-2xl bg-primary py-4 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 {isLoading ? "Processing..." : "Complete Payment"}
               </button>
