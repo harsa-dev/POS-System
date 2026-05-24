@@ -6,6 +6,7 @@ import {
   verifyPassword,
   getCurrentUser,
 } from "../lib/auth.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
@@ -45,6 +46,7 @@ router.post("/auth/login", async (req, res) => {
     });
     res.json({ success: true, message: "Login berhasil." });
   } catch (error) {
+    logger.error({ err: error }, "POST /auth/login failed");
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 });
