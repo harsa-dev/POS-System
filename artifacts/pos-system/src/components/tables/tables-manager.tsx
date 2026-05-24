@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { TABLE_STATUS_COLORS } from "@/constants/table-status";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 type DiningTable = {
   id: string;
@@ -19,6 +21,8 @@ export function TablesManager() {
   const [tableNumber, setTableNumber] = useState("");
   const [capacity, setCapacity] = useState(2);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{
     title: string;
     description?: string;
@@ -27,11 +31,20 @@ export function TablesManager() {
   } | null>(null);
 
   async function fetchTables() {
-    const res = await fetch("/api/tables", { credentials: "include" });
-    const data = await res.json();
-
-    if (data.success) {
-      setTables(data.data);
+    setIsFetching(true);
+    setFetchError(null);
+    try {
+      const res = await fetch("/api/tables", { credentials: "include" });
+      const data = await res.json();
+      if (data.success) {
+        setTables(data.data);
+      } else {
+        setFetchError(data.message || "Failed to load tables");
+      }
+    } catch {
+      setFetchError("Network error — could not load tables");
+    } finally {
+      setIsFetching(false);
     }
   }
 
@@ -166,6 +179,21 @@ export function TablesManager() {
           </p>
         </div>
 
+        {fetchError && (
+          <div className="flex items-center gap-3 border-b border-red-100 bg-red-50 px-5 py-4">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+            <p className="flex-1 text-sm text-red-700">{fetchError}</p>
+            <button
+              type="button"
+              onClick={fetchTables}
+              className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Retry
+            </button>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
@@ -180,66 +208,81 @@ export function TablesManager() {
             </thead>
 
             <tbody>
-              {tables.map((table) => (
-                <tr key={table.id} className="border-b">
-                  <td className="p-4 font-medium">Table {table.name}</td>
+              {isFetching ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b">
+                    <td className="p-4"><Skeleton className="h-4 w-24" /></td>
+                    <td className="p-4"><Skeleton className="h-4 w-16" /></td>
+                    <td className="p-4"><Skeleton className="h-6 w-20 rounded-full" /></td>
+                    <td className="p-4"><Skeleton className="h-6 w-16 rounded-full" /></td>
+                    <td className="p-4"><Skeleton className="h-4 w-20" /></td>
+                    <td className="p-4"><Skeleton className="h-8 w-20 rounded-lg" /></td>
+                  </tr>
+                ))
+              ) : (
+                <>
+                  {tables.map((table) => (
+                    <tr key={table.id} className="border-b">
+                      <td className="p-4 font-medium">Table {table.name}</td>
 
-                  <td className="p-4">{table.capacity} seats</td>
+                      <td className="p-4">{table.capacity} seats</td>
 
-                  <td className="p-4">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusStyle(
-                        table.status,
-                      )}`}
-                    >
-                      {table.status}
-                    </span>
-                  </td>
+                      <td className="p-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusStyle(
+                            table.status,
+                          )}`}
+                        >
+                          {table.status}
+                        </span>
+                      </td>
 
-                  <td className="p-4">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        table.isActive
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {table.isActive ? "ACTIVE" : "INACTIVE"}
-                    </span>
-                  </td>
+                      <td className="p-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            table.isActive
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {table.isActive ? "ACTIVE" : "INACTIVE"}
+                        </span>
+                      </td>
 
-                  <td className="p-4 text-neutral-500">
-                    {new Date(table.createdAt).toLocaleDateString()}
-                  </td>
+                      <td className="p-4 text-neutral-500">
+                        {new Date(table.createdAt).toLocaleDateString()}
+                      </td>
 
-                  <td className="p-4">
-                    {table.isActive ? (
-                      <button
-                        type="button"
-                        onClick={() => deactivateTable(table.id)}
-                        className="rounded-lg bg-red-500 px-3 py-2 text-xs font-medium text-white"
-                      >
-                        Deactivate
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => reactivateTable(table.id)}
-                        className="rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white"
-                      >
-                        Reactivate
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      <td className="p-4">
+                        {table.isActive ? (
+                          <button
+                            type="button"
+                            onClick={() => deactivateTable(table.id)}
+                            className="rounded-lg bg-red-500 px-3 py-2 text-xs font-medium text-white"
+                          >
+                            Deactivate
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => reactivateTable(table.id)}
+                            className="rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white"
+                          >
+                            Reactivate
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
 
-              {tables.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-neutral-500">
-                    No tables yet.
-                  </td>
-                </tr>
+                  {tables.length === 0 && !fetchError && (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-neutral-500">
+                        No tables yet.
+                      </td>
+                    </tr>
+                  )}
+                </>
               )}
             </tbody>
           </table>

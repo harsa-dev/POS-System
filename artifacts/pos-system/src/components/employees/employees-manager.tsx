@@ -4,10 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { ROLE_COLORS, EMPLOYEE_ROLES } from "@/constants/roles";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
+  AlertCircle,
   Check,
   Pencil,
   Plus,
+  RefreshCw,
   RotateCcw,
   Search,
   ShieldAlert,
@@ -41,6 +44,8 @@ function getInitial(name: string) {
 
 export function EmployeesManager() {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const [name, setName] = useState("");
@@ -65,11 +70,20 @@ export function EmployeesManager() {
   const [resetPasswordValue, setResetPasswordValue] = useState("");
 
   async function fetchEmployees() {
-    const res = await fetch("/api/employees", { credentials: "include" });
-    const data = await res.json();
-
-    if (data.success) {
-      setEmployees(data.data);
+    setIsFetching(true);
+    setFetchError(null);
+    try {
+      const res = await fetch("/api/employees", { credentials: "include" });
+      const data = await res.json();
+      if (data.success) {
+        setEmployees(data.data);
+      } else {
+        setFetchError(data.message || "Failed to load employees");
+      }
+    } catch {
+      setFetchError("Network error — could not load employees");
+    } finally {
+      setIsFetching(false);
     }
   }
 
@@ -316,6 +330,21 @@ export function EmployeesManager() {
             </div>
           </div>
 
+          {fetchError && (
+            <div className="flex shrink-0 items-center gap-3 border-b border-red-100 bg-red-50 px-6 py-4">
+              <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+              <p className="flex-1 text-sm text-red-700">{fetchError}</p>
+              <button
+                type="button"
+                onClick={fetchEmployees}
+                className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Retry
+              </button>
+            </div>
+          )}
+
           <div className="min-h-0 flex-1 overflow-auto no-scrollbar">
             <table className="w-full min-w-[950px]">
               <thead className="sticky top-0 z-10 border-b border-neutral-200 bg-neutral-50">
@@ -329,151 +358,178 @@ export function EmployeesManager() {
               </thead>
 
               <tbody>
-                {filteredEmployees.map((employee) => (
-                  <tr
-                    key={employee.id}
-                    className="border-b border-neutral-100 transition hover:bg-neutral-50"
-                  >
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-violet-100 font-semibold text-violet-700">
-                          {getInitial(employee.name)}
+                {isFetching ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={i} className="border-b border-neutral-100">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-4">
+                          <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-3 w-44" />
+                          </div>
                         </div>
-
-                        <div className="min-w-0">
-                          {editingId === employee.id ? (
-                            <div className="flex items-center gap-2">
-                              <input
-                                value={editingName}
-                                onChange={(e) =>
-                                  setEditingName(e.target.value)
-                                }
-                                className="h-10 rounded-xl border border-neutral-200 px-3 text-sm outline-none"
-                              />
-
-                              <button
-                                type="button"
-                                onClick={() => saveName(employee.id)}
-                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white"
-                              >
-                                <Check className="h-4 w-4" />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={cancelEditName}
-                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
+                      </td>
+                      <td className="px-6 py-5"><Skeleton className="h-6 w-20 rounded-full" /></td>
+                      <td className="px-6 py-5"><Skeleton className="h-6 w-16 rounded-full" /></td>
+                      <td className="px-6 py-5"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-6 py-5">
+                        <div className="flex justify-end gap-2">
+                          <Skeleton className="h-10 w-10 rounded-xl" />
+                          <Skeleton className="h-10 w-10 rounded-xl" />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <>
+                    {filteredEmployees.map((employee) => (
+                      <tr
+                        key={employee.id}
+                        className="border-b border-neutral-100 transition hover:bg-neutral-50"
+                      >
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-violet-100 font-semibold text-violet-700">
+                              {getInitial(employee.name)}
                             </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center gap-2">
-                                <p className="truncate font-semibold text-neutral-900">
-                                  {employee.name}
-                                </p>
 
-                                <button
-                                  type="button"
-                                  onClick={() => startEditName(employee)}
-                                  className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-neutral-100"
-                                >
-                                  <Pencil className="h-3.5 w-3.5 text-neutral-500" />
-                                </button>
-                              </div>
+                            <div className="min-w-0">
+                              {editingId === employee.id ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    value={editingName}
+                                    onChange={(e) =>
+                                      setEditingName(e.target.value)
+                                    }
+                                    className="h-10 rounded-xl border border-neutral-200 px-3 text-sm outline-none"
+                                  />
 
-                              <p className="truncate text-sm text-neutral-500">
-                                {employee.email}
-                              </p>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </td>
+                                  <button
+                                    type="button"
+                                    onClick={() => saveName(employee.id)}
+                                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </button>
 
-                    <td className="px-6 py-5">
-                      <select
-                        value={employee.role}
-                        onChange={(e) =>
-                          updateRole(
-                            employee.id,
-                            e.target.value as EmployeeRole,
-                          )
-                        }
-                        disabled={!employee.isActive}
-                        className={`rounded-full border-0 px-3 py-1.5 text-xs font-semibold outline-none disabled:opacity-50 ${getRoleColor(
-                          employee.role,
-                        )}`}
-                      >
-                        {roles.map((role) => (
-                          <option key={role} value={role}>
-                            {role}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
+                                  <button
+                                    type="button"
+                                    onClick={cancelEditName}
+                                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex items-center gap-2">
+                                    <p className="truncate font-semibold text-neutral-900">
+                                      {employee.name}
+                                    </p>
 
-                    <td className="px-6 py-5">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          employee.isActive
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {employee.isActive ? "ACTIVE" : "INACTIVE"}
-                      </span>
-                    </td>
+                                    <button
+                                      type="button"
+                                      onClick={() => startEditName(employee)}
+                                      className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-neutral-100"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5 text-neutral-500" />
+                                    </button>
+                                  </div>
 
-                    <td className="px-6 py-5 text-sm text-neutral-500">
-                      {new Date(employee.createdAt).toLocaleDateString()}
-                    </td>
+                                  <p className="truncate text-sm text-neutral-500">
+                                    {employee.email}
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </td>
 
-                    <td className="px-6 py-5">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          title="Reset password"
-                          onClick={() => openResetPassword(employee)}
-                          className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 transition hover:bg-neutral-100"
+                        <td className="px-6 py-5">
+                          <select
+                            value={employee.role}
+                            onChange={(e) =>
+                              updateRole(
+                                employee.id,
+                                e.target.value as EmployeeRole,
+                              )
+                            }
+                            disabled={!employee.isActive}
+                            className={`rounded-full border-0 px-3 py-1.5 text-xs font-semibold outline-none disabled:opacity-50 ${getRoleColor(
+                              employee.role,
+                            )}`}
+                          >
+                            {roles.map((role) => (
+                              <option key={role} value={role}>
+                                {role}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+
+                        <td className="px-6 py-5">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              employee.isActive
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {employee.isActive ? "ACTIVE" : "INACTIVE"}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-5 text-sm text-neutral-500">
+                          {new Date(employee.createdAt).toLocaleDateString()}
+                        </td>
+
+                        <td className="px-6 py-5">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              title="Reset password"
+                              onClick={() => openResetPassword(employee)}
+                              className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 transition hover:bg-neutral-100"
+                            >
+                              <RotateCcw className="h-4 w-4 text-neutral-600" />
+                            </button>
+
+                            {employee.isActive ? (
+                              <button
+                                type="button"
+                                title="Deactivate"
+                                onClick={() => deactivateEmployee(employee.id)}
+                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 text-red-600 transition hover:bg-red-50"
+                              >
+                                <ShieldAlert className="h-4 w-4" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                title="Reactivate"
+                                onClick={() => reactivateEmployee(employee.id)}
+                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-green-200 text-green-600 transition hover:bg-green-50"
+                              >
+                                <User2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {filteredEmployees.length === 0 && !fetchError && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-6 py-16 text-center text-neutral-500"
                         >
-                          <RotateCcw className="h-4 w-4 text-neutral-600" />
-                        </button>
-
-                        {employee.isActive ? (
-                          <button
-                            type="button"
-                            title="Deactivate"
-                            onClick={() => deactivateEmployee(employee.id)}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 text-red-600 transition hover:bg-red-50"
-                          >
-                            <ShieldAlert className="h-4 w-4" />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            title="Reactivate"
-                            onClick={() => reactivateEmployee(employee.id)}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-green-200 text-green-600 transition hover:bg-green-50"
-                          >
-                            <User2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-                {filteredEmployees.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="px-6 py-16 text-center text-neutral-500"
-                    >
-                      No employees found.
-                    </td>
-                  </tr>
+                          No employees found.
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 )}
               </tbody>
             </table>

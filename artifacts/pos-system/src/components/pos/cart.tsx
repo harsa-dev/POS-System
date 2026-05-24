@@ -65,29 +65,29 @@ export function Cart({
                     <Button
                       type="button"
                       onClick={() => onDecrease(item.menuItemId)}
-                      className="flex h-7 w-7 items-center justify-center rounded-md border bg-white"
+                      className="flex h-11 w-11 items-center justify-center rounded-md border bg-white"
                     >
-                      <Minus className="h-3 w-3" />
+                      <Minus className="h-4 w-4" />
                     </Button>
 
-                    <span className="w-7 text-center text-sm">
+                    <span className="w-8 text-center text-sm font-medium">
                       {item.quantity}
                     </span>
 
                     <Button
                       type="button"
                       onClick={() => onIncrease(item.menuItemId)}
-                      className="flex h-7 w-7 items-center justify-center rounded-md border bg-white"
+                      className="flex h-11 w-11 items-center justify-center rounded-md border bg-white"
                     >
-                      <Plus className="h-3 w-3" />
+                      <Plus className="h-4 w-4" />
                     </Button>
 
                     <Button
                       type="button"
                       onClick={() => onRemove(item.menuItemId)}
-                      className="flex h-7 w-7 items-center justify-center rounded-md text-red-600 hover:bg-red-50"
+                      className="flex h-11 w-11 items-center justify-center rounded-md text-red-600 hover:bg-red-50"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
