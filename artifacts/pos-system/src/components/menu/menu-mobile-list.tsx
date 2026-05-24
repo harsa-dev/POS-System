@@ -38,6 +38,7 @@ export function MenuMobileList({
                 <img
                   src={menuItem.imageUrl}
                   alt={menuItem.name}
+                  loading="lazy"
                   className="h-full w-full object-cover"
                 />
               ) : (

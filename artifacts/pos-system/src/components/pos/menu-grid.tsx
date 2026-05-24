@@ -68,6 +68,7 @@ export function MenuGrid({ menuItems, currency, onAddToCart }: MenuGridProps) {
                 <img
                   src={menuItem.imageUrl}
                   alt={menuItem.name}
+                  loading="lazy"
                   className="mb-3 h-24 w-full rounded-xl object-cover"
                 />
               ) : (

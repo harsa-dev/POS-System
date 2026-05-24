@@ -23,6 +23,9 @@ import {
 } from "@/features/orders/constans/order-status";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { DataPagination } from "@/components/shared/data-pagination";
+
+const PAGE_SIZE = 20;
 
 type OrderItem = {
   id: string;
@@ -108,6 +111,7 @@ export function OrdersManager() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   async function fetchOrders() {
     const res = await fetch("/api/orders", { credentials: "include" });
@@ -136,9 +140,18 @@ export function OrdersManager() {
     });
   }, [orders, search, statusFilter]);
 
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
+
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  const startIndex = (page - 1) * PAGE_SIZE;
+  const paginatedOrders = filteredOrders.slice(startIndex, startIndex + PAGE_SIZE);
 
   if (isLoading) return <OrdersSkeleton />;
 
@@ -182,7 +195,7 @@ export function OrdersManager() {
         </div>
 
         <div className="divide-y divide-neutral-100">
-          {filteredOrders.map((order) => {
+          {paginatedOrders.map((order) => {
             const currency = order.restaurant?.currency ?? "IDR";
             const timezone = order.restaurant?.timezone ?? "Asia/Makassar";
             const orderPrefix = order.restaurant?.orderPrefix ?? "ORD";
@@ -286,6 +299,18 @@ export function OrdersManager() {
             />
           )}
         </div>
+
+        {filteredOrders.length > PAGE_SIZE && (
+          <DataPagination
+            currentPage={page}
+            totalPages={totalPages}
+            startItem={startIndex + 1}
+            endItem={Math.min(startIndex + PAGE_SIZE, filteredOrders.length)}
+            totalItems={filteredOrders.length}
+            onPrevious={() => setPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+          />
+        )}
       </div>
     </div>
   );
