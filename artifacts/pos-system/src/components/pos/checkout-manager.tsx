@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { ShoppingCart, X } from "lucide-react";
 
 import { Cart } from "@/components/pos/cart";
 import { CheckoutModal } from "@/components/pos/checkout-modal";
@@ -50,6 +51,7 @@ export function CheckoutManager() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   const [currency, setCurrency] = useState("IDR");
   const [timezone, setTimezone] = useState("Asia/Makassar");
@@ -135,10 +137,20 @@ export function CheckoutManager() {
     setIsCheckoutOpen(true);
   }
 
+  function openCheckoutFromDrawer() {
+    setIsCartOpen(false);
+    openCheckout();
+  }
+
   const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
   const taxAmount = Math.round(subtotal * (taxRate / 100));
   const serviceAmount = Math.round(subtotal * (serviceRate / 100));
   const total = subtotal + taxAmount + serviceAmount;
+
+  const totalItemCount = useMemo(
+    () => cart.reduce((acc, item) => acc + item.quantity, 0),
+    [cart],
+  );
 
   async function completeCheckout(
     paymentMethod: string,
@@ -227,19 +239,97 @@ export function CheckoutManager() {
 
   return (
     <>
-      <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
+      {/* Main layout: single column on mobile, two-column from lg (1024px) upward */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         <MenuGrid menuItems={menuItems} currency={currency} onAddToCart={addToCart} />
-        <Cart
-          items={cart}
-          total={total}
-          currency={currency}
-          isLoading={isLoading}
-          onIncrease={increaseQuantity}
-          onDecrease={decreaseQuantity}
-          onRemove={removeItem}
-          onCheckout={openCheckout}
-        />
+
+        {/* Desktop / tablet cart — hidden below lg, shown as sidebar column from lg+ */}
+        <div className="hidden lg:block">
+          <Cart
+            items={cart}
+            total={total}
+            currency={currency}
+            isLoading={isLoading}
+            onIncrease={increaseQuantity}
+            onDecrease={decreaseQuantity}
+            onRemove={removeItem}
+            onCheckout={openCheckout}
+          />
+        </div>
       </div>
+
+      {/* ── Mobile floating cart button ──────────────────────────────────────
+          Visible only below lg. Fixed to bottom-right. Shows item count badge.
+          Meets 44×44 px minimum touch target (actual size: 56×56 px). */}
+      <button
+        type="button"
+        aria-label={`View cart, ${totalItemCount} item${totalItemCount !== 1 ? "s" : ""}`}
+        onClick={() => setIsCartOpen(true)}
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-black text-white shadow-lg transition-transform active:scale-95 lg:hidden"
+      >
+        <ShoppingCart className="h-6 w-6" />
+        {totalItemCount > 0 && (
+          <span
+            aria-hidden="true"
+            className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold leading-none text-white"
+          >
+            {totalItemCount > 99 ? "99+" : totalItemCount}
+          </span>
+        )}
+      </button>
+
+      {/* ── Mobile cart bottom-sheet drawer ─────────────────────────────────
+          Visible only below lg. Same overlay pattern as the mobile sidebar.
+          max-h-[90svh]: svh = small viewport height — safe on all mobile
+          browsers regardless of dynamic address bar state. */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setIsCartOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Drawer panel */}
+          <div className="absolute bottom-0 left-0 right-0 flex max-h-[90svh] flex-col rounded-t-3xl bg-white shadow-2xl">
+            {/* Drawer header */}
+            <div className="flex shrink-0 items-center justify-between border-b px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold">Cart</h2>
+                {totalItemCount > 0 && (
+                  <p className="text-xs text-neutral-500">
+                    {totalItemCount} item{totalItemCount !== 1 ? "s" : ""}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(false)}
+                aria-label="Close cart"
+                className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-neutral-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Cart content — scrollable when items overflow */}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <Cart
+                items={cart}
+                total={total}
+                currency={currency}
+                isLoading={isLoading}
+                onIncrease={increaseQuantity}
+                onDecrease={decreaseQuantity}
+                onRemove={removeItem}
+                onCheckout={openCheckoutFromDrawer}
+                drawerMode
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <CheckoutModal
         open={isCheckoutOpen}
