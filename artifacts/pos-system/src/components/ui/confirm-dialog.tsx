@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -35,16 +35,15 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (open) {
-      const timeout = setTimeout(() => confirmRef.current?.focus(), 50);
-      return () => clearTimeout(timeout);
-    }
-  }, [open]);
-
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onCancel()}>
-      <DialogContent className="max-w-sm rounded-2xl p-6">
+      <DialogContent
+        className="max-w-sm rounded-2xl p-6"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          confirmRef.current?.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">{title}</DialogTitle>
           {description && (

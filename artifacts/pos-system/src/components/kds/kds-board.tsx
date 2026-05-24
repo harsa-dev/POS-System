@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -56,6 +56,13 @@ function KDSSkeleton() {
 }
 
 function ElapsedBadge({ createdAt }: { createdAt: string }) {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   const minutes = Math.max(1, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000));
   const isUrgent = minutes >= 15;
   const isWarning = minutes >= 8;

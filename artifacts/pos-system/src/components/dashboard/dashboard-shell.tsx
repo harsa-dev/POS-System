@@ -36,6 +36,13 @@ export function DashboardShell({
           : "lg:grid-cols-[288px_minmax(0,1fr)]"
       }`}
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[200] focus:rounded-xl focus:bg-neutral-950 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg focus:outline-none"
+      >
+        Skip to main content
+      </a>
+
       <Sidebar
         role={role}
         userName={userName}
@@ -52,6 +59,7 @@ export function DashboardShell({
         />
 
         <main
+          id="main-content"
           className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8"
           style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
         >

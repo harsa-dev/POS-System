@@ -396,6 +396,17 @@ export function EmployeesManager() {
                                     onChange={(e) =>
                                       setEditingName(e.target.value)
                                     }
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        saveName(employee.id);
+                                      } else if (e.key === "Escape") {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        cancelEditName();
+                                      }
+                                    }}
                                     className="h-10 rounded-xl border border-neutral-200 px-3 text-sm outline-none"
                                   />
                                   <button

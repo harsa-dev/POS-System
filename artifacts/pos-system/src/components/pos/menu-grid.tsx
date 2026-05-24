@@ -56,8 +56,11 @@ export function MenuGrid({ menuItems, currency, onAddToCart }: MenuGridProps) {
             <button
               key={menuItem.id}
               type="button"
-              disabled={!isAvailable}
-              onClick={() => onAddToCart(menuItem)}
+              aria-disabled={!isAvailable}
+              onClick={() => {
+                if (!isAvailable) return;
+                onAddToCart(menuItem);
+              }}
               className={`group relative overflow-hidden rounded-2xl border bg-white p-3 text-left shadow-sm transition-all ${
                 isAvailable
                   ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-md"
