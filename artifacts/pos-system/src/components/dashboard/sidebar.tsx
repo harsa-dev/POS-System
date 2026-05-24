@@ -1,6 +1,6 @@
 "use client";
 
-import type { ElementType } from "react";
+import { type ElementType, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/roles";
@@ -184,12 +184,16 @@ function SidebarContent({
 }) {
   const [pathname] = useLocation();
 
-  const visibleGroups = menuGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => item.roles.includes(role)),
-    }))
-    .filter((group) => group.items.length > 0);
+  const visibleGroups = useMemo(
+    () =>
+      menuGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => item.roles.includes(role)),
+        }))
+        .filter((group) => group.items.length > 0),
+    [role],
+  );
 
   async function handleLogout() {
     await fetch("/api/auth/logout", {

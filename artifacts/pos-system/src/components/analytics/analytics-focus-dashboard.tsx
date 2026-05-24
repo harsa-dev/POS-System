@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, Suspense } from "react";
+import { useCallback, useMemo, useState, Suspense } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { analyticsRegistry } from "./analytics-registry";
@@ -43,19 +43,29 @@ export function AnalyticsFocusDashboard() {
     return rotated.slice(0, 3);
   }, [selectedId, carouselIndex]);
 
+  const filteredLength = useMemo(
+    () => analyticsRegistry.filter((item) => item.id !== selectedId).length,
+    [selectedId],
+  );
+
+  const handleNext = useCallback(
+    () => setCarouselIndex((prev) => (prev + 1) % filteredLength),
+    [filteredLength],
+  );
+
+  const handlePrev = useCallback(
+    () => setCarouselIndex((prev) => (prev === 0 ? filteredLength - 1 : prev - 1)),
+    [filteredLength],
+  );
+
+  const handleSelect = useCallback((id: string) => {
+    setSelectedId(id);
+    setCarouselIndex(0);
+  }, []);
+
   if (!selectedAnalytics) return null;
 
   const ActiveMainComponent = selectedAnalytics.mainComponent;
-
-  const filteredLength = analyticsRegistry.filter((item) => item.id !== selectedId).length;
-
-  const handleNext = () => setCarouselIndex((prev) => (prev + 1) % filteredLength);
-  const handlePrev = () => setCarouselIndex((prev) => (prev === 0 ? filteredLength - 1 : prev - 1));
-
-  const handleSelect = (id: string) => {
-    setSelectedId(id);
-    setCarouselIndex(0);
-  };
 
   return (
     <section className="flex h-full flex-col gap-4 overflow-hidden lg:gap-5">

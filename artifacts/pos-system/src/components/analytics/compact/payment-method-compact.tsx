@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CreditCard } from "lucide-react";
 
@@ -22,12 +23,18 @@ export function PaymentMethodCompact() {
   });
 
   const methods: PaymentMethodData[] = data?.data ?? [];
-  const totalTransactions = methods.reduce((acc, item) => acc + item.totalOrders, 0);
-  const dominantMethod = methods[0];
-  const percentage =
-    dominantMethod && totalTransactions > 0
-      ? Math.round((dominantMethod.totalOrders / totalTransactions) * 100)
-      : 0;
+
+  const { dominantMethod, percentage } = useMemo(() => {
+    const totalTransactions = methods.reduce((acc, item) => acc + item.totalOrders, 0);
+    const dominant = methods[0];
+    return {
+      dominantMethod: dominant,
+      percentage:
+        dominant && totalTransactions > 0
+          ? Math.round((dominant.totalOrders / totalTransactions) * 100)
+          : 0,
+    };
+  }, [methods]);
 
   return (
     <div className="flex h-full flex-col justify-between">
