@@ -168,8 +168,9 @@ export function OrdersManager() {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-500 shadow-sm sm:w-72">
-              <Search className="h-4 w-4 shrink-0" />
+              <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
               <input
+                aria-label="Search orders"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search order..."
@@ -178,8 +179,9 @@ export function OrdersManager() {
             </div>
 
             <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
-              <Filter className="h-4 w-4 shrink-0" />
+              <Filter className="h-4 w-4 shrink-0" aria-hidden="true" />
               <select
+                aria-label="Filter by status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="bg-transparent outline-none"

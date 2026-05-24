@@ -42,14 +42,15 @@ export function Topbar({ userName, role, onToggleSidebar }: TopbarProps) {
 
         <div className="flex min-w-0 shrink-0 items-center gap-3">
           <div className="hidden w-72 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-500 shadow-sm md:flex xl:w-96">
-            <Search className="h-4 w-4 shrink-0" />
+            <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
 
             <input
+              aria-label="Search"
               placeholder="Search anything..."
               className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-neutral-400"
             />
 
-            <span className="rounded-md bg-neutral-100 px-2 py-1 text-xs text-neutral-500">
+            <span className="rounded-md bg-neutral-100 px-2 py-1 text-xs text-neutral-500" aria-hidden="true">
               ⌘K
             </span>
           </div>
@@ -59,17 +60,17 @@ export function Topbar({ userName, role, onToggleSidebar }: TopbarProps) {
             className="inline-flex shrink-0 rounded-2xl border border-neutral-200 bg-white p-3 text-neutral-600 shadow-sm transition hover:bg-neutral-50 md:hidden"
             aria-label="Search"
           >
-            <Search className="h-5 w-5" />
+            <Search className="h-5 w-5" aria-hidden="true" />
           </button>
 
           <button
             type="button"
             className="relative inline-flex shrink-0 rounded-2xl border border-neutral-200 bg-white p-3 text-neutral-600 shadow-sm transition hover:bg-neutral-50"
-            aria-label="Notifications"
+            aria-label="Notifications — you have unread notifications"
           >
-            <Bell className="h-5 w-5" />
+            <Bell className="h-5 w-5" aria-hidden="true" />
 
-            <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+            <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" aria-hidden="true" />
           </button>
 
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-100 text-sm font-bold text-violet-700">

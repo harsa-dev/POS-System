@@ -25,7 +25,7 @@ const KITCHEN_STATUSES = ["PAID", "PREPARING"];
 
 function KDSSkeleton() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Loading kitchen orders" aria-busy="true">
       {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm animate-pulse">
           <div className="border-b border-neutral-100 pb-3">
@@ -60,10 +60,13 @@ function ElapsedBadge({ createdAt }: { createdAt: string }) {
   const isUrgent = minutes >= 15;
   const isWarning = minutes >= 8;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-      isUrgent ? "bg-red-100 text-red-700" : isWarning ? "bg-orange-100 text-orange-700" : "bg-neutral-100 text-neutral-600"
-    }`}>
-      <Clock className="h-3 w-3" />
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+        isUrgent ? "bg-red-100 text-red-700" : isWarning ? "bg-orange-100 text-orange-700" : "bg-neutral-100 text-neutral-600"
+      }`}
+      aria-label={`${minutes} minute${minutes === 1 ? "" : "s"} elapsed${isUrgent ? ", urgent" : isWarning ? ", warning" : ""}`}
+    >
+      <Clock className="h-3 w-3" aria-hidden="true" />
       {minutes}m
     </span>
   );
@@ -240,7 +243,12 @@ export function KDSBoard() {
                       onClick={() => updateMutation.mutate({ id: order.id, status: "PREPARING" })}
                       className="flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
                     >
-                      {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Start Cooking"}
+                      {isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                          <span className="sr-only">Starting cooking…</span>
+                        </>
+                      ) : "Start Cooking"}
                     </button>
                   )}
                   {order.status === "PREPARING" && (
@@ -250,7 +258,12 @@ export function KDSBoard() {
                       onClick={() => updateMutation.mutate({ id: order.id, status: "READY" })}
                       className="flex w-full items-center justify-center gap-2 rounded-2xl bg-green-600 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
                     >
-                      {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark as Ready"}
+                      {isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                          <span className="sr-only">Marking as ready…</span>
+                        </>
+                      ) : "Mark as Ready"}
                     </button>
                   )}
                 </div>

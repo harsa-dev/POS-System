@@ -133,7 +133,9 @@ export function TablesManager() {
 
         <div className="grid gap-3 md:grid-cols-2">
           <input
+            id="table-number"
             type="text"
+            aria-label="Table number"
             placeholder="Table number, e.g. 1, 2, A1"
             value={tableNumber}
             onChange={(e) => setTableNumber(e.target.value)}
@@ -142,8 +144,10 @@ export function TablesManager() {
           />
 
           <input
+            id="table-capacity"
             type="number"
             min={1}
+            aria-label="Seating capacity"
             value={capacity}
             onChange={(e) => setCapacity(Number(e.target.value))}
             className="h-11 rounded-2xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-400"
@@ -187,16 +191,16 @@ export function TablesManager() {
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-200 bg-neutral-50">
-                <th className="p-4 font-medium text-neutral-500">
+                <th scope="col" className="p-4 font-medium text-neutral-500">
                   Table Number
                 </th>
-                <th className="p-4 font-medium text-neutral-500">Capacity</th>
-                <th className="p-4 font-medium text-neutral-500">
+                <th scope="col" className="p-4 font-medium text-neutral-500">Capacity</th>
+                <th scope="col" className="p-4 font-medium text-neutral-500">
                   Current Status
                 </th>
-                <th className="p-4 font-medium text-neutral-500">Active</th>
-                <th className="p-4 font-medium text-neutral-500">Created</th>
-                <th className="p-4 font-medium text-neutral-500">Action</th>
+                <th scope="col" className="p-4 font-medium text-neutral-500">Active</th>
+                <th scope="col" className="p-4 font-medium text-neutral-500">Created</th>
+                <th scope="col" className="p-4 font-medium text-neutral-500">Action</th>
               </tr>
             </thead>
 

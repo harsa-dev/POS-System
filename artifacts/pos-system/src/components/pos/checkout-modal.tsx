@@ -194,9 +194,10 @@ export function CheckoutModal({
           {step === "review" && (
             <div className="space-y-5">
               {/* Order type */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3" role="group" aria-label="Order type">
                 <button
                   type="button"
+                  aria-pressed={orderType === "TAKEAWAY"}
                   onClick={() => setOrderType("TAKEAWAY")}
                   className={`flex items-center justify-center gap-2 rounded-2xl border p-4 font-medium transition ${
                     orderType === "TAKEAWAY"
@@ -204,12 +205,13 @@ export function CheckoutModal({
                       : "hover:bg-neutral-50"
                   }`}
                 >
-                  <ShoppingBag className="h-5 w-5" />
+                  <ShoppingBag className="h-5 w-5" aria-hidden="true" />
                   Takeaway
                 </button>
 
                 <button
                   type="button"
+                  aria-pressed={orderType === "DINE_IN"}
                   onClick={() => setOrderType("DINE_IN")}
                   className={`flex items-center justify-center gap-2 rounded-2xl border p-4 font-medium transition ${
                     orderType === "DINE_IN"
@@ -217,7 +219,7 @@ export function CheckoutModal({
                       : "hover:bg-neutral-50"
                   }`}
                 >
-                  <UtensilsCrossed className="h-5 w-5" />
+                  <UtensilsCrossed className="h-5 w-5" aria-hidden="true" />
                   Dine In
                 </button>
               </div>
@@ -225,10 +227,11 @@ export function CheckoutModal({
               {/* Table selector */}
               {orderType === "DINE_IN" && (
                 <div>
-                  <label className="mb-2 block text-sm font-medium">
+                  <label htmlFor="checkout-table-select" className="mb-2 block text-sm font-medium">
                     Select Table
                   </label>
                   <select
+                    id="checkout-table-select"
                     value={tableId}
                     onChange={(e) => setTableId(e.target.value)}
                     className="w-full rounded-2xl border px-4 py-3"
@@ -293,13 +296,14 @@ export function CheckoutModal({
           {step === "payment" && (
             <div className="space-y-5">
               {/* Payment method grid */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3" role="group" aria-label="Payment method">
                 {enabledMethods.map((method) => {
                   const Icon = method.icon;
                   return (
                     <button
                       key={method.id}
                       type="button"
+                      aria-pressed={paymentMethod === method.id}
                       onClick={() => setPaymentMethod(method.id)}
                       className={`flex items-center gap-3 rounded-2xl border p-4 transition ${
                         paymentMethod === method.id
@@ -307,7 +311,7 @@ export function CheckoutModal({
                           : "hover:bg-neutral-50"
                       }`}
                     >
-                      <Icon className="h-5 w-5" />
+                      <Icon className="h-5 w-5" aria-hidden="true" />
                       <span className="font-medium">{method.label}</span>
                     </button>
                   );
@@ -323,17 +327,19 @@ export function CheckoutModal({
               {/* Cash amount input */}
               {isCash && (
                 <div>
-                  <label className="mb-2 block text-sm font-medium">
+                  <label htmlFor="checkout-amount-paid" className="mb-2 block text-sm font-medium">
                     Amount Paid
                   </label>
                   <input
+                    id="checkout-amount-paid"
                     type="number"
                     value={amountPaid}
                     onChange={(e) => setAmountPaid(e.target.value)}
                     className="w-full rounded-2xl border px-4 py-3"
+                    aria-describedby={isInsufficient ? "checkout-amount-error" : undefined}
                   />
                   {isInsufficient && (
-                    <p className="mt-2 text-sm text-red-600">
+                    <p id="checkout-amount-error" role="alert" className="mt-2 text-sm text-red-600">
                       Amount paid is less than total.
                     </p>
                   )}

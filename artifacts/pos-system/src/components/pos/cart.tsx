@@ -74,30 +74,33 @@ export function Cart({
               <div className="flex shrink-0 items-center gap-1">
                 <Button
                   type="button"
+                  aria-label={`Decrease quantity of ${item.name}`}
                   onClick={() => onDecrease(item.menuItemId)}
                   className="flex h-11 w-11 items-center justify-center rounded-md border bg-white"
                 >
-                  <Minus className="h-4 w-4" />
+                  <Minus className="h-4 w-4" aria-hidden="true" />
                 </Button>
 
-                <span className="w-8 text-center text-sm font-medium">
+                <span className="w-8 text-center text-sm font-medium" aria-label={`Quantity: ${item.quantity}`}>
                   {item.quantity}
                 </span>
 
                 <Button
                   type="button"
+                  aria-label={`Increase quantity of ${item.name}`}
                   onClick={() => onIncrease(item.menuItemId)}
                   className="flex h-11 w-11 items-center justify-center rounded-md border bg-white"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4" aria-hidden="true" />
                 </Button>
 
                 <Button
                   type="button"
+                  aria-label={`Remove ${item.name} from cart`}
                   onClick={() => onRemove(item.menuItemId)}
                   className="flex h-11 w-11 items-center justify-center rounded-md text-red-600 hover:bg-red-50"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             </div>

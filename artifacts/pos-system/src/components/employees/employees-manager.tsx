@@ -276,8 +276,9 @@ export function EmployeesManager() {
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="flex h-11 min-w-0 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4">
-                  <Search className="h-4 w-4 shrink-0 text-neutral-400" />
+                  <Search className="h-4 w-4 shrink-0 text-neutral-400" aria-hidden="true" />
                   <input
+                    aria-label="Search employees"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search employee..."
@@ -286,6 +287,7 @@ export function EmployeesManager() {
                 </div>
 
                 <select
+                  aria-label="Filter by status"
                   value={statusFilter}
                   onChange={(e) =>
                     setStatusFilter(e.target.value as StatusFilter)
@@ -298,6 +300,7 @@ export function EmployeesManager() {
                 </select>
 
                 <select
+                  aria-label="Filter by role"
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
                   className="h-11 rounded-2xl border border-neutral-200 bg-white px-4 text-sm outline-none"
@@ -332,11 +335,11 @@ export function EmployeesManager() {
             <table className="w-full min-w-[950px]">
               <thead className="sticky top-0 z-10 border-b border-neutral-200 bg-neutral-50">
                 <tr className="text-left text-sm text-neutral-500">
-                  <th className="px-6 py-4 font-medium">Employee</th>
-                  <th className="px-6 py-4 font-medium">Role</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium">Created</th>
-                  <th className="px-6 py-4 text-right font-medium">Actions</th>
+                  <th scope="col" className="px-6 py-4 font-medium">Employee</th>
+                  <th scope="col" className="px-6 py-4 font-medium">Role</th>
+                  <th scope="col" className="px-6 py-4 font-medium">Status</th>
+                  <th scope="col" className="px-6 py-4 font-medium">Created</th>
+                  <th scope="col" className="px-6 py-4 text-right font-medium">Actions</th>
                 </tr>
               </thead>
 
@@ -387,6 +390,8 @@ export function EmployeesManager() {
                               {editingId === employee.id ? (
                                 <div className="flex items-center gap-2">
                                   <input
+                                    aria-label={`Edit name for ${employee.name}`}
+                                    autoFocus
                                     value={editingName}
                                     onChange={(e) =>
                                       setEditingName(e.target.value)
@@ -395,17 +400,19 @@ export function EmployeesManager() {
                                   />
                                   <button
                                     type="button"
+                                    aria-label={`Save name for ${employee.name}`}
                                     onClick={() => saveName(employee.id)}
                                     className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white"
                                   >
-                                    <Check className="h-4 w-4" />
+                                    <Check className="h-4 w-4" aria-hidden="true" />
                                   </button>
                                   <button
                                     type="button"
+                                    aria-label="Cancel editing name"
                                     onClick={cancelEditName}
                                     className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200"
                                   >
-                                    <X className="h-4 w-4" />
+                                    <X className="h-4 w-4" aria-hidden="true" />
                                   </button>
                                 </div>
                               ) : (
@@ -416,10 +423,11 @@ export function EmployeesManager() {
                                     </p>
                                     <button
                                       type="button"
+                                      aria-label={`Edit name for ${employee.name}`}
                                       onClick={() => startEditName(employee)}
                                       className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-neutral-100"
                                     >
-                                      <Pencil className="h-3.5 w-3.5 text-neutral-500" />
+                                      <Pencil className="h-3.5 w-3.5 text-neutral-500" aria-hidden="true" />
                                     </button>
                                   </div>
                                   <p className="truncate text-sm text-neutral-500">
@@ -433,6 +441,7 @@ export function EmployeesManager() {
 
                         <td className="px-6 py-5">
                           <select
+                            aria-label={`Role for ${employee.name}`}
                             value={employee.role}
                             onChange={(e) =>
                               updateRole(
@@ -471,34 +480,34 @@ export function EmployeesManager() {
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"
-                              title="Reset password"
+                              aria-label={`Reset password for ${employee.name}`}
                               onClick={() => openResetPassword(employee)}
                               className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 transition hover:bg-neutral-100"
                             >
-                              <RotateCcw className="h-4 w-4 text-neutral-600" />
+                              <RotateCcw className="h-4 w-4 text-neutral-600" aria-hidden="true" />
                             </button>
 
                             {employee.isActive ? (
                               <button
                                 type="button"
-                                title="Deactivate"
+                                aria-label={`Deactivate ${employee.name}`}
                                 onClick={() =>
                                   deactivateEmployee(employee.id)
                                 }
                                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 text-red-600 transition hover:bg-red-50"
                               >
-                                <ShieldAlert className="h-4 w-4" />
+                                <ShieldAlert className="h-4 w-4" aria-hidden="true" />
                               </button>
                             ) : (
                               <button
                                 type="button"
-                                title="Reactivate"
+                                aria-label={`Reactivate ${employee.name}`}
                                 onClick={() =>
                                   reactivateEmployee(employee.id)
                                 }
                                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-green-200 text-green-600 transition hover:bg-green-50"
                               >
-                                <User2 className="h-4 w-4" />
+                                <User2 className="h-4 w-4" aria-hidden="true" />
                               </button>
                             )}
                           </div>
@@ -570,20 +579,22 @@ export function EmployeesManager() {
 
               <button
                 type="button"
+                aria-label="Close Add Employee dialog"
                 onClick={() => setIsCreateModalOpen(false)}
                 className="flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-neutral-100"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-5">
               <div className="grid gap-5 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-neutral-700">
+                  <label htmlFor="emp-name" className="mb-2 block text-sm font-medium text-neutral-700">
                     Employee Name
                   </label>
                   <input
+                    id="emp-name"
                     required
                     type="text"
                     value={name}
@@ -594,10 +605,11 @@ export function EmployeesManager() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-neutral-700">
+                  <label htmlFor="emp-email" className="mb-2 block text-sm font-medium text-neutral-700">
                     Email
                   </label>
                   <input
+                    id="emp-email"
                     required
                     type="email"
                     value={email}
@@ -608,10 +620,11 @@ export function EmployeesManager() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-neutral-700">
+                  <label htmlFor="emp-role" className="mb-2 block text-sm font-medium text-neutral-700">
                     Role
                   </label>
                   <select
+                    id="emp-role"
                     value={role}
                     onChange={(e) => setRole(e.target.value as EmployeeRole)}
                     className="h-11 w-full rounded-2xl border border-neutral-200 px-4 outline-none"
@@ -625,10 +638,11 @@ export function EmployeesManager() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-neutral-700">
+                  <label htmlFor="emp-password" className="mb-2 block text-sm font-medium text-neutral-700">
                     Password
                   </label>
                   <input
+                    id="emp-password"
                     required
                     type="password"
                     value={password}

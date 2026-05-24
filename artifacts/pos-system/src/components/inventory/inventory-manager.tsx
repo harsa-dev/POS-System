@@ -321,9 +321,10 @@ export function InventoryManager() {
 
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="flex h-11 items-center gap-3 rounded-2xl border border-neutral-200 px-4 sm:w-80">
-                  <Search className="h-4 w-4 shrink-0 text-neutral-400" />
+                  <Search className="h-4 w-4 shrink-0 text-neutral-400" aria-hidden="true" />
 
                   <input
+                    aria-label="Search inventory"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search inventory..."
@@ -427,7 +428,7 @@ export function InventoryManager() {
                             onClick={() => openMovementModal(item, "IN")}
                             className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl border border-green-200 bg-green-50 text-sm font-semibold text-green-700 transition hover:bg-green-100"
                           >
-                            <ArrowDown className="h-4 w-4" />
+                            <ArrowDown className="h-4 w-4" aria-hidden="true" />
                             Add
                           </button>
 
@@ -436,28 +437,28 @@ export function InventoryManager() {
                             onClick={() => openMovementModal(item, "OUT")}
                             className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 text-sm font-semibold text-red-700 transition hover:bg-red-100"
                           >
-                            <ArrowUp className="h-4 w-4" />
+                            <ArrowUp className="h-4 w-4" aria-hidden="true" />
                             Reduce
                           </button>
 
                           <button
                             type="button"
-                            title="Adjustment"
+                            aria-label={`Stock adjustment for ${item.name}`}
                             onClick={() =>
                               openMovementModal(item, "ADJUSTMENT")
                             }
                             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-neutral-200 transition hover:bg-neutral-100"
                           >
-                            <SlidersHorizontal className="h-4 w-4" />
+                            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
                           </button>
 
                           <button
                             type="button"
-                            title="Movement history"
+                            aria-label={`Movement history for ${item.name}`}
                             onClick={() => openHistoryModal(item)}
                             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-neutral-200 transition hover:bg-neutral-100"
                           >
-                            <Clock3 className="h-4 w-4" />
+                            <Clock3 className="h-4 w-4" aria-hidden="true" />
                           </button>
                         </div>
                       </div>
@@ -483,17 +484,17 @@ export function InventoryManager() {
             <table className="hidden w-full min-w-[1050px] lg:table">
               <thead className="sticky top-0 z-10 border-b border-neutral-200 bg-neutral-50">
                 <tr className="text-left text-sm text-neutral-500">
-                  <th className="px-6 py-4 font-medium">Item</th>
+                  <th scope="col" className="px-6 py-4 font-medium">Item</th>
 
-                  <th className="px-6 py-4 font-medium">Type</th>
+                  <th scope="col" className="px-6 py-4 font-medium">Type</th>
 
-                  <th className="px-6 py-4 font-medium">Stock</th>
+                  <th scope="col" className="px-6 py-4 font-medium">Stock</th>
 
-                  <th className="px-6 py-4 font-medium">Minimum</th>
+                  <th scope="col" className="px-6 py-4 font-medium">Minimum</th>
 
-                  <th className="px-6 py-4 font-medium">Cost / Unit</th>
+                  <th scope="col" className="px-6 py-4 font-medium">Cost / Unit</th>
 
-                  <th className="px-6 py-4 text-right font-medium">Actions</th>
+                  <th scope="col" className="px-6 py-4 text-right font-medium">Actions</th>
                 </tr>
               </thead>
 
@@ -591,40 +592,40 @@ export function InventoryManager() {
                             <div className="flex justify-end gap-2">
                               <button
                                 type="button"
-                                title="Add stock"
+                                aria-label={`Add stock for ${item.name}`}
                                 onClick={() => openMovementModal(item, "IN")}
                                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-green-200 text-green-600 transition hover:bg-green-50"
                               >
-                                <ArrowDown className="h-4 w-4" />
+                                <ArrowDown className="h-4 w-4" aria-hidden="true" />
                               </button>
 
                               <button
                                 type="button"
-                                title="Reduce stock"
+                                aria-label={`Reduce stock for ${item.name}`}
                                 onClick={() => openMovementModal(item, "OUT")}
                                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 text-red-600 transition hover:bg-red-50"
                               >
-                                <ArrowUp className="h-4 w-4" />
+                                <ArrowUp className="h-4 w-4" aria-hidden="true" />
                               </button>
 
                               <button
                                 type="button"
-                                title="Adjustment"
+                                aria-label={`Stock adjustment for ${item.name}`}
                                 onClick={() =>
                                   openMovementModal(item, "ADJUSTMENT")
                                 }
                                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 transition hover:bg-neutral-100"
                               >
-                                <SlidersHorizontal className="h-4 w-4" />
+                                <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
                               </button>
 
                               <button
                                 type="button"
-                                title="Movement history"
+                                aria-label={`Movement history for ${item.name}`}
                                 onClick={() => openHistoryModal(item)}
                                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 transition hover:bg-neutral-100"
                               >
-                                <Clock3 className="h-4 w-4 text-neutral-600" />
+                                <Clock3 className="h-4 w-4 text-neutral-600" aria-hidden="true" />
                               </button>
                             </div>
                           </td>
@@ -672,16 +673,18 @@ export function InventoryManager() {
 
               <button
                 type="button"
+                aria-label="Close Add Inventory Item dialog"
                 onClick={() => setIsModalOpen(false)}
                 className="flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-neutral-100"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <input
                 required
+                aria-label="Item name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Item name, e.g. Chicken Fillet"
@@ -689,6 +692,7 @@ export function InventoryManager() {
               />
 
               <input
+                aria-label="SKU (optional)"
                 value={sku}
                 onChange={(e) => setSku(e.target.value)}
                 placeholder="SKU (optional)"
@@ -697,6 +701,7 @@ export function InventoryManager() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <select
+                  aria-label="Item type"
                   value={type}
                   onChange={(e) => setType(e.target.value as InventoryType)}
                   className="h-11 rounded-2xl border border-neutral-200 px-4 text-sm outline-none"
@@ -709,6 +714,7 @@ export function InventoryManager() {
                 </select>
 
                 <select
+                  aria-label="Unit of measurement"
                   value={unit}
                   onChange={(e) => setUnit(e.target.value as InventoryUnit)}
                   className="h-11 rounded-2xl border border-neutral-200 px-4 text-sm outline-none"
@@ -726,6 +732,7 @@ export function InventoryManager() {
                   type="number"
                   min={0}
                   step="0.01"
+                  aria-label="Current stock quantity"
                   value={currentStock}
                   onChange={(e) => setCurrentStock(e.target.value)}
                   placeholder="Current stock"
@@ -736,6 +743,7 @@ export function InventoryManager() {
                   type="number"
                   min={0}
                   step="0.01"
+                  aria-label="Minimum stock quantity"
                   value={minimumStock}
                   onChange={(e) => setMinimumStock(e.target.value)}
                   placeholder="Minimum"
@@ -745,6 +753,7 @@ export function InventoryManager() {
                 <input
                   type="number"
                   min={0}
+                  aria-label="Cost per unit"
                   value={costPerUnit}
                   onChange={(e) => setCostPerUnit(e.target.value)}
                   placeholder="Cost / unit"
@@ -787,15 +796,17 @@ export function InventoryManager() {
 
               <button
                 type="button"
+                aria-label="Close Stock Movement dialog"
                 onClick={() => setIsMovementModalOpen(false)}
                 className="flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-neutral-100"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 
             <form onSubmit={handleMovementSubmit} className="mt-6 space-y-4">
               <select
+                aria-label="Movement type"
                 value={movementType}
                 onChange={(e) =>
                   setMovementType(e.target.value as MovementType)
@@ -814,6 +825,7 @@ export function InventoryManager() {
                 type="number"
                 min={0}
                 step="0.01"
+                aria-label="Quantity"
                 value={movementQuantity}
                 onChange={(e) => setMovementQuantity(e.target.value)}
                 placeholder="Quantity"
@@ -821,6 +833,7 @@ export function InventoryManager() {
               />
 
               <textarea
+                aria-label="Note (optional)"
                 value={movementNote}
                 onChange={(e) => setMovementNote(e.target.value)}
                 placeholder="Optional note"
@@ -828,6 +841,7 @@ export function InventoryManager() {
               />
 
               <select
+                aria-label="Movement reason"
                 value={movementReason}
                 onChange={(e) =>
                   setMovementReason(e.target.value as MovementReason)
@@ -882,10 +896,11 @@ export function InventoryManager() {
 
               <button
                 type="button"
+                aria-label="Close Movement History dialog"
                 onClick={closeHistoryModal}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition hover:bg-neutral-100"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 

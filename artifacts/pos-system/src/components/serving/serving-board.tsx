@@ -30,7 +30,7 @@ type DiningTable = {
 
 function ServingSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-label="Loading serving board" aria-busy="true">
       <div>
         <div className="h-7 w-40 rounded-lg bg-neutral-200 animate-pulse" />
         <div className="mt-1.5 h-4 w-64 rounded bg-neutral-100 animate-pulse" />
@@ -183,7 +183,12 @@ export function ServingBoard() {
                       onClick={() => cleanMutation.mutate(table.id)}
                       className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
                     >
-                      {isCleaning ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark Clean"}
+                      {isCleaning ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                          <span className="sr-only">Marking table as clean…</span>
+                        </>
+                      ) : "Mark Clean"}
                     </button>
                   </motion.div>
                 );
@@ -245,7 +250,7 @@ export function ServingBoard() {
                       <div className="mt-2 space-y-0.5 text-xs text-neutral-500">
                         <p>{formatDateTime(order.createdAt, timezone)}</p>
                         <p className="flex items-center gap-1">
-                          <ShoppingBag className="h-3 w-3" />
+                          <ShoppingBag className="h-3 w-3" aria-hidden="true" />
                           {isDineIn ? "Dine In" : "Takeaway"}
                         </p>
                         {isDineIn && order.table && (
@@ -283,10 +288,13 @@ export function ServingBoard() {
                         className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
                       >
                         {isServing ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            <span className="sr-only">Marking as served…</span>
+                          </>
                         ) : (
                           <>
-                            <Sparkles className="h-4 w-4" />
+                            <Sparkles className="h-4 w-4" aria-hidden="true" />
                             Mark as Served
                           </>
                         )}
