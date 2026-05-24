@@ -4,6 +4,10 @@ packages:
   - lib/integrations/*
   - scripts
 
+allowBuilds:
+  esbuild: false
+  prisma: true
+
 autoInstallPeers: false
 
 catalog:
