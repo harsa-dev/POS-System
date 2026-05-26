@@ -39,6 +39,10 @@ if (process.env.NODE_ENV !== "production") {
   allowedOrigins.add("http://localhost:5173");
 }
 
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.add(process.env.FRONTEND_URL);
+}
+
 const app: Express = express();
 
 app.use(
