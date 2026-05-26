@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 
 import {
   Bar,
@@ -26,7 +27,7 @@ export function PeakHoursChart() {
     queryKey: ["peak-hours"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/peak-hours", { credentials: "include" });
+      const res = await apiFetch("/api/analytics/peak-hours", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch peak hours analytics");

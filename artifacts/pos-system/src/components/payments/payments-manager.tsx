@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -101,7 +102,7 @@ export function PaymentsManager() {
     setIsFetching(true);
     setFetchError(null);
     try {
-      const res = await fetch("/api/payments", { credentials: "include" });
+      const res = await apiFetch("/api/payments", { credentials: "include" });
       const data = await res.json();
       if (data.success) {
         setPayments(data.data);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 
 export function useAnalyticsOverview() {
   return useQuery({
@@ -9,7 +10,7 @@ export function useAnalyticsOverview() {
     ],
 
     queryFn: async () => {
-      const res = await fetch(
+      const res = await apiFetch(
         "/api/analytics/overview",
       );
 

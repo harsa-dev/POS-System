@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CreditCard } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 type PaymentMethodData = {
   paymentMethod: string;
@@ -14,7 +15,7 @@ export function PaymentMethodCompact() {
   const { data, isLoading } = useQuery({
     queryKey: ["payment-methods"],
     queryFn: async () => {
-      const res = await fetch("/api/analytics/payment-method", { credentials: "include" });
+      const res = await apiFetch("/api/analytics/payment-method", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch payment analytics");
       return res.json();
     },

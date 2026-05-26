@@ -7,6 +7,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import { apiFetch } from "@/lib/api";
 import {
   BookOpen,
   Check,
@@ -157,7 +158,7 @@ export function MenuManager() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("/api/uploads/menu-image", {
+      const res = await apiFetch("/api/uploads/menu-image", {
         credentials: "include",
         method: "POST",
         body: formData,
@@ -209,7 +210,7 @@ export function MenuManager() {
     const url = editingId ? `/api/menu-items/${editingId}` : "/api/menu-items";
     const method = editingId ? "PATCH" : "POST";
 
-    const res = await fetch(url, {
+    const res = await apiFetch(url, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -244,7 +245,7 @@ export function MenuManager() {
       description: "This item will be permanently removed from the menu.",
       variant: "destructive",
       onConfirm: async () => {
-        const res = await fetch(`/api/menu-items/${id}`, { method: "DELETE" });
+        const res = await apiFetch(`/api/menu-items/${id}`, { method: "DELETE" });
         const data = await res.json();
         if (!data.success) {
           toast.error(data.message || "Failed to remove menu item");
@@ -265,7 +266,7 @@ export function MenuManager() {
 
     setIsCategoryLoading(true);
 
-    const res = await fetch("/api/categories", {
+    const res = await apiFetch("/api/categories", {
       credentials: "include",
       method: "POST",
       headers: {
@@ -306,7 +307,7 @@ export function MenuManager() {
 
     if (!cleanName) return;
 
-    const res = await fetch(`/api/categories/${id}`, {
+    const res = await apiFetch(`/api/categories/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -336,7 +337,7 @@ export function MenuManager() {
       description: "Menu items in this category will become uncategorized.",
       variant: "destructive",
       onConfirm: async () => {
-        const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
+        const res = await apiFetch(`/api/categories/${id}`, { method: "DELETE" });
         const data = await res.json();
         if (!data.success) {
           toast.error(data.message || "Failed to delete category");
@@ -355,7 +356,7 @@ export function MenuManager() {
     setRecipeQuantityNeeded("");
     setIsRecipeModalOpen(true);
 
-    const res = await fetch("/api/recipes", { credentials: "include" });
+    const res = await apiFetch("/api/recipes", { credentials: "include" });
 
     const data = await res.json();
 
@@ -383,7 +384,7 @@ export function MenuManager() {
 
     setIsRecipeLoading(true);
 
-    const res = await fetch("/api/recipes", {
+    const res = await apiFetch("/api/recipes", {
       credentials: "include",
       method: "POST",
       headers: {
@@ -420,7 +421,7 @@ export function MenuManager() {
       description: "This ingredient will be removed from the recipe.",
       variant: "destructive",
       onConfirm: async () => {
-        const res = await fetch(`/api/recipes/${id}`, { method: "DELETE" });
+        const res = await apiFetch(`/api/recipes/${id}`, { method: "DELETE" });
         const data = await res.json();
         if (!data.success) {
           toast.error(data.message || "Failed to delete recipe item");

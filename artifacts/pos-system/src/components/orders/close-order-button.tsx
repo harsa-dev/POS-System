@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { CheckCircle, Loader2 } from "lucide-react";
@@ -15,7 +16,7 @@ export function CloseOrderButton({ orderId }: CloseOrderButtonProps) {
 
   async function closeOrder() {
     setIsLoading(true);
-    const res = await fetch(`/api/orders/${orderId}/status`, {
+    const res = await apiFetch(`/api/orders/${orderId}/status`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

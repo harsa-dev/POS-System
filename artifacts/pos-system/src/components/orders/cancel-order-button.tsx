@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -30,7 +31,7 @@ export function CancelOrderButton({ orderId }: CancelOrderButtonProps) {
 
     try {
       setIsLoading(true);
-      const res = await fetch(`/api/orders/${orderId}/status`, {
+      const res = await apiFetch(`/api/orders/${orderId}/status`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

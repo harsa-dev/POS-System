@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ROLE_COLORS, EMPLOYEE_ROLES } from "@/constants/roles";
+import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -77,7 +78,7 @@ export function EmployeesManager() {
     setIsFetching(true);
     setFetchError(null);
     try {
-      const res = await fetch("/api/employees", { credentials: "include" });
+      const res = await apiFetch("/api/employees", { credentials: "include" });
       const data = await res.json();
       if (data.success) {
         setEmployees(data.data);
@@ -117,7 +118,7 @@ export function EmployeesManager() {
     e.preventDefault();
     setIsLoading(true);
 
-    const res = await fetch("/api/employees", {
+    const res = await apiFetch("/api/employees", {
       credentials: "include",
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -154,7 +155,7 @@ export function EmployeesManager() {
     id: string,
     body: Partial<{ name: string; role: EmployeeRole; isActive: boolean }>,
   ) {
-    const res = await fetch(`/api/employees/${id}`, {
+    const res = await apiFetch(`/api/employees/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -186,7 +187,7 @@ export function EmployeesManager() {
       description: "This employee will lose system access immediately.",
       variant: "destructive",
       onConfirm: async () => {
-        const res = await fetch(`/api/employees/${id}`, { method: "DELETE" });
+        const res = await apiFetch(`/api/employees/${id}`, { method: "DELETE" });
         const data = await res.json();
         if (!data.success) {
           toast.error(data.message || "Failed to deactivate employee");
@@ -216,7 +217,7 @@ export function EmployeesManager() {
       toast.error("Password must be at least 6 characters");
       return;
     }
-    const res = await fetch(
+    const res = await apiFetch(
       `/api/employees/${resetPasswordTarget.id}/reset-password`,
       {
         method: "PATCH",

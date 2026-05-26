@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { CheckCheck, Loader2, ShoppingBag, Sparkles } from "lucide-react";
 import { formatDateTime, formatOrderNumber } from "@/lib/utils/format";
@@ -60,7 +61,7 @@ export function ServingBoard() {
   const { data: ordersData, isLoading: ordersLoading } = useQuery({
     queryKey: ["serving-orders"],
     queryFn: async () => {
-      const res = await fetch("/api/orders", { credentials: "include" });
+      const res = await apiFetch("/api/orders", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch orders");
       return res.json();
     },
@@ -73,7 +74,7 @@ export function ServingBoard() {
   const { data: tablesData, isLoading: tablesLoading } = useQuery({
     queryKey: ["serving-tables"],
     queryFn: async () => {
-      const res = await fetch("/api/tables", { credentials: "include" });
+      const res = await apiFetch("/api/tables", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch tables");
       return res.json();
     },
@@ -97,7 +98,7 @@ export function ServingBoard() {
 
   const serveMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/orders/${id}/status`, {
+      const res = await apiFetch(`/api/orders/${id}/status`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -117,7 +118,7 @@ export function ServingBoard() {
 
   const cleanMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/tables/${id}/mark-clean`, {
+      const res = await apiFetch(`/api/tables/${id}/mark-clean`, {
         method: "PATCH",
         credentials: "include",
       });

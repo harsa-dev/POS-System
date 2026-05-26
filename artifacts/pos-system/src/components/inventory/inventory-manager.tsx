@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
+import { apiFetch } from "@/lib/api";
 import {
   AlertCircle,
   ArrowDown,
@@ -128,7 +129,7 @@ export function InventoryManager() {
     setIsFetching(true);
     setFetchError(null);
     try {
-      const res = await fetch("/api/inventory-items", {
+      const res = await apiFetch("/api/inventory-items", {
         credentials: "include",
       });
       const data = await res.json();
@@ -171,7 +172,7 @@ export function InventoryManager() {
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const res = await fetch("/api/inventory-items", {
+    const res = await apiFetch("/api/inventory-items", {
       credentials: "include",
       method: "POST",
       headers: {
@@ -219,7 +220,7 @@ export function InventoryManager() {
   async function openHistoryModal(item: InventoryItem) {
     setSelectedItem(item);
 
-    const res = await fetch("/api/inventory", { credentials: "include" });
+    const res = await apiFetch("/api/inventory", { credentials: "include" });
 
     const data = await res.json();
 
@@ -248,7 +249,7 @@ export function InventoryManager() {
 
     if (!selectedItem) return;
 
-    const res = await fetch("/api/inventory", {
+    const res = await apiFetch("/api/inventory", {
       credentials: "include",
       method: "POST",
       headers: {
@@ -275,7 +276,7 @@ export function InventoryManager() {
     fetchItems();
 
     if (selectedItem) {
-      const res = await fetch("/api/inventory", { credentials: "include" });
+      const res = await apiFetch("/api/inventory", { credentials: "include" });
       const data = await res.json();
 
       if (data.success) {

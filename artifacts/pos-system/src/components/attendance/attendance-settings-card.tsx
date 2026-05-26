@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 
 type AttendanceSetting = {
   workStartHour: number;
@@ -49,7 +50,7 @@ export function AttendanceSettingsCard() {
   }, [setting.workStartHour, setting.workStartMinute, setting.lateTolerance]);
 
   async function fetchSetting() {
-    const res = await fetch("/api/attendance-settings", { credentials: "include" });
+    const res = await apiFetch("/api/attendance-settings", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {
@@ -65,7 +66,7 @@ export function AttendanceSettingsCard() {
   async function saveSetting() {
     setIsLoading(true);
 
-    const res = await fetch("/api/attendance-settings", {
+    const res = await apiFetch("/api/attendance-settings", {
       credentials: "include",
       method: "PATCH",
       headers: {

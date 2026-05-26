@@ -9,6 +9,7 @@ import { createContext, useContext, useEffect, useState, lazy, Suspense } from "
 import { LoginForm } from "@/components/auth/login-form";
 import { RegisterForm } from "@/components/auth/register-form";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { apiFetch } from "@/lib/api";
 
 const DashboardHome        = lazy(() => import("@/pages/dashboard/home"));
 const CheckoutPage         = lazy(() => import("@/pages/dashboard/checkout"));
@@ -65,7 +66,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchUser() {
     try {
-      const res = await fetch(API.AUTH_ME, { credentials: "include" });
+      const res = await apiFetch(API.AUTH_ME, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setUser(data.data);

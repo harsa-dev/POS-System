@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { ShoppingCart, X } from "lucide-react";
@@ -69,19 +70,19 @@ export function CheckoutManager() {
   });
 
   async function fetchMenuItems() {
-    const res = await fetch("/api/menu-items", { credentials: "include" });
+    const res = await apiFetch("/api/menu-items", { credentials: "include" });
     const data = await res.json();
     if (data.success) setMenuItems(data.data);
   }
 
   async function fetchTables() {
-    const res = await fetch("/api/tables", { credentials: "include" });
+    const res = await apiFetch("/api/tables", { credentials: "include" });
     const data = await res.json();
     if (data.success) setTables(data.data);
   }
 
   async function fetchSettings() {
-    const res = await fetch("/api/settings", { credentials: "include" });
+    const res = await apiFetch("/api/settings", { credentials: "include" });
     const data = await res.json();
     if (data.success) {
       setTaxRate(data.data.taxRate ?? 0);
@@ -175,7 +176,7 @@ export function CheckoutManager() {
 
     setIsLoading(true);
 
-    const orderRes = await fetch("/api/orders", {
+    const orderRes = await apiFetch("/api/orders", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -209,7 +210,7 @@ export function CheckoutManager() {
       return;
     }
 
-    const paymentRes = await fetch("/api/payments/create-transaction", {
+    const paymentRes = await apiFetch("/api/payments/create-transaction", {
       credentials: "include",
       method: "POST",
       headers: { "Content-Type": "application/json" },

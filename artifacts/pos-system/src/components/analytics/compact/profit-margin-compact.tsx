@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 
 import { TrendingUp, TrendingDown } from "lucide-react";
 
@@ -18,7 +19,7 @@ export function ProfitMarginCompact() {
     queryKey: ["profit-margin"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/profit-margin", { credentials: "include" });
+      const res = await apiFetch("/api/analytics/profit-margin", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch profit margin analytics");

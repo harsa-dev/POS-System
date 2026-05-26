@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { Link, useLocation } from "wouter";
 import {
   Banknote,
@@ -38,7 +39,7 @@ export default function OrderDetailPage({ id }: OrderDetailPageProps) {
   async function fetchOrder() {
     try {
       setIsLoading(true);
-      const res = await fetch(`/api/orders/${id}`, { credentials: "include" });
+      const res = await apiFetch(`/api/orders/${id}`, { credentials: "include" });
       if (!res.ok) {
         setError("Order not found");
         return;

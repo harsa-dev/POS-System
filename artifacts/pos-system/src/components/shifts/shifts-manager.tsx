@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { formatCurrency, formatDateTime } from "@/lib/utils/format";
+import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -60,13 +61,13 @@ export function ShiftsManager() {
   } | null>(null);
 
   async function fetchCurrentShift() {
-    const res = await fetch("/api/shifts/current", { credentials: "include" });
+    const res = await apiFetch("/api/shifts/current", { credentials: "include" });
     const data = await res.json();
     setCurrentShift(data.success && data.data ? data.data : null);
   }
 
   async function fetchShifts() {
-    const res = await fetch("/api/shifts", { credentials: "include" });
+    const res = await apiFetch("/api/shifts", { credentials: "include" });
     const data = await res.json();
     if (data.success) setShifts(data.data);
   }
@@ -79,7 +80,7 @@ export function ShiftsManager() {
     setIsLoading(true);
     setLastSummary(null);
 
-    const res = await fetch("/api/shifts/open", {
+    const res = await apiFetch("/api/shifts/open", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -112,7 +113,7 @@ export function ShiftsManager() {
       onConfirm: async () => {
         setIsLoading(true);
 
-        const res = await fetch(`/api/shifts/${id}/close`, {
+        const res = await apiFetch(`/api/shifts/${id}/close`, {
           method: "PATCH",
           credentials: "include",
           headers: { "Content-Type": "application/json" },

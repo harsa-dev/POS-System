@@ -4,6 +4,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { apiFetch } from "@/lib/api";
 
 import { toast } from "sonner";
 
@@ -29,7 +30,7 @@ export function useMenuManager() {
 
   async function fetchMenuItems() {
     try {
-      const res = await fetch("/api/menu-items", { credentials: "include" });
+      const res = await apiFetch("/api/menu-items", { credentials: "include" });
 
       const data = await res.json();
 
@@ -45,7 +46,7 @@ export function useMenuManager() {
 
   async function fetchCategories() {
     try {
-      const res = await fetch("/api/categories", { credentials: "include" });
+      const res = await apiFetch("/api/categories", { credentials: "include" });
 
       const data = await res.json();
 
@@ -61,7 +62,7 @@ export function useMenuManager() {
 
   async function fetchInventoryItems() {
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         "/api/inventory-items",
       );
 
@@ -79,7 +80,7 @@ export function useMenuManager() {
 
   async function fetchRecipes() {
     try {
-      const res = await fetch("/api/recipes", { credentials: "include" });
+      const res = await apiFetch("/api/recipes", { credentials: "include" });
 
       const data = await res.json();
 

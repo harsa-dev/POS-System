@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from "react"
+import { apiFetch } from "@/lib/api";;
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 
 type RestaurantSettings = {
   id: string;
@@ -50,7 +52,7 @@ export function SettingsManager() {
   const [isLoading, setIsLoading] = useState(false);
 
   async function fetchSettings() {
-    const res = await fetch("/api/settings", { credentials: "include" });
+    const res = await apiFetch("/api/settings", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {
@@ -65,7 +67,7 @@ export function SettingsManager() {
 
     setIsLoading(true);
 
-    const res = await fetch("/api/settings", {
+    const res = await apiFetch("/api/settings", {
       credentials: "include",
       method: "PATCH",
       headers: {

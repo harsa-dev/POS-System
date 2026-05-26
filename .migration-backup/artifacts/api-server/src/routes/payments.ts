@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser, getCurrentUser } from "../lib/auth.js";
+import { apiFetch } from "@/lib/api";
 
 const router = Router();
 
@@ -48,7 +49,7 @@ router.post("/payments/create-transaction", async (req, res) => {
       },
     };
 
-    const snapRes = await fetch(snapBaseUrl, {
+    const snapRes = await apiFetch(snapBaseUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

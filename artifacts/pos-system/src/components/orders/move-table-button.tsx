@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 
 type DiningTable = {
@@ -25,7 +26,7 @@ export function MoveTableButton({ orderId }: MoveTableButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   async function fetchTables() {
-    const res = await fetch("/api/tables", { credentials: "include" });
+    const res = await apiFetch("/api/tables", { credentials: "include" });
 
     const data = await res.json();
 
@@ -47,7 +48,7 @@ export function MoveTableButton({ orderId }: MoveTableButtonProps) {
 
     setIsLoading(true);
 
-    const res = await fetch(`/api/orders/${orderId}/move-table`, {
+    const res = await apiFetch(`/api/orders/${orderId}/move-table`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

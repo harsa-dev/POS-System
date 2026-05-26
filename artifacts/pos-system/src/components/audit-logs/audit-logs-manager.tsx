@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
 
 type AuditLog = {
   id: string;
@@ -20,7 +21,7 @@ export function AuditLogsManager() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
 
   async function fetchLogs() {
-    const res = await fetch("/api/audit-logs", { credentials: "include" });
+    const res = await apiFetch("/api/audit-logs", { credentials: "include" });
     const data = await res.json();
 
     if (data.success) {

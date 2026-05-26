@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 
 import { formatCurrency } from "@/lib/utils/format";
 
@@ -17,7 +18,7 @@ export function TopSellingMenu() {
     queryKey: ["top-selling-menu"],
 
     queryFn: async () => {
-      const res = await fetch("/api/analytics/top-menu", { credentials: "include" });
+      const res = await apiFetch("/api/analytics/top-menu", { credentials: "include" });
 
       if (!res.ok) {
         throw new Error("Failed to fetch top menu analytics");

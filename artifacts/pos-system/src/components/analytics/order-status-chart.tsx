@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 
 import {
   Pie,
@@ -45,7 +46,7 @@ export function OrderStatusChart() {
     ],
 
     queryFn: async () => {
-      const res = await fetch(
+      const res = await apiFetch(
         "/api/analytics/order-status",
       );
 
