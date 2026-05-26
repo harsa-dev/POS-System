@@ -40,7 +40,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 allowedOrigins.add(
-  "https://https://pos-system-pos-system-m9el-9f2n7zh17-harsabians-projects.vercel.app/login",
+  "https://pos-system-pos-system-m9el-9f2n7zh17-harsabians-projects.vercel.app",
 );
 
 const app: Express = express();
