@@ -1,8 +1,8 @@
 [phases.setup]
-nixPkgs = ["nodejs_24", "openssl"]
+nixPkgs = ["nodejs_22", "openssl"]
 
 [phases.install]
-cmds = ["npm install -g pnpm@9.15.9", "pnpm install --frozen-lockfile"]
+cmds = ["pnpm install --frozen-lockfile"]
 
 [phases.build]
 cmds = ["pnpm --filter @workspace/api-server build"]
