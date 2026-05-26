@@ -24,6 +24,7 @@ import {
   UtensilsCrossed,
   X,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 type SidebarProps = {
   role: string;
@@ -196,7 +197,7 @@ function SidebarContent({
   );
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", {
+    await apiFetch("/api/auth/logout", {
       method: "POST",
       credentials: "include",
     });

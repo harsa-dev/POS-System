@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/App";
+import { apiFetch } from "@/lib/api";
 
 export function LoginForm() {
   const [, navigate] = useLocation();
@@ -27,7 +28,7 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await apiFetch("/api/auth/login", {
         method: "POST",
         credentials: "include",
         headers: {

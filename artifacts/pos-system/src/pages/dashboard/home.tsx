@@ -35,7 +35,7 @@ export default function DashboardHome() {
   const { data, isLoading } = useQuery<{ success: boolean; data: AnalyticsOverview }>({
     queryKey: ["analytics-overview"],
     queryFn: async () => {
-      const res = await fetch("/api/analytics/overview", { credentials: "include" });
+      const res = await apiFetch("/api/analytics/overview", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch analytics");
       return res.json();
     },

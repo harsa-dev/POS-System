@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 
 export function RegisterForm() {
   const [name, setName] = useState("");
@@ -16,7 +17,7 @@ export function RegisterForm() {
 
     setIsLoading(true);
 
-    const res = await fetch("/api/auth/register", {
+    const res = await apiFetch("/api/auth/register", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

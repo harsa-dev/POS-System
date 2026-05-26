@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import type { ElementType } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -190,7 +191,7 @@ function SidebarContent({
     .filter((group) => group.items.length > 0);
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", {
+    await apiFetch("/api/auth/logout", {
       method: "POST",
       credentials: "include",
     });

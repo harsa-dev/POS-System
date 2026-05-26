@@ -7,6 +7,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { LoginForm } from "@/components/auth/login-form";
 import { RegisterForm } from "@/components/auth/register-form";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { apiFetch } from "@/lib/api";
 
 import DashboardHome from "@/pages/dashboard/home";
 import CheckoutPage from "@/pages/dashboard/checkout";
@@ -63,7 +64,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchUser() {
     try {
-      const res = await fetch("/api/auth/me", { credentials: "include" });
+      const res = await apiFetch("/api/auth/me", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setUser(data.data);
