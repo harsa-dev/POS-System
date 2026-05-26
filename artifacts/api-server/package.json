@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
+    "dev": "cross-env NODE_ENV=development pnpm run build && pnpm run start",
     "generate": "prisma generate",
     "build": "pnpm run generate && node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",

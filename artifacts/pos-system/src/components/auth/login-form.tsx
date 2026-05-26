@@ -125,3 +125,7 @@ export function LoginForm() {
     </form>
   );
 }
+
+<div className="bg-blue-500 text-white p-10 rounded-3xl">
+  TAILWIND WORKS
+</div>
