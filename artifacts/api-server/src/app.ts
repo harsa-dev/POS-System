@@ -39,9 +39,9 @@ if (process.env.NODE_ENV !== "production") {
   allowedOrigins.add("http://localhost:5173");
 }
 
-allowedOrigins.add(
-  "https://pos-system-pos-system-m9el-9f2n7zh17-harsabians-projects.vercel.app",
-);
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.add(process.env.FRONTEND_URL);
+}
 
 const app: Express = express();
 
