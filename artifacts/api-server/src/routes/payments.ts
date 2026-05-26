@@ -3,7 +3,6 @@ import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser, getCurrentUser } from "../lib/auth.js";
 import { POS_ROLES, ERR } from "../lib/constants.js";
-import { apiFetch } from "@/lib/api";
 
 const router = Router();
 
@@ -53,7 +52,7 @@ router.post("/payments/create-transaction", async (req, res) => {
       },
     };
 
-    const snapRes = await apiFetch(snapBaseUrl, {
+    const snapRes = await fetch(snapBaseUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
