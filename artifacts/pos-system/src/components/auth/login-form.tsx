@@ -41,7 +41,16 @@ export function LoginForm() {
         }),
       });
 
-      const data = await response.json();
+      let data = null;
+
+      try {
+        data = await response.json();
+      } catch {
+        data = {
+          success: false,
+          message: "Invalid server response",
+        };
+      }
 
       if (!response.ok || !data.success) {
         toast.error(data.message || "Login failed");
@@ -127,6 +136,4 @@ export function LoginForm() {
   );
 }
 
-<div className="bg-blue-500 text-white p-10 rounded-3xl">
-  TAILWIND WORKS
-</div>
+<div className="bg-blue-500 text-white p-10 rounded-3xl">TAILWIND WORKS</div>;
