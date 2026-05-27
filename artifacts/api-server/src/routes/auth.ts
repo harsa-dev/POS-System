@@ -66,8 +66,13 @@ router.get("/auth/me", async (req, res) => {
     }
     const { passwordHash, ...safeUser } = user;
     res.json({ success: true, data: safeUser });
-  } catch {
-    res.status(500).json({ success: false, message: "Internal server error." });
+  } catch (error) {
+    console.error("[AUTH_ME_ERROR]", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error.",
+    });
   }
 });
 
@@ -80,9 +85,10 @@ router.post("/auth/register", async (req, res) => {
         .json({ success: false, message: "Invalid input" });
     }
     if (password.length < 8) {
-      return void res
-        .status(400)
-        .json({ success: false, message: "Password must be at least 8 characters" });
+      return void res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters",
+      });
     }
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -94,7 +100,13 @@ router.post("/auth/register", async (req, res) => {
     const user = await prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
         data: { name, email, passwordHash, role: "OWNER" },
-        select: { id: true, name: true, email: true, role: true, createdAt: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+        },
       });
       const restaurant = await tx.restaurant.create({
         data: { name: `${name}'s Restaurant`, ownerId: newUser.id },
@@ -105,11 +117,18 @@ router.post("/auth/register", async (req, res) => {
       });
       return newUser;
     });
-    res
-      .status(201)
-      .json({ success: true, message: "User registered successfully", data: user });
-  } catch {
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error("[REGISTER_ERROR]", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 });
 
