@@ -1,629 +1,299 @@
-# Enterprise Restaurant POS System — Design Document
+# POS System V2 - Design Architecture
 
-# Project Overview
+## Vision
 
-Enterprise-grade restaurant POS platform built for:
+Modern restaurant POS system focused on:
 
-* operational speed
-* realtime workflows
-* financial integrity
-* inventory safety
-* responsive operational UX
-* future scalability
+* Scalability
+* Reliability
+* Real-world workflow
+* Enterprise-inspired architecture
+* Production-ready deployment
 
-The system supports:
-
-* cashier operations
-* kitchen operations
-* serving workflows
-* inventory management
-* analytics
-* employee management
-* realtime communication
-
-Future expansion:
-
-* customer ordering application
-* multi-restaurant support
-* distributed realtime infrastructure
-* PWA support
-* offline-first capabilities
+The goal is not just making a cashier app.
+The goal is simulating how real operational systems behave under multiple users and concurrent transactions.
 
 ---
 
-# Main Goals
-
-## Primary Goals
-
-* Reliable operational workflows
-* Fast order handling
-* Realtime synchronization
-* Safe financial transactions
-* Inventory integrity
-* Responsive multi-device UX
-* Maintainable architecture
-* Scalable backend structure
-
-## Secondary Goals
-
-* Enterprise portfolio quality
-* Clean architecture
-* Strong developer experience
-* Modular feature system
-* Future extensibility
-
----
-
-# Tech Stack
-
-## Frontend
-
-* React 19
-* Vite
-* TypeScript
-* Tailwind CSS
-* shadcn/ui
-* Framer Motion
-* TanStack Query
-* Wouter
-* Sonner
-* Lucide React
-
-## Backend
-
-* Express 5
-* Node.js
-* PostgreSQL
-* Prisma ORM
-* SSE realtime
-* JWT authentication
-* bcryptjs
-
-## Infrastructure
-
-* pnpm workspaces
-* esbuild
-* Prisma Studio
-* ESLint
-* Prettier
-
----
-
-# User Roles
-
-## OWNER
-
-* Full system access
-* Analytics
-* Employee management
-* Settings
-* Audit logs
-* Financial oversight
-
-## MANAGER
-
-* Operational management
-* Inventory management
-* Staff monitoring
-* Shift management
-
-## CASHIER
-
-* Checkout
-* Order creation
-* Payment handling
-* Table assignment
-
-## KITCHEN
-
-* KDS access
-* Order preparation
-* Status updates
-
-## SERVER
-
-* Serving board
-* Order delivery
-* Table cleaning workflow
-
----
-
-# Order Status Flow
+# Core Architecture
 
 ```txt
-PENDING_PAYMENT
-→ PAID
-→ PREPARING
-→ READY
-→ SERVED
-```
-
-Cancelled flow:
-
-```txt
-PENDING_PAYMENT
-→ CANCELLED
+Frontend (Vercel)
+        ↓
+API Server (Railway)
+        ↓
+PostgreSQL Database (Neon)
 ```
 
 ---
 
-# Feature-Based Architecture
+# Frontend Architecture
 
-## Frontend
+## Principles
 
-```txt
-features/
-├── analytics/
-├── attendance/
-├── auth/
-├── employees/
-├── inventory/
-├── orders/
-├── payments/
-├── pos/
-├── serving/
-├── shifts/
-└── tables/
-```
+* Modular feature-based structure
+* Reusable UI components
+* Centralized API layer
+* Production-oriented routing
+* State separation
 
-## Backend
+---
+
+## Frontend Structure
 
 ```txt
-routes/
-├── analytics.ts
-├── attendance.ts
-├── auth.ts
-├── employees.ts
-├── inventory.ts
-├── orders.ts
-├── payments.ts
-├── shifts.ts
-├── tables.ts
-└── events.ts
+src/
+├── components/
+├── features/
+├── hooks/
+├── layouts/
+├── lib/
+├── pages/
+├── providers/
+├── routes/
+└── types/
 ```
+
+---
+
+## UI Philosophy
+
+* Fast operational workflow
+* Minimal clicks
+* Information density
+* Responsive layouts
+* Dashboard-first navigation
+
+Restaurant staff do not care about artistic minimalism while handling 30 orders simultaneously. Functional clarity wins.
+
+---
+
+# Backend Architecture
+
+## Principles
+
+* Thin route handlers
+* Centralized auth logic
+* Database transaction safety
+* Structured logging
+* Stateless API server
+
+---
+
+## Backend Structure
+
+```txt
+src/
+├── lib/
+├── routes/
+├── middleware/
+├── services/
+├── utils/
+└── prisma/
+```
+
+---
+
+# Authentication Design
+
+## Strategy
+
+* Cookie-based session auth
+* HTTP-only cookies
+* JWT session token
+* Cross-origin production support
+
+---
+
+## Security Decisions
+
+```txt
+httpOnly = true
+secure = true (production)
+sameSite = none
+```
+
+Purpose:
+
+* prevent XSS cookie access
+* allow Railway ↔ Vercel communication
+* maintain persistent login sessions
 
 ---
 
 # Database Design
 
-## Core Tables
+## ORM
 
-* User
-* Restaurant
-* Order
-* OrderItem
-* MenuItem
-* Category
-* InventoryItem
-* StockMovement
-* Table
-* Payment
-* Shift
-* Attendance
-* AuditLog
+Prisma ORM
 
-## Important Constraints
+## Database
 
-### Unique Order Number
+PostgreSQL (Neon)
+
+---
+
+## Core Entities
 
 ```txt
-@@unique([restaurantId, orderNumber])
-```
-
-### Inventory Protection
-
-* Row-level locking
-* Transaction-safe stock deduction
-* Negative stock prevention
-
----
-
-# API Design
-
-## REST Principles
-
-* Resource-based endpoints
-* JSON responses
-* Consistent response shape
-* Role-based access
-* Secure cookie authentication
-
-## Response Standard
-
-### Success
-
-```json
-{
-  "success": true,
-  "data": {}
-}
-```
-
-### Error
-
-```json
-{
-  "success": false,
-  "message": "Error message"
-}
+User
+Restaurant
+Order
+OrderItem
+MenuItem
+InventoryItem
+Table
+Attendance
+Payment
 ```
 
 ---
 
-# Validation Rules
+# Concurrency & Data Integrity
 
-* Zod validation
-* Backend-authoritative validation
-* No client-trusted financial values
-* Inventory validation before deduction
-* Strong input sanitization
+## Inventory Locking
 
----
+Uses:
 
-# Authorization Rules
+```sql
+FOR UPDATE
+```
 
-* Role-based route protection
-* Protected frontend routes
-* Protected backend routes
-* JWT session validation
-* HttpOnly cookies
+inside transactions to prevent race conditions during concurrent order creation.
 
----
+Purpose:
 
-# Business Logic Rules
-
-## Payments
-
-* Payment totals come from DB
-* Client totals are ignored
-* Orders require valid payment flow
-
-## Inventory
-
-* Stock checked after row lock
-* Stock deducted inside transaction
-* Stock movement logged
-
-## Orders
-
-* Order creation atomic
-* Shift cash update atomic
-* Unique order number retry strategy
+* prevent overselling
+* maintain stock consistency
+* support multi-user operations
 
 ---
 
-# UI Design Principles
+# Real-Time Direction
 
-## General Principles
+Current implementation uses polling/SSE-style foundations.
 
-* Operational-first UX
-* Mobile-friendly workflows
-* Responsive layouts
-* Accessible controls
-* Consistent spacing
-* Consistent typography
-* Consistent status colors
-* Consistent interaction feedback
+Planned:
 
-## Mobile UX
-
-* Floating mobile cart
-* Bottom-sheet modal pattern
-* Safe-area support
-* Sticky action footers
-* Large touch targets
-
-## Feedback System
-
-* Sonner toast system
-* Skeleton loading states
-* Empty states
-* Error states
-* Confirm dialogs
+* WebSocket architecture
+* event-driven updates
+* live kitchen synchronization
 
 ---
 
-# Component Rules
-
-## Buttons
-
-* Primary buttons use h-11
-* Accessible focus states
-* Consistent radius
-
-## Cards
-
-* rounded-3xl standard
-* Consistent spacing
-* Minimal visual noise
-
-## Status Badges
-
-* Centralized StatusBadge component
-* Shared color system
-* Human-readable labels
-
----
-
-# Naming Convention
+# Deployment Architecture
 
 ## Frontend
 
-```txt
-feature-name.tsx
-use-feature.ts
-feature-utils.ts
-```
+* Hosted on Vercel
+* Static asset optimization
+* CDN distribution
 
 ## Backend
 
+* Hosted on Railway
+* Environment-based configuration
+* Production port binding
+
+## Database
+
+* Neon PostgreSQL
+* Cloud-hosted
+* SSL secured
+
+---
+
+# Production Problems Solved
+
+## Infrastructure
+
+* pnpm monorepo deployment
+* Prisma production generation
+* Railway container lifecycle
+* Node.js version compatibility
+
+## Networking
+
+* CORS
+* Cross-site cookies
+* Environment variable separation
+* API base URL management
+
+## Database
+
+* Prisma schema synchronization
+* Seed automation
+* UUID/text mismatch debugging
+* Connection pooling
+
+---
+
+# Centralized API Layer
+
+## Reason
+
+Originally, API calls were scattered across the frontend.
+
+This created:
+
+* maintenance difficulty
+* deployment issues
+* duplicated logic
+
+Solution:
+
 ```txt
-feature.route.ts
-feature.service.ts
-feature.constants.ts
+src/lib/api.ts
 ```
 
----
-
-# Error Handling
-
-## Backend
-
-* Structured logging
-* Generic client errors
-* Detailed server logs
-* Health endpoint
-
-## Frontend
-
-* Error states
-* Toast feedback
-* Graceful fallbacks
-* Retry-safe UX
+Centralized fetch wrapper.
 
 ---
 
-# State Management
+# Scalability Goals
 
-## Current
+## Near-Term
 
-* React state
-* TanStack Query
-* SSE realtime invalidation
+* Stable production operations
+* Multi-user testing
+* Improved dashboard performance
+* Better state management
 
-## Future
+## Mid-Term
 
-* Broader TanStack Query adoption
-* Query cache standardization
-* Route-level data boundaries
-
----
-
-# Realtime System Plan
-
-## Current
-
-* SSE endpoint
-* EventSource frontend
-* Realtime order updates
-* Kitchen synchronization
-* Serving synchronization
-
-## Future
-
-* Redis Pub/Sub
-* Horizontal scaling
-* Multi-instance broadcasting
-
----
-
-# Security Rules
-
-* HttpOnly cookies
-* JWT authentication
-* Role validation
-* Audit logging
-* Protected routes
-* Backend-authoritative financial validation
-* Inventory concurrency protection
-
----
-
-# Environment Variables
-
-```env
-DATABASE_URL=
-JWT_SECRET=
-NODE_ENV=
-```
-
-Optional:
-
-```env
-MIDTRANS_SERVER_KEY=
-MIDTRANS_CLIENT_KEY=
-```
-
----
-
-# Development Roadmap
-
-## Completed
-
-* SSE realtime
-* Inventory row locking
-* Mobile checkout UX
-* UI consistency system
-* Responsive improvements
-* Toast/dialog unification
-* Analytics fixes
-
-## In Progress
-
-* Frontend performance optimization
-* Route-level code splitting
-* Pagination
-* Rendering optimization
-
-## Planned
-
-* Customer ordering app
 * Multi-restaurant support
-* PWA
-* Offline support
-* Redis scaling
-* CI/CD pipeline
+* Background job system
+* WebSocket infrastructure
+* Advanced analytics
+
+## Long-Term
+
+* SaaS architecture
+* Subscription billing
+* Native mobile app
+* Distributed service architecture
 
 ---
 
-# Testing Plan
+# Engineering Philosophy
 
-## Manual Testing
-
-* Multi-role testing
-* Multi-tab realtime testing
-* Mobile testing
-* Tablet testing
-* Payment flow testing
-* Inventory concurrency testing
-
-## Future
-
-* Unit testing
-* Integration testing
-* E2E testing
-* Load testing
-
----
-
-# Git Workflow
-
-## Branching
+This project prioritizes:
 
 ```txt
-main
-feature/*
-fix/*
-refactor/*
+Operational realism over tutorial perfection.
 ```
 
-## Commit Style
+The objective is understanding:
+
+* deployment
+* debugging
+* production infrastructure
+* authentication
+* transactions
+* real operational workflow
+
+Because software engineering is mostly:
 
 ```txt
-feat:
-fix:
-refactor:
-chore:
-perf:
+Fixing systems that worked perfectly five minutes ago.
 ```
-
----
-
-# Deployment Checklist
-
-Before deployment:
-
-* Build passes
-* Typecheck passes
-* Prisma generate complete
-* Environment variables configured
-* Database schema synced
-* Seed data removed from production
-* Health endpoint verified
-
----
-
-# Coding Rules
-
-* No hardcoded role arrays
-* No duplicated status styles
-* Reusable UI patterns first
-* Minimal abstraction
-* Incremental changes only
-* Avoid overengineering
-* Keep business logic centralized
-
----
-
-# Definition of Done
-
-A feature is considered complete when:
-
-* Logic works
-* Mobile works
-* Tablet works
-* Desktop works
-* Loading states exist
-* Error states exist
-* Toast feedback exists
-* No TypeScript errors
-* Build passes
-* UX is operationally usable
-
----
-
-# Long-Term Vision
-
-The long-term goal is building a scalable restaurant operational ecosystem:
-
-* POS system
-* Customer ordering app
-* Shared realtime infrastructure
-* Shared database architecture
-* Multi-branch support
-* Enterprise operational analytics
-* Cross-platform deployment
-
-The project prioritizes:
-
-* operational reliability
-* maintainability
-* scalability
-* responsive usability
-* real-world workflow efficiency
-
----
-
-# Current Priorities
-
-## High Priority
-
-* Route-level code splitting
-* Orders pagination
-* Rendering optimization
-* Menu image lazy loading
-* Query architecture improvements
-
-## Medium Priority
-
-* Additional responsive polish
-* Tablet UX improvements
-* Performance tuning
-
-## Low Priority
-
-* Cosmetic redesigns
-* Advanced animations
-* Minor visual tweaks
-
----
-
-# Final Notes
-
-This project is intentionally built with enterprise-oriented architectural thinking.
-
-The focus is not only creating features, but:
-
-* maintaining long-term scalability
-* protecting operational integrity
-* building safe realtime workflows
-* improving staff usability
-* supporting future expansion
-
-The system should feel:
-
-* fast
-* reliable
-* operationally comfortable
-* maintainable
-* production-oriented
