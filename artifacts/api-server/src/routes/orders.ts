@@ -223,7 +223,7 @@ router.post("/orders", async (req, res) => {
                 >`
                   SELECT id, "currentStock", name
                   FROM "InventoryItem"
-                  WHERE id = ${invId}::uuid
+                  WHERE id = ${invId}
                   FOR UPDATE
                 `;
                 if (rows[0]) lockedStockMap.set(invId, rows[0]);
