@@ -1,4 +1,20 @@
-const API_URL = import.meta.env.VITE_API_URL;
+export const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+
+const ABSOLUTE_OR_EMBEDDED_URL_PATTERN = /^(https?:|data:|blob:)/i;
+
+export function resolveApiUrl(endpoint: string) {
+  if (ABSOLUTE_OR_EMBEDDED_URL_PATTERN.test(endpoint)) return endpoint;
+
+  const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  return `${API_URL}${normalizedEndpoint}`;
+}
+
+export function resolveMediaUrl(imageUrl?: string | null) {
+  if (!imageUrl) return "";
+  if (ABSOLUTE_OR_EMBEDDED_URL_PATTERN.test(imageUrl)) return imageUrl;
+  if (imageUrl.startsWith("/api/")) return resolveApiUrl(imageUrl);
+  return imageUrl;
+}
 
 export async function apiFetch(
   endpoint: string,
@@ -11,7 +27,7 @@ export async function apiFetch(
   }
 
   const response = await fetch(
-    `${API_URL}${endpoint}`,
+    resolveApiUrl(endpoint),
     {
       credentials: "include",
       ...options,

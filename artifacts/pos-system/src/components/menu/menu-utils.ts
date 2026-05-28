@@ -1,4 +1,22 @@
+import { resolveMediaUrl } from "@/lib/api";
+
+import type { MenuItem } from "@/components/menu/menu-types";
+
 export const ITEMS_PER_PAGE = 12;
+
+export function getMenuImageSrc(menuItem: MenuItem, view: string) {
+  const imageSrc = resolveMediaUrl(menuItem.imageUrl);
+
+  if (menuItem.imageUrl) {
+    console.debug(`[menu-image-debug] ${view} image src`, {
+      name: menuItem.name,
+      imageUrl: menuItem.imageUrl,
+      imageSrc,
+    });
+  }
+
+  return imageSrc;
+}
 
 export function getCategoryColor(category?: string | null) {
   if (!category) {

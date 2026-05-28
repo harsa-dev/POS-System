@@ -12,6 +12,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { resolveMediaUrl } from "@/lib/api";
 
 import type { Category } from "@/components/menu/menu-types";
 
@@ -102,6 +103,15 @@ export function MenuItemModal({
 
   setIsDraggingImage,
 }: MenuItemModalProps) {
+  const previewSrc = resolveMediaUrl(imagePreview);
+
+  if (imagePreview) {
+    console.debug("[menu-image-debug] modal preview src", {
+      imagePreview,
+      imageSrc: previewSrc,
+    });
+  }
+
   return (
     <Modal
       open={open}
@@ -244,10 +254,10 @@ export function MenuItemModal({
               }
             />
 
-            {imagePreview ? (
+            {previewSrc ? (
               <div className="relative w-full">
                 <img
-                  src={imagePreview}
+                  src={previewSrc}
                   alt="Preview"
                   className="h-36 w-full rounded-2xl bg-neutral-100 object-contain"
                 />

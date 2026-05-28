@@ -4,6 +4,7 @@ import { BookOpen, ImageIcon, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { formatCurrency } from "@/lib/utils/format";
+import { getMenuImageSrc } from "@/components/menu/menu-utils";
 
 import type { MenuItem } from "@/components/menu/menu-types";
 
@@ -43,94 +44,98 @@ export function MenuTableView({
       </thead>
 
       <tbody>
-        {menuItems.map((menuItem) => (
-          <tr key={menuItem.id} className="border-b border-neutral-100">
-            <td className="px-6 py-5">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-neutral-100">
-                  {menuItem.imageUrl ? (
-                    <img
-                      src={menuItem.imageUrl}
-                      alt={menuItem.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <ImageIcon className="h-5 w-5 text-neutral-400" />
-                  )}
-                </div>
+        {menuItems.map((menuItem) => {
+          const imageSrc = getMenuImageSrc(menuItem, "table");
 
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-neutral-900">
-                    {menuItem.name}
-                  </p>
+          return (
+            <tr key={menuItem.id} className="border-b border-neutral-100">
+              <td className="px-6 py-5">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-neutral-100">
+                    {imageSrc ? (
+                      <img
+                        src={imageSrc}
+                        alt={menuItem.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <ImageIcon className="h-5 w-5 text-neutral-400" />
+                    )}
+                  </div>
 
-                  {menuItem.description && (
-                    <p className="mt-1 line-clamp-1 text-sm text-neutral-500">
-                      {menuItem.description}
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-neutral-900">
+                      {menuItem.name}
                     </p>
-                  )}
+
+                    {menuItem.description && (
+                      <p className="mt-1 line-clamp-1 text-sm text-neutral-500">
+                        {menuItem.description}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </td>
+              </td>
 
-            <td className="px-6 py-5 font-medium">
-              {formatCurrency(menuItem.price)}
-            </td>
+              <td className="px-6 py-5 font-medium">
+                {formatCurrency(menuItem.price)}
+              </td>
 
-            <td className="px-6 py-5">
-              {hasRecipe(menuItem.id) ? (
-                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                  Added
-                </span>
-              ) : (
-                <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
-                  Missing
-                </span>
-              )}
-            </td>
+              <td className="px-6 py-5">
+                {hasRecipe(menuItem.id) ? (
+                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                    Added
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
+                    Missing
+                  </span>
+                )}
+              </td>
 
-            <td className="px-6 py-5">
-              {menuItem.category ? (
-                <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-700">
-                  {menuItem.category.name}
-                </span>
-              ) : (
-                <span className="text-sm text-neutral-400">Uncategorized</span>
-              )}
-            </td>
+              <td className="px-6 py-5">
+                {menuItem.category ? (
+                  <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-700">
+                    {menuItem.category.name}
+                  </span>
+                ) : (
+                  <span className="text-sm text-neutral-400">Uncategorized</span>
+                )}
+              </td>
 
-            <td className="px-6 py-5">
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant={hasRecipe(menuItem.id) ? "secondary" : "outline"}
-                  onClick={() => onRecipe(menuItem)}
-                >
-                  <BookOpen className="h-4 w-4" />
-                </Button>
+              <td className="px-6 py-5">
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant={hasRecipe(menuItem.id) ? "secondary" : "outline"}
+                    onClick={() => onRecipe(menuItem)}
+                  >
+                    <BookOpen className="h-4 w-4" />
+                  </Button>
 
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  onClick={() => onEdit(menuItem)}
-                >
-                  <Pencil className="h-4 w-4 text-neutral-600" />
-                </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => onEdit(menuItem)}
+                  >
+                    <Pencil className="h-4 w-4 text-neutral-600" />
+                  </Button>
 
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="destructive"
-                  onClick={() => onDelete(menuItem.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </td>
-          </tr>
-        ))}
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="destructive"
+                    onClick={() => onDelete(menuItem.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </td>
+            </tr>
+          );
+        })}
 
         {menuItems.length === 0 && (
           <tr>
