@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/App";
-import { apiFetch } from "@/lib/api";
+import { authApi, getApiErrorMessage } from "@/lib/api";
 
 export function LoginForm() {
   const [, navigate] = useLocation();
@@ -29,30 +29,12 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      const response = await apiFetch("/api/auth/login", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: emailValue.trim(),
-          password: passwordValue,
-        }),
+      const data = await authApi.login({
+        email: emailValue.trim(),
+        password: passwordValue,
       });
 
-      let data = null;
-
-      try {
-        data = await response.json();
-      } catch {
-        data = {
-          success: false,
-          message: "Invalid server response",
-        };
-      }
-
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         toast.error(data.message || "Login failed");
         return;
       }
@@ -61,7 +43,7 @@ export function LoginForm() {
       navigate("/dashboard");
     } catch (error) {
       console.error("[LOGIN_FORM_ERROR]", error);
-      toast.error("An error occurred during login");
+      toast.error(getApiErrorMessage(error, "An error occurred during login"));
     } finally {
       setIsLoading(false);
     }

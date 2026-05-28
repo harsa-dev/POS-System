@@ -4,7 +4,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { apiFetch } from "@/lib/api";
+import { menuApi } from "@/lib/api";
 
 import { toast } from "sonner";
 
@@ -30,12 +30,10 @@ export function useMenuManager() {
 
   async function fetchMenuItems() {
     try {
-      const res = await apiFetch("/api/menu-items", { credentials: "include" });
-
-      const data = await res.json();
+      const data = await menuApi.listMenuItems();
 
       if (data.success) {
-        setMenuItems(data.data);
+        setMenuItems(data.data ?? []);
       }
     } catch {
       toast.error(
@@ -46,12 +44,10 @@ export function useMenuManager() {
 
   async function fetchCategories() {
     try {
-      const res = await apiFetch("/api/categories", { credentials: "include" });
-
-      const data = await res.json();
+      const data = await menuApi.listCategories();
 
       if (data.success) {
-        setCategories(data.data);
+        setCategories(data.data ?? []);
       }
     } catch {
       toast.error(
@@ -62,14 +58,10 @@ export function useMenuManager() {
 
   async function fetchInventoryItems() {
     try {
-      const res = await apiFetch(
-        "/api/inventory-items",
-      );
-
-      const data = await res.json();
+      const data = await menuApi.listInventoryItems();
 
       if (data.success) {
-        setInventoryItems(data.data);
+        setInventoryItems(data.data ?? []);
       }
     } catch {
       toast.error(
@@ -80,12 +72,10 @@ export function useMenuManager() {
 
   async function fetchRecipes() {
     try {
-      const res = await apiFetch("/api/recipes", { credentials: "include" });
-
-      const data = await res.json();
+      const data = await menuApi.listRecipes();
 
       if (data.success) {
-        setAllRecipes(data.data);
+        setAllRecipes(data.data ?? []);
       }
     } catch {
       toast.error(

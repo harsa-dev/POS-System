@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { apiFetch } from "@/lib/api";
+import { authApi, getApiErrorMessage } from "@/lib/api";
 
 export function RegisterForm() {
   const [name, setName] = useState("");
@@ -17,29 +17,25 @@ export function RegisterForm() {
 
     setIsLoading(true);
 
-    const res = await apiFetch("/api/auth/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    try {
+      const data = await authApi.register({
         name,
         email,
         password,
-      }),
-    });
+      });
 
-    const data = await res.json();
+      if (!data.success) {
+        toast.error(data.message || "Registration failed");
+        return;
+      }
 
-    setIsLoading(false);
-
-    if (!data.success) {
-      toast.error(data.message || "Registration failed");
-      return;
+      toast.success("Account created! Please sign in.");
+      window.location.href = "/login";
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Registration failed"));
+    } finally {
+      setIsLoading(false);
     }
-
-    toast.success("Account created! Please sign in.");
-    window.location.href = "/login";
   }
 
   return (

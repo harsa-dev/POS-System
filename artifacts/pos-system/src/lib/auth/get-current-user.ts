@@ -1,8 +1,8 @@
+import { authApi } from "@/lib/api";
+
 export async function getCurrentUser() {
   try {
-    const res = await fetch("/api/auth/me", { credentials: "include" });
-    if (!res.ok) return null;
-    const data = await res.json();
+    const data = await authApi.me();
     return data.data ?? null;
   } catch {
     return null;

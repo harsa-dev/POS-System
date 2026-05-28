@@ -1,5 +1,5 @@
 import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
-import { ROUTES, API } from "@/constants/routes";
+import { ROUTES } from "@/constants/routes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,7 +9,7 @@ import { createContext, useContext, useEffect, useState, lazy, Suspense } from "
 import { LoginForm } from "@/components/auth/login-form";
 import { RegisterForm } from "@/components/auth/register-form";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { apiFetch } from "@/lib/api";
+import { authApi } from "@/lib/api";
 
 const DashboardHome        = lazy(() => import("@/pages/dashboard/home"));
 const CheckoutPage         = lazy(() => import("@/pages/dashboard/checkout"));
@@ -66,9 +66,8 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchUser() {
     try {
-      const res = await apiFetch(API.AUTH_ME, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await authApi.me();
+      if (data.success && data.data) {
         setUser(data.data);
       } else {
         setUser(null);
