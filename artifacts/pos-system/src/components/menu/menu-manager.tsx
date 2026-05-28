@@ -58,6 +58,16 @@ type UploadResponse = {
   };
 };
 
+type UploadResponseDebug = {
+  data: UploadResponse | null;
+  rawText: string;
+  parseError: string | null;
+};
+
+const UPLOAD_ENDPOINT = "/api/upload";
+const UPLOAD_FIELD_NAME = "image";
+const UPLOAD_FLOW_VERSION = "menu-upload-debug-2026-05-29-01";
+
 const SUPPORTED_IMAGE_EXTENSIONS = new Set([
   "jpg",
   "jpeg",
@@ -76,17 +86,52 @@ function isSupportedImageFile(file: File) {
   return extension ? SUPPORTED_IMAGE_EXTENSIONS.has(extension) : false;
 }
 
+function formatFileSize(size: number) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function truncateDebugText(value: string, maxLength = 220) {
+  return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function debugUpload(stage: string, details?: Record<string, unknown>) {
+  console.debug(`[${UPLOAD_FLOW_VERSION}] ${stage}`, details ?? {});
+}
+
+function toastDebug(message: string) {
+  toast.info(`[upload-debug] ${message}`);
+}
+
 async function readUploadResponse(res: Response) {
+  const rawText = await res.text();
+
   try {
-    return (await res.json()) as UploadResponse;
-  } catch {
-    return null;
+    return {
+      data: rawText ? (JSON.parse(rawText) as UploadResponse) : null,
+      rawText,
+      parseError: null,
+    } satisfies UploadResponseDebug;
+  } catch (error) {
+    return {
+      data: null,
+      rawText,
+      parseError: getErrorMessage(error),
+    } satisfies UploadResponseDebug;
   }
 }
 
-function getUploadErrorMessage(res: Response, data: UploadResponse | null) {
+function getUploadErrorMessage(res: Response, response: UploadResponseDebug) {
+  const { data, rawText, parseError } = response;
+
   if (res.status === 413) return "Image too large";
   if (res.status === 400 && data?.message) return data.message;
+  if (parseError) return `Invalid upload response: ${truncateDebugText(rawText || parseError)}`;
   return data?.message ?? "Failed to upload image";
 }
 
@@ -152,6 +197,14 @@ export function MenuManager() {
     setCurrentPage(1);
   }, [search]);
 
+  useEffect(() => {
+    debugUpload("flow mounted", {
+      endpoint: UPLOAD_ENDPOINT,
+      fieldName: UPLOAD_FIELD_NAME,
+    });
+    toastDebug(`flow ${UPLOAD_FLOW_VERSION} mounted using ${UPLOAD_ENDPOINT}`);
+  }, []);
+
   function revokeLocalImagePreview() {
     if (imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
@@ -193,8 +246,22 @@ export function MenuManager() {
   }
 
   function selectImage(file: File) {
+    debugUpload("image selected", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
+    toastDebug(
+      `image selected: ${file.name} (${file.type || "unknown type"}, ${formatFileSize(file.size)})`,
+    );
+
     if (!isSupportedImageFile(file)) {
       toast.info("File must be a JPG, PNG, WebP, GIF, or AVIF image");
+      debugUpload("image rejected before preview", {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      });
       return;
     }
 
@@ -203,6 +270,11 @@ export function MenuManager() {
     setImagePreview(localPreview);
     setImageUrl("");
     setSelectedImageFile(file);
+    debugUpload("preview generated", {
+      previewUrl: localPreview,
+      selectedImageFile: file.name,
+    });
+    toastDebug(`preview generated for ${file.name}`);
   }
 
   async function uploadImage(file: File) {
@@ -210,35 +282,73 @@ export function MenuManager() {
 
     try {
       const formData = new FormData();
-      formData.append("image", file);
+      formData.append(UPLOAD_FIELD_NAME, file);
+      debugUpload("upload started", {
+        endpoint: UPLOAD_ENDPOINT,
+        fieldName: UPLOAD_FIELD_NAME,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      });
+      toastDebug(`upload started: ${UPLOAD_ENDPOINT} field=${UPLOAD_FIELD_NAME}`);
 
-      const res = await apiFetch("/api/upload", {
+      const res = await apiFetch(UPLOAD_ENDPOINT, {
         credentials: "include",
         method: "POST",
         body: formData,
       });
 
-      const data = await readUploadResponse(res);
+      const uploadResponse = await readUploadResponse(res);
+      debugUpload("backend response body", {
+        status: res.status,
+        ok: res.ok,
+        rawText: uploadResponse.rawText,
+        parseError: uploadResponse.parseError,
+        data: uploadResponse.data,
+      });
+      toastDebug(
+        `backend response ${res.status}: ${truncateDebugText(uploadResponse.rawText || uploadResponse.parseError || "<empty>")}`,
+      );
 
-      if (!res.ok || !data?.success) {
-        toast.error(getUploadErrorMessage(res, data));
+      if (!res.ok || !uploadResponse.data?.success) {
+        const message = getUploadErrorMessage(res, uploadResponse);
+        debugUpload("upload failed", {
+          status: res.status,
+          message,
+          response: uploadResponse,
+        });
+        toast.error(message);
         return null;
       }
 
-      const uploadedUrl = data.data?.imageUrl ?? data.imageUrl;
+      const uploadedUrl =
+        uploadResponse.data.data?.imageUrl ?? uploadResponse.data.imageUrl;
 
       if (!uploadedUrl) {
-        toast.error("Upload succeeded but image URL was not returned");
+        const message = `Invalid upload response: ${truncateDebugText(uploadResponse.rawText || "imageUrl missing")}`;
+        debugUpload("upload failed", {
+          status: res.status,
+          message,
+          response: uploadResponse,
+        });
+        toast.error(message);
         return null;
       }
 
       setImageUrl(uploadedUrl);
       setImagePreview(uploadedUrl);
       setSelectedImageFile(null);
+      debugUpload("upload success", {
+        imageUrl: uploadedUrl,
+        response: uploadResponse.data,
+      });
+      toast.success(`Upload success: ${uploadedUrl}`);
 
       return uploadedUrl;
-    } catch {
-      toast.error("Failed to upload image");
+    } catch (error) {
+      const message = getErrorMessage(error);
+      debugUpload("upload network error", { message, error });
+      toast.error(`Upload network error: ${message}`);
       return null;
     } finally {
       setIsImageUploading(false);
@@ -250,15 +360,40 @@ export function MenuManager() {
 
     if (!file) return;
 
+    debugUpload("file input changed", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
+    toastDebug("image selected from file input");
     selectImage(file);
 
     e.target.value = "";
+  }
+
+  function handleImageDrop(file: File) {
+    debugUpload("image dropped", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
+    toastDebug("image selected from drag/drop");
+    selectImage(file);
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     setIsLoading(true);
+    debugUpload("menu save started", {
+      editingId,
+      hasSelectedImageFile: Boolean(selectedImageFile),
+      existingImageUrl: imageUrl,
+      endpoint: UPLOAD_ENDPOINT,
+    });
+    toastDebug(
+      `menu save started${selectedImageFile ? " with pending image upload" : " without pending image upload"}`,
+    );
 
     try {
       const uploadedImageUrl = selectedImageFile
@@ -271,6 +406,11 @@ export function MenuManager() {
 
       const url = editingId ? `/api/menu-items/${editingId}` : "/api/menu-items";
       const method = editingId ? "PATCH" : "POST";
+      debugUpload("menu item request started", {
+        url,
+        method,
+        imageUrl: uploadedImageUrl,
+      });
 
       const res = await apiFetch(url, {
         method,
@@ -287,6 +427,11 @@ export function MenuManager() {
       });
 
       const data = await res.json();
+      debugUpload("menu item response body", {
+        status: res.status,
+        ok: res.ok,
+        data,
+      });
 
       if (!data.success) {
         toast.error(data.message || "Failed to save menu item");
@@ -294,6 +439,11 @@ export function MenuManager() {
       }
 
       toast.success(editingId ? "Menu item updated" : "Menu item created");
+      toastDebug("menu save success");
+      debugUpload("menu save success", {
+        editingId,
+        imageUrl: uploadedImageUrl,
+      });
 
       closeModal();
       fetchMenuItems();
@@ -642,7 +792,7 @@ export function MenuManager() {
         onPriceChange={setPrice}
         onCategoryChange={setCategoryId}
         onImageUpload={handleImageUpload}
-        onUploadImage={selectImage}
+        onUploadImage={handleImageDrop}
         setIsDraggingImage={setIsDraggingImage}
       />
 

@@ -5,6 +5,7 @@ import multer from "multer";
 import path from "path";
 import { MANAGEMENT_ROLES } from "../lib/constants.js";
 import { requireRole } from "../lib/auth.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 const UPLOADS_DIR = path.resolve("data/uploads");
@@ -69,6 +70,15 @@ const requireUploadAccess: RequestHandler = async (req, res, next) => {
 };
 
 const uploadSingleImage: RequestHandler = (req, res, next) => {
+  logger.info(
+    {
+      url: req.originalUrl,
+      contentType: req.headers["content-type"],
+      contentLength: req.headers["content-length"],
+    },
+    "Upload request received",
+  );
+
   upload.fields([
     { name: "image", maxCount: 1 },
     { name: "file", maxCount: 1 },
@@ -84,11 +94,29 @@ const uploadSingleImage: RequestHandler = (req, res, next) => {
           ? "Image too large"
           : "Image upload failed";
       const status = error.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+      logger.warn(
+        {
+          url: req.originalUrl,
+          status,
+          code: error.code,
+          field: error.field,
+          message,
+        },
+        "Upload rejected by multer",
+      );
       res.status(status).json({ success: false, message });
       return;
     }
 
     const message = error instanceof Error ? error.message : "Image upload failed";
+    logger.warn(
+      {
+        url: req.originalUrl,
+        status: 400,
+        message,
+      },
+      "Upload rejected by validation",
+    );
     res.status(400).json({ success: false, message });
   });
 };
@@ -103,6 +131,14 @@ router.post("/", requireUploadAccess, uploadSingleImage, (req, res) => {
   const uploadedFile = files?.image?.[0] ?? files?.file?.[0];
 
   if (!uploadedFile) {
+    logger.warn(
+      {
+        url: req.originalUrl,
+        status: 400,
+        fields: files ? Object.keys(files) : [],
+      },
+      "Upload request did not include an image file",
+    );
     res.status(400).json({
       success: false,
       message: "No file uploaded",
@@ -111,6 +147,17 @@ router.post("/", requireUploadAccess, uploadSingleImage, (req, res) => {
   }
 
   const imageUrl = `/api/media/${uploadedFile.filename}`;
+  logger.info(
+    {
+      url: req.originalUrl,
+      field: files?.image?.[0] ? "image" : "file",
+      originalName: uploadedFile.originalname,
+      mimetype: uploadedFile.mimetype,
+      size: uploadedFile.size,
+      imageUrl,
+    },
+    "Upload saved",
+  );
 
   res.status(201).json({
     success: true,
