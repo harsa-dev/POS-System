@@ -11,19 +11,34 @@ const UPLOADS_DIR = path.resolve("data/uploads");
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Map<string, string>([
   ["image/jpeg", ".jpg"],
+  ["image/jpg", ".jpg"],
+  ["image/pjpeg", ".jpg"],
   ["image/png", ".png"],
+  ["image/x-png", ".png"],
   ["image/webp", ".webp"],
   ["image/gif", ".gif"],
+  ["image/avif", ".avif"],
 ]);
+const ALLOWED_IMAGE_EXTENSIONS = new Set(ALLOWED_IMAGE_TYPES.values());
 
 mkdirSync(UPLOADS_DIR, { recursive: true });
+
+function getAllowedImageExtension(file: Express.Multer.File) {
+  const mimeExtension = ALLOWED_IMAGE_TYPES.get(file.mimetype.toLowerCase());
+  if (mimeExtension) return mimeExtension;
+
+  const originalExtension = path.extname(file.originalname).toLowerCase();
+  if (ALLOWED_IMAGE_EXTENSIONS.has(originalExtension)) return originalExtension;
+
+  return null;
+}
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, UPLOADS_DIR);
   },
   filename: (_req, file, cb) => {
-    const extension = ALLOWED_IMAGE_TYPES.get(file.mimetype) ?? ".jpg";
+    const extension = getAllowedImageExtension(file) ?? ".jpg";
     cb(null, `${Date.now()}-${randomUUID()}${extension}`);
   },
 });
@@ -34,12 +49,12 @@ const upload = multer({
     fileSize: MAX_IMAGE_SIZE_BYTES,
   },
   fileFilter: (_req, file, cb) => {
-    if (ALLOWED_IMAGE_TYPES.has(file.mimetype)) {
+    if (getAllowedImageExtension(file)) {
       cb(null, true);
       return;
     }
 
-    cb(new Error("Only JPG, PNG, WebP, and GIF images are allowed"));
+    cb(new Error("Only JPG, PNG, WebP, GIF, and AVIF images are allowed"));
   },
 });
 
@@ -66,7 +81,7 @@ const uploadSingleImage: RequestHandler = (req, res, next) => {
     if (error instanceof multer.MulterError) {
       const message =
         error.code === "LIMIT_FILE_SIZE"
-          ? "Image size must be under 2MB"
+          ? "Image too large"
           : "Image upload failed";
       const status = error.code === "LIMIT_FILE_SIZE" ? 413 : 400;
       res.status(status).json({ success: false, message });

@@ -47,6 +47,49 @@ import { MenuToolbar } from "@/components/menu/menu-toolbar";
 import { DataPagination } from "@/components/shared/data-pagination";
 import { useMenuManager } from "@/hooks/use-menu-manager";
 
+type UploadResponse = {
+  success?: boolean;
+  message?: string;
+  imageUrl?: string;
+  url?: string;
+  data?: {
+    imageUrl?: string;
+    url?: string;
+  };
+};
+
+const SUPPORTED_IMAGE_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "gif",
+  "avif",
+]);
+
+function isSupportedImageFile(file: File) {
+  if (file.type.startsWith("image/") && file.type !== "image/svg+xml") {
+    return true;
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  return extension ? SUPPORTED_IMAGE_EXTENSIONS.has(extension) : false;
+}
+
+async function readUploadResponse(res: Response) {
+  try {
+    return (await res.json()) as UploadResponse;
+  } catch {
+    return null;
+  }
+}
+
+function getUploadErrorMessage(res: Response, data: UploadResponse | null) {
+  if (res.status === 413) return "Image too large";
+  if (res.status === 400 && data?.message) return data.message;
+  return data?.message ?? "Failed to upload image";
+}
+
 export function MenuManager() {
 
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
@@ -150,13 +193,8 @@ export function MenuManager() {
   }
 
   function selectImage(file: File) {
-    if (!file.type.startsWith("image/")) {
-      toast.info("File must be an image");
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Image size must be under 2MB");
+    if (!isSupportedImageFile(file)) {
+      toast.info("File must be a JPG, PNG, WebP, GIF, or AVIF image");
       return;
     }
 
@@ -180,10 +218,10 @@ export function MenuManager() {
         body: formData,
       });
 
-      const data = await res.json();
+      const data = await readUploadResponse(res);
 
-      if (!data.success) {
-        toast.error(data.message || "Failed to upload image");
+      if (!res.ok || !data?.success) {
+        toast.error(getUploadErrorMessage(res, data));
         return null;
       }
 
