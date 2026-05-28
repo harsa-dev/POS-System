@@ -203,6 +203,171 @@ Planned:
 
 ---
 
+# Centralized API Layer
+
+## Problem
+
+Originally, frontend API requests were scattered across the application using direct `fetch()` calls.
+
+This caused:
+
+* duplicated request logic
+* inconsistent error handling
+* repeated authentication configuration
+* deployment debugging difficulty
+* inconsistent API response parsing
+
+As the system grew, maintaining operational consistency became increasingly painful. Because apparently debugging one broken fetch call wasn't emotionally sufficient.
+
+---
+
+# API Layer Architecture
+
+Frontend requests are now gradually migrating toward a centralized domain-based API layer.
+
+Structure:
+
+```txt
+src/lib/api/
+├── api-client.ts
+├── auth-api.ts
+├── menu-api.ts
+├── order-api.ts
+├── inventory-api.ts
+└── index.ts
+```
+
+---
+
+# API Client Responsibilities
+
+`api-client.ts` acts as the single transport layer for frontend ↔ backend communication.
+
+Responsibilities:
+
+* base URL resolution
+* cross-origin credential handling
+* normalized JSON parsing
+* API error normalization
+* request/response logging
+* media URL resolution
+* network failure handling
+
+---
+
+# Domain API Modules
+
+Each domain exposes typed helper methods.
+
+Example:
+
+```ts
+authApi.login()
+menuApi.createMenuItem()
+orderApi.createOrder()
+inventoryApi.getItems()
+```
+
+Purpose:
+
+* reduce duplicated logic
+* improve maintainability
+* isolate business domains
+* simplify future scaling
+
+---
+
+# Error Normalization
+
+The API layer introduces normalized frontend API errors through:
+
+```ts
+ApiError
+```
+
+Handled cases include:
+
+* network failures
+* invalid JSON responses
+* backend validation errors
+* non-2xx HTTP responses
+* malformed API payloads
+
+This allows frontend UI components to remain simpler and more operationally consistent.
+
+---
+
+# Media URL Resolution
+
+Because frontend and backend are deployed on separate domains:
+
+```txt
+Frontend → Vercel
+Backend → Railway
+```
+
+relative media paths alone were insufficient.
+
+Example problematic response:
+
+```txt
+/api/media/example.png
+```
+
+The frontend now resolves relative backend media paths into fully-qualified backend URLs during rendering.
+
+Purpose:
+
+* support distributed deployment environments
+* maintain compatibility with existing database records
+* preserve local blob previews
+* avoid backend URL hardcoding
+
+---
+
+# Migration Strategy
+
+The API migration is intentionally incremental.
+
+Legacy compatibility remains supported through:
+
+```ts
+apiFetch()
+```
+
+This allows gradual migration without rewriting operational workflows all at once.
+
+Migration priority:
+
+1. Auth
+2. Read-only analytics
+3. Tables & settings
+4. Inventory & employees
+5. Orders & POS flows
+6. Upload-sensitive menu operations
+
+Reason:
+
+Operationally critical systems should migrate only after the API layer proves stable in lower-risk domains.
+
+---
+
+# Engineering Direction
+
+The architecture is gradually evolving toward:
+
+* domain-oriented frontend services
+* centralized operational logic
+* scalable multi-user workflows
+* production-grade maintainability
+
+The objective is not framework perfection.
+
+The objective is surviving real operational complexity without the entire system emotionally collapsing after one deployment.
+
+
+---
+
 # Production Problems Solved
 
 ## Infrastructure
