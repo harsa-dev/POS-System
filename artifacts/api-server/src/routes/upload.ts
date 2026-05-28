@@ -54,7 +54,10 @@ const requireUploadAccess: RequestHandler = async (req, res, next) => {
 };
 
 const uploadSingleImage: RequestHandler = (req, res, next) => {
-  upload.single("image")(req, res, (error: unknown) => {
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "file", maxCount: 1 },
+  ])(req, res, (error: unknown) => {
     if (!error) {
       next();
       return;
@@ -76,7 +79,15 @@ const uploadSingleImage: RequestHandler = (req, res, next) => {
 };
 
 router.post("/", requireUploadAccess, uploadSingleImage, (req, res) => {
-  if (!req.file) {
+  const files = req.files as
+    | {
+        image?: Express.Multer.File[];
+        file?: Express.Multer.File[];
+      }
+    | undefined;
+  const uploadedFile = files?.image?.[0] ?? files?.file?.[0];
+
+  if (!uploadedFile) {
     res.status(400).json({
       success: false,
       message: "No file uploaded",
@@ -84,12 +95,13 @@ router.post("/", requireUploadAccess, uploadSingleImage, (req, res) => {
     return;
   }
 
-  const imageUrl = `/api/media/${req.file.filename}`;
+  const imageUrl = `/api/media/${uploadedFile.filename}`;
 
   res.status(201).json({
     success: true,
     imageUrl,
-    data: { imageUrl },
+    url: imageUrl,
+    data: { imageUrl, url: imageUrl },
   });
 });
 

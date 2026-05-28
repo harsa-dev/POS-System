@@ -84,6 +84,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/media", express.static(UPLOADS_DIR));
 app.use("/api/upload", uploadRouter);
+app.use("/api/uploads/menu-image", uploadRouter);
 app.use("/api", router);
 
 export default app;
