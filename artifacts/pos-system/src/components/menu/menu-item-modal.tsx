@@ -64,7 +64,7 @@ type MenuItemModalProps = {
 
   onUploadImage: (
     file: File,
-  ) => Promise<void>;
+  ) => void;
 
   setIsDraggingImage: (
     value: boolean,

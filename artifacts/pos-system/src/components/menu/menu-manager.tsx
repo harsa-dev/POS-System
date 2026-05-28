@@ -79,6 +79,7 @@ export function MenuManager() {
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imagePreview, setImagePreview] = useState("");
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [categoryId, setCategoryId] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
@@ -108,13 +109,21 @@ export function MenuManager() {
     setCurrentPage(1);
   }, [search]);
 
+  function revokeLocalImagePreview() {
+    if (imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
+  }
+
   function resetForm() {
+    revokeLocalImagePreview();
     setEditingId(null);
     setName("");
     setDescription("");
     setPrice("");
     setImageUrl("");
     setImagePreview("");
+    setSelectedImageFile(null);
     setCategoryId("");
   }
 
@@ -135,11 +144,12 @@ export function MenuManager() {
     setPrice(String(menuItem.price));
     setImageUrl(menuItem.imageUrl ?? "");
     setImagePreview(menuItem.imageUrl ?? "");
+    setSelectedImageFile(null);
     setCategoryId(menuItem.categoryId ?? "");
     setIsMenuModalOpen(true);
   }
 
-  async function uploadImage(file: File) {
+  function selectImage(file: File) {
     if (!file.type.startsWith("image/")) {
       toast.info("File must be an image");
       return;
@@ -151,14 +161,20 @@ export function MenuManager() {
     }
 
     const localPreview = URL.createObjectURL(file);
+    revokeLocalImagePreview();
     setImagePreview(localPreview);
+    setImageUrl("");
+    setSelectedImageFile(file);
+  }
+
+  async function uploadImage(file: File) {
     setIsImageUploading(true);
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("image", file);
 
-      const res = await apiFetch("/api/uploads/menu-image", {
+      const res = await apiFetch("/api/upload", {
         credentials: "include",
         method: "POST",
         body: formData,
@@ -168,25 +184,24 @@ export function MenuManager() {
 
       if (!data.success) {
         toast.error(data.message || "Failed to upload image");
-        setImagePreview("");
-        return;
+        return null;
       }
 
-      const uploadedUrl = data.data?.url ?? data.url;
+      const uploadedUrl = data.data?.imageUrl ?? data.imageUrl;
 
       if (!uploadedUrl) {
         toast.error("Upload succeeded but image URL was not returned");
-        setImagePreview("");
-        return;
+        return null;
       }
 
       setImageUrl(uploadedUrl);
       setImagePreview(uploadedUrl);
+      setSelectedImageFile(null);
 
-      toast.success("Image uploaded");
+      return uploadedUrl;
     } catch {
-      toast.error("Upload endpoint is not ready yet");
-      setImagePreview("");
+      toast.error("Failed to upload image");
+      return null;
     } finally {
       setIsImageUploading(false);
     }
@@ -197,7 +212,7 @@ export function MenuManager() {
 
     if (!file) return;
 
-    await uploadImage(file);
+    selectImage(file);
 
     e.target.value = "";
   }
@@ -207,36 +222,46 @@ export function MenuManager() {
 
     setIsLoading(true);
 
-    const url = editingId ? `/api/menu-items/${editingId}` : "/api/menu-items";
-    const method = editingId ? "PATCH" : "POST";
+    try {
+      const uploadedImageUrl = selectedImageFile
+        ? await uploadImage(selectedImageFile)
+        : imageUrl;
 
-    const res = await apiFetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        description,
-        price: Number(price),
-        imageUrl,
-        categoryId: categoryId || undefined,
-      }),
-    });
+      if (selectedImageFile && !uploadedImageUrl) {
+        return;
+      }
 
-    const data = await res.json();
+      const url = editingId ? `/api/menu-items/${editingId}` : "/api/menu-items";
+      const method = editingId ? "PATCH" : "POST";
 
-    setIsLoading(false);
+      const res = await apiFetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          description,
+          price: Number(price),
+          imageUrl: uploadedImageUrl,
+          categoryId: categoryId || undefined,
+        }),
+      });
 
-    if (!data.success) {
-      toast.error(data.message || "Failed to save menu item");
-      return;
+      const data = await res.json();
+
+      if (!data.success) {
+        toast.error(data.message || "Failed to save menu item");
+        return;
+      }
+
+      toast.success(editingId ? "Menu item updated" : "Menu item created");
+
+      closeModal();
+      fetchMenuItems();
+    } finally {
+      setIsLoading(false);
     }
-
-    toast.success(editingId ? "Menu item updated" : "Menu item created");
-
-    closeModal();
-    fetchMenuItems();
   }
 
   function handleRemoveMenuItem(id: string) {
@@ -579,7 +604,7 @@ export function MenuManager() {
         onPriceChange={setPrice}
         onCategoryChange={setCategoryId}
         onImageUpload={handleImageUpload}
-        onUploadImage={uploadImage}
+        onUploadImage={selectImage}
         setIsDraggingImage={setIsDraggingImage}
       />
 
