@@ -2,20 +2,38 @@
 
 ## Vision
 
-Modern restaurant POS system focused on:
+POS System V2 is evolving from a restaurant cashier system into a modular business operations platform.
 
-* Scalability
-* Reliability
-* Real-world workflow
-* Enterprise-inspired architecture
-* Production-ready deployment
+The architecture is designed around:
 
-The goal is not just making a cashier app.
-The goal is simulating how real operational systems behave under multiple users and concurrent transactions.
+* scalability
+* operational realism
+* workflow specialization
+* modular business modes
+* production-oriented infrastructure
+* multi-user operational consistency
+
+The objective is not simply processing transactions.
+
+The objective is simulating how real operational systems behave across different business models under production conditions.
 
 ---
 
-# Core Architecture
+# Architectural Direction
+
+The platform follows:
+
+```txt
+Shared Operational Core
++
+Business-Specific Workflow Layers
+```
+
+This allows multiple business types to reuse the same foundational systems while exposing specialized workflows depending on operational needs.
+
+---
+
+# High-Level Architecture
 
 ```txt
 Frontend (Vercel)
@@ -27,19 +45,138 @@ PostgreSQL Database (Neon)
 
 ---
 
+# Shared Core Architecture
+
+Core modules are shared across all business modes.
+
+```txt
+Core Modules
+├── auth
+├── inventory
+├── orders
+├── analytics
+├── finance
+├── permissions
+├── reporting
+├── worksheets
+└── notifications
+```
+
+These modules provide the operational backbone of the platform.
+
+---
+
+# Business Mode Architecture
+
+Business-specific behavior is layered on top of the shared core.
+
+```txt
+Business Modes
+├── restaurant
+├── retail
+├── raw-material
+└── service
+```
+
+Each mode exposes:
+
+* specialized dashboard layouts
+* operational terminology
+* workflow-specific UI
+* business-specific calculations
+* operational restrictions
+* reporting variations
+
+---
+
+# Restaurant Mode
+
+Focused on:
+
+* kitchen workflow
+* serving workflow
+* dine-in operations
+* table management
+* recipe-based inventory
+* operational queue handling
+
+Operational priorities:
+
+* speed
+* order visibility
+* synchronization
+* transaction flow consistency
+
+---
+
+# Retail Mode
+
+Focused on:
+
+* barcode-oriented workflow
+* fast cashier operations
+* high-volume transactions
+* bulk inventory
+* supplier-oriented stock management
+
+Operational priorities:
+
+* checkout speed
+* inventory turnover
+* transaction throughput
+
+---
+
+# Raw Material / Livestock Mode
+
+Focused on:
+
+* weight-based inventory
+* raw material processing
+* stock transformation workflow
+* operational batch processing
+* dynamic pricing logic
+
+Operational priorities:
+
+* inventory precision
+* stock conversion tracking
+* operational cost allocation
+
+---
+
+# Service Mode (Planned)
+
+Focused on:
+
+* service pricing
+* operational costing
+* invoice workflow
+* service reporting
+* operational expense allocation
+
+Operational priorities:
+
+* billing
+* scheduling
+* profitability tracking
+
+---
+
 # Frontend Architecture
 
 ## Principles
 
-* Modular feature-based structure
-* Reusable UI components
-* Centralized API layer
-* Production-oriented routing
-* State separation
+* feature-oriented structure
+* reusable operational components
+* centralized API communication
+* scalable routing structure
+* domain separation
+* operational dashboard-first design
 
 ---
 
-## Frontend Structure
+# Frontend Structure
 
 ```txt
 src/
@@ -56,15 +193,206 @@ src/
 
 ---
 
-## UI Philosophy
+# UI Philosophy
 
-* Fast operational workflow
-* Minimal clicks
-* Information density
-* Responsive layouts
-* Dashboard-first navigation
+The UI prioritizes:
 
-Restaurant staff do not care about artistic minimalism while handling 30 orders simultaneously. Functional clarity wins.
+* operational clarity
+* speed
+* information density
+* low-friction workflows
+* responsive operational layouts
+
+The interface is intentionally designed around operational efficiency rather than decorative minimalism.
+
+Because staff handling active transactions generally do not emotionally care whether a button has glassmorphism.
+
+---
+
+# Worksheet Architecture
+
+Worksheets act as operational partitions.
+
+Purpose:
+
+* branch separation
+* warehouse segmentation
+* business-unit isolation
+* reporting separation
+* operational grouping
+
+---
+
+## Worksheet Flow
+
+```txt
+Workspace
+    ↓
+Worksheet
+    ↓
+Operational Data
+```
+
+Examples:
+
+* restaurant branches
+* warehouse divisions
+* business experiments
+* temporary operational campaigns
+
+---
+
+# POS Layout Engine
+
+The cashier interface supports configurable operational layouts.
+
+Capabilities:
+
+* product grouping
+* custom sections
+* operational ordering
+* category segmentation
+* workflow optimization
+
+Purpose:
+
+* reduce cashier friction
+* improve operational speed
+* support different business workflows
+
+---
+
+# Product System Architecture
+
+Products support multiple operational types.
+
+```txt
+Product Types
+├── raw-material
+├── semi-finished
+├── finished-product
+├── service
+├── bundle
+└── formula-based
+```
+
+---
+
+# Inventory Architecture
+
+The inventory system supports:
+
+* quantity tracking
+* weighted inventory
+* stock transformation
+* recipe deduction
+* formula products
+* bundle products
+* warehouse separation
+
+---
+
+# Inventory Integrity
+
+Concurrent inventory operations use transaction-safe workflows.
+
+Uses:
+
+```sql
+FOR UPDATE
+```
+
+inside database transactions.
+
+Purpose:
+
+* prevent overselling
+* maintain stock consistency
+* support multi-user concurrency
+
+---
+
+# Financial System Architecture
+
+The financial subsystem supports:
+
+* operational cashflow
+* financial summaries
+* profit & loss reports
+* invoice workflows
+* operational expense tracking
+* HPP calculations
+
+---
+
+# HPP Calculator Engine
+
+The HPP engine supports multiple operational calculation modes.
+
+```txt
+Calculation Modes
+├── retail/F&B
+├── marketplace
+├── COD/advertising
+├── manufacturing
+├── production transformation
+├── service business
+└── market-price analysis
+```
+
+---
+
+# Analytics System
+
+The analytics subsystem focuses on operational decision-making.
+
+Capabilities:
+
+* sales tracking
+* profitability analysis
+* busy-hour analysis
+* marketing insights
+* inventory analysis
+* operational trends
+
+---
+
+# Team & Permission System
+
+Supports:
+
+* role-based access
+* operational restrictions
+* permission presets
+* sensitive financial masking
+* feature-level restrictions
+
+---
+
+# Authentication Architecture
+
+## Strategy
+
+* cookie-based authentication
+* JWT sessions
+* HTTP-only cookies
+* cross-origin production compatibility
+
+---
+
+# Security Decisions
+
+```txt
+httpOnly = true
+secure = true (production)
+sameSite = none
+```
+
+Purpose:
+
+* prevent XSS cookie access
+* allow Railway ↔ Vercel communication
+* maintain persistent sessions
 
 ---
 
@@ -72,15 +400,15 @@ Restaurant staff do not care about artistic minimalism while handling 30 orders 
 
 ## Principles
 
-* Thin route handlers
-* Centralized auth logic
-* Database transaction safety
-* Structured logging
-* Stateless API server
+* thin route handlers
+* centralized auth logic
+* service-oriented operational logic
+* transaction safety
+* scalable domain separation
 
 ---
 
-## Backend Structure
+# Backend Structure
 
 ```txt
 src/
@@ -94,138 +422,9 @@ src/
 
 ---
 
-# Authentication Design
-
-## Strategy
-
-* Cookie-based session auth
-* HTTP-only cookies
-* JWT session token
-* Cross-origin production support
-
----
-
-## Security Decisions
-
-```txt
-httpOnly = true
-secure = true (production)
-sameSite = none
-```
-
-Purpose:
-
-* prevent XSS cookie access
-* allow Railway ↔ Vercel communication
-* maintain persistent login sessions
-
----
-
-# Database Design
-
-## ORM
-
-Prisma ORM
-
-## Database
-
-PostgreSQL (Neon)
-
----
-
-## Core Entities
-
-```txt
-User
-Restaurant
-Order
-OrderItem
-MenuItem
-InventoryItem
-Table
-Attendance
-Payment
-```
-
----
-
-# Concurrency & Data Integrity
-
-## Inventory Locking
-
-Uses:
-
-```sql
-FOR UPDATE
-```
-
-inside transactions to prevent race conditions during concurrent order creation.
-
-Purpose:
-
-* prevent overselling
-* maintain stock consistency
-* support multi-user operations
-
----
-
-# Real-Time Direction
-
-Current implementation uses polling/SSE-style foundations.
-
-Planned:
-
-* WebSocket architecture
-* event-driven updates
-* live kitchen synchronization
-
----
-
-# Deployment Architecture
-
-## Frontend
-
-* Hosted on Vercel
-* Static asset optimization
-* CDN distribution
-
-## Backend
-
-* Hosted on Railway
-* Environment-based configuration
-* Production port binding
-
-## Database
-
-* Neon PostgreSQL
-* Cloud-hosted
-* SSL secured
-
----
-
 # Centralized API Layer
 
-## Problem
-
-Originally, frontend API requests were scattered across the application using direct `fetch()` calls.
-
-This caused:
-
-* duplicated request logic
-* inconsistent error handling
-* repeated authentication configuration
-* deployment debugging difficulty
-* inconsistent API response parsing
-
-As the system grew, maintaining operational consistency became increasingly painful. Because apparently debugging one broken fetch call wasn't emotionally sufficient.
-
----
-
-# API Layer Architecture
-
-Frontend requests are now gradually migrating toward a centralized domain-based API layer.
-
-Structure:
+The frontend is gradually migrating toward a centralized domain-based API architecture.
 
 ```txt
 src/lib/api/
@@ -239,179 +438,74 @@ src/lib/api/
 
 ---
 
-# API Client Responsibilities
+# API Layer Responsibilities
 
-`api-client.ts` acts as the single transport layer for frontend ↔ backend communication.
-
-Responsibilities:
+The centralized API layer handles:
 
 * base URL resolution
-* cross-origin credential handling
-* normalized JSON parsing
-* API error normalization
-* request/response logging
+* request normalization
+* error normalization
+* authentication consistency
 * media URL resolution
-* network failure handling
+* deployment-safe communication
 
 ---
 
-# Domain API Modules
+# API Migration Strategy
 
-Each domain exposes typed helper methods.
+Migration is intentionally incremental.
 
-Example:
-
-```ts
-authApi.login()
-menuApi.createMenuItem()
-orderApi.createOrder()
-inventoryApi.getItems()
-```
-
-Purpose:
-
-* reduce duplicated logic
-* improve maintainability
-* isolate business domains
-* simplify future scaling
-
----
-
-# Error Normalization
-
-The API layer introduces normalized frontend API errors through:
-
-```ts
-ApiError
-```
-
-Handled cases include:
-
-* network failures
-* invalid JSON responses
-* backend validation errors
-* non-2xx HTTP responses
-* malformed API payloads
-
-This allows frontend UI components to remain simpler and more operationally consistent.
-
----
-
-# Media URL Resolution
-
-Because frontend and backend are deployed on separate domains:
-
-```txt
-Frontend → Vercel
-Backend → Railway
-```
-
-relative media paths alone were insufficient.
-
-Example problematic response:
-
-```txt
-/api/media/example.png
-```
-
-The frontend now resolves relative backend media paths into fully-qualified backend URLs during rendering.
-
-Purpose:
-
-* support distributed deployment environments
-* maintain compatibility with existing database records
-* preserve local blob previews
-* avoid backend URL hardcoding
-
----
-
-# Migration Strategy
-
-The API migration is intentionally incremental.
-
-Legacy compatibility remains supported through:
+Legacy compatibility remains temporarily supported through:
 
 ```ts
 apiFetch()
 ```
 
-This allows gradual migration without rewriting operational workflows all at once.
+Purpose:
 
-Migration priority:
-
-1. Auth
-2. Read-only analytics
-3. Tables & settings
-4. Inventory & employees
-5. Orders & POS flows
-6. Upload-sensitive menu operations
-
-Reason:
-
-Operationally critical systems should migrate only after the API layer proves stable in lower-risk domains.
+* avoid operational instability
+* reduce deployment risk
+* maintain workflow continuity
 
 ---
 
-# Engineering Direction
+# Deployment Architecture
 
-The architecture is gradually evolving toward:
+## Frontend
 
-* domain-oriented frontend services
-* centralized operational logic
-* scalable multi-user workflows
-* production-grade maintainability
-
-The objective is not framework perfection.
-
-The objective is surviving real operational complexity without the entire system emotionally collapsing after one deployment.
-
+* Hosted on Vercel
+* CDN delivery
+* static asset optimization
 
 ---
 
-# Production Problems Solved
+## Backend
 
-## Infrastructure
+* Hosted on Railway
+* stateless API server
+* environment-based configuration
 
-* pnpm monorepo deployment
-* Prisma production generation
-* Railway container lifecycle
-* Node.js version compatibility
-
-## Networking
-
-* CORS
-* Cross-site cookies
-* Environment variable separation
-* API base URL management
+---
 
 ## Database
 
-* Prisma schema synchronization
-* Seed automation
-* UUID/text mismatch debugging
-* Connection pooling
+* Neon PostgreSQL
+* SSL-secured
+* cloud-hosted
 
 ---
 
-# Centralized API Layer
+# Real-Time Direction
 
-## Reason
+Current operational updates use polling/SSE-style foundations.
 
-Originally, API calls were scattered across the frontend.
+Planned future direction:
 
-This created:
-
-* maintenance difficulty
-* deployment issues
-* duplicated logic
-
-Solution:
-
-```txt
-src/lib/api.ts
-```
-
-Centralized fetch wrapper.
+* WebSocket infrastructure
+* event-driven updates
+* live kitchen synchronization
+* live cashier synchronization
+* operational notifications
 
 ---
 
@@ -419,24 +513,28 @@ Centralized fetch wrapper.
 
 ## Near-Term
 
-* Stable production operations
-* Multi-user testing
-* Improved dashboard performance
-* Better state management
+* operational stability
+* API migration completion
+* improved dashboard performance
+* multi-user testing
+
+---
 
 ## Mid-Term
 
-* Multi-restaurant support
-* Background job system
+* multi-branch operations
 * WebSocket infrastructure
-* Advanced analytics
+* advanced analytics
+* background job processing
+
+---
 
 ## Long-Term
 
 * SaaS architecture
-* Subscription billing
-* Native mobile app
-* Distributed service architecture
+* multi-tenant infrastructure
+* mobile applications
+* distributed operational services
 
 ---
 
@@ -448,17 +546,16 @@ This project prioritizes:
 Operational realism over tutorial perfection.
 ```
 
-The objective is understanding:
+The architecture intentionally focuses on:
 
 * deployment
+* operational complexity
+* concurrency
 * debugging
-* production infrastructure
-* authentication
-* transactions
-* real operational workflow
+* scalability
+* infrastructure behavior
+* real business workflows
 
-Because software engineering is mostly:
+The objective is learning how systems behave after leaving localhost.
 
-```txt
-Fixing systems that worked perfectly five minutes ago.
-```
+Because production environments enjoy inventing new emotional damage every deployment cycle.
