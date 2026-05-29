@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ROLE_COLORS, EMPLOYEE_ROLES } from "@/constants/roles";
-import { apiFetch } from "@/lib/api";
+import { employeesApi } from "@/lib/api";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -78,10 +78,9 @@ export function EmployeesManager() {
     setIsFetching(true);
     setFetchError(null);
     try {
-      const res = await apiFetch("/api/employees", { credentials: "include" });
-      const data = await res.json();
+      const data = await employeesApi.list();
       if (data.success) {
-        setEmployees(data.data);
+        setEmployees(data.data as Employee[]);
       } else {
         setFetchError(data.message || "Failed to load employees");
       }
@@ -118,14 +117,7 @@ export function EmployeesManager() {
     e.preventDefault();
     setIsLoading(true);
 
-    const res = await apiFetch("/api/employees", {
-      credentials: "include",
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, role }),
-    });
-
-    const data = await res.json();
+    const data = await employeesApi.create({ name, email, password, role });
     setIsLoading(false);
 
     if (!data.success) {
@@ -155,13 +147,7 @@ export function EmployeesManager() {
     id: string,
     body: Partial<{ name: string; role: EmployeeRole; isActive: boolean }>,
   ) {
-    const res = await apiFetch(`/api/employees/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    const data = await res.json();
+    const data = await employeesApi.update(id, body);
     if (!data.success) {
       toast.error(data.message || "Failed to update employee");
       return false;
@@ -187,8 +173,7 @@ export function EmployeesManager() {
       description: "This employee will lose system access immediately.",
       variant: "destructive",
       onConfirm: async () => {
-        const res = await apiFetch(`/api/employees/${id}`, { method: "DELETE" });
-        const data = await res.json();
+        const data = await employeesApi.deactivate(id);
         if (!data.success) {
           toast.error(data.message || "Failed to deactivate employee");
           return;
@@ -217,16 +202,10 @@ export function EmployeesManager() {
       toast.error("Password must be at least 6 characters");
       return;
     }
-    const res = await apiFetch(
-      `/api/employees/${resetPasswordTarget.id}/reset-password`,
-      {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: resetPasswordValue }),
-      },
+    const data = await employeesApi.resetPassword(
+      resetPasswordTarget.id,
+      resetPasswordValue,
     );
-    const data = await res.json();
     if (!data.success) {
       toast.error(data.message || "Failed to reset password");
       return;

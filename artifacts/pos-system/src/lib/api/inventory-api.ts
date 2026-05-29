@@ -1,13 +1,14 @@
 import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
 
-type ApiRecord = Record<string, unknown>;
+type ApiRecord = any;
+type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 
 export type InventoryItemPayload = ApiRecord;
 export type StockMovementPayload = ApiRecord;
 
 export const inventoryApi = {
   listInventoryItems() {
-    return apiClient.get<ApiEnvelope<ApiRecord[]>>("/api/inventory-items");
+    return apiClient.get<ApiDataEnvelope<ApiRecord[]>>("/api/inventory-items");
   },
 
   createInventoryItem(payload: InventoryItemPayload) {
@@ -27,7 +28,7 @@ export const inventoryApi = {
   },
 
   listStockMovements() {
-    return apiClient.get<ApiEnvelope<ApiRecord[]>>("/api/inventory");
+    return apiClient.get<ApiDataEnvelope<ApiRecord[]>>("/api/inventory");
   },
 
   createStockMovement(payload: StockMovementPayload) {

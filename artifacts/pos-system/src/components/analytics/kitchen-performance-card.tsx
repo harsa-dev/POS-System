@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { analyticsApi } from "@/lib/api";
 
 import { ChefHat, Timer, Flame } from "lucide-react";
 
@@ -16,15 +16,7 @@ export function KitchenPerformanceCard() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["kitchen-performance"],
 
-    queryFn: async () => {
-      const res = await apiFetch("/api/analytics/kitchen-performance", { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch kitchen analytics");
-      }
-
-      return res.json();
-    },
+    queryFn: () => analyticsApi.kitchenPerformance(),
 
     staleTime: 1000 * 60,
 

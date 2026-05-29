@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Activity,
 } from "lucide-react";
+import { analyticsApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils/format";
 
 type AnalyticsOverview = {
@@ -34,11 +35,7 @@ function StatSkeleton() {
 export default function DashboardHome() {
   const { data, isLoading } = useQuery<{ success: boolean; data: AnalyticsOverview }>({
     queryKey: ["analytics-overview"],
-    queryFn: async () => {
-      const res = await apiFetch("/api/analytics/overview", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch analytics");
-      return res.json();
-    },
+    queryFn: () => analyticsApi.overview() as Promise<{ success: boolean; data: AnalyticsOverview }>,
     staleTime: 1000 * 30,
   });
 

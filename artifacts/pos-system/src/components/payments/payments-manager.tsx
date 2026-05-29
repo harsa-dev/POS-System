@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { paymentsApi } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -102,10 +102,9 @@ export function PaymentsManager() {
     setIsFetching(true);
     setFetchError(null);
     try {
-      const res = await apiFetch("/api/payments", { credentials: "include" });
-      const data = await res.json();
+      const data = await paymentsApi.list<Payment[]>();
       if (data.success) {
-        setPayments(data.data);
+        setPayments(data.data ?? []);
       } else {
         setFetchError(data.message || "Failed to load payments");
       }

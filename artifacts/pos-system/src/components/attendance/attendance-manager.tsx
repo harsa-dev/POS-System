@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ClipboardList } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { attendanceApi } from "@/lib/api";
 
 type Attendance = {
   id: string;
@@ -64,22 +64,16 @@ export function AttendanceManager() {
   } | null>(null);
 
   async function fetchAttendances() {
-    const res = await apiFetch("/api/attendance", { credentials: "include" });
-    const data = await res.json();
+    const data = await attendanceApi.list();
     if (data.success) {
-      setAttendances(data.data);
+      setAttendances(data.data as Attendance[]);
     }
   }
 
   async function clockIn() {
     setIsLoading(true);
 
-    const res = await apiFetch("/api/attendance/clock-in", {
-      credentials: "include",
-      method: "POST",
-    });
-
-    const data = await res.json();
+    const data = await attendanceApi.clockIn();
     setIsLoading(false);
 
     if (!data.success) {
@@ -93,12 +87,7 @@ export function AttendanceManager() {
   async function clockOut() {
     setIsLoading(true);
 
-    const res = await apiFetch("/api/attendance/clock-out", {
-      credentials: "include",
-      method: "POST",
-    });
-
-    const data = await res.json();
+    const data = await attendanceApi.clockOut();
     setIsLoading(false);
 
     if (!data.success) {
@@ -110,12 +99,7 @@ export function AttendanceManager() {
   }
 
   async function deleteAttendance(id: string) {
-    const res = await apiFetch(`/api/attendance/${id}`, {
-      credentials: "include",
-      method: "DELETE",
-    });
-
-    const data = await res.json();
+    const data = await attendanceApi.delete(id);
 
     if (!data.success) {
       toast.error(data.message || "Failed to delete attendance record");

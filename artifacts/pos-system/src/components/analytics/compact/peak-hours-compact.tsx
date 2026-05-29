@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { analyticsApi } from "@/lib/api";
 
 import { Clock3 } from "lucide-react";
 
@@ -15,15 +15,7 @@ export function PeakHoursCompact() {
   const { data, isLoading } = useQuery({
     queryKey: ["peak-hours"],
 
-    queryFn: async () => {
-      const res = await apiFetch("/api/analytics/peak-hours", { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch peak hours analytics");
-      }
-
-      return res.json();
-    },
+    queryFn: () => analyticsApi.peakHours(),
 
     staleTime: 1000 * 60,
 

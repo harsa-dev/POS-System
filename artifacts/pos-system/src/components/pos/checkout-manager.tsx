@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { menuApi, orderApi, paymentsApi, settingsApi, tablesApi } from "@/lib/api";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { ShoppingCart, X } from "lucide-react";
@@ -43,6 +43,19 @@ type DiningTable = {
 
 type OrderType = "DINE_IN" | "TAKEAWAY";
 
+type CheckoutSettings = PaymentSettings & {
+  taxRate?: number;
+  serviceRate?: number;
+  currency?: string;
+  timezone?: string;
+  orderPrefix?: string;
+};
+
+type CheckoutOrderResponse = {
+  id: string;
+  total: number;
+};
+
 export function CheckoutManager() {
   const [, navigate] = useLocation();
 
@@ -70,21 +83,18 @@ export function CheckoutManager() {
   });
 
   async function fetchMenuItems() {
-    const res = await apiFetch("/api/menu-items", { credentials: "include" });
-    const data = await res.json();
-    if (data.success) setMenuItems(data.data);
+    const data = await menuApi.listMenuItemsForCheckout();
+    if (data.success) setMenuItems(data.data ?? []);
   }
 
   async function fetchTables() {
-    const res = await apiFetch("/api/tables", { credentials: "include" });
-    const data = await res.json();
-    if (data.success) setTables(data.data);
+    const data = await tablesApi.list<DiningTable[]>();
+    if (data.success) setTables(data.data ?? []);
   }
 
   async function fetchSettings() {
-    const res = await apiFetch("/api/settings", { credentials: "include" });
-    const data = await res.json();
-    if (data.success) {
+    const data = await settingsApi.get<CheckoutSettings>();
+    if (data.success && data.data) {
       setTaxRate(data.data.taxRate ?? 0);
       setServiceRate(data.data.serviceRate ?? 0);
       setCurrency(data.data.currency ?? "IDR");
@@ -176,20 +186,13 @@ export function CheckoutManager() {
 
     setIsLoading(true);
 
-    const orderRes = await apiFetch("/api/orders", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        paymentMethod,
-        amountPaid,
-        orderType,
-        tableId,
-        items: cart.map((item) => ({ menuItemId: item.menuItemId, quantity: item.quantity })),
-      }),
+    const data = await orderApi.createOrder<CheckoutOrderResponse>({
+      paymentMethod,
+      amountPaid,
+      orderType,
+      tableId,
+      items: cart.map((item) => ({ menuItemId: item.menuItemId, quantity: item.quantity })),
     });
-
-    const data = await orderRes.json();
 
     if (!data.success) {
       setIsLoading(false);
@@ -197,9 +200,11 @@ export function CheckoutManager() {
       return;
     }
 
+    const order = data.data as CheckoutOrderResponse;
+
     if (paymentMethod === "CASH") {
       setIsLoading(false);
-      const orderId = data.data.id;
+      const orderId = order.id;
       setCart([]);
       setIsCheckoutOpen(false);
       fetchMenuItems();
@@ -210,18 +215,11 @@ export function CheckoutManager() {
       return;
     }
 
-    const paymentRes = await apiFetch("/api/payments/create-transaction", {
-      credentials: "include",
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        orderId: data.data.id,
-        total: data.data.total,
-        customerName: "Customer",
-      }),
+    const paymentData = await paymentsApi.createTransaction({
+      orderId: order.id,
+      total: order.total,
+      customerName: "Customer",
     });
-
-    const paymentData = await paymentRes.json();
     setIsLoading(false);
 
     if (!paymentData.success) {
@@ -229,7 +227,7 @@ export function CheckoutManager() {
       return;
     }
 
-    window.location.href = paymentData.redirectUrl;
+    window.location.href = paymentData.redirectUrl as string;
   }
 
   useEffect(() => {

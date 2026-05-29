@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { analyticsApi } from "@/lib/api";
 
 import { Clock3, ReceiptText } from "lucide-react";
 
@@ -17,15 +17,7 @@ export function LiveOrdersWidget() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["live-orders"],
 
-    queryFn: async () => {
-      const res = await apiFetch("/api/analytics/live-orders", { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch live orders");
-      }
-
-      return res.json();
-    },
+    queryFn: () => analyticsApi.liveOrders(),
 
     refetchInterval: 10000,
 

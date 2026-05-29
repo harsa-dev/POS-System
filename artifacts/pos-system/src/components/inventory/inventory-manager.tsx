@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
-import { apiFetch } from "@/lib/api";
+import { inventoryApi } from "@/lib/api";
 import {
   AlertCircle,
   ArrowDown,
@@ -129,12 +129,9 @@ export function InventoryManager() {
     setIsFetching(true);
     setFetchError(null);
     try {
-      const res = await apiFetch("/api/inventory-items", {
-        credentials: "include",
-      });
-      const data = await res.json();
+      const data = await inventoryApi.listInventoryItems();
       if (data.success) {
-        setItems(data.data);
+        setItems(data.data as InventoryItem[]);
       } else {
         setFetchError(data.message || "Failed to load inventory items");
       }
@@ -172,25 +169,16 @@ export function InventoryManager() {
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const res = await apiFetch("/api/inventory-items", {
-      credentials: "include",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        sku,
-        type,
-        unit,
-        reason: movementReason,
-        currentStock: Number(currentStock || 0),
-        minimumStock: Number(minimumStock || 0),
-        costPerUnit: Number(costPerUnit || 0),
-      }),
+    const data = await inventoryApi.createInventoryItem({
+      name,
+      sku,
+      type,
+      unit,
+      reason: movementReason,
+      currentStock: Number(currentStock || 0),
+      minimumStock: Number(minimumStock || 0),
+      costPerUnit: Number(costPerUnit || 0),
     });
-
-    const data = await res.json();
 
     if (!data.success) {
       toast.error(data.message || "Failed to create inventory item");
@@ -220,9 +208,7 @@ export function InventoryManager() {
   async function openHistoryModal(item: InventoryItem) {
     setSelectedItem(item);
 
-    const res = await apiFetch("/api/inventory", { credentials: "include" });
-
-    const data = await res.json();
+    const data = await inventoryApi.listStockMovements();
 
     if (!data.success) {
       toast.error(data.message || "Failed to fetch stock movements");
@@ -249,21 +235,12 @@ export function InventoryManager() {
 
     if (!selectedItem) return;
 
-    const res = await apiFetch("/api/inventory", {
-      credentials: "include",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        inventoryItemId: selectedItem.id,
-        type: movementType,
-        quantity: Number(movementQuantity),
-        note: movementNote,
-      }),
+    const data = await inventoryApi.createStockMovement({
+      inventoryItemId: selectedItem.id,
+      type: movementType,
+      quantity: Number(movementQuantity),
+      note: movementNote,
     });
-
-    const data = await res.json();
 
     if (!data.success) {
       toast.error(data.message || "Failed to create stock movement");
@@ -276,8 +253,7 @@ export function InventoryManager() {
     fetchItems();
 
     if (selectedItem) {
-      const res = await apiFetch("/api/inventory", { credentials: "include" });
-      const data = await res.json();
+      const data = await inventoryApi.listStockMovements();
 
       if (data.success) {
         const itemMovements = data.data.filter(

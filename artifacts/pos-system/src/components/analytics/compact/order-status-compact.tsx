@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { analyticsApi } from "@/lib/api";
 
 import { ClipboardList } from "lucide-react";
 
@@ -15,15 +15,7 @@ export function OrderStatusCompact() {
   const { data, isLoading } = useQuery({
     queryKey: ["order-status-chart"],
 
-    queryFn: async () => {
-      const res = await apiFetch("/api/analytics/order-status", { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch order status analytics");
-      }
-
-      return res.json();
-    },
+    queryFn: () => analyticsApi.orderStatus(),
 
     staleTime: 1000 * 60,
 

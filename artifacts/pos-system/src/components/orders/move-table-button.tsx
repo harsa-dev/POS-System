@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { orderApi, tablesApi } from "@/lib/api";
 import { toast } from "sonner";
 
 type DiningTable = {
@@ -26,13 +26,11 @@ export function MoveTableButton({ orderId }: MoveTableButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   async function fetchTables() {
-    const res = await apiFetch("/api/tables", { credentials: "include" });
-
-    const data = await res.json();
+    const data = await tablesApi.list<DiningTable[]>();
 
     if (data.success) {
       setTables(
-        data.data.filter(
+        (data.data ?? []).filter(
           (table: DiningTable) =>
             table.isActive && table.status === "AVAILABLE",
         ),
@@ -48,14 +46,7 @@ export function MoveTableButton({ orderId }: MoveTableButtonProps) {
 
     setIsLoading(true);
 
-    const res = await apiFetch(`/api/orders/${orderId}/move-table`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tableId: selectedTableId }),
-    });
-
-    const data = await res.json();
+    const data = await orderApi.moveTable(orderId, { tableId: selectedTableId });
     setIsLoading(false);
 
     if (!data.success) {

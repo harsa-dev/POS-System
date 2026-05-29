@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { analyticsApi } from "@/lib/api";
 
 import { formatCurrency } from "@/lib/utils/format";
 
@@ -18,15 +18,7 @@ export function FoodCostTable() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["food-cost-analytics"],
 
-    queryFn: async () => {
-      const res = await apiFetch("/api/analytics/food-cost", { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch food cost analytics");
-      }
-
-      return res.json();
-    },
+    queryFn: () => analyticsApi.foodCost(),
 
     staleTime: 1000 * 60,
 

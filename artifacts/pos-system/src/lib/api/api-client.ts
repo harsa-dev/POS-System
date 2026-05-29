@@ -227,6 +227,14 @@ export async function apiFetch(
   }
 }
 
+export async function apiJson<T>(
+  endpoint: string,
+  options?: RequestInit,
+) {
+  const response = await apiFetch(endpoint, options);
+  return (await response.json()) as T;
+}
+
 export function getApiErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;

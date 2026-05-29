@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { tablesApi } from "@/lib/api";
 import { TABLE_STATUS_COLORS } from "@/constants/table-status";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -37,10 +37,9 @@ export function TablesManager() {
     setIsFetching(true);
     setFetchError(null);
     try {
-      const res = await apiFetch("/api/tables", { credentials: "include" });
-      const data = await res.json();
+      const data = await tablesApi.list();
       if (data.success) {
-        setTables(data.data);
+        setTables(data.data as DiningTable[]);
       } else {
         setFetchError(data.message || "Failed to load tables");
       }
@@ -62,14 +61,7 @@ export function TablesManager() {
 
     setIsLoading(true);
 
-    const res = await apiFetch("/api/tables", {
-      credentials: "include",
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, capacity }),
-    });
-
-    const data = await res.json();
+    const data = await tablesApi.create({ name, capacity });
     setIsLoading(false);
 
     if (!data.success) {
@@ -86,13 +78,7 @@ export function TablesManager() {
     id: string,
     body: Partial<{ name: string; capacity: number; isActive: boolean }>,
   ) {
-    const res = await apiFetch(`/api/tables/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    const data = await res.json();
+    const data = await tablesApi.update(id, body);
     if (!data.success) {
       toast.error(data.message || "Failed to update table");
       return;

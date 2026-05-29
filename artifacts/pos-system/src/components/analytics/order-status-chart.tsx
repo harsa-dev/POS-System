@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { analyticsApi } from "@/lib/api";
 
 import {
   Pie,
@@ -45,19 +45,7 @@ export function OrderStatusChart() {
       "order-status-chart",
     ],
 
-    queryFn: async () => {
-      const res = await apiFetch(
-        "/api/analytics/order-status",
-      );
-
-      if (!res.ok) {
-        throw new Error(
-          "Failed to fetch order status analytics",
-        );
-      }
-
-      return res.json();
-    },
+    queryFn: () => analyticsApi.orderStatus(),
 
     staleTime:
       1000 * 60,

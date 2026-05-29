@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { orderApi } from "@/lib/api";
 import { Link } from "wouter";
 import {
   Clock,
@@ -115,9 +115,8 @@ export function OrdersManager() {
   const [page, setPage] = useState(1);
 
   async function fetchOrders() {
-    const res = await apiFetch("/api/orders", { credentials: "include" });
-    const data = await res.json();
-    if (data.success) setOrders(data.data);
+    const data = await orderApi.listOrders<Order[]>();
+    if (data.success) setOrders(data.data ?? []);
     setIsLoading(false);
   }
 

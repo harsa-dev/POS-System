@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { analyticsApi } from "@/lib/api";
 
 import { ChefHat } from "lucide-react";
 
@@ -17,15 +17,7 @@ export function TopSellingCompact() {
   const { data, isLoading } = useQuery({
     queryKey: ["top-selling-menu"],
 
-    queryFn: async () => {
-      const res = await apiFetch("/api/analytics/top-menu", { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch top menu analytics");
-      }
-
-      return res.json();
-    },
+    queryFn: () => analyticsApi.topMenu(),
 
     staleTime: 1000 * 60,
 

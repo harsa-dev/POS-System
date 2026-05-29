@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { analyticsApi } from "@/lib/api";
 
 import { PieChart } from "lucide-react";
 
@@ -15,15 +15,7 @@ export function CategorySalesCompact() {
   const { data, isLoading } = useQuery({
     queryKey: ["category-sales"],
 
-    queryFn: async () => {
-      const res = await apiFetch("/api/analytics/category-sales", { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch category analytics");
-      }
-
-      return res.json();
-    },
+    queryFn: () => analyticsApi.categorySales(),
 
     staleTime: 1000 * 60,
 

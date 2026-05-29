@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { analyticsApi } from "@/lib/api";
 
 import { Pie, PieChart, Cell } from "recharts";
 
@@ -33,15 +33,7 @@ export function PaymentMethodChart() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["payment-methods"],
 
-    queryFn: async () => {
-      const res = await apiFetch("/api/analytics/payment-method", { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch payment analytics");
-      }
-
-      return res.json();
-    },
+    queryFn: () => analyticsApi.paymentMethod(),
 
     staleTime: 1000 * 60,
     gcTime: 1000 * 60 * 10,

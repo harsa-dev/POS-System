@@ -1,4 +1,4 @@
-import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
+import { apiFetch, apiJson, type ApiEnvelope } from "@/lib/api/api-client";
 
 type ApiRecord = Record<string, unknown>;
 
@@ -12,29 +12,50 @@ export type MoveTablePayload = {
 };
 
 export const orderApi = {
-  listOrders() {
-    return apiClient.get<ApiEnvelope<ApiRecord[]>>("/api/orders");
+  listOrdersResponse() {
+    return apiFetch("/api/orders", { credentials: "include" });
   },
 
-  getOrder(id: string) {
-    return apiClient.get<ApiEnvelope<ApiRecord>>(`/api/orders/${id}`);
-  },
-
-  createOrder(payload: CreateOrderPayload) {
-    return apiClient.post<ApiEnvelope<ApiRecord>>("/api/orders", {
-      json: payload,
+  listOrders<T = ApiRecord[]>() {
+    return apiJson<ApiEnvelope<T>>("/api/orders", {
+      credentials: "include",
     });
   },
 
-  updateStatus(id: string, payload: UpdateOrderStatusPayload) {
-    return apiClient.patch<ApiEnvelope<ApiRecord>>(`/api/orders/${id}/status`, {
-      json: payload,
+  getOrderResponse(id: string) {
+    return apiFetch(`/api/orders/${id}`, { credentials: "include" });
+  },
+
+  getOrder<T = ApiRecord>(id: string) {
+    return apiJson<ApiEnvelope<T>>(`/api/orders/${id}`, {
+      credentials: "include",
     });
   },
 
-  moveTable(id: string, payload: MoveTablePayload) {
-    return apiClient.patch<ApiEnvelope<ApiRecord>>(`/api/orders/${id}/move-table`, {
-      json: payload,
+  createOrder<T = ApiRecord>(payload: CreateOrderPayload) {
+    return apiJson<ApiEnvelope<T>>("/api/orders", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateStatus<T = ApiRecord>(id: string, payload: UpdateOrderStatusPayload) {
+    return apiJson<ApiEnvelope<T>>(`/api/orders/${id}/status`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  },
+
+  moveTable<T = ApiRecord>(id: string, payload: MoveTablePayload) {
+    return apiJson<ApiEnvelope<T>>(`/api/orders/${id}/move-table`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
   },
 };

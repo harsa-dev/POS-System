@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { analyticsApi } from "@/lib/api";
 
 import { AlertTriangle } from "lucide-react";
 
@@ -16,15 +16,7 @@ export function LowStockCompact() {
   const { data, isLoading } = useQuery({
     queryKey: ["low-stock"],
 
-    queryFn: async () => {
-      const res = await apiFetch("/api/analytics/low-stock", { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch low stock analytics");
-      }
-
-      return res.json();
-    },
+    queryFn: () => analyticsApi.lowStock(),
 
     staleTime: 1000 * 60,
 

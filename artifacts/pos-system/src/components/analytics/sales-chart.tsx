@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { analyticsApi } from "@/lib/api";
 
 import {
   Area,
@@ -37,15 +37,7 @@ export function SalesChart() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["sales-chart"],
 
-    queryFn: async () => {
-      const res = await apiFetch("/api/analytics/sales", { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch sales analytics");
-      }
-
-      return res.json();
-    },
+    queryFn: () => analyticsApi.sales(),
 
     staleTime: 1000 * 60,
 

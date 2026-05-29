@@ -1,4 +1,4 @@
-import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
+import { apiClient, apiJson, type ApiEnvelope } from "@/lib/api/api-client";
 
 import type {
   Category,
@@ -36,6 +36,12 @@ export type UploadImageResponse = ApiEnvelope<{
 export const menuApi = {
   listMenuItems() {
     return apiClient.get<ApiEnvelope<MenuItem[]>>("/api/menu-items");
+  },
+
+  listMenuItemsForCheckout() {
+    return apiJson<ApiEnvelope<MenuItem[]>>("/api/menu-items", {
+      credentials: "include",
+    });
   },
 
   createMenuItem(payload: MenuItemPayload) {

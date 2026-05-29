@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { orderApi } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { ChefHat, Clock, Loader2, UtensilsCrossed } from "lucide-react";
@@ -88,7 +88,7 @@ export function KDSBoard() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["kitchen-orders"],
     queryFn: async () => {
-      const res = await apiFetch("/api/orders", { credentials: "include" });
+      const res = await orderApi.listOrdersResponse();
       if (!res.ok) throw new Error("Failed to fetch kitchen orders");
       return res.json();
     },
@@ -125,13 +125,7 @@ export function KDSBoard() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const res = await apiFetch(`/api/orders/${id}/status`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      const json = await res.json();
+      const json = await orderApi.updateStatus(id, { status });
       if (!json.success) throw new Error(json.message || "Failed to update order");
       return json;
     },

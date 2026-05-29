@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { analyticsApi } from "@/lib/api";
 
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 
@@ -18,15 +18,7 @@ export function VarianceTable() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["variance-analytics"],
 
-    queryFn: async () => {
-      const res = await apiFetch("/api/analytics/variance", { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch variance analytics");
-      }
-
-      return res.json();
-    },
+    queryFn: () => analyticsApi.variance(),
 
     staleTime: 1000 * 60,
 

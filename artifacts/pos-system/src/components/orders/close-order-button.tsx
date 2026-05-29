@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { orderApi } from "@/lib/api";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { CheckCircle, Loader2 } from "lucide-react";
@@ -16,13 +16,7 @@ export function CloseOrderButton({ orderId }: CloseOrderButtonProps) {
 
   async function closeOrder() {
     setIsLoading(true);
-    const res = await apiFetch(`/api/orders/${orderId}/status`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "COMPLETED" }),
-    });
-    const data = await res.json();
+    const data = await orderApi.updateStatus(orderId, { status: "COMPLETED" });
     setIsLoading(false);
     if (!data.success) {
       toast.error(data.message || "Failed to close order");

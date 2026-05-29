@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { apiFetch } from "@/lib/api";
+import { orderApi } from "@/lib/api";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -31,13 +31,10 @@ export function CancelOrderButton({ orderId }: CancelOrderButtonProps) {
 
     try {
       setIsLoading(true);
-      const res = await apiFetch(`/api/orders/${orderId}/status`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "CANCELLED", cancelReason: cancelReason.trim() }),
+      const data = await orderApi.updateStatus(orderId, {
+        status: "CANCELLED",
+        cancelReason: cancelReason.trim(),
       });
-      const data = await res.json();
       if (!data.success) {
         toast.error(data.message || "Failed to cancel order");
         return;

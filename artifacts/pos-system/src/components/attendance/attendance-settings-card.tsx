@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { apiFetch } from "@/lib/api";
+import { attendanceApi } from "@/lib/api";
 
 type AttendanceSetting = {
   workStartHour: number;
@@ -50,15 +50,15 @@ export function AttendanceSettingsCard() {
   }, [setting.workStartHour, setting.workStartMinute, setting.lateTolerance]);
 
   async function fetchSetting() {
-    const res = await apiFetch("/api/attendance-settings", { credentials: "include" });
-    const data = await res.json();
+    const data = await attendanceApi.getSettings();
 
     if (data.success) {
+      const settingData = data.data as AttendanceSetting;
       setSetting({
-        workStartHour: data.data.workStartHour,
-        workStartMinute: data.data.workStartMinute,
-        lateTolerance: data.data.lateTolerance,
-        overtimeAfterMinutes: data.data.overtimeAfterMinutes,
+        workStartHour: settingData.workStartHour,
+        workStartMinute: settingData.workStartMinute,
+        lateTolerance: settingData.lateTolerance,
+        overtimeAfterMinutes: settingData.overtimeAfterMinutes,
       });
     }
   }
@@ -66,16 +66,7 @@ export function AttendanceSettingsCard() {
   async function saveSetting() {
     setIsLoading(true);
 
-    const res = await apiFetch("/api/attendance-settings", {
-      credentials: "include",
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(setting),
-    });
-
-    const data = await res.json();
+    const data = await attendanceApi.updateSettings(setting);
 
     setIsLoading(false);
 
