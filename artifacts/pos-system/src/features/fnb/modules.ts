@@ -1,6 +1,6 @@
 import { ROUTES } from "@/constants/routes";
 
-export type FnbModuleId = "tables" | "menu" | "recipes" | "kitchen" | "serving";
+export type FnbModuleId = "server" | "menu" | "recipes" | "kitchen";
 
 export type FnbModule = {
   id: FnbModuleId;
@@ -11,10 +11,10 @@ export type FnbModule = {
 
 export const fnbModules: FnbModule[] = [
   {
-    id: "tables",
-    label: "Table Management",
-    route: ROUTES.TABLES,
-    description: "Restaurant table status, seating, and table movement.",
+    id: "server",
+    label: "Server Operations",
+    route: ROUTES.CHECKOUT,
+    description: "Cashier, orders, payments, tables, and serving operations.",
   },
   {
     id: "menu",
@@ -33,11 +33,5 @@ export const fnbModules: FnbModule[] = [
     label: "Kitchen Display System",
     route: ROUTES.KDS,
     description: "Kitchen queue and production status for active orders.",
-  },
-  {
-    id: "serving",
-    label: "Serving Dashboard",
-    route: ROUTES.SERVING,
-    description: "Serving queue and ready-to-serve order handoff.",
   },
 ];

@@ -31,11 +31,6 @@ export {
   type InventoryItemPayload,
   type StockMovementPayload,
 } from "@/lib/api/inventory-api";
-export { analyticsApi } from "@/lib/api/analytics-api";
 export { tablesApi } from "@/lib/api/tables-api";
 export { settingsApi } from "@/lib/api/settings-api";
-export { employeesApi } from "@/lib/api/employees-api";
-export { attendanceApi } from "@/lib/api/attendance-api";
-export { shiftsApi } from "@/lib/api/shifts-api";
-export { auditApi } from "@/lib/api/audit-api";
 export { paymentsApi } from "@/lib/api/payments-api";

@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { CheckCircle2 } from "lucide-react";
+import { ROUTES } from "@/constants/routes";
 
 export default function PaymentSuccessPage() {
   return (
@@ -13,7 +14,7 @@ export default function PaymentSuccessPage() {
           Transaction has been completed successfully.
         </p>
         <Link
-          href="/dashboard/orders"
+          href={ROUTES.ORDERS}
           className="mt-8 inline-flex w-full items-center justify-center rounded-2xl bg-primary px-5 py-4 font-semibold text-primary-foreground hover:bg-primary/90"
         >
           View Orders

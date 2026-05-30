@@ -1,6 +1,6 @@
 # Dashboard Feature Structure
 
-This folder separates reusable business dashboards from Restaurant/F&B-only dashboards.
+This folder separates reusable business dashboards from Restaurant/F&B-only operational modules.
 
 ## Shared dashboards
 
@@ -11,20 +11,20 @@ This folder separates reusable business dashboards from Restaurant/F&B-only dash
 - `inventory/` - Inventory Management
 - `cashflow/` - Cashflow
 - `financial-reports/` - Financial Reports
+- `invoice-generator/` - Invoice Generator
+- `cashier-shift-reports/` - Cashier Shift Reports
 
 Shared dashboards can be mounted by Restaurant/F&B today and by Retail, Service, or Warehouse modes later.
 
-## F&B exclusive dashboards
+## F&B core system
 
-`fnb/` contains modules that only belong to Restaurant/F&B:
+`fnb/core-system/` contains operational modules that only belong to Restaurant/F&B:
 
-- `tables/` - Table Management
-- `menu/` - Menu Management
-- `recipes/` - Recipe Management
+- `menu/` - Menu Management and Recipe Management
 - `kitchen/` - Kitchen Display System
-- `serving/` - Serving Dashboard
+- `server/` - Checkout, Orders, Payments, Table Management, and Serving
 
-Do not add future Retail, Service, or Warehouse dashboards here. Add new mode-specific folders beside `fnb/` when those modes are implemented.
+Do not add future Retail, Service, or Warehouse modules yet. Add mode-specific folders beside `fnb/` only when those real modules are implemented.
 
 ## Practical rule
 
@@ -40,3 +40,18 @@ Phase 1 shared systems live under `shared/`:
 - `cards/` - reusable stat/KPI cards and status pills.
 - `export/` - centralized CSV and Excel-compatible export helpers.
 - `dashboard/` - shared dashboard shell, panels, actions, filters, and tabs.
+
+## App UI ownership
+
+Reusable UI primitives live outside this folder in `components/shared/` and low-level shadcn-style primitives remain in `components/ui/`.
+
+App shell concerns live in `components/core/`:
+
+- `app-shell/`
+- `sidebar/`
+- `navbar/`
+- `dashboard-layout/`
+- `mode-selector/`
+- `route-guard/`
+
+Business modules should not be moved into `components/`.

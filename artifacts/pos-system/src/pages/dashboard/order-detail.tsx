@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { orderApi } from "@/lib/api";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
+import { ROUTES } from "@/constants/routes";
 import {
   Banknote,
   CalendarClock,
@@ -10,10 +11,10 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 
-import { PrintReceiptButton } from "@/components/orders/print-receipt-button";
-import { CloseOrderButton } from "@/components/orders/close-order-button";
-import { MoveTableButton } from "@/components/orders/move-table-button";
-import { CancelOrderButton } from "@/components/orders/cancel-order-button";
+import { PrintReceiptButton } from "@/features/fnb/core-system/server/orders/print-receipt-button";
+import { CloseOrderButton } from "@/features/fnb/core-system/server/orders/close-order-button";
+import { MoveTableButton } from "@/features/fnb/core-system/server/orders/move-table-button";
+import { CancelOrderButton } from "@/features/fnb/core-system/server/orders/cancel-order-button";
 import { formatCurrency, formatDateTime, formatOrderNumber } from "@/lib/utils/format";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from "@/features/orders/constans/order-status";
@@ -67,7 +68,7 @@ export default function OrderDetailPage({ id }: OrderDetailPageProps) {
         <div className="text-center">
           <h2 className="text-xl font-bold text-neutral-800">Order Not Found</h2>
           <p className="mt-2 text-sm text-neutral-500">{error}</p>
-          <Link href="/dashboard/orders" className="mt-4 inline-block text-sm font-medium underline">
+          <Link href={ROUTES.ORDERS} className="mt-4 inline-block text-sm font-medium underline">
             Back to Orders
           </Link>
         </div>
@@ -252,7 +253,7 @@ export default function OrderDetailPage({ id }: OrderDetailPageProps) {
             {canCancel && <CancelOrderButton orderId={order.id} />}
             <PrintReceiptButton />
             <Link
-              href="/dashboard/orders"
+              href={ROUTES.ORDERS}
               className="flex h-11 w-full items-center justify-center rounded-2xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50"
             >
               Back to Orders

@@ -19,5 +19,23 @@ export type {
   SourceAccount,
 } from "./finance";
 export type { InventoryItem, InventoryMode, InventoryStockStatus } from "./inventory";
+export type {
+  InvoiceBillingInfo,
+  InvoiceBusinessInfo,
+  InvoiceCustomerInfo,
+  InvoiceDiscount,
+  InvoiceDiscountMode,
+  InvoiceDraft,
+  InvoiceItem,
+  InvoicePaymentStatus,
+  InvoiceTotals,
+} from "./invoice";
+export type {
+  CashierShift,
+  CashReconciliationStatus,
+  ShiftFilters,
+  ShiftStatus,
+  ShiftSyncStatus,
+} from "./shift";
 export type { Supplier } from "./supplier";
 export type { PaymentStatus, SalesSummary, SalesTransaction } from "./transaction";

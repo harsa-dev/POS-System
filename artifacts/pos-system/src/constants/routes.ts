@@ -5,29 +5,29 @@ export const ROUTES = {
   ROOT: "/",
   LOGIN: "/login",
   REGISTER: "/register",
+  SELECT_MODE: "/select-mode",
 
   DASHBOARD: "/dashboard",
-  CHECKOUT: "/dashboard/checkout",
-  ORDERS: "/dashboard/orders",
-  ORDER_DETAIL: (id: string) => `/dashboard/orders/${id}`,
-  MENU: "/dashboard/menu",
-  RECIPES: "/dashboard/recipes",
-  TABLES: "/dashboard/tables",
-  KDS: "/dashboard/kds",
+
+  CHECKOUT: "/dashboard/fnb/server/checkout",
+  ORDERS: "/dashboard/fnb/server/orders",
+  ORDER_DETAIL: (id: string) => `/dashboard/fnb/server/orders/${id}`,
+  MENU: "/dashboard/fnb/menu",
+  RECIPES: "/dashboard/fnb/menu/recipes",
+  TABLES: "/dashboard/fnb/server/tables",
+  KDS: "/dashboard/fnb/kitchen",
+  SERVING: "/dashboard/fnb/server/serving",
+  PAYMENTS: "/dashboard/fnb/server/payments",
+
   ANALYTICS: "/dashboard/analytics",
   CUSTOMERS: "/dashboard/customers",
   CASHFLOW: "/dashboard/cashflow",
   FINANCIAL_REPORTS: "/dashboard/financial-reports",
-  PAYMENTS: "/dashboard/payments",
+  INVOICE_GENERATOR: "/dashboard/invoice-generator",
+  CASHIER_SHIFT_REPORTS: "/dashboard/cashier-shift-reports",
   PAYMENTS_SUCCESS: "/dashboard/payments/success",
   PAYMENTS_ERROR: "/dashboard/payments/error",
   INVENTORY: "/dashboard/inventory",
-  EMPLOYEES: "/dashboard/employees",
-  ATTENDANCE: "/dashboard/attendance",
-  SHIFTS: "/dashboard/shifts",
-  SETTINGS: "/dashboard/settings",
-  SERVING: "/dashboard/serving",
-  AUDIT_LOGS: "/dashboard/audit-logs",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -49,10 +49,6 @@ export const API = {
   TABLES: "/api/tables",
   TABLE_DETAIL: (id: string) => `/api/tables/${id}`,
 
-  EMPLOYEES: "/api/employees",
-  EMPLOYEE_DETAIL: (id: string) => `/api/employees/${id}`,
-  EMPLOYEE_RESET_PASSWORD: (id: string) => `/api/employees/${id}/reset-password`,
-
   SHIFTS: "/api/shifts",
   SHIFT_CLOSE: (id: string) => `/api/shifts/${id}/close`,
 
@@ -61,19 +57,5 @@ export const API = {
 
   SETTINGS: "/api/settings",
   PAYMENTS: "/api/payments",
-  ATTENDANCE: "/api/attendance",
-  AUDIT_LOGS: "/api/audit-logs",
   RECIPES: "/api/recipes",
-
-  ANALYTICS_OVERVIEW: "/api/analytics/overview",
-  ANALYTICS_SALES: "/api/analytics/sales",
-  ANALYTICS_ORDER_STATUS: "/api/analytics/order-status",
-  ANALYTICS_TOP_ITEMS: "/api/analytics/top-items",
-  ANALYTICS_PEAK_HOURS: "/api/analytics/peak-hours",
-  ANALYTICS_KITCHEN_PERFORMANCE: "/api/analytics/kitchen-performance",
-  ANALYTICS_LIVE_ORDERS: "/api/analytics/live-orders",
-  ANALYTICS_LOW_STOCK: "/api/analytics/low-stock",
-  ANALYTICS_FOOD_COST: "/api/analytics/food-cost",
-  ANALYTICS_STAFF_PERFORMANCE: "/api/analytics/staff-performance",
-  ANALYTICS_REVENUE_BREAKDOWN: "/api/analytics/revenue-breakdown",
 } as const;

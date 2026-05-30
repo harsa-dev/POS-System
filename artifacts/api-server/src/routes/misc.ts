@@ -59,25 +59,6 @@ router.get("/restaurants", async (req, res) => {
   res.json({ success: true });
 });
 
-// Audit logs
-router.get("/audit-logs", async (req, res) => {
-  try {
-    const user = await requireRole(req, res, OWNER_ONLY);
-    if (!user) return;
-    const restaurant = await prisma.restaurant.findFirst({ where: { ownerId: user.id } });
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    const logs = await prisma.auditLog.findMany({
-      where: { restaurantId: restaurant.id },
-      include: { user: { select: { name: true, email: true, role: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    });
-    res.json({ success: true, data: logs });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch audit logs" });
-  }
-});
-
 // Recipes
 router.get("/recipes", async (req, res) => {
   try {

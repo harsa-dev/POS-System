@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/App";
+import { ROUTES } from "@/constants/routes";
 import { authApi, getApiErrorMessage } from "@/lib/api";
 
 export function LoginForm() {
@@ -40,7 +41,7 @@ export function LoginForm() {
       }
 
       await refetch();
-      navigate("/dashboard");
+      navigate(ROUTES.DASHBOARD);
     } catch (error) {
       console.error("[LOGIN_FORM_ERROR]", error);
       toast.error(getApiErrorMessage(error, "An error occurred during login"));

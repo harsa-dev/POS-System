@@ -5,7 +5,7 @@ import type {
   InventoryItem,
   MenuItem,
   Recipe,
-} from "@/components/menu/menu-types";
+} from "@/features/fnb/core-system/menu/components/menu-types";
 
 export type MenuItemPayload = {
   name: string;

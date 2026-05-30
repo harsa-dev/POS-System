@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { CircleX } from "lucide-react";
+import { ROUTES } from "@/constants/routes";
 
 export default function PaymentErrorPage() {
   return (
@@ -13,7 +14,7 @@ export default function PaymentErrorPage() {
           Transaction failed or was cancelled.
         </p>
         <Link
-          href="/dashboard/checkout"
+          href={ROUTES.CHECKOUT}
           className="mt-8 inline-flex w-full items-center justify-center rounded-2xl bg-primary px-5 py-4 font-semibold text-primary-foreground hover:bg-primary/90"
         >
           Back to Checkout

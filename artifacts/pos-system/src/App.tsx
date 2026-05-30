@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { ROUTES } from "@/constants/routes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -8,10 +8,10 @@ import { createContext, useContext, useEffect, useState, lazy, Suspense } from "
 
 import { LoginForm } from "@/components/auth/login-form";
 import { RegisterForm } from "@/components/auth/register-form";
-import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { ModeSelector } from "@/components/core/mode-selector";
+import { RouteGuard, getStoredBusinessMode } from "@/components/core/route-guard";
 import { authApi } from "@/lib/api";
 
-const DashboardHome        = lazy(() => import("@/pages/dashboard/home"));
 const CheckoutPage         = lazy(() => import("@/pages/dashboard/checkout"));
 const OrdersPage           = lazy(() => import("@/pages/dashboard/orders"));
 const OrderDetailPage      = lazy(() => import("@/pages/dashboard/order-detail"));
@@ -23,16 +23,13 @@ const AnalyticsPage        = lazy(() => import("@/pages/dashboard/analytics"));
 const CustomersPage        = lazy(() => import("@/pages/dashboard/customers"));
 const CashflowPage         = lazy(() => import("@/pages/dashboard/cashflow"));
 const FinancialReportsPage = lazy(() => import("@/pages/dashboard/financial-reports"));
+const InvoiceGeneratorPage = lazy(() => import("@/pages/dashboard/invoice-generator"));
+const CashierShiftReportsPage = lazy(() => import("@/pages/dashboard/cashier-shift-reports"));
 const PaymentsPage         = lazy(() => import("@/pages/dashboard/payments"));
 const PaymentSuccessPage   = lazy(() => import("@/pages/dashboard/payment-success"));
 const PaymentErrorPage     = lazy(() => import("@/pages/dashboard/payment-error"));
 const InventoryPage        = lazy(() => import("@/pages/dashboard/inventory"));
-const EmployeesPage        = lazy(() => import("@/pages/dashboard/employees"));
-const AttendancePage       = lazy(() => import("@/pages/dashboard/attendance"));
-const ShiftsPage           = lazy(() => import("@/pages/dashboard/shifts"));
-const SettingsPage         = lazy(() => import("@/pages/dashboard/settings"));
 const ServingPage          = lazy(() => import("@/pages/dashboard/serving"));
-const AuditLogsPage        = lazy(() => import("@/pages/dashboard/audit-logs"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -92,7 +89,23 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({
+  children,
+  requiredMode,
+}: {
+  children: React.ReactNode;
+  requiredMode?: "fnb";
+}) {
+  const { user, isLoading } = useAuth();
+
+  return (
+    <RouteGuard user={user} isLoading={isLoading} requiredMode={requiredMode}>
+      {children}
+    </RouteGuard>
+  );
+}
+
+function ModeSelectionRoute() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -104,12 +117,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Redirect to={ROUTES.LOGIN} />;
+  if (getStoredBusinessMode()) return <Redirect to={ROUTES.ANALYTICS} />;
 
-  return (
-    <DashboardShell userName={user.name} role={user.role}>
-      {children}
-    </DashboardShell>
-  );
+  return <ModeSelector />;
 }
 
 function PageFallback() {
@@ -135,30 +145,39 @@ function Router() {
             <RegisterForm />
           </main>
         </Route>
-        <Route path={ROUTES.DASHBOARD}><ProtectedRoute><DashboardHome /></ProtectedRoute></Route>
-        <Route path={ROUTES.CHECKOUT}><ProtectedRoute><CheckoutPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.ORDERS}><ProtectedRoute><OrdersPage /></ProtectedRoute></Route>
-        <Route path={`${ROUTES.ORDERS}/:id`}>
-          {(params) => <ProtectedRoute><OrderDetailPage id={params.id} /></ProtectedRoute>}
+        <Route path={ROUTES.SELECT_MODE}><ModeSelectionRoute /></Route>
+        <Route path={ROUTES.DASHBOARD}><ProtectedRoute><Redirect to={ROUTES.ANALYTICS} /></ProtectedRoute></Route>
+        <Route path="/dashboard/checkout"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.CHECKOUT} /></ProtectedRoute></Route>
+        <Route path="/dashboard/orders/:id">
+          {(params) => <ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.ORDER_DETAIL(params.id)} /></ProtectedRoute>}
         </Route>
-        <Route path={ROUTES.MENU}><ProtectedRoute><MenuPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.RECIPES}><ProtectedRoute><RecipesPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.TABLES}><ProtectedRoute><TablesPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.KDS}><ProtectedRoute><KDSPage /></ProtectedRoute></Route>
+        <Route path="/dashboard/orders"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.ORDERS} /></ProtectedRoute></Route>
+        <Route path="/dashboard/menu"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.MENU} /></ProtectedRoute></Route>
+        <Route path="/dashboard/recipes"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.RECIPES} /></ProtectedRoute></Route>
+        <Route path="/dashboard/tables"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.TABLES} /></ProtectedRoute></Route>
+        <Route path="/dashboard/kds"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.KDS} /></ProtectedRoute></Route>
+        <Route path="/dashboard/serving"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.SERVING} /></ProtectedRoute></Route>
+        <Route path={ROUTES.PAYMENTS_SUCCESS}><ProtectedRoute><PaymentSuccessPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.PAYMENTS_ERROR}><ProtectedRoute><PaymentErrorPage /></ProtectedRoute></Route>
+        <Route path="/dashboard/payments"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.PAYMENTS} /></ProtectedRoute></Route>
+        <Route path={ROUTES.CHECKOUT}><ProtectedRoute requiredMode="fnb"><CheckoutPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.ORDERS}><ProtectedRoute requiredMode="fnb"><OrdersPage /></ProtectedRoute></Route>
+        <Route path={`${ROUTES.ORDERS}/:id`}>
+          {(params) => <ProtectedRoute requiredMode="fnb"><OrderDetailPage id={params.id} /></ProtectedRoute>}
+        </Route>
+        <Route path={ROUTES.MENU}><ProtectedRoute requiredMode="fnb"><MenuPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.RECIPES}><ProtectedRoute requiredMode="fnb"><RecipesPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.TABLES}><ProtectedRoute requiredMode="fnb"><TablesPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.KDS}><ProtectedRoute requiredMode="fnb"><KDSPage /></ProtectedRoute></Route>
         <Route path={ROUTES.ANALYTICS}><ProtectedRoute><AnalyticsPage /></ProtectedRoute></Route>
         <Route path={ROUTES.CUSTOMERS}><ProtectedRoute><CustomersPage /></ProtectedRoute></Route>
         <Route path={ROUTES.CASHFLOW}><ProtectedRoute><CashflowPage /></ProtectedRoute></Route>
         <Route path={ROUTES.FINANCIAL_REPORTS}><ProtectedRoute><FinancialReportsPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.PAYMENTS_SUCCESS}><ProtectedRoute><PaymentSuccessPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.PAYMENTS_ERROR}><ProtectedRoute><PaymentErrorPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.PAYMENTS}><ProtectedRoute><PaymentsPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.INVOICE_GENERATOR}><ProtectedRoute><InvoiceGeneratorPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.CASHIER_SHIFT_REPORTS}><ProtectedRoute><CashierShiftReportsPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.PAYMENTS}><ProtectedRoute requiredMode="fnb"><PaymentsPage /></ProtectedRoute></Route>
         <Route path={ROUTES.INVENTORY}><ProtectedRoute><InventoryPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.EMPLOYEES}><ProtectedRoute><EmployeesPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.ATTENDANCE}><ProtectedRoute><AttendancePage /></ProtectedRoute></Route>
-        <Route path={ROUTES.SHIFTS}><ProtectedRoute><ShiftsPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.SETTINGS}><ProtectedRoute><SettingsPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.SERVING}><ProtectedRoute><ServingPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.AUDIT_LOGS}><ProtectedRoute><AuditLogsPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.SERVING}><ProtectedRoute requiredMode="fnb"><ServingPage /></ProtectedRoute></Route>
         <Route>
           <div className="flex min-h-screen items-center justify-center">
             <h1 className="text-2xl font-bold">404 - Page Not Found</h1>
