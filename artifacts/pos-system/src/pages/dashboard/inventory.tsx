@@ -1,5 +1,5 @@
-import { InventoryManager } from "@/components/inventory/inventory-manager";
+import { InventoryManagementDashboard } from "@/features/shared/inventory";
 
 export default function InventoryPage() {
-  return <InventoryManager />;
+  return <InventoryManagementDashboard />;
 }

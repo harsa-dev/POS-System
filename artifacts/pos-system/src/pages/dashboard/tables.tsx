@@ -1,5 +1,5 @@
-import { TablesManager } from "@/components/tables/tables-manager";
+import { TableManagementDashboard } from "@/features/fnb/tables";
 
 export default function TablesPage() {
-  return <TablesManager />;
+  return <TableManagementDashboard />;
 }

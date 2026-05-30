@@ -1,4 +1,4 @@
-import { KDSBoard } from "@/components/kds/kds-board";
+import { KitchenDisplayDashboard } from "@/features/fnb/kitchen";
 
 export default function KDSPage() {
   return (
@@ -7,7 +7,7 @@ export default function KDSPage() {
         <h1 className="text-2xl font-bold">Kitchen Display System</h1>
         <p className="text-neutral-500 text-sm mt-1">Manage kitchen orders in real time</p>
       </div>
-      <KDSBoard />
+      <KitchenDisplayDashboard />
     </section>
   );
 }

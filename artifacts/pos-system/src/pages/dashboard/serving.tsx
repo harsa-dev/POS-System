@@ -1,5 +1,5 @@
-import { ServingBoard } from "@/components/serving/serving-board";
+import { ServingDashboard } from "@/features/fnb/serving";
 
 export default function ServingPage() {
-  return <ServingBoard />;
+  return <ServingDashboard />;
 }

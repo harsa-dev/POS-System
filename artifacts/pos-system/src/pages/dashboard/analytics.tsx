@@ -1,5 +1,5 @@
-import { AnalyticsFocusDashboard } from "@/components/analytics/analytics-focus-dashboard";
+import { SalesAnalyticsDashboard } from "@/features/shared/sales";
 
 export default function AnalyticsPage() {
-  return <AnalyticsFocusDashboard />;
+  return <SalesAnalyticsDashboard />;
 }

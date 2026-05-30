@@ -7,11 +7,14 @@ import { ROLES } from "@/constants/roles";
 import {
   BarChart3,
   BellRing,
+  BookOpenCheck,
   CalendarClock,
   ChefHat,
   ClipboardList,
   CreditCard,
+  FileText,
   Grid2X2,
+  Handshake,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -22,6 +25,7 @@ import {
   Table2,
   Users,
   UtensilsCrossed,
+  WalletCards,
   X,
 } from "lucide-react";
 import { authApi } from "@/lib/api";
@@ -103,6 +107,12 @@ const menuGroups: MenuGroup[] = [
         roles: [ROLES.OWNER, ROLES.MANAGER],
       },
       {
+        href: ROUTES.RECIPES,
+        label: "Recipes",
+        icon: BookOpenCheck,
+        roles: [ROLES.OWNER, ROLES.MANAGER],
+      },
+      {
         href: ROUTES.INVENTORY,
         label: "Inventory",
         icon: Package,
@@ -139,8 +149,26 @@ const menuGroups: MenuGroup[] = [
     items: [
       {
         href: ROUTES.ANALYTICS,
-        label: "Analytics",
+        label: "Sales Analytics",
         icon: BarChart3,
+        roles: [ROLES.OWNER, ROLES.MANAGER],
+      },
+      {
+        href: ROUTES.CUSTOMERS,
+        label: "Customers & Partners",
+        icon: Handshake,
+        roles: [ROLES.OWNER, ROLES.MANAGER],
+      },
+      {
+        href: ROUTES.CASHFLOW,
+        label: "Cashflow",
+        icon: WalletCards,
+        roles: [ROLES.OWNER, ROLES.MANAGER],
+      },
+      {
+        href: ROUTES.FINANCIAL_REPORTS,
+        label: "Financial Reports",
+        icon: FileText,
         roles: [ROLES.OWNER, ROLES.MANAGER],
       },
     ],

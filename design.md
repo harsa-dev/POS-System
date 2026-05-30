@@ -23,7 +23,7 @@ The objective is simulating how real operational systems behave across different
 
 The platform follows:
 
-```txt
+```
 Shared Operational Core
 +
 Business-Specific Workflow Layers

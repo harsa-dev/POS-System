@@ -16,9 +16,13 @@ const CheckoutPage         = lazy(() => import("@/pages/dashboard/checkout"));
 const OrdersPage           = lazy(() => import("@/pages/dashboard/orders"));
 const OrderDetailPage      = lazy(() => import("@/pages/dashboard/order-detail"));
 const MenuPage             = lazy(() => import("@/pages/dashboard/menu"));
+const RecipesPage          = lazy(() => import("@/pages/dashboard/recipes"));
 const TablesPage           = lazy(() => import("@/pages/dashboard/tables"));
 const KDSPage              = lazy(() => import("@/pages/dashboard/kds"));
 const AnalyticsPage        = lazy(() => import("@/pages/dashboard/analytics"));
+const CustomersPage        = lazy(() => import("@/pages/dashboard/customers"));
+const CashflowPage         = lazy(() => import("@/pages/dashboard/cashflow"));
+const FinancialReportsPage = lazy(() => import("@/pages/dashboard/financial-reports"));
 const PaymentsPage         = lazy(() => import("@/pages/dashboard/payments"));
 const PaymentSuccessPage   = lazy(() => import("@/pages/dashboard/payment-success"));
 const PaymentErrorPage     = lazy(() => import("@/pages/dashboard/payment-error"));
@@ -138,9 +142,13 @@ function Router() {
           {(params) => <ProtectedRoute><OrderDetailPage id={params.id} /></ProtectedRoute>}
         </Route>
         <Route path={ROUTES.MENU}><ProtectedRoute><MenuPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.RECIPES}><ProtectedRoute><RecipesPage /></ProtectedRoute></Route>
         <Route path={ROUTES.TABLES}><ProtectedRoute><TablesPage /></ProtectedRoute></Route>
         <Route path={ROUTES.KDS}><ProtectedRoute><KDSPage /></ProtectedRoute></Route>
         <Route path={ROUTES.ANALYTICS}><ProtectedRoute><AnalyticsPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.CUSTOMERS}><ProtectedRoute><CustomersPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.CASHFLOW}><ProtectedRoute><CashflowPage /></ProtectedRoute></Route>
+        <Route path={ROUTES.FINANCIAL_REPORTS}><ProtectedRoute><FinancialReportsPage /></ProtectedRoute></Route>
         <Route path={ROUTES.PAYMENTS_SUCCESS}><ProtectedRoute><PaymentSuccessPage /></ProtectedRoute></Route>
         <Route path={ROUTES.PAYMENTS_ERROR}><ProtectedRoute><PaymentErrorPage /></ProtectedRoute></Route>
         <Route path={ROUTES.PAYMENTS}><ProtectedRoute><PaymentsPage /></ProtectedRoute></Route>

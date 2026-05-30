@@ -1,5 +1,5 @@
-import { MenuManager } from "@/components/menu/menu-manager";
+import { MenuManagementDashboard } from "@/features/fnb/menu";
 
 export default function MenuPage() {
-  return <MenuManager />;
+  return <MenuManagementDashboard />;
 }
