@@ -1,6 +1,9 @@
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
+import type { OrderStatus, OrderType } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser } from "../lib/auth.js";
+import { canTransitionOrderStatus } from "../services/permissions/index.js";
 import {
   ALL_ROLES,
   POS_ROLES,
@@ -13,7 +16,31 @@ import { REALTIME_EVENTS } from "../lib/realtime-events.js";
 
 const router = Router();
 
-const allowedTransitions: Record<string, string[]> = {
+const orderStatuses = [
+  "PENDING_PAYMENT",
+  "PAID",
+  "PREPARING",
+  "READY",
+  "SERVED",
+  "COMPLETED",
+  "CANCELLED",
+] satisfies OrderStatus[];
+
+const orderTypes = ["DINE_IN", "TAKEAWAY"] satisfies OrderType[];
+
+function isOrderStatus(value: string): value is OrderStatus {
+  return orderStatuses.includes(value as OrderStatus);
+}
+
+function isOrderType(value: string): value is OrderType {
+  return orderTypes.includes(value as OrderType);
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
   PENDING_PAYMENT: ["PAID", "CANCELLED"],
   PAID: ["PREPARING", "CANCELLED"],
   PREPARING: ["READY", "CANCELLED"],
@@ -37,12 +64,14 @@ router.get("/orders", async (req, res) => {
     const { status, type, limit, page } = req.query as Record<string, string>;
     const take = Number(limit ?? 50);
     const skip = (Number(page ?? 1) - 1) * take;
+    const orderStatus = status && isOrderStatus(status) ? status : undefined;
+    const orderType = type && isOrderType(type) ? type : undefined;
 
     const orders = await prisma.order.findMany({
       where: {
         restaurantId: restaurant.id,
-        ...(status ? { status: status as any } : {}),
-        ...(type ? { type: type as any } : {}),
+        ...(orderStatus ? { status: orderStatus } : {}),
+        ...(orderType ? { type: orderType } : {}),
       },
       include: {
         items: { include: { menuItem: true } },
@@ -75,7 +104,10 @@ router.post("/orders", async (req, res) => {
     const body = req.body ?? {};
     const paymentMethod = String(body.paymentMethod ?? "").toUpperCase();
     const amountPaid = Number(body.amountPaid ?? 0);
-    const orderType = body.orderType ?? "TAKEAWAY";
+    const orderTypeValue = String(body.orderType ?? "TAKEAWAY");
+    if (!isOrderType(orderTypeValue))
+      return void res.status(400).json({ success: false, message: "Invalid order type" });
+    const orderType = orderTypeValue;
     const tableId = body.tableId ? String(body.tableId) : null;
     const items = body.items as { menuItemId?: string; quantity: number }[];
 
@@ -130,7 +162,7 @@ router.post("/orders", async (req, res) => {
 
     // Calculate totals
     let subtotal = 0;
-    const orderItemsData: any[] = [];
+    const orderItemsData: Prisma.OrderItemUncheckedCreateWithoutOrderInput[] = [];
     for (const item of items) {
       const mi = menuItems.find((m) => m.id === item.menuItemId);
       if (!mi) return void res.status(400).json({ success: false, message: `Menu item not found: ${item.menuItemId}` });
@@ -302,10 +334,10 @@ router.post("/orders", async (req, res) => {
               },
             });
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           // P2002 = unique constraint violation on orderNumber — safe to retry
           // because the failed transaction is fully rolled back.
-          if (err?.code === "P2002" && attempt < 3) continue;
+          if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002" && attempt < 3) continue;
           // INSUFFICIENT_STOCK is a business rule error, surface it immediately.
           throw err;
         }
@@ -339,8 +371,8 @@ router.post("/orders", async (req, res) => {
       orderNumber: order.orderNumber,
       status: order.status,
     });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err?.message ?? "Failed to create order" });
+  } catch (err: unknown) {
+    res.status(500).json({ success: false, message: getErrorMessage(err, "Failed to create order") });
   }
 });
 
@@ -381,11 +413,12 @@ router.patch("/orders/:id/status", async (req, res) => {
       return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
     const { id } = req.params;
-    const status = req.body?.status as string;
+    const statusValue = String(req.body?.status ?? "");
     const cancelReason = String(req.body?.cancelReason ?? "").trim();
 
-    if (!status || !Object.keys(allowedTransitions).includes(status))
+    if (!isOrderStatus(statusValue))
       return void res.status(400).json({ success: false, message: "Invalid order status" });
+    const status = statusValue;
 
     if (status === "CANCELLED" && !cancelReason)
       return void res.status(400).json({ success: false, message: "Cancel reason is required" });
@@ -413,14 +446,7 @@ router.patch("/orders/:id/status", async (req, res) => {
           message: `Cannot change from ${existingOrder.status} to ${status}`,
         });
 
-    const rolePermissions: Record<string, string[]> = {
-      OWNER: Object.keys(allowedTransitions),
-      MANAGER: Object.keys(allowedTransitions),
-      CASHIER: ["PAID", "CANCELLED", "COMPLETED"],
-      KITCHEN: ["PREPARING", "READY", "CANCELLED"],
-      SERVER: ["SERVED", "COMPLETED", "CANCELLED"],
-    };
-    if (!rolePermissions[user.role]?.includes(status))
+    if (!canTransitionOrderStatus(user.role, status))
       return void res.status(403).json({ success: false, message: "You cannot update to this status" });
 
     const isCancelling = status === "CANCELLED";
@@ -434,7 +460,7 @@ router.patch("/orders/:id/status", async (req, res) => {
       await tx.order.update({
         where: { id },
         data: {
-          status: status as any,
+          status,
           ...(shouldDeductStock ? { inventoryDeducted: true } : {}),
           ...(isCancelling ? { cancelReason, cancelledAt: new Date() } : {}),
         },
@@ -526,8 +552,8 @@ router.patch("/orders/:id/status", async (req, res) => {
       orderNumber: existingOrder.orderNumber,
       status,
     });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err?.message ?? "Failed to update order status" });
+  } catch (err: unknown) {
+    res.status(500).json({ success: false, message: getErrorMessage(err, "Failed to update order status") });
   }
 });
 

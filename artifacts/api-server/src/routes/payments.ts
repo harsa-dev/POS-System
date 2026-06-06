@@ -1,10 +1,15 @@
 import { Router } from "express";
 import crypto from "crypto";
+import type { OrderStatus, PaymentStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getRestaurantForUser, getCurrentUser } from "../lib/auth.js";
 import { POS_ROLES, ERR } from "../lib/constants.js";
 
 const router = Router();
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 // POST /api/payments/create-transaction
 // Creates a Midtrans Snap transaction for non-cash orders.
@@ -84,8 +89,8 @@ router.post("/payments/create-transaction", async (req, res) => {
     });
 
     res.json({ success: true, redirectUrl: snapData.redirect_url });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err?.message ?? "Failed to create payment transaction" });
+  } catch (err: unknown) {
+    res.status(500).json({ success: false, message: getErrorMessage(err, "Failed to create payment transaction") });
   }
 });
 
@@ -136,8 +141,8 @@ router.post("/payments/midtrans-webhook", async (req, res) => {
     if (expectedSignature !== receivedSignature)
       return void res.status(403).json({ success: false, message: "Invalid signature" });
 
-    let paymentStatus: "PENDING" | "PAID" | "FAILED" | "EXPIRED" = "PENDING";
-    let orderStatus: string | null = null;
+    let paymentStatus: PaymentStatus = "PENDING";
+    let orderStatus: OrderStatus | null = null;
 
     const isPending = transaction_status === "pending";
     const isSettled =
@@ -182,13 +187,13 @@ router.post("/payments/midtrans-webhook", async (req, res) => {
     if (orderStatus && order.status !== orderStatus) {
       await prisma.order.update({
         where: { id: order.id },
-        data: { status: orderStatus as any },
+        data: { status: orderStatus },
       });
     }
 
     res.json({ success: true });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err?.message ?? "Webhook processing failed" });
+  } catch (err: unknown) {
+    res.status(500).json({ success: false, message: getErrorMessage(err, "Webhook processing failed") });
   }
 });
 

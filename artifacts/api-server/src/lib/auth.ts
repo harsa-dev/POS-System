@@ -1,7 +1,11 @@
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import type { Request, Response, NextFunction } from "express";
+import type { Role } from "@prisma/client";
 import { prisma } from "./prisma.js";
+import { isOwnerRole } from "../services/permissions/index.js";
+
+export type { Role };
 
 const getSecret = () => {
   const secretKey = process.env.JWT_SECRET;
@@ -48,8 +52,6 @@ export async function getCurrentUser(req: Request) {
   return user;
 }
 
-export type Role = "OWNER" | "MANAGER" | "CASHIER" | "KITCHEN" | "SERVER";
-
 export async function requireRole(
   req: Request,
   res: Response,
@@ -60,7 +62,7 @@ export async function requireRole(
     res.status(401).json({ success: false, message: "Unauthorized" });
     return null;
   }
-  if (!allowedRoles.includes(user.role as Role)) {
+  if (!allowedRoles.includes(user.role)) {
     res.status(403).json({ success: false, message: "Forbidden" });
     return null;
   }
@@ -69,12 +71,12 @@ export async function requireRole(
 
 export async function getRestaurantForUser(user: {
   id: string;
-  role: string;
+  role: Role;
   restaurantId: string | null;
 }) {
   return prisma.restaurant.findFirst({
     where:
-      user.role === "OWNER"
+      isOwnerRole(user.role)
         ? { ownerId: user.id }
         : { id: user.restaurantId ?? "" },
   });

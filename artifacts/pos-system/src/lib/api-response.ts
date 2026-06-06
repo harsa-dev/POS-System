@@ -19,5 +19,5 @@ export function errorResponse(
   _status = 500,
   errors?: unknown,
 ): ErrorResponse {
-  return { success: false, message, ...(errors && { errors }) };
+  return errors === undefined ? { success: false, message } : { success: false, message, errors };
 }

@@ -1,4 +1,10 @@
-import { CheckCircle2, ChefHat, Package, Scissors, ShoppingBag } from "lucide-react";
+import {
+  CheckCircle2,
+  ChefHat,
+  Package,
+  Scissors,
+  ShoppingBag,
+} from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import {
@@ -31,7 +37,8 @@ export function ModeSelector() {
             Select business mode
           </h1>
           <p className="mt-3 text-sm leading-6 text-neutral-600 sm:text-base">
-            Shared dashboards are available in every mode. Restaurant / F&B also enables the current operational core modules.
+            Shared dashboards are available in every mode. Restaurant / F&B also
+            enables the current operational core modules.
           </p>
         </div>
 
@@ -50,12 +57,19 @@ export function ModeSelector() {
                   <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 text-neutral-800 group-hover:bg-blue-100 group-hover:text-blue-700">
                     <Icon className="h-6 w-6" aria-hidden="true" />
                   </span>
-                  <CheckCircle2 className="h-5 w-5 text-neutral-300 group-hover:text-blue-600" aria-hidden="true" />
+                  <CheckCircle2
+                    className="h-5 w-5 text-neutral-300 group-hover:text-blue-600"
+                    aria-hidden="true"
+                  />
                 </span>
 
                 <span>
-                  <span className="block text-lg font-bold text-neutral-950">{mode.label}</span>
-                  <span className="mt-2 block text-sm leading-6 text-neutral-600">{mode.description}</span>
+                  <span className="block text-lg font-bold text-neutral-950">
+                    {mode.label}
+                  </span>
+                  <span className="mt-2 block text-sm leading-6 text-neutral-600">
+                    {mode.description}
+                  </span>
                 </span>
               </button>
             );
@@ -65,4 +79,3 @@ export function ModeSelector() {
     </main>
   );
 }
-

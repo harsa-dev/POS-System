@@ -37,6 +37,14 @@ import type {
   SalesSummary,
   SalesTransaction,
 } from "@/features/shared/types";
+import {
+  calculateAverageOrderValue,
+  calculateCOGS,
+  calculateGrossProfit,
+  calculateMargin,
+  calculateNetProfit,
+  calculateRevenue,
+} from "@/services/finance";
 
 const productOptions = ["All Products", "Rice Bowl", "Coffee", "Tea", "Dessert"];
 
@@ -131,11 +139,20 @@ function getStatusTone(status: PaymentStatus) {
 }
 
 function getGrossProfit(row: SalesTransaction) {
-  return row.sellingPrice - row.voucherDiscount - row.posPromotion - row.cogs;
+  return calculateGrossProfit({
+    revenue: row.sellingPrice,
+    discounts: row.voucherDiscount + row.posPromotion,
+    cogs: row.cogs,
+  });
 }
 
 function getNetProfit(row: SalesTransaction) {
-  return getGrossProfit(row) - row.advertisingCost;
+  return calculateNetProfit({
+    revenue: row.sellingPrice,
+    discounts: row.voucherDiscount + row.posPromotion,
+    cogs: row.cogs,
+    expenses: row.advertisingCost,
+  });
 }
 
 function SimpleBarChart({
@@ -191,20 +208,24 @@ export function SalesAnalyticsDashboard() {
   }, [productFilter, productSearch]);
 
   const summary: SalesSummary = useMemo(() => {
-    const grossRevenue = filteredRows.reduce((total, row) => total + row.sellingPrice, 0);
-    const totalDiscount = filteredRows.reduce(
-      (total, row) => total + row.voucherDiscount + row.posPromotion,
-      0,
+    const grossRevenue = calculateRevenue(filteredRows.map((row) => row.sellingPrice));
+    const totalDiscount = calculateRevenue(
+      filteredRows.map((row) => row.voucherDiscount + row.posPromotion),
     );
     const totalRevenue = grossRevenue - totalDiscount;
-    const cogs = filteredRows.reduce((total, row) => total + row.cogs, 0);
-    const ads = filteredRows.reduce((total, row) => total + row.advertisingCost, 0);
-    const margin = totalRevenue ? ((totalRevenue - cogs) / totalRevenue) * 100 : 0;
-    const netProfit = totalRevenue - cogs - ads;
-    const quantity = filteredRows.reduce((total, row) => total + row.quantity, 0);
+    const cogs = calculateCOGS(filteredRows.map((row) => row.cogs));
+    const ads = calculateRevenue(filteredRows.map((row) => row.advertisingCost));
+    const margin = calculateMargin({ revenue: totalRevenue, cogs }) * 100;
+    const netProfit = calculateNetProfit({ revenue: totalRevenue, cogs, expenses: ads });
+    const quantity = calculateRevenue(filteredRows.map((row) => row.quantity));
 
     return { grossRevenue, totalRevenue, margin, netProfit, quantity };
   }, [filteredRows]);
+
+  const averageOrderValue = useMemo(
+    () => calculateAverageOrderValue(summary.totalRevenue, filteredRows.length),
+    [filteredRows.length, summary.totalRevenue],
+  );
 
   const salesColumns: DataTableColumn<SalesTransaction>[] = [
     { key: "orderNumber", header: "Order Number", cell: (row) => <span className="font-semibold text-neutral-950">{row.orderNumber}</span> },
@@ -322,7 +343,7 @@ export function SalesAnalyticsDashboard() {
         <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
           <div className="grid gap-3">
             <StatCard label="Total Transactions" value={formatNumber(486)} note="Marketing insight mode" icon={ShoppingCart} tone="blue" />
-            <StatCard label="Average Order Value" value={formatCurrency(89_500)} note="Revenue per transaction" icon={Banknote} tone="green" />
+            <StatCard label="Average Order Value" value={formatCurrency(averageOrderValue)} note="Revenue per transaction" icon={Banknote} tone="green" />
             <StatCard label="Peak Hour" value="18:00" note="Highest sales concentration" icon={Clock3} tone="amber" />
           </div>
           <div className="grid gap-4 lg:grid-cols-3">

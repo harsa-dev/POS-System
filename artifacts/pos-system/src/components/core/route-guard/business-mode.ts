@@ -12,27 +12,36 @@ export const businessModeOptions: BusinessModeOption[] = [
   {
     id: "fnb",
     label: "Restaurant / F&B",
-    description: "Enable restaurant operations such as menu, kitchen, cashier, tables, and serving.",
+    description:
+      "Enable restaurant operations such as menu, kitchen, cashier, tables, and serving.",
   },
   {
     id: "retail",
     label: "Retail",
-    description: "Shared dashboards only for now. Retail-exclusive modules will be added later.",
+    description:
+      "Shared dashboards only for now. Retail-exclusive modules will be added later.",
   },
   {
     id: "service",
     label: "Service",
-    description: "Shared dashboards only for now. Service-exclusive modules will be added later.",
+    description:
+      "Shared dashboards only for now. Service-exclusive modules will be added later.",
   },
   {
     id: "warehouse",
     label: "Warehouse",
-    description: "Shared dashboards only for now. Warehouse-exclusive modules will be added later.",
+    description:
+      "Shared dashboards only for now. Warehouse-exclusive modules will be added later.",
   },
 ];
 
 export function isBusinessMode(value: string | null): value is BusinessMode {
-  return value === "fnb" || value === "retail" || value === "service" || value === "warehouse";
+  return (
+    value === "fnb" ||
+    value === "retail" ||
+    value === "service" ||
+    value === "warehouse"
+  );
 }
 
 export function getStoredBusinessMode(): BusinessMode | null {

@@ -24,7 +24,10 @@ import {
   X,
 } from "lucide-react";
 import { authApi } from "@/lib/api";
-import { getStoredBusinessMode, type BusinessMode } from "@/components/core/route-guard";
+import {
+  getStoredBusinessMode,
+  type BusinessMode,
+} from "@/components/core/route-guard";
 
 type SidebarProps = {
   role: string;
@@ -192,7 +195,9 @@ function SidebarContent({
           ...group,
           items: group.items.filter((item) => {
             const roleAllowed = item.roles.includes(role);
-            const modeAllowed = !item.modes || (currentMode ? item.modes.includes(currentMode) : false);
+            const modeAllowed =
+              !item.modes ||
+              (currentMode ? item.modes.includes(currentMode) : false);
 
             return roleAllowed && modeAllowed;
           }),
