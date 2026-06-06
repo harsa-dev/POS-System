@@ -76,3 +76,9 @@ export const v3PosOpenOrders = [
   { code: "D-04", table: "Table 8", status: "Kitchen", total: "Rp 214.000" },
   { code: "T-11", table: "Takeaway", status: "Held", total: "Rp 86.000" },
 ] as const;
+
+export const v3PosTables = [
+  { id: "fallback-table-1", name: "Table 8", capacity: 4, status: "OCCUPIED" },
+  { id: "fallback-table-2", name: "Table 12", capacity: 2, status: "AVAILABLE" },
+  { id: "fallback-table-3", name: "VIP Room", capacity: 8, status: "RESERVED" },
+] as const;

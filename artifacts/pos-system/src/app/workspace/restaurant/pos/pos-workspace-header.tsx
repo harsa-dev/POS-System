@@ -1,14 +1,29 @@
 import { Search, Sparkles, Table2 } from "lucide-react";
 
+import type { PosTableItem } from "./pos-workspace-types";
+
 type PosWorkspaceHeaderProps = {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
+  selectedTable: PosTableItem | null;
+  tableStatus: "loading" | "ready" | "error";
 };
 
 export function PosWorkspaceHeader({
   searchQuery,
   onSearchQueryChange,
+  selectedTable,
+  tableStatus,
 }: PosWorkspaceHeaderProps) {
+  const tableLabel =
+    tableStatus === "loading"
+      ? "Loading tables"
+      : selectedTable?.name ?? "No table";
+  const statusLabel =
+    tableStatus === "loading"
+      ? "Loading"
+      : selectedTable?.status ?? "Local only";
+
   return (
     <section className="rounded-2xl border bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -51,10 +66,10 @@ export function PosWorkspaceHeader({
           <div className="flex h-12 items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 text-sm">
             <span className="flex items-center gap-2 font-medium text-neutral-700">
               <Table2 className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-              Table 8
+              {tableLabel}
             </span>
             <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
-              Occupied
+              {statusLabel}
             </span>
           </div>
         </div>

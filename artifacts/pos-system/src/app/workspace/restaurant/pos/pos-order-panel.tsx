@@ -1,12 +1,22 @@
 import { v3PosCartItems } from "@/app/workspace/restaurant/pos-placeholder-data";
 
-export function PosOrderPanel() {
+import type { PosTableItem } from "./pos-workspace-types";
+
+type PosOrderPanelProps = {
+  selectedTable: PosTableItem | null;
+};
+
+export function PosOrderPanel({ selectedTable }: PosOrderPanelProps) {
   return (
     <section className="rounded-2xl border bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-neutral-950">Current Order</h3>
-          <p className="mt-1 text-xs text-neutral-500">Table 8, dine in</p>
+          <p className="mt-1 text-xs text-neutral-500">
+            {selectedTable
+              ? `${selectedTable.name}, dine in placeholder`
+              : "No table selected, dine in placeholder"}
+          </p>
         </div>
         <span className="rounded-full bg-neutral-950 px-3 py-1 text-xs font-semibold text-white">
           Draft

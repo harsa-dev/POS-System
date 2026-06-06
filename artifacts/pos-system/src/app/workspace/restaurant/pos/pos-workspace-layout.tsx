@@ -6,12 +6,16 @@ import { PosOrderPanel } from "./pos-order-panel";
 import { PosPaymentSummary } from "./pos-payment-summary";
 import { PosProductGrid } from "./pos-product-grid";
 import { PosQuickActions } from "./pos-quick-actions";
+import { PosTableStatusPanel } from "./pos-table-status-panel";
 import { PosWorkspaceHeader } from "./pos-workspace-header";
 import { usePosMenuCatalog } from "./use-pos-menu-catalog";
+import { usePosTables } from "./use-pos-tables";
 
 export function PosWorkspaceLayout() {
   const catalog = usePosMenuCatalog();
+  const tableCatalog = usePosTables();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const hasActiveFilters = selectedCategory !== null || normalizedSearchQuery !== "";
@@ -31,11 +35,19 @@ export function PosWorkspaceLayout() {
     [catalog.products, normalizedSearchQuery, selectedCategory],
   );
 
+  const selectedTable = useMemo(
+    () =>
+      tableCatalog.tables.find((table) => table.id === selectedTableId) ?? null,
+    [selectedTableId, tableCatalog.tables],
+  );
+
   return (
     <div className="space-y-4">
       <PosWorkspaceHeader
         onSearchQueryChange={setSearchQuery}
         searchQuery={searchQuery}
+        selectedTable={selectedTable}
+        tableStatus={tableCatalog.status}
       />
       <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)_360px]">
         <PosCategoryRail
@@ -55,7 +67,16 @@ export function PosWorkspaceLayout() {
           status={catalog.status}
         />
         <aside className="space-y-4">
-          <PosOrderPanel />
+          <PosTableStatusPanel
+            errorMessage={tableCatalog.errorMessage}
+            isUsingFallback={tableCatalog.isUsingFallback}
+            onSelectTable={setSelectedTableId}
+            selectedTableId={selectedTableId}
+            status={tableCatalog.status}
+            summary={tableCatalog.summary}
+            tables={tableCatalog.tables}
+          />
+          <PosOrderPanel selectedTable={selectedTable} />
           <PosOpenOrdersPanel />
           <PosPaymentSummary />
         </aside>
