@@ -37,8 +37,8 @@ export function WorkspaceShell({
           . This V3 route is available for manual review only and is not shown
           in the sidebar yet.
         </div>
-        {children ? <div className="mt-5">{children}</div> : null}
       </div>
+      {children ? <div>{children}</div> : null}
     </section>
   );
 }
