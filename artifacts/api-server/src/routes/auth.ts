@@ -9,6 +9,18 @@ import {
 import { logger } from "../lib/logger.js";
 
 const router = Router();
+const sessionCookieMaxAgeMs = 60 * 60 * 24 * 7 * 1000;
+
+function getSessionCookieOptions() {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
+  } as const;
+}
 
 router.post("/auth/login", async (req, res) => {
   try {
@@ -36,13 +48,9 @@ router.post("/auth/login", async (req, res) => {
         .json({ success: false, message: "Password salah." });
     }
     const token = await createSessionToken(user.id);
-    const isProduction = process.env.NODE_ENV === "production";
     res.cookie("session", token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: "none",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7 * 1000,
+      ...getSessionCookieOptions(),
+      maxAge: sessionCookieMaxAgeMs,
     });
     res.json({ success: true, message: "Login berhasil." });
   } catch (error) {
@@ -52,7 +60,7 @@ router.post("/auth/login", async (req, res) => {
 });
 
 router.post("/auth/logout", (_req, res) => {
-  res.clearCookie("session", { path: "/" });
+  res.clearCookie("session", getSessionCookieOptions());
   res.json({ success: true, message: "Logout berhasil." });
 });
 
