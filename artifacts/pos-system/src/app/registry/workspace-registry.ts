@@ -16,21 +16,31 @@ function isRoutedWorkspaceModule(
 }
 
 export const workspaceRegistry = moduleRegistry
-  .filter(isRoutedWorkspaceModule)
-  .map(
-    (module): V3WorkspaceMetadata => ({
-      id: module.id,
-      moduleId: module.id,
-      label: module.label,
-      description: module.description,
-      routePath: module.routeBase,
-      layer: module.layer,
-      supportedModes: module.supportedModes,
-      requiredPermissions: module.requiredPermissions,
-      featureFlags: module.featureFlags,
-      dependencies: module.dependencies,
-    }),
-  );
+  .flatMap((module): V3WorkspaceMetadata[] => {
+    const registeredWorkspaces = module.workspaceEntries ?? [];
+
+    if (!isRoutedWorkspaceModule(module)) {
+      return [...registeredWorkspaces];
+    }
+
+    return [
+      ...registeredWorkspaces,
+      {
+        id: module.id,
+        moduleId: module.id,
+        label: module.workspaceLabel ?? module.label,
+        description: module.description,
+        routePath: module.routeBase,
+        layer: module.layer,
+        supportedModes: module.supportedModes,
+        requiredPermissions: module.requiredPermissions,
+        featureFlags: module.featureFlags,
+        dependencies: module.dependencies,
+        order: module.workspaceOrder ?? Number.MAX_SAFE_INTEGER,
+      },
+    ];
+  })
+  .sort((left, right) => left.order - right.order);
 
 export function getWorkspacesForMode(mode: V3BusinessMode) {
   return workspaceRegistry.filter((workspace) =>

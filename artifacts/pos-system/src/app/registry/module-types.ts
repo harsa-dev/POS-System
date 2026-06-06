@@ -7,6 +7,15 @@ export const V3_BUSINESS_MODES = [
 
 export type V3BusinessMode = (typeof V3_BUSINESS_MODES)[number];
 
+export type V3LegacyBusinessMode = "fnb" | "service" | "warehouse";
+
+export type V3RuntimeRole =
+  | "OWNER"
+  | "MANAGER"
+  | "CASHIER"
+  | "SERVER"
+  | "KITCHEN";
+
 export type V3ModuleLayer =
   | "core"
   | "business"
@@ -114,6 +123,33 @@ export type V3SidebarGroup =
   | "Raw Material Operations"
   | "Custom Business";
 
+export type V3SidebarRegistration = Readonly<{
+  moduleId: V3ModuleId;
+  label: string;
+  description: string;
+  routePath: string;
+  group: V3SidebarGroup;
+  supportedModes: readonly V3BusinessMode[];
+  requiredPermissions: readonly V3PermissionKey[];
+  featureFlags: readonly V3FeatureFlag[];
+  requiredRoles?: readonly V3RuntimeRole[];
+  order: number;
+}>;
+
+export type V3WorkspaceRegistration = Readonly<{
+  id: V3ModuleId;
+  moduleId: V3ModuleId;
+  label: string;
+  description: string;
+  routePath: string;
+  layer: V3ModuleLayer;
+  supportedModes: readonly V3BusinessMode[];
+  requiredPermissions: readonly V3PermissionKey[];
+  featureFlags: readonly V3FeatureFlag[];
+  dependencies: readonly V3ModuleId[];
+  order: number;
+}>;
+
 export type V3ModuleMetadata = Readonly<{
   id: V3ModuleId;
   label: string;
@@ -124,6 +160,12 @@ export type V3ModuleMetadata = Readonly<{
   routeBase: string | null;
   sidebarGroup: V3SidebarGroup;
   sidebarVisible: boolean;
+  sidebarLabel?: string;
+  sidebarOrder?: number;
+  workspaceLabel?: string;
+  workspaceOrder?: number;
+  sidebarEntries?: readonly V3SidebarRegistration[];
+  workspaceEntries?: readonly V3WorkspaceRegistration[];
   requiredPermissions: readonly V3PermissionKey[];
   featureFlags: readonly V3FeatureFlag[];
   dependencies: readonly V3ModuleId[];
@@ -138,6 +180,8 @@ export type V3SidebarItem = Readonly<{
   supportedModes: readonly V3BusinessMode[];
   requiredPermissions: readonly V3PermissionKey[];
   featureFlags: readonly V3FeatureFlag[];
+  requiredRoles: readonly V3RuntimeRole[];
+  order: number;
 }>;
 
 export type V3WorkspaceMetadata = Readonly<{
@@ -151,4 +195,5 @@ export type V3WorkspaceMetadata = Readonly<{
   requiredPermissions: readonly V3PermissionKey[];
   featureFlags: readonly V3FeatureFlag[];
   dependencies: readonly V3ModuleId[];
+  order: number;
 }>;
