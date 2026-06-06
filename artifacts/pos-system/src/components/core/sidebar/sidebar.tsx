@@ -84,6 +84,43 @@ function createSharedDashboardItems(): MenuItem[] {
     }));
 }
 
+const fnbServerModuleIds = new Set<V3ModuleId>([
+  "pos",
+  "orders",
+  "serving",
+  "tables",
+  "payments",
+]);
+
+function getFnbServerIcon(moduleId: V3ModuleId) {
+  switch (moduleId) {
+    case "pos":
+      return ShoppingCart;
+    case "orders":
+      return ClipboardList;
+    case "serving":
+      return BellRing;
+    case "tables":
+      return Table2;
+    case "payments":
+      return CreditCard;
+    default:
+      throw new Error(`Unsupported F&B server module: ${moduleId}`);
+  }
+}
+
+function createFnbServerItems(): MenuItem[] {
+  return getSidebarItemsForRuntimeMode("fnb")
+    .filter((item) => fnbServerModuleIds.has(item.moduleId))
+    .map((item) => ({
+      href: item.routePath,
+      label: item.label,
+      icon: getFnbServerIcon(item.moduleId),
+      roles: [...item.requiredRoles],
+      modes: ["fnb"],
+    }));
+}
+
 const menuGroups: MenuGroup[] = [
   {
     title: "Shared Dashboards",
@@ -91,43 +128,7 @@ const menuGroups: MenuGroup[] = [
   },
   {
     title: "F&B Server",
-    items: [
-      {
-        href: ROUTES.CHECKOUT,
-        label: "Cashier",
-        icon: ShoppingCart,
-        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.CASHIER],
-        modes: ["fnb"],
-      },
-      {
-        href: ROUTES.ORDERS,
-        label: "Orders",
-        icon: ClipboardList,
-        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.CASHIER],
-        modes: ["fnb"],
-      },
-      {
-        href: ROUTES.SERVING,
-        label: "Serving",
-        icon: BellRing,
-        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.SERVER, ROLES.CASHIER],
-        modes: ["fnb"],
-      },
-      {
-        href: ROUTES.TABLES,
-        label: "Tables",
-        icon: Table2,
-        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.SERVER, ROLES.CASHIER],
-        modes: ["fnb"],
-      },
-      {
-        href: ROUTES.PAYMENTS,
-        label: "Payments",
-        icon: CreditCard,
-        roles: [ROLES.OWNER, ROLES.MANAGER],
-        modes: ["fnb"],
-      },
-    ],
+    items: createFnbServerItems(),
   },
   {
     title: "F&B Menu & Kitchen",
