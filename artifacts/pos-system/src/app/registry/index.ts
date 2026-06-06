@@ -58,6 +58,14 @@ export {
   sidebarRegistry,
 } from "./sidebar-registry";
 export {
+  createWorkspaceRouteParityReport,
+  restaurantWorkspacePlaceholderRoutes,
+  restaurantWorkspaceRouteExpectations,
+  type WorkspaceRouteParityReport,
+} from "./workspace-route-parity-report";
+export {
+  getWorkspaceRouteForModule,
+  getWorkspaceRoutesForMode,
   getWorkspacesForMode,
   workspaceRegistry,
 } from "./workspace-registry";

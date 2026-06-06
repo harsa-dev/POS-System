@@ -142,6 +142,8 @@ export type V3WorkspaceRegistration = Readonly<{
   label: string;
   description: string;
   routePath: string;
+  currentRoute?: string | null;
+  workspaceRoute?: string;
   layer: V3ModuleLayer;
   supportedModes: readonly V3BusinessMode[];
   requiredPermissions: readonly V3PermissionKey[];
@@ -158,6 +160,7 @@ export type V3ModuleMetadata = Readonly<{
   status: V3ModuleStatus;
   supportedModes: readonly V3BusinessMode[];
   routeBase: string | null;
+  workspaceRoute?: string | null;
   sidebarGroup: V3SidebarGroup;
   sidebarVisible: boolean;
   sidebarLabel?: string;
@@ -190,6 +193,8 @@ export type V3WorkspaceMetadata = Readonly<{
   label: string;
   description: string;
   routePath: string;
+  currentRoute: string | null;
+  workspaceRoute: string;
   layer: V3ModuleLayer;
   supportedModes: readonly V3BusinessMode[];
   requiredPermissions: readonly V3PermissionKey[];
