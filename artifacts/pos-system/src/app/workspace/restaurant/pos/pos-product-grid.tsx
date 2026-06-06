@@ -5,6 +5,7 @@ type PosProductGridProps = {
   products: PosProductItem[];
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
+  emptyMessage: string;
   isUsingFallback: boolean;
 };
 
@@ -33,6 +34,7 @@ export function PosProductGrid({
   products,
   status,
   errorMessage,
+  emptyMessage,
   isUsingFallback,
 }: PosProductGridProps) {
   const isLoading = status === "loading";
@@ -62,7 +64,7 @@ export function PosProductGrid({
 
       {!isLoading && products.length === 0 ? (
         <div className="mt-4 rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-8 text-center text-sm text-neutral-500">
-          No menu items are available for this workspace preview yet.
+          {emptyMessage}
         </div>
       ) : null}
 

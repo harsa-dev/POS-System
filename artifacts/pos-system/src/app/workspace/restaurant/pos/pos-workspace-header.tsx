@@ -1,6 +1,14 @@
 import { Search, Sparkles, Table2 } from "lucide-react";
 
-export function PosWorkspaceHeader() {
+type PosWorkspaceHeaderProps = {
+  searchQuery: string;
+  onSearchQueryChange: (query: string) => void;
+};
+
+export function PosWorkspaceHeader({
+  searchQuery,
+  onSearchQueryChange,
+}: PosWorkspaceHeaderProps) {
   return (
     <section className="rounded-2xl border bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -22,8 +30,10 @@ export function PosWorkspaceHeader() {
             <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
             <input
               className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-400"
+              onChange={(event) => onSearchQueryChange(event.target.value)}
               placeholder="Search menu item or SKU"
               type="search"
+              value={searchQuery}
             />
           </label>
 
