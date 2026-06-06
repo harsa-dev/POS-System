@@ -3,7 +3,6 @@
 import { type ElementType, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { ROUTES } from "@/constants/routes";
-import { ROLES } from "@/constants/roles";
 import {
   BarChart3,
   BellRing,
@@ -121,6 +120,37 @@ function createFnbServerItems(): MenuItem[] {
     }));
 }
 
+const fnbMenuKitchenModuleIds = new Set<V3ModuleId>([
+  "menu",
+  "recipes",
+  "kitchen",
+]);
+
+function getFnbMenuKitchenIcon(moduleId: V3ModuleId) {
+  switch (moduleId) {
+    case "menu":
+      return UtensilsCrossed;
+    case "recipes":
+      return BookOpenCheck;
+    case "kitchen":
+      return ChefHat;
+    default:
+      throw new Error(`Unsupported F&B menu/kitchen module: ${moduleId}`);
+  }
+}
+
+function createFnbMenuKitchenItems(): MenuItem[] {
+  return getSidebarItemsForRuntimeMode("fnb")
+    .filter((item) => fnbMenuKitchenModuleIds.has(item.moduleId))
+    .map((item) => ({
+      href: item.routePath,
+      label: item.label,
+      icon: getFnbMenuKitchenIcon(item.moduleId),
+      roles: [...item.requiredRoles],
+      modes: ["fnb"],
+    }));
+}
+
 const menuGroups: MenuGroup[] = [
   {
     title: "Shared Dashboards",
@@ -132,29 +162,7 @@ const menuGroups: MenuGroup[] = [
   },
   {
     title: "F&B Menu & Kitchen",
-    items: [
-      {
-        href: ROUTES.MENU,
-        label: "Menu",
-        icon: UtensilsCrossed,
-        roles: [ROLES.OWNER, ROLES.MANAGER],
-        modes: ["fnb"],
-      },
-      {
-        href: ROUTES.RECIPES,
-        label: "Recipes",
-        icon: BookOpenCheck,
-        roles: [ROLES.OWNER, ROLES.MANAGER],
-        modes: ["fnb"],
-      },
-      {
-        href: ROUTES.KDS,
-        label: "Kitchen (KDS)",
-        icon: ChefHat,
-        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.KITCHEN],
-        modes: ["fnb"],
-      },
-    ],
+    items: createFnbMenuKitchenItems(),
   },
 ];
 
