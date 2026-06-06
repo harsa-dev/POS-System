@@ -9,12 +9,15 @@ import { PosQuickActions } from "./pos-quick-actions";
 import { PosTableStatusPanel } from "./pos-table-status-panel";
 import { PosWorkspaceHeader } from "./pos-workspace-header";
 import { usePosMenuCatalog } from "./use-pos-menu-catalog";
+import { usePosOpenOrders } from "./use-pos-open-orders";
 import { usePosTables } from "./use-pos-tables";
 
 export function PosWorkspaceLayout() {
   const catalog = usePosMenuCatalog();
   const tableCatalog = usePosTables();
+  const openOrders = usePosOpenOrders();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
@@ -77,7 +80,14 @@ export function PosWorkspaceLayout() {
             tables={tableCatalog.tables}
           />
           <PosOrderPanel selectedTable={selectedTable} />
-          <PosOpenOrdersPanel />
+          <PosOpenOrdersPanel
+            errorMessage={openOrders.errorMessage}
+            isUsingFallback={openOrders.isUsingFallback}
+            onSelectOrder={setSelectedOrderId}
+            orders={openOrders.orders}
+            selectedOrderId={selectedOrderId}
+            status={openOrders.status}
+          />
           <PosPaymentSummary />
         </aside>
       </div>

@@ -73,8 +73,24 @@ export const v3PosCartItems = [
 ] as const;
 
 export const v3PosOpenOrders = [
-  { code: "D-04", table: "Table 8", status: "Kitchen", total: "Rp 214.000" },
-  { code: "T-11", table: "Takeaway", status: "Held", total: "Rp 86.000" },
+  {
+    id: "fallback-open-order-1",
+    code: "D-04",
+    table: "Table 8",
+    status: "Kitchen",
+    total: "Rp 214.000",
+    createdTime: "08.40",
+    itemCount: 4,
+  },
+  {
+    id: "fallback-open-order-2",
+    code: "T-11",
+    table: "Takeaway",
+    status: "Held",
+    total: "Rp 86.000",
+    createdTime: "09.15",
+    itemCount: 2,
+  },
 ] as const;
 
 export const v3PosTables = [

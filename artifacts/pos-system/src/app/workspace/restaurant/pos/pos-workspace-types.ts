@@ -35,3 +35,13 @@ export type PosTableSummary = {
   reserved: number;
   cleaning: number;
 };
+
+export type PosOpenOrderItem = {
+  id: string;
+  code: string;
+  table: string;
+  status: string;
+  total: string;
+  createdTime: string;
+  itemCount: number;
+};
