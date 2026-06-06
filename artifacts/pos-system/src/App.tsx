@@ -30,6 +30,12 @@ const PaymentSuccessPage   = lazy(() => import("@/pages/dashboard/payment-succes
 const PaymentErrorPage     = lazy(() => import("@/pages/dashboard/payment-error"));
 const InventoryPage        = lazy(() => import("@/pages/dashboard/inventory"));
 const ServingPage          = lazy(() => import("@/pages/dashboard/serving"));
+const RestaurantPosWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-pos-workspace"));
+const RestaurantKitchenWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-kitchen-workspace"));
+const RestaurantServingWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-serving-workspace"));
+const RestaurantTablesWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-tables-workspace"));
+const RestaurantMenuWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-menu-workspace"));
+const RestaurantOrdersWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-orders-workspace"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -157,6 +163,12 @@ function Router() {
         <Route path="/dashboard/tables"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.TABLES} /></ProtectedRoute></Route>
         <Route path="/dashboard/kds"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.KDS} /></ProtectedRoute></Route>
         <Route path="/dashboard/serving"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.SERVING} /></ProtectedRoute></Route>
+        <Route path={ROUTES.WORKSPACE_RESTAURANT_POS}><ProtectedRoute requiredMode="fnb"><RestaurantPosWorkspace /></ProtectedRoute></Route>
+        <Route path={ROUTES.WORKSPACE_RESTAURANT_KITCHEN}><ProtectedRoute requiredMode="fnb"><RestaurantKitchenWorkspace /></ProtectedRoute></Route>
+        <Route path={ROUTES.WORKSPACE_RESTAURANT_SERVING}><ProtectedRoute requiredMode="fnb"><RestaurantServingWorkspace /></ProtectedRoute></Route>
+        <Route path={ROUTES.WORKSPACE_RESTAURANT_TABLES}><ProtectedRoute requiredMode="fnb"><RestaurantTablesWorkspace /></ProtectedRoute></Route>
+        <Route path={ROUTES.WORKSPACE_RESTAURANT_MENU}><ProtectedRoute requiredMode="fnb"><RestaurantMenuWorkspace /></ProtectedRoute></Route>
+        <Route path={ROUTES.WORKSPACE_RESTAURANT_ORDERS}><ProtectedRoute requiredMode="fnb"><RestaurantOrdersWorkspace /></ProtectedRoute></Route>
         <Route path={ROUTES.PAYMENTS_SUCCESS}><ProtectedRoute><PaymentSuccessPage /></ProtectedRoute></Route>
         <Route path={ROUTES.PAYMENTS_ERROR}><ProtectedRoute><PaymentErrorPage /></ProtectedRoute></Route>
         <Route path="/dashboard/payments"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.PAYMENTS} /></ProtectedRoute></Route>

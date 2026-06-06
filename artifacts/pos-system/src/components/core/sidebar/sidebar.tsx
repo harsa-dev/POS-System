@@ -51,7 +51,7 @@ type MenuGroup = {
   items: MenuItem[];
 };
 
-function getSharedDashboardIcon(moduleId: V3ModuleId) {
+function getRegistrySidebarIcon(moduleId: V3ModuleId) {
   switch (moduleId) {
     case "analytics":
       return BarChart3;
@@ -67,32 +67,6 @@ function getSharedDashboardIcon(moduleId: V3ModuleId) {
       return ReceiptText;
     case "shifts":
       return CreditCard;
-    default:
-      throw new Error(`Unsupported shared dashboard module: ${moduleId}`);
-  }
-}
-
-function createSharedDashboardItems(): MenuItem[] {
-  return getSidebarItemsForRuntimeMode("fnb")
-    .filter((item) => item.group === "Shared Business")
-    .map((item) => ({
-      href: item.routePath,
-      label: item.label,
-      icon: getSharedDashboardIcon(item.moduleId),
-      roles: [...item.requiredRoles],
-    }));
-}
-
-const fnbServerModuleIds = new Set<V3ModuleId>([
-  "pos",
-  "orders",
-  "serving",
-  "tables",
-  "payments",
-]);
-
-function getFnbServerIcon(moduleId: V3ModuleId) {
-  switch (moduleId) {
     case "pos":
       return ShoppingCart;
     case "orders":
@@ -103,31 +77,6 @@ function getFnbServerIcon(moduleId: V3ModuleId) {
       return Table2;
     case "payments":
       return CreditCard;
-    default:
-      throw new Error(`Unsupported F&B server module: ${moduleId}`);
-  }
-}
-
-function createFnbServerItems(): MenuItem[] {
-  return getSidebarItemsForRuntimeMode("fnb")
-    .filter((item) => fnbServerModuleIds.has(item.moduleId))
-    .map((item) => ({
-      href: item.routePath,
-      label: item.label,
-      icon: getFnbServerIcon(item.moduleId),
-      roles: [...item.requiredRoles],
-      modes: ["fnb"],
-    }));
-}
-
-const fnbMenuKitchenModuleIds = new Set<V3ModuleId>([
-  "menu",
-  "recipes",
-  "kitchen",
-]);
-
-function getFnbMenuKitchenIcon(moduleId: V3ModuleId) {
-  switch (moduleId) {
     case "menu":
       return UtensilsCrossed;
     case "recipes":
@@ -135,34 +84,68 @@ function getFnbMenuKitchenIcon(moduleId: V3ModuleId) {
     case "kitchen":
       return ChefHat;
     default:
-      throw new Error(`Unsupported F&B menu/kitchen module: ${moduleId}`);
+      throw new Error(`Unsupported sidebar module: ${moduleId}`);
   }
 }
 
-function createFnbMenuKitchenItems(): MenuItem[] {
+function createRegistryMenuItems(
+  moduleIds: readonly V3ModuleId[],
+  modes?: readonly BusinessMode[],
+): MenuItem[] {
+  const moduleIdSet = new Set(moduleIds);
+
   return getSidebarItemsForRuntimeMode("fnb")
-    .filter((item) => fnbMenuKitchenModuleIds.has(item.moduleId))
-    .map((item) => ({
-      href: item.routePath,
-      label: item.label,
-      icon: getFnbMenuKitchenIcon(item.moduleId),
-      roles: [...item.requiredRoles],
-      modes: ["fnb"],
-    }));
+    .filter((item) => moduleIdSet.has(item.moduleId))
+    .map((item) => {
+      const menuItem: MenuItem = {
+        href: item.routePath,
+        label: item.label,
+        icon: getRegistrySidebarIcon(item.moduleId),
+        roles: [...item.requiredRoles],
+      };
+
+      if (modes) menuItem.modes = [...modes];
+
+      return menuItem;
+    });
 }
+
+const sharedDashboardModuleIds = [
+  "analytics",
+  "customers",
+  "inventory",
+  "cashflow",
+  "reports",
+  "invoice",
+  "shifts",
+] satisfies readonly V3ModuleId[];
+
+const fnbServerModuleIds = [
+  "pos",
+  "orders",
+  "serving",
+  "tables",
+  "payments",
+] satisfies readonly V3ModuleId[];
+
+const fnbMenuKitchenModuleIds = [
+  "menu",
+  "recipes",
+  "kitchen",
+] satisfies readonly V3ModuleId[];
 
 const menuGroups: MenuGroup[] = [
   {
     title: "Shared Dashboards",
-    items: createSharedDashboardItems(),
+    items: createRegistryMenuItems(sharedDashboardModuleIds),
   },
   {
     title: "F&B Server",
-    items: createFnbServerItems(),
+    items: createRegistryMenuItems(fnbServerModuleIds, ["fnb"]),
   },
   {
     title: "F&B Menu & Kitchen",
-    items: createFnbMenuKitchenItems(),
+    items: createRegistryMenuItems(fnbMenuKitchenModuleIds, ["fnb"]),
   },
 ];
 
