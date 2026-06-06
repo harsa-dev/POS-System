@@ -24,6 +24,8 @@ import {
   X,
 } from "lucide-react";
 import { authApi } from "@/lib/api";
+import { getSidebarItemsForRuntimeMode } from "@/app/registry/sidebar-registry";
+import type { V3ModuleId } from "@/app/registry/module-types";
 import {
   getStoredBusinessMode,
   type BusinessMode,
@@ -50,53 +52,42 @@ type MenuGroup = {
   items: MenuItem[];
 };
 
+function getSharedDashboardIcon(moduleId: V3ModuleId) {
+  switch (moduleId) {
+    case "analytics":
+      return BarChart3;
+    case "customers":
+      return Handshake;
+    case "inventory":
+      return Package;
+    case "cashflow":
+      return WalletCards;
+    case "reports":
+      return FileText;
+    case "invoice":
+      return ReceiptText;
+    case "shifts":
+      return CreditCard;
+    default:
+      throw new Error(`Unsupported shared dashboard module: ${moduleId}`);
+  }
+}
+
+function createSharedDashboardItems(): MenuItem[] {
+  return getSidebarItemsForRuntimeMode("fnb")
+    .filter((item) => item.group === "Shared Business")
+    .map((item) => ({
+      href: item.routePath,
+      label: item.label,
+      icon: getSharedDashboardIcon(item.moduleId),
+      roles: [...item.requiredRoles],
+    }));
+}
+
 const menuGroups: MenuGroup[] = [
   {
     title: "Shared Dashboards",
-    items: [
-      {
-        href: ROUTES.ANALYTICS,
-        label: "Sales Analytics",
-        icon: BarChart3,
-        roles: [ROLES.OWNER, ROLES.MANAGER],
-      },
-      {
-        href: ROUTES.CUSTOMERS,
-        label: "Customers & Partners",
-        icon: Handshake,
-        roles: [ROLES.OWNER, ROLES.MANAGER],
-      },
-      {
-        href: ROUTES.INVENTORY,
-        label: "Inventory",
-        icon: Package,
-        roles: [ROLES.OWNER, ROLES.MANAGER],
-      },
-      {
-        href: ROUTES.CASHFLOW,
-        label: "Cashflow",
-        icon: WalletCards,
-        roles: [ROLES.OWNER, ROLES.MANAGER],
-      },
-      {
-        href: ROUTES.FINANCIAL_REPORTS,
-        label: "Financial Reports",
-        icon: FileText,
-        roles: [ROLES.OWNER, ROLES.MANAGER],
-      },
-      {
-        href: ROUTES.INVOICE_GENERATOR,
-        label: "Invoice Generator",
-        icon: ReceiptText,
-        roles: [ROLES.OWNER, ROLES.MANAGER],
-      },
-      {
-        href: ROUTES.CASHIER_SHIFT_REPORTS,
-        label: "Cashier Shift Reports",
-        icon: CreditCard,
-        roles: [ROLES.OWNER, ROLES.MANAGER],
-      },
-    ],
+    items: createSharedDashboardItems(),
   },
   {
     title: "F&B Server",

@@ -39,6 +39,20 @@ export { rawMaterialModules } from "./raw-material-modules";
 export { restaurantModules } from "./restaurant-modules";
 export { retailModules } from "./retail-modules";
 export {
+  currentSidebarSnapshot,
+  type CurrentSidebarSnapshotItem,
+} from "./sidebar-current-snapshot";
+export {
+  createSidebarParityReport,
+  type SidebarParityReport,
+} from "./sidebar-parity-report";
+export {
+  getCurrentSidebarPreview,
+  getGeneratedSidebarPreview,
+  getGeneratedSidebarPreviewForRuntimeMode,
+  type SidebarPreviewItem,
+} from "./sidebar-preview";
+export {
   getSidebarItemsForRuntimeMode,
   getSidebarItemsForMode,
   sidebarRegistry,
