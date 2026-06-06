@@ -12,36 +12,42 @@ export const v3PosProducts = [
     category: "Food",
     price: "Rp 45.000",
     status: "Ready",
+    imageUrl: null,
   },
   {
     name: "Chicken Katsu Set",
     category: "Food",
     price: "Rp 52.000",
     status: "Ready",
+    imageUrl: null,
   },
   {
     name: "Iced Lychee Tea",
     category: "Drinks",
     price: "Rp 24.000",
     status: "Fast",
+    imageUrl: null,
   },
   {
     name: "Family Bento Package",
     category: "Packages",
     price: "Rp 155.000",
     status: "Bundle",
+    imageUrl: null,
   },
   {
     name: "Manual Item Placeholder",
     category: "Custom",
     price: "Rp 0",
     status: "Draft",
+    imageUrl: null,
   },
   {
     name: "Coffee Latte",
     category: "Drinks",
     price: "Rp 32.000",
     status: "Ready",
+    imageUrl: null,
   },
 ] as const;
 

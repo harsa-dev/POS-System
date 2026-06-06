@@ -1,8 +1,12 @@
 import { Utensils } from "lucide-react";
 
-import { v3PosCategories } from "@/app/workspace/restaurant/pos-placeholder-data";
+import type { PosCategoryItem } from "./pos-workspace-types";
 
-export function PosCategoryRail() {
+type PosCategoryRailProps = {
+  categories: PosCategoryItem[];
+};
+
+export function PosCategoryRail({ categories }: PosCategoryRailProps) {
   return (
     <aside className="rounded-2xl border bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
@@ -11,7 +15,7 @@ export function PosCategoryRail() {
       </div>
 
       <div className="mt-4 space-y-2">
-        {v3PosCategories.map((category) => (
+        {categories.map((category) => (
           <button
             className={`flex w-full items-center justify-between rounded-2xl border border-neutral-200 px-3 py-3 text-left text-sm font-semibold transition hover:border-neutral-300 ${category.tone}`}
             key={category.label}

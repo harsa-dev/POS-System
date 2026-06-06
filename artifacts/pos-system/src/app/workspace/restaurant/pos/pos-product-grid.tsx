@@ -1,27 +1,78 @@
-import { v3PosProducts } from "@/app/workspace/restaurant/pos-placeholder-data";
-
 import { PosProductCard } from "./pos-product-card";
+import type { PosProductItem } from "./pos-workspace-types";
 
-export function PosProductGrid() {
+type PosProductGridProps = {
+  products: PosProductItem[];
+  status: "loading" | "ready" | "error";
+  errorMessage: string | null;
+  isUsingFallback: boolean;
+};
+
+function PosProductGridSkeleton() {
+  return (
+    <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div
+          className="min-h-36 animate-pulse rounded-2xl border border-neutral-200 bg-neutral-50 p-4"
+          key={index}
+        >
+          <div className="flex items-start justify-between">
+            <div className="h-11 w-11 rounded-2xl bg-neutral-200" />
+            <div className="h-6 w-16 rounded-full bg-neutral-200" />
+          </div>
+          <div className="mt-5 h-4 w-3/4 rounded bg-neutral-200" />
+          <div className="mt-3 h-3 w-1/2 rounded bg-neutral-200" />
+          <div className="mt-5 h-4 w-24 rounded bg-neutral-200" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function PosProductGrid({
+  products,
+  status,
+  errorMessage,
+  isUsingFallback,
+}: PosProductGridProps) {
+  const isLoading = status === "loading";
+  const itemLabel = isUsingFallback ? "preview items" : "menu items";
+
   return (
     <section className="rounded-2xl border bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-sm font-bold text-neutral-950">Product Grid</h3>
           <p className="mt-1 text-xs text-neutral-500">
-            Static product cards only. No inventory, menu, or pricing API is connected.
+            Read-only menu catalog preview. Adding items is intentionally disabled.
           </p>
         </div>
         <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-600">
-          6 preview items
+          {isLoading ? "Loading menu" : `${products.length} ${itemLabel}`}
         </span>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-        {v3PosProducts.map((product) => (
-          <PosProductCard key={product.name} product={product} />
-        ))}
-      </div>
+      {errorMessage ? (
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+          {errorMessage}
+        </div>
+      ) : null}
+
+      {isLoading ? <PosProductGridSkeleton /> : null}
+
+      {!isLoading && products.length === 0 ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-8 text-center text-sm text-neutral-500">
+          No menu items are available for this workspace preview yet.
+        </div>
+      ) : null}
+
+      {!isLoading && products.length > 0 ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+          {products.map((product) => (
+            <PosProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
