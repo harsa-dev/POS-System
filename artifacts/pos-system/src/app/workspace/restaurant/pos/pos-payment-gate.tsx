@@ -66,6 +66,11 @@ export function PosPaymentGate({
 }: PosPaymentGateProps) {
   const isCash = paymentMethod === "CASH";
   const canSubmit = isReady && !isSubmitting;
+  const readinessLabel = isSubmitting
+    ? "Submitting"
+    : isReady
+      ? "Ready"
+      : "Blocked";
 
   return (
     <section className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -80,12 +85,14 @@ export function PosPaymentGate({
         </div>
         <span
           className={`rounded-full px-3 py-1 text-xs font-bold ${
-            isReady
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-amber-50 text-amber-700"
+            isSubmitting
+              ? "bg-blue-50 text-blue-700"
+              : isReady
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-amber-50 text-amber-700"
           }`}
         >
-          {isReady ? "Ready" : "Blocked"}
+          {readinessLabel}
         </span>
       </div>
 
@@ -106,6 +113,7 @@ export function PosPaymentGate({
                     ? "border-blue-700 bg-blue-50 text-blue-700"
                     : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
                 }`}
+                disabled={isSubmitting}
                 key={type.id}
                 onClick={() => onOrderTypeChange(type.id)}
                 type="button"
@@ -134,6 +142,7 @@ export function PosPaymentGate({
                   ? "border-neutral-950 bg-neutral-950 text-white"
                   : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
               }`}
+              disabled={isSubmitting}
               key={method.id}
               onClick={() => onPaymentMethodChange(method.id)}
               type="button"
@@ -152,6 +161,7 @@ export function PosPaymentGate({
             className="mt-2 h-11 w-full rounded-2xl border border-neutral-200 px-3 text-sm font-semibold text-neutral-950 outline-none transition focus:border-neutral-400"
             inputMode="numeric"
             min={0}
+            disabled={isSubmitting}
             onChange={(event) => onAmountPaidInputChange(event.target.value)}
             placeholder="Enter cash amount"
             type="number"
@@ -184,6 +194,7 @@ export function PosPaymentGate({
       </div>
 
       <button
+        aria-busy={isSubmitting}
         className={`mt-4 flex h-10 w-full items-center justify-center rounded-2xl border text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
           canSubmit
             ? "border-emerald-200 bg-emerald-50 text-emerald-700"

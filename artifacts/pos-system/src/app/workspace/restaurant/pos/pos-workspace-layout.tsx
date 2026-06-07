@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PosCategoryRail } from "./pos-category-rail";
@@ -51,6 +51,7 @@ export function PosWorkspaceLayout() {
     useState<CreateOrderPaymentMethod>("CASH");
   const [amountPaidInput, setAmountPaidInput] = useState("0");
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const isCreateOrderInFlightRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const hasActiveFilters = selectedCategory !== null || normalizedSearchQuery !== "";
@@ -194,6 +195,14 @@ export function PosWorkspaceLayout() {
   }
 
   async function handleCreateOrder() {
+    if (isCreateOrderInFlightRef.current) {
+      if (import.meta.env.DEV) {
+        console.debug("[pos-v3] duplicate create order submit blocked");
+      }
+
+      return;
+    }
+
     if (!orderPayloadPreview.isReady) {
       toast.warning("Order is not ready", {
         description:
@@ -203,6 +212,7 @@ export function PosWorkspaceLayout() {
       return;
     }
 
+    isCreateOrderInFlightRef.current = true;
     setIsSubmittingOrder(true);
 
     try {
@@ -252,6 +262,7 @@ export function PosWorkspaceLayout() {
 
       toast.error(getApiErrorMessage(error, "Failed to create order"));
     } finally {
+      isCreateOrderInFlightRef.current = false;
       setIsSubmittingOrder(false);
     }
   }
