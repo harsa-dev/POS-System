@@ -15,6 +15,7 @@ import { realtime } from "../lib/realtime.js";
 import { REALTIME_EVENTS } from "../lib/realtime-events.js";
 
 const router = Router();
+const isDevelopment = process.env.NODE_ENV !== "production";
 
 const orderStatuses = [
   "PENDING_PAYMENT",
@@ -33,11 +34,30 @@ type CreateOrderItemInput = {
   quantity: number;
 };
 
+type RequiredStockMovement = {
+  inventoryItemId: string;
+  quantity: number;
+};
+
 type ParseOrderItemsResult =
   | { success: true; items: CreateOrderItemInput[] }
   | { success: false; message: string };
 
 class OrderValidationError extends Error {}
+
+function logCreateOrderTiming(
+  startedAt: number,
+  label: string,
+  extra?: Record<string, unknown>,
+) {
+  if (!isDevelopment) return;
+
+  console.info("[orders:create]", {
+    label,
+    elapsedMs: Date.now() - startedAt,
+    ...extra,
+  });
+}
 
 function isOrderStatus(value: string): value is OrderStatus {
   return orderStatuses.includes(value as OrderStatus);
@@ -143,6 +163,7 @@ router.get("/orders", async (req, res) => {
 // POST /api/orders
 router.post("/orders", async (req, res) => {
   try {
+    const requestStartedAt = Date.now();
     const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
@@ -238,16 +259,38 @@ router.post("/orders", async (req, res) => {
       },
     });
 
-    // Calculate totals
+    const menuItemById = new Map(menuItems.map((menuItem) => [menuItem.id, menuItem]));
+
+    // Calculate totals and immutable recipe requirements before opening the
+    // interactive transaction. Stock freshness is still re-checked under row
+    // lock inside the transaction.
     let subtotal = 0;
     const orderItemsData: Prisma.OrderItemUncheckedCreateWithoutOrderInput[] = [];
+    const requiredQtyMap = new Map<string, number>();
+    const requiredStockMovements: RequiredStockMovement[] = [];
+
     for (const item of items) {
-      const mi = menuItems.find((m) => m.id === item.menuItemId);
+      const mi = menuItemById.get(item.menuItemId);
       if (!mi) return void res.status(400).json({ success: false, message: `Menu item not found: ${item.menuItemId}` });
+
       const lineTotal = mi.price * item.quantity;
       subtotal += lineTotal;
       orderItemsData.push({ menuItemId: mi.id, quantity: item.quantity, price: mi.price, subtotal: lineTotal });
+
+      for (const recipe of mi.recipes) {
+        const quantity = recipe.quantityNeeded * item.quantity;
+        requiredQtyMap.set(
+          recipe.inventoryItemId,
+          (requiredQtyMap.get(recipe.inventoryItemId) ?? 0) + quantity,
+        );
+        requiredStockMovements.push({
+          inventoryItemId: recipe.inventoryItemId,
+          quantity,
+        });
+      }
     }
+
+    const sortedInventoryIds = [...requiredQtyMap.keys()].sort();
 
     const taxAmount = Math.round(subtotal * (restaurant.taxRate / 100));
     const serviceAmount = Math.round(subtotal * (restaurant.serviceRate / 100));
@@ -265,10 +308,20 @@ router.post("/orders", async (req, res) => {
     // constraint (@@unique([restaurantId, orderNumber])) raises P2002. The
     // entire $transaction is rolled back atomically, so no partial writes occur.
     // A fresh attempt recomputes orderNumber from the latest row and succeeds.
+    logCreateOrderTiming(requestStartedAt, "before transaction", {
+      itemCount: items.length,
+      inventoryItemCount: sortedInventoryIds.length,
+      isCash,
+    });
+
     const order = await (async () => {
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          return await prisma.$transaction(async (tx) => {
+          const createdOrder = await prisma.$transaction(async (tx) => {
+            logCreateOrderTiming(requestStartedAt, "transaction started", {
+              attempt,
+            });
+
             if (tableId) {
               const tableUpdate = await tx.diningTable.updateMany({
                 where: {
@@ -294,64 +347,43 @@ router.post("/orders", async (req, res) => {
             });
             const nextOrderNumber = (lastOrder?.orderNumber ?? 0) + 1;
 
-            // Deduct stock immediately for cash orders
+            // Deduct stock immediately for cash orders. Required quantities were
+            // aggregated before the transaction; the fresh stock read and row
+            // locks stay here because they are race-sensitive.
             if (isCash) {
-              // Step 1: aggregate total required qty per inventory item across
-              // all order lines. One ingredient can appear in multiple recipes
-              // (e.g. two menu items both use the same ingredient), so we must
-              // sum before checking — not check each recipe independently.
-              const requiredQtyMap = new Map<string, number>();
-              for (const item of items) {
-                const mi = menuItems.find((m) => m.id === item.menuItemId)!;
-                for (const recipe of mi.recipes) {
-                  const qty = recipe.quantityNeeded * item.quantity;
-                  requiredQtyMap.set(
-                    recipe.inventoryItemId,
-                    (requiredQtyMap.get(recipe.inventoryItemId) ?? 0) + qty,
-                  );
-                }
-              }
+              logCreateOrderTiming(requestStartedAt, "inventory check started", {
+                attempt,
+                inventoryItemCount: sortedInventoryIds.length,
+              });
 
-              // Step 2: SELECT ... FOR UPDATE — acquire an exclusive row-level
-              // lock on every InventoryItem row needed by this order before
-              // reading currentStock.
-              //
-              // Why raw SQL?
-              //   Prisma's query API has no FOR UPDATE option on any find*
-              //   method. tx.$queryRaw participates in the same database
-              //   transaction, so locks are held until commit or rollback.
-              //
-              // Why sort by id?
-              //   Acquiring locks in a consistent global order across all
-              //   concurrent transactions prevents circular waits (deadlocks).
-              //
-              // How this fixes the race:
-              //   Two concurrent requests for the same ingredient serialize at
-              //   this point. The second request blocks here until the first
-              //   transaction commits. It then reads the already-decremented
-              //   currentStock from the locked row and rejects if stock is now
-              //   insufficient — eliminating the TOCTOU race condition.
-              const sortedIds = [...requiredQtyMap.keys()].sort();
               const lockedStockMap = new Map<
                 string,
                 { id: string; currentStock: number; name: string }
               >();
-              for (const invId of sortedIds) {
-                const rows = await tx.$queryRaw<
+
+              if (sortedInventoryIds.length > 0) {
+                const lockedStockRows = await tx.$queryRaw<
                   { id: string; currentStock: number; name: string }[]
-                >`
+                >(Prisma.sql`
                   SELECT id, "currentStock", name
                   FROM "InventoryItem"
-                  WHERE id = ${invId}
+                  WHERE id IN (${Prisma.join(sortedInventoryIds)})
+                  ORDER BY id
                   FOR UPDATE
-                `;
-                if (rows[0]) lockedStockMap.set(invId, rows[0]);
+                `);
+
+                for (const row of lockedStockRows) {
+                  lockedStockMap.set(row.id, row);
+                }
               }
 
-              // Step 3: check currentStock from the freshly-locked rows, not
-              // from the pre-transaction snapshot captured in menuItems above.
               for (const [invId, totalQty] of requiredQtyMap) {
-                const locked = lockedStockMap.get(invId)!;
+                const locked = lockedStockMap.get(invId);
+
+                if (!locked) {
+                  throw new OrderValidationError(`Inventory item not found: ${invId}`);
+                }
+
                 if (locked.currentStock < totalQty) {
                   throw new OrderValidationError(
                     `Insufficient stock for "${locked.name}". ` +
@@ -360,40 +392,48 @@ router.post("/orders", async (req, res) => {
                 }
               }
 
-              // Step 4: stock confirmed — decrement and record movements.
-              for (const item of items) {
-                const mi = menuItems.find((m) => m.id === item.menuItemId)!;
-                for (const recipe of mi.recipes) {
-                  const qty = recipe.quantityNeeded * item.quantity;
-                  await tx.inventoryItem.update({
-                    where: { id: recipe.inventoryItemId },
-                    data: { currentStock: { decrement: qty } },
-                  });
-                  // Bug #7: include order number in the note so cash-order
-                  // deductions are traceable in stock movement history.
-                  await tx.stockMovement.create({
-                    data: {
-                      inventoryItemId: recipe.inventoryItemId,
-                      type: "OUT",
-                      reason: "RECIPE_USAGE",
-                      quantity: qty,
-                      note: `Order #${nextOrderNumber}`,
-                    },
-                  });
-                }
+              logCreateOrderTiming(requestStartedAt, "inventory check completed", {
+                attempt,
+                inventoryItemCount: sortedInventoryIds.length,
+              });
+
+              for (const [inventoryItemId, quantity] of requiredQtyMap) {
+                await tx.inventoryItem.update({
+                  where: { id: inventoryItemId },
+                  data: { currentStock: { decrement: quantity } },
+                });
               }
 
-              // Bug #3: shift expectedCash update is now INSIDE the transaction —
-              // atomic with order creation. Previously this ran after the transaction
-              // committed, risking an orphaned order (no matching shift credit) on a
-              // server crash or DB error between the two operations.
-              await tx.shift.update({
-                where: { id: currentShift.id },
+              if (requiredStockMovements.length > 0) {
+                await tx.stockMovement.createMany({
+                  data: requiredStockMovements.map((movement) => ({
+                    inventoryItemId: movement.inventoryItemId,
+                    type: "OUT",
+                    reason: "RECIPE_USAGE",
+                    quantity: movement.quantity,
+                    note: `Order #${nextOrderNumber}`,
+                  })),
+                });
+              }
+
+              // Keep expected cash atomic with the order creation. Re-check OPEN
+              // here so a shift closed after the preflight lookup cannot be used.
+              const shiftUpdate = await tx.shift.updateMany({
+                where: {
+                  id: currentShift.id,
+                  userId: user.id,
+                  restaurantId: restaurant.id,
+                  status: "OPEN",
+                },
                 data: { expectedCash: { increment: total } },
               });
+
+              if (shiftUpdate.count !== 1) {
+                throw new OrderValidationError(ERR.NO_OPEN_SHIFT);
+              }
             }
 
-            return tx.order.create({
+            const createdOrder = await tx.order.create({
               data: {
                 orderNumber: nextOrderNumber,
                 type: orderType,
@@ -417,7 +457,21 @@ router.post("/orders", async (req, res) => {
                 shift: true,
               },
             });
+
+            logCreateOrderTiming(requestStartedAt, "order created", {
+              attempt,
+              orderId: createdOrder.id,
+            });
+
+            return createdOrder;
+          }, { maxWait: 5_000, timeout: 15_000 });
+
+          logCreateOrderTiming(requestStartedAt, "transaction completed", {
+            attempt,
+            orderId: createdOrder.id,
           });
+
+          return createdOrder;
         } catch (err: unknown) {
           // P2002 = unique constraint violation on orderNumber — safe to retry
           // because the failed transaction is fully rolled back.
