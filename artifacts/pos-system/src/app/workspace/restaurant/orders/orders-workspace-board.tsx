@@ -1,0 +1,370 @@
+import { useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  CheckCheck,
+  Clock,
+  PackageCheck,
+  ReceiptText,
+  Search,
+  ShoppingBag,
+  UtensilsCrossed,
+} from "lucide-react";
+
+import type {
+  OrdersWorkspaceOrder,
+  OrdersWorkspaceStatus,
+} from "./use-orders-workspace-orders";
+
+type OrdersWorkspaceFilter =
+  | "all"
+  | "active"
+  | "kitchen"
+  | "ready"
+  | "served"
+  | "closed";
+
+type OrdersWorkspaceBoardProps = {
+  orders: OrdersWorkspaceOrder[];
+  status: "loading" | "ready" | "error";
+  errorMessage: string | null;
+};
+
+const filters: Array<{ id: OrdersWorkspaceFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "active", label: "Active" },
+  { id: "kitchen", label: "Kitchen" },
+  { id: "ready", label: "Ready" },
+  { id: "served", label: "Served" },
+  { id: "closed", label: "Completed / Cancelled" },
+];
+
+const statusTone: Record<OrdersWorkspaceStatus, string> = {
+  PENDING_PAYMENT: "bg-yellow-50 text-yellow-700",
+  PAID: "bg-blue-50 text-blue-700",
+  PREPARING: "bg-orange-50 text-orange-700",
+  READY: "bg-green-50 text-green-700",
+  SERVED: "bg-purple-50 text-purple-700",
+  COMPLETED: "bg-emerald-50 text-emerald-700",
+  CANCELLED: "bg-red-50 text-red-700",
+};
+
+function matchesFilter(
+  order: OrdersWorkspaceOrder,
+  filter: OrdersWorkspaceFilter,
+) {
+  if (filter === "all") return true;
+  if (filter === "active") {
+    return [
+      "PENDING_PAYMENT",
+      "PAID",
+      "PREPARING",
+      "READY",
+      "SERVED",
+    ].includes(order.status);
+  }
+  if (filter === "kitchen") return ["PAID", "PREPARING"].includes(order.status);
+  if (filter === "ready") return order.status === "READY";
+  if (filter === "served") return order.status === "SERVED";
+  return ["COMPLETED", "CANCELLED"].includes(order.status);
+}
+
+function OrdersWorkspaceSkeleton() {
+  return (
+    <div className="space-y-4" aria-label="Loading orders" aria-busy="true">
+      <div className="grid gap-3 sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            className="h-24 animate-pulse rounded-2xl border bg-white p-4 shadow-sm"
+            key={index}
+          >
+            <div className="h-3 w-24 rounded bg-neutral-100" />
+            <div className="mt-3 h-8 w-12 rounded bg-neutral-200" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div
+            className="border-b border-neutral-100 py-4 last:border-b-0"
+            key={index}
+          >
+            <div className="h-5 w-40 rounded bg-neutral-200" />
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <div className="h-16 rounded-xl bg-neutral-50" />
+              <div className="h-16 rounded-xl bg-neutral-50" />
+              <div className="h-16 rounded-xl bg-neutral-50" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OrdersSummary({ orders }: { orders: OrdersWorkspaceOrder[] }) {
+  const activeCount = orders.filter((order) => matchesFilter(order, "active"))
+    .length;
+  const kitchenCount = orders.filter((order) => matchesFilter(order, "kitchen"))
+    .length;
+  const servedCount = orders.filter((order) => order.status === "SERVED").length;
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-4">
+      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        <p className="text-xs font-semibold uppercase text-neutral-500">
+          Total Orders
+        </p>
+        <p className="mt-2 text-2xl font-bold text-neutral-950">
+          {orders.length}
+        </p>
+      </div>
+      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        <p className="text-xs font-semibold uppercase text-neutral-500">
+          Active
+        </p>
+        <p className="mt-2 text-2xl font-bold text-blue-700">{activeCount}</p>
+      </div>
+      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        <p className="text-xs font-semibold uppercase text-neutral-500">
+          Kitchen
+        </p>
+        <p className="mt-2 text-2xl font-bold text-orange-700">
+          {kitchenCount}
+        </p>
+      </div>
+      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        <p className="text-xs font-semibold uppercase text-neutral-500">
+          Served
+        </p>
+        <p className="mt-2 text-2xl font-bold text-purple-700">
+          {servedCount}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function OrdersWorkspaceCard({ order }: { order: OrdersWorkspaceOrder }) {
+  const visibleItems = order.items.slice(0, 3);
+  const hiddenItemCount = Math.max(0, order.items.length - visibleItems.length);
+
+  return (
+    <article className="rounded-2xl border bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-neutral-950">
+                {order.orderCode}
+              </h2>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                  {order.createdAtLabel}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
+                  {order.destination}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />
+                  {order.orderTypeLabel}
+                </span>
+              </div>
+            </div>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-bold ${statusTone[order.status]}`}
+            >
+              {order.statusLabel}
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-2 md:grid-cols-3">
+            {visibleItems.map((item) => (
+              <div className="rounded-xl bg-neutral-50 p-3" key={item.id}>
+                <p className="truncate text-sm font-semibold text-neutral-800">
+                  {item.name}
+                </p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  {item.quantity} x {item.priceLabel}
+                </p>
+                <p className="mt-2 text-sm font-bold text-neutral-950">
+                  {item.subtotalLabel}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {hiddenItemCount > 0 ? (
+            <p className="mt-3 text-xs text-neutral-500">
+              +{hiddenItemCount} more item{hiddenItemCount > 1 ? "s" : ""}
+            </p>
+          ) : null}
+        </div>
+
+        <aside className="grid gap-2 text-sm lg:w-56">
+          <div className="rounded-xl border bg-neutral-50 p-3">
+            <p className="text-xs font-semibold uppercase text-neutral-500">
+              Total
+            </p>
+            <p className="mt-1 text-xl font-bold text-neutral-950">
+              {order.totalLabel}
+            </p>
+          </div>
+          <div className="rounded-xl border bg-neutral-50 p-3">
+            <p className="text-xs font-semibold uppercase text-neutral-500">
+              Payment
+            </p>
+            <p className="mt-1 font-bold text-neutral-800">
+              {order.paymentStatus}
+            </p>
+          </div>
+          <div className="rounded-xl border bg-neutral-50 p-3">
+            <p className="text-xs font-semibold uppercase text-neutral-500">
+              Items
+            </p>
+            <p className="mt-1 font-bold text-neutral-800">
+              {order.itemCount}
+            </p>
+          </div>
+          <button
+            className="mt-1 h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
+            disabled
+            type="button"
+          >
+            Lifecycle action - not wired yet
+          </button>
+        </aside>
+      </div>
+    </article>
+  );
+}
+
+export function OrdersWorkspaceBoard({
+  orders,
+  status,
+  errorMessage,
+}: OrdersWorkspaceBoardProps) {
+  const [activeFilter, setActiveFilter] =
+    useState<OrdersWorkspaceFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredOrders = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return orders.filter((order) => {
+      const matchesLifecycleFilter = matchesFilter(order, activeFilter);
+      const searchableText = [
+        order.orderCode,
+        order.statusLabel,
+        order.paymentStatus,
+        order.destination,
+        order.orderTypeLabel,
+        ...order.items.map((item) => item.name),
+      ]
+        .join(" ")
+        .toLowerCase();
+      const matchesSearch =
+        !normalizedQuery || searchableText.includes(normalizedQuery);
+
+      return matchesLifecycleFilter && matchesSearch;
+    });
+  }, [activeFilter, orders, searchQuery]);
+
+  if (status === "loading") {
+    return <OrdersWorkspaceSkeleton />;
+  }
+
+  if (status === "error") {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-red-600">
+          <AlertTriangle className="h-6 w-6" aria-hidden="true" />
+        </div>
+        <p className="mt-4 font-bold text-red-700">Failed to load orders</p>
+        <p className="mt-2 text-sm text-red-600">
+          {errorMessage ?? "Please check the connection and try again."}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <OrdersSummary orders={orders} />
+
+      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-neutral-950">
+              Order Lifecycle
+            </h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              Read-only V3 order visibility across POS, kitchen, serving, and
+              closure states.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-500 lg:w-72">
+            <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <input
+              aria-label="Search V3 orders"
+              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-neutral-400"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search orders..."
+              value={searchQuery}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {filters.map((filter) => (
+            <button
+              className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                activeFilter === filter.id
+                  ? "bg-neutral-950 text-white"
+                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+              }`}
+              key={filter.id}
+              onClick={() => setActiveFilter(filter.id)}
+              type="button"
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
+        <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
+        Order lifecycle actions are visible as placeholders only. No V3 order
+        status mutation is wired here yet.
+      </div>
+
+      {filteredOrders.length === 0 ? (
+        <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-white p-10 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500">
+            {orders.length === 0 ? (
+              <ReceiptText className="h-7 w-7" aria-hidden="true" />
+            ) : (
+              <CheckCheck className="h-7 w-7" aria-hidden="true" />
+            )}
+          </div>
+          <p className="mt-4 text-lg font-bold text-neutral-800">
+            {orders.length === 0 ? "No orders yet" : "No matching orders"}
+          </p>
+          <p className="mt-2 text-sm text-neutral-500">
+            {orders.length === 0
+              ? "Orders created from POS V3 will appear here."
+              : "Try changing the lifecycle filter or search term."}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredOrders.map((order) => (
+            <OrdersWorkspaceCard key={order.id} order={order} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
