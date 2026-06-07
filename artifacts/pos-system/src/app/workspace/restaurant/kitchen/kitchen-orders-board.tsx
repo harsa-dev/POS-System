@@ -1,0 +1,207 @@
+import {
+  AlertTriangle,
+  ChefHat,
+  Clock,
+  PackageCheck,
+  UtensilsCrossed,
+} from "lucide-react";
+
+import type { KitchenOrder } from "./use-kitchen-orders";
+
+type KitchenOrdersBoardProps = {
+  orders: KitchenOrder[];
+  status: "loading" | "ready" | "error";
+  errorMessage: string | null;
+};
+
+function KitchenOrdersSkeleton() {
+  return (
+    <div
+      aria-busy="true"
+      aria-label="Loading kitchen orders"
+      className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+    >
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div
+          className="min-h-64 animate-pulse rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm"
+          key={index}
+        >
+          <div className="flex items-start justify-between gap-3 border-b border-neutral-100 pb-4">
+            <div>
+              <div className="h-4 w-28 rounded bg-neutral-200" />
+              <div className="mt-3 h-3 w-36 rounded bg-neutral-100" />
+            </div>
+            <div className="h-7 w-20 rounded-full bg-neutral-200" />
+          </div>
+          <div className="mt-4 space-y-2">
+            {Array.from({ length: 3 }).map((__, itemIndex) => (
+              <div
+                className="flex justify-between rounded-xl bg-neutral-50 p-3"
+                key={itemIndex}
+              >
+                <div className="h-4 w-32 rounded bg-neutral-200" />
+                <div className="h-4 w-8 rounded bg-neutral-200" />
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 h-10 rounded-xl bg-neutral-100" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function KitchenSummary({ orders }: { orders: KitchenOrder[] }) {
+  const queuedCount = orders.filter((order) => order.status === "PAID").length;
+  const cookingCount = orders.filter(
+    (order) => order.status === "PREPARING",
+  ).length;
+  const itemCount = orders.reduce((total, order) => total + order.itemCount, 0);
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        <p className="text-xs font-semibold uppercase text-neutral-500">
+          Queued
+        </p>
+        <p className="mt-2 text-2xl font-bold text-blue-700">{queuedCount}</p>
+      </div>
+      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        <p className="text-xs font-semibold uppercase text-neutral-500">
+          Cooking
+        </p>
+        <p className="mt-2 text-2xl font-bold text-orange-700">
+          {cookingCount}
+        </p>
+      </div>
+      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        <p className="text-xs font-semibold uppercase text-neutral-500">
+          Total Items
+        </p>
+        <p className="mt-2 text-2xl font-bold text-neutral-950">{itemCount}</p>
+      </div>
+    </div>
+  );
+}
+
+function KitchenOrderCard({ order }: { order: KitchenOrder }) {
+  const isCooking = order.status === "PREPARING";
+
+  return (
+    <article
+      className={`rounded-2xl border bg-white p-4 shadow-sm ${
+        isCooking ? "border-orange-200 ring-1 ring-orange-100" : ""
+      }`}
+    >
+      <div className="border-b border-neutral-100 pb-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-neutral-950">
+              {order.orderCode}
+            </h2>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                {order.createdAtLabel}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
+                {order.destination}
+              </span>
+            </div>
+          </div>
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-bold ${
+              isCooking
+                ? "bg-orange-50 text-orange-700"
+                : "bg-blue-50 text-blue-700"
+            }`}
+          >
+            {order.statusLabel}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {order.items.map((item) => (
+          <div
+            className="flex items-center justify-between gap-3 rounded-xl bg-neutral-50 px-3 py-2 text-sm"
+            key={item.id}
+          >
+            <span className="font-semibold text-neutral-800">{item.name}</span>
+            <span className="rounded-full bg-white px-2 py-1 text-xs font-bold text-neutral-600">
+              x{item.quantity}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 border-t border-neutral-100 pt-4">
+        <button
+          className="h-10 w-full rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500"
+          disabled
+          type="button"
+        >
+          {isCooking ? "Mark Ready - not wired yet" : "Start Cooking - not wired yet"}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+export function KitchenOrdersBoard({
+  orders,
+  status,
+  errorMessage,
+}: KitchenOrdersBoardProps) {
+  if (status === "loading") {
+    return <KitchenOrdersSkeleton />;
+  }
+
+  if (status === "error") {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-red-600">
+          <AlertTriangle className="h-6 w-6" aria-hidden="true" />
+        </div>
+        <p className="mt-4 font-bold text-red-700">
+          Failed to load kitchen orders
+        </p>
+        <p className="mt-2 text-sm text-red-600">
+          {errorMessage ?? "Please check the connection and try again."}
+        </p>
+      </div>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-white p-10 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500">
+          <ChefHat className="h-7 w-7" aria-hidden="true" />
+        </div>
+        <p className="mt-4 text-lg font-bold text-neutral-800">
+          Kitchen is all clear
+        </p>
+        <p className="mt-2 text-sm text-neutral-500">
+          Paid and preparing orders will appear here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <KitchenSummary orders={orders} />
+      <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
+        <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
+        Read-only kitchen board. Status actions are prepared but disabled.
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {orders.map((order) => (
+          <KitchenOrderCard key={order.id} order={order} />
+        ))}
+      </div>
+    </div>
+  );
+}
