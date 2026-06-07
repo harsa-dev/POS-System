@@ -206,12 +206,29 @@ export function PosWorkspaceLayout() {
     setIsSubmittingOrder(true);
 
     try {
-      const response = await orderApi.createOrder<CreateOrderResponse>(
+      if (import.meta.env.DEV) {
+        console.debug(
+          "[pos-v3] create order payload",
+          orderPayloadPreview.payload,
+        );
+      }
+
+      const result = await orderApi.createOrderWithResult<CreateOrderResponse>(
         orderPayloadPreview.payload,
       );
 
-      if (!response.success || !response.data) {
-        toast.error(response.message || "Failed to create order");
+      if (import.meta.env.DEV) {
+        console.debug("[pos-v3] create order response", {
+          status: result.status,
+          ok: result.ok,
+          body: result.body,
+        });
+      }
+
+      if (!result.ok || !result.body.success || !result.body.data) {
+        toast.error(
+          result.body.message || `Failed to create order (${result.status})`,
+        );
         return;
       }
 
@@ -229,6 +246,10 @@ export function PosWorkspaceLayout() {
             : "Payment transaction flow is not wired in V3 yet.",
       });
     } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("[pos-v3] create order error", error);
+      }
+
       toast.error(getApiErrorMessage(error, "Failed to create order"));
     } finally {
       setIsSubmittingOrder(false);
