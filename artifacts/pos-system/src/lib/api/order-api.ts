@@ -109,6 +109,24 @@ export const orderApi = {
     });
   },
 
+  async updateStatusWithResult<T = ApiRecord>(
+    id: string,
+    payload: UpdateOrderStatusPayload,
+  ): Promise<OrderApiResult<T>> {
+    const response = await apiFetch(`/api/orders/${id}/status`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: await readApiEnvelope<T>(response),
+    };
+  },
+
   moveTable<T = ApiRecord>(id: string, payload: MoveTablePayload) {
     return apiJson<ApiEnvelope<T>>(`/api/orders/${id}/move-table`, {
       method: "PATCH",

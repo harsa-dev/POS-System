@@ -4,6 +4,7 @@ import { orderApi } from "@/lib/api";
 import { formatDateTime, formatOrderNumber } from "@/lib/utils/format";
 
 export type KitchenOrderStatus = "PAID" | "PREPARING";
+export type KitchenOrderTargetStatus = "PREPARING" | "READY";
 
 export type KitchenOrderItem = {
   id: string;

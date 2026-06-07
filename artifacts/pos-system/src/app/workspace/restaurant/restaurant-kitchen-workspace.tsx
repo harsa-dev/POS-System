@@ -1,10 +1,66 @@
+import { useRef, useState } from "react";
+import { toast } from "sonner";
+
 import { KitchenOrdersBoard } from "@/app/workspace/restaurant/kitchen/kitchen-orders-board";
-import { useKitchenOrders } from "@/app/workspace/restaurant/kitchen/use-kitchen-orders";
+import {
+  type KitchenOrderTargetStatus,
+  useKitchenOrders,
+} from "@/app/workspace/restaurant/kitchen/use-kitchen-orders";
 import { WorkspaceShell } from "@/app/workspace/workspace-shell";
 import { ROUTES } from "@/constants/routes";
+import { getApiErrorMessage, orderApi } from "@/lib/api";
 
 export default function RestaurantKitchenWorkspace() {
   const kitchenOrders = useKitchenOrders();
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const updatingOrderIdRef = useRef<string | null>(null);
+
+  async function handleUpdateStatus(
+    orderId: string,
+    status: KitchenOrderTargetStatus,
+  ) {
+    if (updatingOrderIdRef.current !== null) {
+      if (import.meta.env.DEV) {
+        console.debug("[kitchen-v3] duplicate status update blocked", {
+          activeOrderId: updatingOrderIdRef.current,
+          orderId,
+          status,
+        });
+      }
+
+      return;
+    }
+
+    updatingOrderIdRef.current = orderId;
+    setUpdatingOrderId(orderId);
+
+    try {
+      const result = await orderApi.updateStatusWithResult(orderId, {
+        status,
+      });
+
+      if (!result.ok || !result.body.success) {
+        toast.error(
+          result.body.message ||
+            `Failed to update order status (${result.status})`,
+        );
+        return;
+      }
+
+      await kitchenOrders.reload();
+
+      toast.success(
+        status === "PREPARING"
+          ? "Order moved to cooking"
+          : "Order marked ready",
+      );
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to update order status"));
+    } finally {
+      updatingOrderIdRef.current = null;
+      setUpdatingOrderId(null);
+    }
+  }
 
   return (
     <WorkspaceShell
@@ -15,8 +71,10 @@ export default function RestaurantKitchenWorkspace() {
     >
       <KitchenOrdersBoard
         errorMessage={kitchenOrders.errorMessage}
+        onUpdateStatus={handleUpdateStatus}
         orders={kitchenOrders.orders}
         status={kitchenOrders.status}
+        updatingOrderId={updatingOrderId}
       />
     </WorkspaceShell>
   );

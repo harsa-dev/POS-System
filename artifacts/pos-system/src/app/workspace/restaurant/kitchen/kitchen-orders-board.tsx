@@ -2,16 +2,25 @@ import {
   AlertTriangle,
   ChefHat,
   Clock,
+  Loader2,
   PackageCheck,
   UtensilsCrossed,
 } from "lucide-react";
 
-import type { KitchenOrder } from "./use-kitchen-orders";
+import type {
+  KitchenOrder,
+  KitchenOrderTargetStatus,
+} from "./use-kitchen-orders";
 
 type KitchenOrdersBoardProps = {
   orders: KitchenOrder[];
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
+  updatingOrderId: string | null;
+  onUpdateStatus: (
+    orderId: string,
+    status: KitchenOrderTargetStatus,
+  ) => Promise<void>;
 };
 
 function KitchenOrdersSkeleton() {
@@ -84,8 +93,24 @@ function KitchenSummary({ orders }: { orders: KitchenOrder[] }) {
   );
 }
 
-function KitchenOrderCard({ order }: { order: KitchenOrder }) {
+function KitchenOrderCard({
+  order,
+  isUpdating,
+  onUpdateStatus,
+}: {
+  order: KitchenOrder;
+  isUpdating: boolean;
+  onUpdateStatus: (
+    orderId: string,
+    status: KitchenOrderTargetStatus,
+  ) => Promise<void>;
+}) {
   const isCooking = order.status === "PREPARING";
+  const targetStatus: KitchenOrderTargetStatus = isCooking
+    ? "READY"
+    : "PREPARING";
+  const buttonLabel = isCooking ? "Mark Ready" : "Start Cooking";
+  const loadingLabel = isCooking ? "Marking ready..." : "Starting cooking...";
 
   return (
     <article
@@ -138,11 +163,23 @@ function KitchenOrderCard({ order }: { order: KitchenOrder }) {
 
       <div className="mt-4 border-t border-neutral-100 pt-4">
         <button
-          className="h-10 w-full rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500"
-          disabled
+          className={`flex h-10 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+            isCooking
+              ? "bg-green-600 text-white hover:bg-green-700"
+              : "bg-neutral-950 text-white hover:bg-neutral-800"
+          }`}
+          disabled={isUpdating}
+          onClick={() => void onUpdateStatus(order.id, targetStatus)}
           type="button"
         >
-          {isCooking ? "Mark Ready - not wired yet" : "Start Cooking - not wired yet"}
+          {isUpdating ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              {loadingLabel}
+            </>
+          ) : (
+            buttonLabel
+          )}
         </button>
       </div>
     </article>
@@ -153,6 +190,8 @@ export function KitchenOrdersBoard({
   orders,
   status,
   errorMessage,
+  updatingOrderId,
+  onUpdateStatus,
 }: KitchenOrdersBoardProps) {
   if (status === "loading") {
     return <KitchenOrdersSkeleton />;
@@ -195,11 +234,16 @@ export function KitchenOrdersBoard({
       <KitchenSummary orders={orders} />
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-        Read-only kitchen board. Status actions are prepared but disabled.
+        Kitchen actions update order status after backend confirmation.
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {orders.map((order) => (
-          <KitchenOrderCard key={order.id} order={order} />
+          <KitchenOrderCard
+            isUpdating={updatingOrderId === order.id}
+            key={order.id}
+            onUpdateStatus={onUpdateStatus}
+            order={order}
+          />
         ))}
       </div>
     </div>
