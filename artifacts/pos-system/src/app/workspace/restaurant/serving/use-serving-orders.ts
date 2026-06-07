@@ -4,6 +4,7 @@ import { orderApi } from "@/lib/api";
 import { formatDateTime, formatOrderNumber } from "@/lib/utils/format";
 
 export type ServingOrderStatus = "READY";
+export type ServingOrderTargetStatus = "SERVED";
 
 export type ServingOrderItem = {
   id: string;

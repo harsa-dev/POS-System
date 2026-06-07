@@ -2,18 +2,27 @@ import {
   AlertTriangle,
   CheckCheck,
   Clock,
+  Loader2,
   PackageCheck,
   ShoppingBag,
   Sparkles,
   UtensilsCrossed,
 } from "lucide-react";
 
-import type { ServingOrder } from "./use-serving-orders";
+import type {
+  ServingOrder,
+  ServingOrderTargetStatus,
+} from "./use-serving-orders";
 
 type ServingOrdersBoardProps = {
   orders: ServingOrder[];
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
+  updatingOrderId: string | null;
+  onUpdateStatus: (
+    orderId: string,
+    status: ServingOrderTargetStatus,
+  ) => Promise<void>;
 };
 
 function ServingOrdersSkeleton() {
@@ -94,7 +103,18 @@ function ServingSummary({ orders }: { orders: ServingOrder[] }) {
   );
 }
 
-function ServingOrderCard({ order }: { order: ServingOrder }) {
+function ServingOrderCard({
+  order,
+  isUpdating,
+  onUpdateStatus,
+}: {
+  order: ServingOrder;
+  isUpdating: boolean;
+  onUpdateStatus: (
+    orderId: string,
+    status: ServingOrderTargetStatus,
+  ) => Promise<void>;
+}) {
   return (
     <article className="rounded-2xl border border-green-200 bg-white p-4 shadow-sm ring-1 ring-green-50">
       <div className="border-b border-neutral-100 pb-4">
@@ -149,12 +169,22 @@ function ServingOrderCard({ order }: { order: ServingOrder }) {
 
       <div className="mt-4 border-t border-neutral-100 pt-4">
         <button
-          className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
-          disabled
+          className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isUpdating}
+          onClick={() => void onUpdateStatus(order.id, "SERVED")}
           type="button"
         >
-          <Sparkles className="h-4 w-4" aria-hidden="true" />
-          Serve order - not wired yet
+          {isUpdating ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Marking served...
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              Mark as Served
+            </>
+          )}
         </button>
       </div>
     </article>
@@ -165,6 +195,8 @@ export function ServingOrdersBoard({
   orders,
   status,
   errorMessage,
+  updatingOrderId,
+  onUpdateStatus,
 }: ServingOrdersBoardProps) {
   if (status === "loading") {
     return <ServingOrdersSkeleton />;
@@ -207,12 +239,16 @@ export function ServingOrdersBoard({
       <ServingSummary orders={orders} />
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-        Read-only serving board. Serve and complete actions are prepared but
-        disabled.
+        Serving actions update order status after backend confirmation.
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {orders.map((order) => (
-          <ServingOrderCard key={order.id} order={order} />
+          <ServingOrderCard
+            isUpdating={updatingOrderId === order.id}
+            key={order.id}
+            onUpdateStatus={onUpdateStatus}
+            order={order}
+          />
         ))}
       </div>
     </div>
