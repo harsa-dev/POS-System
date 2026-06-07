@@ -6,14 +6,19 @@ import type { PosProductItem } from "./pos-workspace-types";
 
 type PosProductCardProps = {
   product: PosProductItem;
+  onAddProduct: (product: PosProductItem) => void;
 };
 
-export function PosProductCard({ product }: PosProductCardProps) {
+export function PosProductCard({
+  product,
+  onAddProduct,
+}: PosProductCardProps) {
   const imageUrl = resolveMediaUrl(product.imageUrl);
 
   return (
     <button
       className="group min-h-36 rounded-2xl border border-neutral-200 bg-white p-4 text-left shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50"
+      onClick={() => onAddProduct(product)}
       type="button"
     >
       <div className="flex items-start justify-between gap-3">

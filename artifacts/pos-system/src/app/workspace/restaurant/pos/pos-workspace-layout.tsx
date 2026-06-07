@@ -11,11 +11,20 @@ import { PosWorkspaceHeader } from "./pos-workspace-header";
 import { usePosMenuCatalog } from "./use-pos-menu-catalog";
 import { usePosOpenOrders } from "./use-pos-open-orders";
 import { usePosTables } from "./use-pos-tables";
+import type {
+  PosCartItem,
+  PosCartTotals,
+  PosProductItem,
+} from "./pos-workspace-types";
+
+const previewServiceRate = 5;
+const previewTaxRate = 10;
 
 export function PosWorkspaceLayout() {
   const catalog = usePosMenuCatalog();
   const tableCatalog = usePosTables();
   const openOrders = usePosOpenOrders();
+  const [cartItems, setCartItems] = useState<PosCartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
@@ -44,6 +53,88 @@ export function PosWorkspaceLayout() {
     [selectedTableId, tableCatalog.tables],
   );
 
+  const cartTotals = useMemo<PosCartTotals>(() => {
+    const subtotal = cartItems.reduce(
+      (total, item) => total + item.unitPrice * item.quantity,
+      0,
+    );
+    const serviceAmount = Math.round(subtotal * (previewServiceRate / 100));
+    const taxAmount = Math.round(subtotal * (previewTaxRate / 100));
+
+    return {
+      subtotal,
+      serviceAmount,
+      taxAmount,
+      total: subtotal + serviceAmount + taxAmount,
+      serviceRate: previewServiceRate,
+      taxRate: previewTaxRate,
+    };
+  }, [cartItems]);
+
+  function handleAddProduct(product: PosProductItem) {
+    setCartItems((currentItems) => {
+      const existingItem = currentItems.find(
+        (item) => item.productId === product.id,
+      );
+
+      if (existingItem) {
+        return currentItems.map((item) =>
+          item.productId === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item,
+        );
+      }
+
+      return [
+        ...currentItems,
+        {
+          productId: product.id,
+          name: product.name,
+          category: product.category,
+          unitPrice: product.priceValue,
+          unitPriceLabel: product.price,
+          quantity: 1,
+        },
+      ];
+    });
+  }
+
+  function handleIncreaseQuantity(productId: string) {
+    setCartItems((currentItems) =>
+      currentItems.map((item) =>
+        item.productId === productId
+          ? { ...item, quantity: item.quantity + 1 }
+          : item,
+      ),
+    );
+  }
+
+  function handleDecreaseQuantity(productId: string) {
+    setCartItems((currentItems) =>
+      currentItems.flatMap((item) => {
+        if (item.productId !== productId) {
+          return [item];
+        }
+
+        if (item.quantity <= 1) {
+          return [];
+        }
+
+        return [{ ...item, quantity: item.quantity - 1 }];
+      }),
+    );
+  }
+
+  function handleRemoveItem(productId: string) {
+    setCartItems((currentItems) =>
+      currentItems.filter((item) => item.productId !== productId),
+    );
+  }
+
+  function handleClearCart() {
+    setCartItems([]);
+  }
+
   return (
     <div className="space-y-4">
       <PosWorkspaceHeader
@@ -66,6 +157,7 @@ export function PosWorkspaceLayout() {
           }
           errorMessage={catalog.errorMessage}
           isUsingFallback={catalog.isUsingFallback}
+          onAddProduct={handleAddProduct}
           products={filteredProducts}
           status={catalog.status}
         />
@@ -79,7 +171,13 @@ export function PosWorkspaceLayout() {
             summary={tableCatalog.summary}
             tables={tableCatalog.tables}
           />
-          <PosOrderPanel selectedTable={selectedTable} />
+          <PosOrderPanel
+            cartItems={cartItems}
+            onDecreaseQuantity={handleDecreaseQuantity}
+            onIncreaseQuantity={handleIncreaseQuantity}
+            onRemoveItem={handleRemoveItem}
+            selectedTable={selectedTable}
+          />
           <PosOpenOrdersPanel
             errorMessage={openOrders.errorMessage}
             isUsingFallback={openOrders.isUsingFallback}
@@ -88,10 +186,13 @@ export function PosWorkspaceLayout() {
             selectedOrderId={selectedOrderId}
             status={openOrders.status}
           />
-          <PosPaymentSummary />
+          <PosPaymentSummary totals={cartTotals} />
         </aside>
       </div>
-      <PosQuickActions />
+      <PosQuickActions
+        hasCartItems={cartItems.length > 0}
+        onClearCart={handleClearCart}
+      />
     </div>
   );
 }

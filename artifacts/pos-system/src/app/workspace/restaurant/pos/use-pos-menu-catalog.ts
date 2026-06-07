@@ -33,6 +33,7 @@ const fallbackProducts: PosProductItem[] = v3PosProducts.map(
     name: product.name,
     category: product.category,
     price: product.price,
+    priceValue: product.priceValue,
     status: product.status,
     imageUrl: product.imageUrl,
   }),
@@ -58,6 +59,7 @@ function mapMenuItemToProduct(menuItem: MenuItem): PosProductItem {
     name: menuItem.name,
     category: menuItem.category?.name ?? "Uncategorized",
     price: formatCurrency(menuItem.price),
+    priceValue: menuItem.price,
     status: getProductStatus(menuItem),
     imageUrl: menuItem.imageUrl,
   };

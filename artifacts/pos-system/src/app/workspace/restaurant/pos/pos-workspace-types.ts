@@ -9,8 +9,27 @@ export type PosProductItem = {
   name: string;
   category: string;
   price: string;
+  priceValue: number;
   status: string;
   imageUrl?: string | null;
+};
+
+export type PosCartItem = {
+  productId: string;
+  name: string;
+  category: string;
+  unitPrice: number;
+  unitPriceLabel: string;
+  quantity: number;
+};
+
+export type PosCartTotals = {
+  subtotal: number;
+  serviceAmount: number;
+  taxAmount: number;
+  total: number;
+  serviceRate: number;
+  taxRate: number;
 };
 
 export type PosTableStatus =

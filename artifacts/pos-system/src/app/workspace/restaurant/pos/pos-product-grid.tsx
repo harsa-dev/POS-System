@@ -7,6 +7,7 @@ type PosProductGridProps = {
   errorMessage: string | null;
   emptyMessage: string;
   isUsingFallback: boolean;
+  onAddProduct: (product: PosProductItem) => void;
 };
 
 function PosProductGridSkeleton() {
@@ -36,6 +37,7 @@ export function PosProductGrid({
   errorMessage,
   emptyMessage,
   isUsingFallback,
+  onAddProduct,
 }: PosProductGridProps) {
   const isLoading = status === "loading";
   const itemLabel = isUsingFallback ? "preview items" : "menu items";
@@ -46,7 +48,7 @@ export function PosProductGrid({
         <div>
           <h3 className="text-sm font-bold text-neutral-950">Product Grid</h3>
           <p className="mt-1 text-xs text-neutral-500">
-            Read-only menu catalog preview. Adding items is intentionally disabled.
+            Menu catalog is read-only. Adding items updates this local cart only.
           </p>
         </div>
         <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-600">
@@ -71,7 +73,11 @@ export function PosProductGrid({
       {!isLoading && products.length > 0 ? (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
           {products.map((product) => (
-            <PosProductCard key={product.id} product={product} />
+            <PosProductCard
+              key={product.id}
+              onAddProduct={onAddProduct}
+              product={product}
+            />
           ))}
         </div>
       ) : null}
