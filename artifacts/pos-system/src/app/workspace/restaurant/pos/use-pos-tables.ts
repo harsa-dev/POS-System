@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { v3PosTables } from "@/app/workspace/restaurant/pos-placeholder-data";
 import type {
@@ -15,6 +15,7 @@ type PosTablesState = {
   status: PosTablesStatus;
   errorMessage: string | null;
   isUsingFallback: boolean;
+  reload: () => void;
 };
 
 type DiningTable = {
@@ -71,6 +72,11 @@ export function usePosTables(): PosTablesState {
   const [status, setStatus] = useState<PosTablesStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const [reloadVersion, setReloadVersion] = useState(0);
+
+  const reload = useCallback(() => {
+    setReloadVersion((version) => version + 1);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -104,7 +110,7 @@ export function usePosTables(): PosTablesState {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadVersion]);
 
   const summary = useMemo(() => createTableSummary(tables), [tables]);
 
@@ -115,7 +121,8 @@ export function usePosTables(): PosTablesState {
       status,
       errorMessage,
       isUsingFallback,
+      reload,
     }),
-    [errorMessage, isUsingFallback, status, summary, tables],
+    [errorMessage, isUsingFallback, reload, status, summary, tables],
   );
 }

@@ -72,7 +72,7 @@ export function PosOrderDraftPreview({ draft }: PosOrderDraftPreviewProps) {
         </div>
       ) : (
         <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">
-          Draft is locally valid. Backend order flow is still not wired.
+          Draft is locally valid for the current submit gate.
         </div>
       )}
 
@@ -87,13 +87,6 @@ export function PosOrderDraftPreview({ draft }: PosOrderDraftPreviewProps) {
         </div>
       ) : null}
 
-      <button
-        className="mt-4 flex h-10 w-full cursor-not-allowed items-center justify-center rounded-2xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500"
-        disabled
-        type="button"
-      >
-        Not wired yet
-      </button>
     </section>
   );
 }

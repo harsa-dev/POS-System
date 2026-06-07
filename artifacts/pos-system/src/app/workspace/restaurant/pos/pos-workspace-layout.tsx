@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { PosCategoryRail } from "./pos-category-rail";
 import { PosBackendPayloadPreview } from "./pos-backend-payload-preview";
@@ -19,6 +20,7 @@ import { PosWorkspaceHeader } from "./pos-workspace-header";
 import { usePosMenuCatalog } from "./use-pos-menu-catalog";
 import { usePosOpenOrders } from "./use-pos-open-orders";
 import { usePosTables } from "./use-pos-tables";
+import { getApiErrorMessage, orderApi } from "@/lib/api";
 import type {
   PosCartItem,
   PosCartTotals,
@@ -28,8 +30,13 @@ import type {
 
 const previewServiceRate = 5;
 const previewTaxRate = 10;
-const previewOrderType: PosOrderType = "DINE_IN";
 const previewOrderNotes = "";
+
+type CreateOrderResponse = {
+  id: string;
+  orderNumber?: number;
+  status?: string;
+};
 
 export function PosWorkspaceLayout() {
   const catalog = usePosMenuCatalog();
@@ -39,9 +46,11 @@ export function PosWorkspaceLayout() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [orderType, setOrderType] = useState<PosOrderType>("TAKEAWAY");
   const [paymentMethod, setPaymentMethod] =
     useState<CreateOrderPaymentMethod>("CASH");
   const [amountPaidInput, setAmountPaidInput] = useState("0");
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const hasActiveFilters = selectedCategory !== null || normalizedSearchQuery !== "";
@@ -91,10 +100,10 @@ export function PosWorkspaceLayout() {
         cartItems,
         selectedTable,
         totals: cartTotals,
-        orderType: previewOrderType,
+        orderType,
         notes: previewOrderNotes,
       }),
-    [cartItems, cartTotals, selectedTable],
+    [cartItems, cartTotals, orderType, selectedTable],
   );
 
   const cashAmountPaid =
@@ -176,6 +185,56 @@ export function PosWorkspaceLayout() {
     setCartItems([]);
   }
 
+  function handleOrderTypeChange(nextOrderType: PosOrderType) {
+    setOrderType(nextOrderType);
+
+    if (nextOrderType === "TAKEAWAY") {
+      setSelectedTableId(null);
+    }
+  }
+
+  async function handleCreateOrder() {
+    if (!orderPayloadPreview.isReady) {
+      toast.warning("Order is not ready", {
+        description:
+          orderPayloadPreview.errors[0]?.message ??
+          "Please resolve the local validation rules first.",
+      });
+      return;
+    }
+
+    setIsSubmittingOrder(true);
+
+    try {
+      const response = await orderApi.createOrder<CreateOrderResponse>(
+        orderPayloadPreview.payload,
+      );
+
+      if (!response.success || !response.data) {
+        toast.error(response.message || "Failed to create order");
+        return;
+      }
+
+      setCartItems([]);
+      setSelectedTableId(null);
+      setSelectedOrderId(null);
+      setAmountPaidInput("0");
+      tableCatalog.reload();
+      openOrders.reload();
+
+      toast.success("Order created successfully", {
+        description:
+          paymentMethod === "CASH"
+            ? "Local cart was cleared and workspace data is refreshing."
+            : "Payment transaction flow is not wired in V3 yet.",
+      });
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to create order"));
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <PosWorkspaceHeader
@@ -231,8 +290,12 @@ export function PosWorkspaceLayout() {
           <PosPaymentGate
             amountPaidInput={amountPaidInput}
             isReady={orderPayloadPreview.isReady}
+            isSubmitting={isSubmittingOrder}
             onAmountPaidInputChange={setAmountPaidInput}
+            onOrderTypeChange={handleOrderTypeChange}
             onPaymentMethodChange={setPaymentMethod}
+            onSubmit={handleCreateOrder}
+            orderType={orderType}
             paymentMethod={paymentMethod}
             previewTotal={cartTotals.total}
             readinessErrors={orderPayloadPreview.errors}

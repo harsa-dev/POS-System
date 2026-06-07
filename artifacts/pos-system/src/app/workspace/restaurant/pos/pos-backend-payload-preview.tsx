@@ -38,7 +38,7 @@ export function PosBackendPayloadPreview({
             Backend Payload Preview
           </h3>
           <p className="mt-1 text-xs text-neutral-500">
-            Future API body only, no request is sent
+            API body preview, totals stay backend-owned
           </p>
         </div>
         <Braces className="h-4 w-4 text-neutral-400" aria-hidden="true" />
@@ -70,21 +70,13 @@ export function PosBackendPayloadPreview({
         </div>
       ) : (
         <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">
-          Payload shape is locally ready. Submit is still disabled.
+          Payload shape is locally ready.
         </div>
       )}
 
       <pre className="mt-4 max-h-64 overflow-auto rounded-2xl bg-neutral-950 p-3 text-[11px] leading-5 text-neutral-50">
         {stringifyPreviewPayload(preview.payload)}
       </pre>
-
-      <button
-        className="mt-4 flex h-10 w-full cursor-not-allowed items-center justify-center rounded-2xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500"
-        disabled
-        type="button"
-      >
-        Submit not wired yet
-      </button>
     </section>
   );
 }

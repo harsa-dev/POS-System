@@ -46,7 +46,11 @@ export function buildPosOrderDraft({
     });
   }
 
-  if (selectedTable && selectedTable.status !== "AVAILABLE") {
+  if (
+    orderType === "DINE_IN" &&
+    selectedTable &&
+    selectedTable.status !== "AVAILABLE"
+  ) {
     warnings.push({
       code: "TABLE_NOT_AVAILABLE",
       message: `${selectedTable.name} is currently ${selectedTable.status.toLowerCase()}.`,
@@ -55,7 +59,7 @@ export function buildPosOrderDraft({
 
   return {
     orderType,
-    table: selectedTable
+    table: orderType === "DINE_IN" && selectedTable
       ? {
           id: selectedTable.id,
           name: selectedTable.name,

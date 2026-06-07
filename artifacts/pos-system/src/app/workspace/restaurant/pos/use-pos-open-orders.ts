@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { v3PosOpenOrders } from "@/app/workspace/restaurant/pos-placeholder-data";
 import type { PosOpenOrderItem } from "@/app/workspace/restaurant/pos/pos-workspace-types";
@@ -12,6 +12,7 @@ type PosOpenOrdersState = {
   status: PosOpenOrdersStatus;
   errorMessage: string | null;
   isUsingFallback: boolean;
+  reload: () => void;
 };
 
 type OrderItemResponse = {
@@ -102,6 +103,11 @@ export function usePosOpenOrders(): PosOpenOrdersState {
   const [status, setStatus] = useState<PosOpenOrdersStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const [reloadVersion, setReloadVersion] = useState(0);
+
+  const reload = useCallback(() => {
+    setReloadVersion((version) => version + 1);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -136,7 +142,7 @@ export function usePosOpenOrders(): PosOpenOrdersState {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadVersion]);
 
   return useMemo(
     () => ({
@@ -144,7 +150,8 @@ export function usePosOpenOrders(): PosOpenOrdersState {
       status,
       errorMessage,
       isUsingFallback,
+      reload,
     }),
-    [errorMessage, isUsingFallback, orders, status],
+    [errorMessage, isUsingFallback, orders, reload, status],
   );
 }
