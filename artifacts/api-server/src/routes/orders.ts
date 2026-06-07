@@ -28,6 +28,17 @@ const orderStatuses = [
 
 const orderTypes = ["DINE_IN", "TAKEAWAY"] satisfies OrderType[];
 
+type CreateOrderItemInput = {
+  menuItemId: string;
+  quantity: number;
+};
+
+type ParseOrderItemsResult =
+  | { success: true; items: CreateOrderItemInput[] }
+  | { success: false; message: string };
+
+class OrderValidationError extends Error {}
+
 function isOrderStatus(value: string): value is OrderStatus {
   return orderStatuses.includes(value as OrderStatus);
 }
@@ -38,6 +49,45 @@ function isOrderType(value: string): value is OrderType {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseOrderItems(value: unknown): ParseOrderItemsResult {
+  if (!Array.isArray(value) || value.length === 0) {
+    return { success: false, message: "No items provided" };
+  }
+
+  const items: CreateOrderItemInput[] = [];
+
+  for (const [index, item] of value.entries()) {
+    if (!isRecord(item)) {
+      return { success: false, message: `Invalid item at position ${index + 1}` };
+    }
+
+    const menuItemId = String(item.menuItemId ?? "").trim();
+    const quantity = Number(item.quantity);
+
+    if (!menuItemId) {
+      return {
+        success: false,
+        message: `Menu item is required at position ${index + 1}`,
+      };
+    }
+
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      return {
+        success: false,
+        message: `Quantity must be a positive integer at position ${index + 1}`,
+      };
+    }
+
+    items.push({ menuItemId, quantity });
+  }
+
+  return { success: true, items };
 }
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
@@ -104,22 +154,50 @@ router.post("/orders", async (req, res) => {
     const body = req.body ?? {};
     const paymentMethod = String(body.paymentMethod ?? "").toUpperCase();
     const amountPaid = Number(body.amountPaid ?? 0);
+    if (!Number.isFinite(amountPaid) || !Number.isInteger(amountPaid) || amountPaid < 0)
+      return void res.status(400).json({ success: false, message: "Invalid payment amount" });
+
     const orderTypeValue = String(body.orderType ?? "TAKEAWAY");
     if (!isOrderType(orderTypeValue))
       return void res.status(400).json({ success: false, message: "Invalid order type" });
     const orderType = orderTypeValue;
-    const tableId = body.tableId ? String(body.tableId) : null;
-    const items = body.items as { menuItemId?: string; quantity: number }[];
+    const requestedTableId = body.tableId ? String(body.tableId).trim() : null;
+    const tableId = orderType === "DINE_IN" ? requestedTableId : null;
+    const parsedItems = parseOrderItems(body.items);
 
-    if (!items?.length)
+    if (!parsedItems.success)
       return void res
         .status(400)
-        .json({ success: false, message: "No items provided" });
+        .json({ success: false, message: parsedItems.message });
+
+    const items = parsedItems.items;
 
     if (orderType === "DINE_IN" && !tableId)
       return void res
         .status(400)
         .json({ success: false, message: "Table is required for dine-in order" });
+
+    if (orderType === "DINE_IN" && tableId) {
+      const table = await prisma.diningTable.findFirst({
+        where: { id: tableId, restaurantId: restaurant.id },
+        select: { id: true, isActive: true, status: true },
+      });
+
+      if (!table)
+        return void res
+          .status(400)
+          .json({ success: false, message: "Table not found for this restaurant" });
+
+      if (!table.isActive)
+        return void res
+          .status(400)
+          .json({ success: false, message: "Table is inactive" });
+
+      if (table.status !== "AVAILABLE")
+        return void res
+          .status(400)
+          .json({ success: false, message: "Table is not available" });
+    }
 
     // Check open shift
     const currentShift = await prisma.shift.findFirst({
@@ -192,10 +270,19 @@ router.post("/orders", async (req, res) => {
         try {
           return await prisma.$transaction(async (tx) => {
             if (tableId) {
-              await tx.diningTable.update({
-                where: { id: tableId },
+              const tableUpdate = await tx.diningTable.updateMany({
+                where: {
+                  id: tableId,
+                  restaurantId: restaurant.id,
+                  isActive: true,
+                  status: "AVAILABLE",
+                },
                 data: { status: "OCCUPIED" },
               });
+
+              if (tableUpdate.count !== 1) {
+                throw new OrderValidationError("Table is not available");
+              }
             }
 
             // Generate order number FIRST so it is available for StockMovement
@@ -266,12 +353,9 @@ router.post("/orders", async (req, res) => {
               for (const [invId, totalQty] of requiredQtyMap) {
                 const locked = lockedStockMap.get(invId)!;
                 if (locked.currentStock < totalQty) {
-                  throw Object.assign(
-                    new Error(
-                      `Insufficient stock for "${locked.name}". ` +
-                      `Available: ${locked.currentStock}, required: ${totalQty}.`,
-                    ),
-                    { code: "INSUFFICIENT_STOCK" },
+                  throw new OrderValidationError(
+                    `Insufficient stock for "${locked.name}". ` +
+                    `Available: ${locked.currentStock}, required: ${totalQty}.`,
                   );
                 }
               }
@@ -338,7 +422,7 @@ router.post("/orders", async (req, res) => {
           // P2002 = unique constraint violation on orderNumber — safe to retry
           // because the failed transaction is fully rolled back.
           if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002" && attempt < 3) continue;
-          // INSUFFICIENT_STOCK is a business rule error, surface it immediately.
+          // Business rule errors are surfaced by the outer route handler.
           throw err;
         }
       }
@@ -372,6 +456,9 @@ router.post("/orders", async (req, res) => {
       status: order.status,
     });
   } catch (err: unknown) {
+    if (err instanceof OrderValidationError)
+      return void res.status(400).json({ success: false, message: err.message });
+
     res.status(500).json({ success: false, message: getErrorMessage(err, "Failed to create order") });
   }
 });
