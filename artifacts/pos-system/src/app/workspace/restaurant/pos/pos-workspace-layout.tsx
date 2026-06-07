@@ -11,7 +11,7 @@ import {
   type CreateOrderPaymentMethod,
 } from "./pos-order-payload";
 import { PosOrderPanel } from "./pos-order-panel";
-import { PosPaymentGate } from "./pos-payment-gate";
+import { PosPaymentGate, type PosPaymentStep } from "./pos-payment-gate";
 import { PosPaymentSummary } from "./pos-payment-summary";
 import { PosProductGrid } from "./pos-product-grid";
 import { PosQuickActions } from "./pos-quick-actions";
@@ -20,7 +20,7 @@ import { PosWorkspaceHeader } from "./pos-workspace-header";
 import { usePosMenuCatalog } from "./use-pos-menu-catalog";
 import { usePosOpenOrders } from "./use-pos-open-orders";
 import { usePosTables } from "./use-pos-tables";
-import { getApiErrorMessage, orderApi } from "@/lib/api";
+import { getApiErrorMessage, orderApi, paymentsApi } from "@/lib/api";
 import type {
   PosCartItem,
   PosCartTotals,
@@ -34,9 +34,24 @@ const previewOrderNotes = "";
 
 type CreateOrderResponse = {
   id: string;
+  total: number;
   orderNumber?: number;
   status?: string;
 };
+
+type PendingPaymentOrder = {
+  orderId: string;
+  total: number;
+  orderNumber?: number;
+  paymentMethod: Exclude<CreateOrderPaymentMethod, "CASH">;
+  errorMessage: string | null;
+};
+
+function isNonCashPaymentMethod(
+  paymentMethod: CreateOrderPaymentMethod,
+): paymentMethod is Exclude<CreateOrderPaymentMethod, "CASH"> {
+  return paymentMethod !== "CASH";
+}
 
 export function PosWorkspaceLayout() {
   const catalog = usePosMenuCatalog();
@@ -51,6 +66,9 @@ export function PosWorkspaceLayout() {
     useState<CreateOrderPaymentMethod>("CASH");
   const [amountPaidInput, setAmountPaidInput] = useState("0");
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<PosPaymentStep>("idle");
+  const [pendingPaymentOrder, setPendingPaymentOrder] =
+    useState<PendingPaymentOrder | null>(null);
   const isCreateOrderInFlightRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
@@ -194,12 +212,122 @@ export function PosWorkspaceLayout() {
     }
   }
 
+  async function createPaymentTransactionForOrder(
+    pendingOrder: PendingPaymentOrder,
+  ) {
+    try {
+      if (import.meta.env.DEV) {
+        console.debug("[pos-v3] create payment transaction payload", {
+          orderId: pendingOrder.orderId,
+          total: pendingOrder.total,
+          customerName: "Customer",
+        });
+      }
+
+      const result = await paymentsApi.createTransactionWithResult({
+        orderId: pendingOrder.orderId,
+        total: pendingOrder.total,
+        customerName: "Customer",
+      });
+
+      if (import.meta.env.DEV) {
+        console.debug("[pos-v3] create payment transaction response", {
+          status: result.status,
+          ok: result.ok,
+          body: result.body,
+        });
+      }
+
+      const redirectUrl = result.body.redirectUrl;
+
+      if (!result.ok || !result.body.success || !redirectUrl) {
+        const errorMessage =
+          result.body.message ||
+          `Failed to create payment transaction (${result.status})`;
+
+        setPendingPaymentOrder({
+          ...pendingOrder,
+          errorMessage,
+        });
+        setPaymentStep("payment-error");
+        toast.error("Payment link failed", { description: errorMessage });
+
+        return false;
+      }
+
+      setPaymentStep("redirecting");
+      setPendingPaymentOrder(null);
+      toast.success("Payment link created", {
+        description: "Redirecting to payment page.",
+      });
+      window.location.href = redirectUrl;
+
+      return true;
+    } catch (error) {
+      const errorMessage = getApiErrorMessage(
+        error,
+        "Failed to create payment transaction",
+      );
+
+      if (import.meta.env.DEV) {
+        console.error("[pos-v3] create payment transaction error", error);
+      }
+
+      setPendingPaymentOrder({
+        ...pendingOrder,
+        errorMessage,
+      });
+      setPaymentStep("payment-error");
+      toast.error("Payment link failed", { description: errorMessage });
+
+      return false;
+    }
+  }
+
+  async function handleRetryPaymentTransaction() {
+    if (!pendingPaymentOrder) {
+      return;
+    }
+
+    if (isCreateOrderInFlightRef.current) {
+      if (import.meta.env.DEV) {
+        console.debug("[pos-v3] duplicate payment retry blocked");
+      }
+
+      return;
+    }
+
+    isCreateOrderInFlightRef.current = true;
+    setIsSubmittingOrder(true);
+    setPaymentStep("creating-payment");
+
+    let didStartRedirect = false;
+
+    try {
+      didStartRedirect =
+        await createPaymentTransactionForOrder(pendingPaymentOrder);
+    } finally {
+      if (!didStartRedirect) {
+        isCreateOrderInFlightRef.current = false;
+        setIsSubmittingOrder(false);
+      }
+    }
+  }
+
   async function handleCreateOrder() {
     if (isCreateOrderInFlightRef.current) {
       if (import.meta.env.DEV) {
         console.debug("[pos-v3] duplicate create order submit blocked");
       }
 
+      return;
+    }
+
+    if (pendingPaymentOrder) {
+      toast.warning("Payment retry required", {
+        description:
+          "This order already exists. Retry the payment link instead of creating a new order.",
+      });
       return;
     }
 
@@ -214,6 +342,10 @@ export function PosWorkspaceLayout() {
 
     isCreateOrderInFlightRef.current = true;
     setIsSubmittingOrder(true);
+    setPaymentStep("creating-order");
+    setPendingPaymentOrder(null);
+
+    let didStartRedirect = false;
 
     try {
       if (import.meta.env.DEV) {
@@ -239,6 +371,26 @@ export function PosWorkspaceLayout() {
         toast.error(
           result.body.message || `Failed to create order (${result.status})`,
         );
+        setPaymentStep("idle");
+        return;
+      }
+
+      tableCatalog.reload();
+      openOrders.reload();
+
+      if (isNonCashPaymentMethod(paymentMethod)) {
+        const pendingOrder: PendingPaymentOrder = {
+          orderId: result.body.data.id,
+          total: result.body.data.total,
+          orderNumber: result.body.data.orderNumber,
+          paymentMethod,
+          errorMessage: null,
+        };
+
+        setPendingPaymentOrder(pendingOrder);
+        setPaymentStep("creating-payment");
+        didStartRedirect = await createPaymentTransactionForOrder(pendingOrder);
+
         return;
       }
 
@@ -246,24 +398,24 @@ export function PosWorkspaceLayout() {
       setSelectedTableId(null);
       setSelectedOrderId(null);
       setAmountPaidInput("0");
-      tableCatalog.reload();
-      openOrders.reload();
+      setPendingPaymentOrder(null);
+      setPaymentStep("idle");
 
       toast.success("Order created successfully", {
-        description:
-          paymentMethod === "CASH"
-            ? "Local cart was cleared and workspace data is refreshing."
-            : "Payment transaction flow is not wired in V3 yet.",
+        description: "Local cart was cleared and workspace data is refreshing.",
       });
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error("[pos-v3] create order error", error);
       }
 
+      setPaymentStep("idle");
       toast.error(getApiErrorMessage(error, "Failed to create order"));
     } finally {
-      isCreateOrderInFlightRef.current = false;
-      setIsSubmittingOrder(false);
+      if (!didStartRedirect) {
+        isCreateOrderInFlightRef.current = false;
+        setIsSubmittingOrder(false);
+      }
     }
   }
 
@@ -321,14 +473,18 @@ export function PosWorkspaceLayout() {
           <PosPaymentSummary totals={cartTotals} />
           <PosPaymentGate
             amountPaidInput={amountPaidInput}
+            hasPendingPaymentOrder={pendingPaymentOrder !== null}
             isReady={orderPayloadPreview.isReady}
             isSubmitting={isSubmittingOrder}
             onAmountPaidInputChange={setAmountPaidInput}
             onOrderTypeChange={handleOrderTypeChange}
             onPaymentMethodChange={setPaymentMethod}
+            onRetryPayment={handleRetryPaymentTransaction}
             onSubmit={handleCreateOrder}
             orderType={orderType}
+            paymentErrorMessage={pendingPaymentOrder?.errorMessage ?? null}
             paymentMethod={paymentMethod}
+            paymentStep={paymentStep}
             previewTotal={cartTotals.total}
             readinessErrors={orderPayloadPreview.errors}
             warningCount={orderDraft.warnings.length}
