@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCheck,
+  Loader2,
   PackageCheck,
   Search,
   Table2,
@@ -19,6 +20,8 @@ type TablesWorkspaceBoardProps = {
   tables: TablesWorkspaceTable[];
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
+  updatingTableId: string | null;
+  onMarkClean: (table: TablesWorkspaceTable) => Promise<void>;
 };
 
 const filters: Array<{ id: TablesWorkspaceFilter; label: string }> = [
@@ -134,7 +137,15 @@ function TablesSummary({ tables }: { tables: TablesWorkspaceTable[] }) {
   );
 }
 
-function TablesWorkspaceCard({ table }: { table: TablesWorkspaceTable }) {
+function TablesWorkspaceCard({
+  table,
+  isUpdating,
+  onMarkClean,
+}: {
+  table: TablesWorkspaceTable;
+  isUpdating: boolean;
+  onMarkClean: (table: TablesWorkspaceTable) => Promise<void>;
+}) {
   const isCleaning = table.status === "CLEANING";
 
   return (
@@ -177,15 +188,31 @@ function TablesWorkspaceCard({ table }: { table: TablesWorkspaceTable }) {
       </div>
 
       <div className="mt-4 border-t border-neutral-100 pt-4">
-        <button
-          className="h-10 w-full rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
-          disabled
-          type="button"
-        >
-          {isCleaning
-            ? "Mark Clean - not wired yet"
-            : "Table action - not wired yet"}
-        </button>
+        {isCleaning ? (
+          <button
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isUpdating}
+            onClick={() => void onMarkClean(table)}
+            type="button"
+          >
+            {isUpdating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Marking clean...
+              </>
+            ) : (
+              "Mark Clean"
+            )}
+          </button>
+        ) : (
+          <button
+            className="h-10 w-full rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
+            disabled
+            type="button"
+          >
+            Table action - not wired yet
+          </button>
+        )}
       </div>
     </article>
   );
@@ -195,6 +222,8 @@ export function TablesWorkspaceBoard({
   tables,
   status,
   errorMessage,
+  updatingTableId,
+  onMarkClean,
 }: TablesWorkspaceBoardProps) {
   const [activeFilter, setActiveFilter] =
     useState<TablesWorkspaceFilter>("all");
@@ -285,8 +314,8 @@ export function TablesWorkspaceBoard({
 
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-        Table actions are visible as placeholders only. Mark clean is not wired
-        in V3 yet.
+        Mark clean is enabled only for cleaning tables. Other table actions are
+        placeholders.
       </div>
 
       {filteredTables.length === 0 ? (
@@ -310,7 +339,12 @@ export function TablesWorkspaceBoard({
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {filteredTables.map((table) => (
-            <TablesWorkspaceCard key={table.id} table={table} />
+            <TablesWorkspaceCard
+              isUpdating={updatingTableId === table.id}
+              key={table.id}
+              onMarkClean={onMarkClean}
+              table={table}
+            />
           ))}
         </div>
       )}
