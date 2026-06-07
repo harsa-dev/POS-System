@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 
 import { PosCategoryRail } from "./pos-category-rail";
 import { PosOpenOrdersPanel } from "./pos-open-orders-panel";
+import { buildPosOrderDraft } from "./pos-order-draft";
+import { PosOrderDraftPreview } from "./pos-order-draft-preview";
 import { PosOrderPanel } from "./pos-order-panel";
 import { PosPaymentSummary } from "./pos-payment-summary";
 import { PosProductGrid } from "./pos-product-grid";
@@ -14,11 +16,14 @@ import { usePosTables } from "./use-pos-tables";
 import type {
   PosCartItem,
   PosCartTotals,
+  PosOrderType,
   PosProductItem,
 } from "./pos-workspace-types";
 
 const previewServiceRate = 5;
 const previewTaxRate = 10;
+const previewOrderType: PosOrderType = "DINE_IN";
+const previewOrderNotes = "";
 
 export function PosWorkspaceLayout() {
   const catalog = usePosMenuCatalog();
@@ -70,6 +75,18 @@ export function PosWorkspaceLayout() {
       taxRate: previewTaxRate,
     };
   }, [cartItems]);
+
+  const orderDraft = useMemo(
+    () =>
+      buildPosOrderDraft({
+        cartItems,
+        selectedTable,
+        totals: cartTotals,
+        orderType: previewOrderType,
+        notes: previewOrderNotes,
+      }),
+    [cartItems, cartTotals, selectedTable],
+  );
 
   function handleAddProduct(product: PosProductItem) {
     setCartItems((currentItems) => {
@@ -187,6 +204,7 @@ export function PosWorkspaceLayout() {
             status={openOrders.status}
           />
           <PosPaymentSummary totals={cartTotals} />
+          <PosOrderDraftPreview draft={orderDraft} />
         </aside>
       </div>
       <PosQuickActions

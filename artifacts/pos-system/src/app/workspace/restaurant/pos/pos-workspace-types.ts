@@ -32,6 +32,36 @@ export type PosCartTotals = {
   taxRate: number;
 };
 
+export type PosOrderType = "DINE_IN" | "TAKEAWAY";
+
+export type PosOrderDraftItem = {
+  productId: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+};
+
+export type PosOrderDraftValidationIssue = {
+  code:
+    | "CART_EMPTY"
+    | "MISSING_TABLE"
+    | "INVALID_ITEM_QUANTITY"
+    | "TABLE_NOT_AVAILABLE";
+  message: string;
+};
+
+export type PosOrderDraft = {
+  orderType: PosOrderType;
+  table: Pick<PosTableItem, "id" | "name"> | null;
+  notes: string;
+  items: PosOrderDraftItem[];
+  totals: PosCartTotals;
+  errors: PosOrderDraftValidationIssue[];
+  warnings: PosOrderDraftValidationIssue[];
+  isLocallyValid: boolean;
+};
+
 export type PosTableStatus =
   | "AVAILABLE"
   | "OCCUPIED"
