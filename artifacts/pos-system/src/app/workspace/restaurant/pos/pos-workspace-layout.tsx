@@ -1,10 +1,16 @@
 import { useMemo, useState } from "react";
 
 import { PosCategoryRail } from "./pos-category-rail";
+import { PosBackendPayloadPreview } from "./pos-backend-payload-preview";
 import { PosOpenOrdersPanel } from "./pos-open-orders-panel";
 import { buildPosOrderDraft } from "./pos-order-draft";
 import { PosOrderDraftPreview } from "./pos-order-draft-preview";
+import {
+  buildCreateOrderPayloadPreview,
+  type CreateOrderPaymentMethod,
+} from "./pos-order-payload";
 import { PosOrderPanel } from "./pos-order-panel";
+import { PosPaymentGate } from "./pos-payment-gate";
 import { PosPaymentSummary } from "./pos-payment-summary";
 import { PosProductGrid } from "./pos-product-grid";
 import { PosQuickActions } from "./pos-quick-actions";
@@ -33,6 +39,9 @@ export function PosWorkspaceLayout() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] =
+    useState<CreateOrderPaymentMethod>("CASH");
+  const [amountPaidInput, setAmountPaidInput] = useState("0");
   const [searchQuery, setSearchQuery] = useState("");
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const hasActiveFilters = selectedCategory !== null || normalizedSearchQuery !== "";
@@ -86,6 +95,21 @@ export function PosWorkspaceLayout() {
         notes: previewOrderNotes,
       }),
     [cartItems, cartTotals, selectedTable],
+  );
+
+  const cashAmountPaid =
+    amountPaidInput.trim() === "" ? Number.NaN : Number(amountPaidInput);
+  const previewAmountPaid =
+    paymentMethod === "CASH" ? cashAmountPaid : cartTotals.total;
+
+  const orderPayloadPreview = useMemo(
+    () =>
+      buildCreateOrderPayloadPreview({
+        draft: orderDraft,
+        paymentMethod,
+        amountPaid: previewAmountPaid,
+      }),
+    [orderDraft, paymentMethod, previewAmountPaid],
   );
 
   function handleAddProduct(product: PosProductItem) {
@@ -204,7 +228,22 @@ export function PosWorkspaceLayout() {
             status={openOrders.status}
           />
           <PosPaymentSummary totals={cartTotals} />
+          <PosPaymentGate
+            amountPaidInput={amountPaidInput}
+            isReady={orderPayloadPreview.isReady}
+            onAmountPaidInputChange={setAmountPaidInput}
+            onPaymentMethodChange={setPaymentMethod}
+            paymentMethod={paymentMethod}
+            previewTotal={cartTotals.total}
+            readinessErrors={orderPayloadPreview.errors}
+            warningCount={orderDraft.warnings.length}
+          />
           <PosOrderDraftPreview draft={orderDraft} />
+          <PosBackendPayloadPreview
+            amountPaid={previewAmountPaid}
+            paymentMethod={paymentMethod}
+            preview={orderPayloadPreview}
+          />
         </aside>
       </div>
       <PosQuickActions
