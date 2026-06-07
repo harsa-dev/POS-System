@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   CheckCheck,
   Clock,
+  Loader2,
   PackageCheck,
   ReceiptText,
   Search,
@@ -27,6 +28,8 @@ type OrdersWorkspaceBoardProps = {
   orders: OrdersWorkspaceOrder[];
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
+  updatingOrderId: string | null;
+  onCompleteOrder: (order: OrdersWorkspaceOrder) => Promise<void>;
 };
 
 const filters: Array<{ id: OrdersWorkspaceFilter; label: string }> = [
@@ -144,9 +147,18 @@ function OrdersSummary({ orders }: { orders: OrdersWorkspaceOrder[] }) {
   );
 }
 
-function OrdersWorkspaceCard({ order }: { order: OrdersWorkspaceOrder }) {
+function OrdersWorkspaceCard({
+  order,
+  isUpdating,
+  onCompleteOrder,
+}: {
+  order: OrdersWorkspaceOrder;
+  isUpdating: boolean;
+  onCompleteOrder: (order: OrdersWorkspaceOrder) => Promise<void>;
+}) {
   const visibleItems = order.items.slice(0, 3);
   const hiddenItemCount = Math.max(0, order.items.length - visibleItems.length);
+  const canComplete = order.status === "SERVED";
 
   return (
     <article className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -227,13 +239,31 @@ function OrdersWorkspaceCard({ order }: { order: OrdersWorkspaceOrder }) {
               {order.itemCount}
             </p>
           </div>
-          <button
-            className="mt-1 h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
-            disabled
-            type="button"
-          >
-            Lifecycle action - not wired yet
-          </button>
+          {canComplete ? (
+            <button
+              className="mt-1 flex h-10 items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isUpdating}
+              onClick={() => void onCompleteOrder(order)}
+              type="button"
+            >
+              {isUpdating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  Completing...
+                </>
+              ) : (
+                "Complete Order"
+              )}
+            </button>
+          ) : (
+            <button
+              className="mt-1 h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled
+              type="button"
+            >
+              Lifecycle action - not wired yet
+            </button>
+          )}
         </aside>
       </div>
     </article>
@@ -244,6 +274,8 @@ export function OrdersWorkspaceBoard({
   orders,
   status,
   errorMessage,
+  updatingOrderId,
+  onCompleteOrder,
 }: OrdersWorkspaceBoardProps) {
   const [activeFilter, setActiveFilter] =
     useState<OrdersWorkspaceFilter>("all");
@@ -336,8 +368,8 @@ export function OrdersWorkspaceBoard({
 
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-        Order lifecycle actions are visible as placeholders only. No V3 order
-        status mutation is wired here yet.
+        Completion is enabled only for served orders. Dine-in completion moves
+        the table to cleaning.
       </div>
 
       {filteredOrders.length === 0 ? (
@@ -361,7 +393,12 @@ export function OrdersWorkspaceBoard({
       ) : (
         <div className="space-y-3">
           {filteredOrders.map((order) => (
-            <OrdersWorkspaceCard key={order.id} order={order} />
+            <OrdersWorkspaceCard
+              isUpdating={updatingOrderId === order.id}
+              key={order.id}
+              onCompleteOrder={onCompleteOrder}
+              order={order}
+            />
           ))}
         </div>
       )}

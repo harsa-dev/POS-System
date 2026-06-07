@@ -32,6 +32,7 @@ export type OrdersWorkspaceOrder = {
   statusLabel: string;
   paymentStatus: string;
   destination: string;
+  isDineIn: boolean;
   orderTypeLabel: string;
   createdAt: string;
   createdAtLabel: string;
@@ -123,6 +124,7 @@ function mapOrderToWorkspaceOrder(
     destination: isDineIn
       ? `Table ${order.table?.name ?? "Unknown"}`
       : "Takeaway",
+    isDineIn,
     orderTypeLabel: isDineIn ? "Dine In" : "Takeaway",
     createdAt: order.createdAt,
     createdAtLabel: formatDateTime(order.createdAt, timezone),
