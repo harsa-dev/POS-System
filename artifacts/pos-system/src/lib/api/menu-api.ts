@@ -1,4 +1,9 @@
-import { apiClient, apiJson, type ApiEnvelope } from "@/lib/api/api-client";
+import {
+  apiClient,
+  apiFetch,
+  apiJson,
+  type ApiEnvelope,
+} from "@/lib/api/api-client";
 
 import type {
   Category,
@@ -33,9 +38,70 @@ export type UploadImageResponse = ApiEnvelope<{
   url?: string;
 };
 
+type ApiRecord = Record<string, unknown>;
+
+export type MenuItemAvailabilityPayload = {
+  isAvailable: boolean;
+};
+
+export type MenuApiResult<T = ApiRecord> = {
+  ok: boolean;
+  status: number;
+  body: ApiEnvelope<T>;
+};
+
+type ListMenuItemsOptions = {
+  includeUnavailable?: boolean;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isApiEnvelope<T>(value: unknown): value is ApiEnvelope<T> {
+  return isRecord(value) && typeof value.success === "boolean";
+}
+
+async function readApiEnvelope<T>(response: Response): Promise<ApiEnvelope<T>> {
+  const rawText = await response.text();
+
+  if (!rawText.trim()) {
+    return {
+      success: false,
+      message: `Empty menu API response (${response.status})`,
+    };
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(rawText);
+
+    if (isApiEnvelope<T>(parsed)) {
+      return parsed;
+    }
+
+    return {
+      success: false,
+      message: `Unexpected menu API response (${response.status})`,
+    };
+  } catch {
+    return {
+      success: false,
+      message: rawText,
+    };
+  }
+}
+
 export const menuApi = {
   listMenuItems() {
     return apiClient.get<ApiEnvelope<MenuItem[]>>("/api/menu-items");
+  },
+
+  listMenuItemsWithOptions<T = MenuItem[]>(options?: ListMenuItemsOptions) {
+    const endpoint = options?.includeUnavailable
+      ? "/api/menu-items?includeUnavailable=true"
+      : "/api/menu-items";
+
+    return apiClient.get<ApiEnvelope<T>>(endpoint);
   },
 
   listMenuItemsForCheckout() {
@@ -54,6 +120,24 @@ export const menuApi = {
     return apiClient.patch<ApiEnvelope<MenuItem>>(`/api/menu-items/${id}`, {
       json: payload,
     });
+  },
+
+  async updateMenuItemWithResult<T = ApiRecord>(
+    id: string,
+    payload: Partial<MenuItemPayload> & Partial<MenuItemAvailabilityPayload>,
+  ): Promise<MenuApiResult<T>> {
+    const response = await apiFetch(`/api/menu-items/${id}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: await readApiEnvelope<T>(response),
+    };
   },
 
   deleteMenuItem(id: string) {

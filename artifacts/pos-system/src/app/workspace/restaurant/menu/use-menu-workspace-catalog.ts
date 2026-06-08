@@ -6,7 +6,8 @@ import { formatCurrency } from "@/lib/utils/format";
 export type MenuWorkspaceAvailability =
   | "AVAILABLE"
   | "OUT_OF_STOCK"
-  | "NO_RECIPE";
+  | "NO_RECIPE"
+  | "UNAVAILABLE";
 
 export type MenuWorkspaceCategory = {
   id: string;
@@ -24,6 +25,7 @@ export type MenuWorkspaceItem = {
   priceLabel: string;
   availability: MenuWorkspaceAvailability;
   availabilityLabel: string;
+  isAvailable: boolean;
   imageUrl: string | null;
 };
 
@@ -42,6 +44,7 @@ type MenuItemResponse = {
   name: string;
   description?: string | null;
   price: number;
+  isAvailable?: boolean | null;
   availabilityStatus?: string | null;
   imageUrl?: string | null;
   categoryId?: string | null;
@@ -60,6 +63,7 @@ const availabilityLabels: Record<MenuWorkspaceAvailability, string> = {
   AVAILABLE: "Available",
   OUT_OF_STOCK: "Out of Stock",
   NO_RECIPE: "No Recipe",
+  UNAVAILABLE: "Unavailable",
 };
 
 function normalizeAvailability(
@@ -68,7 +72,8 @@ function normalizeAvailability(
   if (
     availabilityStatus === "AVAILABLE" ||
     availabilityStatus === "OUT_OF_STOCK" ||
-    availabilityStatus === "NO_RECIPE"
+    availabilityStatus === "NO_RECIPE" ||
+    availabilityStatus === "UNAVAILABLE"
   ) {
     return availabilityStatus;
   }
@@ -79,7 +84,10 @@ function normalizeAvailability(
 function mapMenuItemToWorkspaceItem(
   menuItem: MenuItemResponse,
 ): MenuWorkspaceItem {
-  const availability = normalizeAvailability(menuItem.availabilityStatus);
+  const isAvailable = menuItem.isAvailable ?? true;
+  const availability = isAvailable
+    ? normalizeAvailability(menuItem.availabilityStatus)
+    : "UNAVAILABLE";
 
   return {
     id: menuItem.id,
@@ -91,6 +99,7 @@ function mapMenuItemToWorkspaceItem(
     priceLabel: formatCurrency(menuItem.price),
     availability,
     availabilityLabel: availabilityLabels[availability],
+    isAvailable,
     imageUrl: menuItem.imageUrl ?? null,
   };
 }
@@ -148,7 +157,9 @@ export function useMenuWorkspaceCatalog(): MenuWorkspaceCatalogResult {
 
     try {
       const [menuItemsResponse, categoriesResponse] = await Promise.all([
-        menuApi.listMenuItems(),
+        menuApi.listMenuItemsWithOptions<MenuItemResponse[]>({
+          includeUnavailable: true,
+        }),
         menuApi.listCategories(),
       ]);
 

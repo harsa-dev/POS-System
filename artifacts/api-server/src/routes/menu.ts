@@ -16,8 +16,13 @@ router.get("/menu-items", async (req, res) => {
         .status(404)
         .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
+    const includeUnavailable = req.query.includeUnavailable === "true";
+
     const menuItems = await prisma.menuItem.findMany({
-      where: { restaurantId: restaurant.id, isAvailable: true },
+      where: {
+        restaurantId: restaurant.id,
+        ...(includeUnavailable ? {} : { isAvailable: true }),
+      },
       include: {
         category: true,
         recipes: { include: { inventoryItem: true } },
@@ -26,6 +31,8 @@ router.get("/menu-items", async (req, res) => {
     });
 
     const menuItemsWithStatus = menuItems.map((menuItem) => {
+      if (!menuItem.isAvailable)
+        return { ...menuItem, availabilityStatus: "UNAVAILABLE" };
       if (menuItem.recipes.length === 0)
         return { ...menuItem, availabilityStatus: "NO_RECIPE" };
       const hasEnoughStock = menuItem.recipes.every(
@@ -43,6 +50,7 @@ router.get("/menu-items", async (req, res) => {
         AVAILABLE: 0,
         OUT_OF_STOCK: 1,
         NO_RECIPE: 2,
+        UNAVAILABLE: 3,
       };
       return order[a.availabilityStatus] - order[b.availabilityStatus];
     });

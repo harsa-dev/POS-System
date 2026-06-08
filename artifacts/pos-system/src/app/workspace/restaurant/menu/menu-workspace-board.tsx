@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   CheckCheck,
   ImageIcon,
+  Loader2,
   PackageCheck,
   Search,
   Tags,
@@ -23,6 +24,8 @@ type MenuWorkspaceBoardProps = {
   categories: MenuWorkspaceCategory[];
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
+  updatingItemId: string | null;
+  onToggleAvailability: (item: MenuWorkspaceItem) => Promise<void>;
 };
 
 const availabilityFilters: Array<{
@@ -38,6 +41,7 @@ const availabilityTone: Record<MenuWorkspaceItem["availability"], string> = {
   AVAILABLE: "bg-green-50 text-green-700",
   OUT_OF_STOCK: "bg-red-50 text-red-700",
   NO_RECIPE: "bg-yellow-50 text-yellow-700",
+  UNAVAILABLE: "bg-neutral-100 text-neutral-600",
 };
 
 function matchesAvailabilityFilter(
@@ -99,9 +103,10 @@ function MenuSummary({ items }: { items: MenuWorkspaceItem[] }) {
   const noRecipeCount = items.filter(
     (item) => item.availability === "NO_RECIPE",
   ).length;
+  const disabledCount = items.filter((item) => !item.isAvailable).length;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-5">
       <div className="rounded-2xl border bg-white p-4 shadow-sm">
         <p className="text-xs font-semibold uppercase text-neutral-500">
           Total Items
@@ -134,12 +139,29 @@ function MenuSummary({ items }: { items: MenuWorkspaceItem[] }) {
           {noRecipeCount}
         </p>
       </div>
+      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        <p className="text-xs font-semibold uppercase text-neutral-500">
+          Disabled
+        </p>
+        <p className="mt-2 text-2xl font-bold text-neutral-700">
+          {disabledCount}
+        </p>
+      </div>
     </div>
   );
 }
 
-function MenuWorkspaceCard({ item }: { item: MenuWorkspaceItem }) {
+function MenuWorkspaceCard({
+  item,
+  isUpdating,
+  onToggleAvailability,
+}: {
+  item: MenuWorkspaceItem;
+  isUpdating: boolean;
+  onToggleAvailability: (item: MenuWorkspaceItem) => Promise<void>;
+}) {
   const imageSrc = resolveMediaUrl(item.imageUrl);
+  const toggleLabel = item.isAvailable ? "Make Unavailable" : "Make Available";
 
   return (
     <article className="overflow-hidden rounded-2xl border bg-white shadow-sm">
@@ -186,21 +208,49 @@ function MenuWorkspaceCard({ item }: { item: MenuWorkspaceItem }) {
           </p>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2 border-t border-neutral-100 pt-4">
+        <div className="mt-4 grid gap-2 border-t border-neutral-100 pt-4">
           <button
-            className="h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
-            disabled
+            className={`flex h-10 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+              item.isAvailable
+                ? "bg-neutral-950 text-white hover:bg-neutral-800"
+                : "bg-green-600 text-white hover:bg-green-700"
+            }`}
+            disabled={isUpdating}
+            onClick={() => void onToggleAvailability(item)}
             type="button"
           >
-            Edit - not wired
+            {isUpdating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Updating...
+              </>
+            ) : (
+              toggleLabel
+            )}
           </button>
-          <button
-            className="h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
-            disabled
-            type="button"
-          >
-            Upload - not wired
-          </button>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              className="h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled
+              type="button"
+            >
+              Edit
+            </button>
+            <button
+              className="h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled
+              type="button"
+            >
+              Upload
+            </button>
+            <button
+              className="h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled
+              type="button"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
     </article>
@@ -212,6 +262,8 @@ export function MenuWorkspaceBoard({
   categories,
   status,
   errorMessage,
+  updatingItemId,
+  onToggleAvailability,
 }: MenuWorkspaceBoardProps) {
   const [availabilityFilter, setAvailabilityFilter] =
     useState<MenuAvailabilityFilter>("all");
@@ -331,8 +383,8 @@ export function MenuWorkspaceBoard({
 
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-        Menu create, edit, delete, upload, and availability actions are
-        placeholders only in V3.
+        Availability toggle is enabled for menu items. Create, edit, delete,
+        and upload remain placeholders.
       </div>
 
       {filteredItems.length === 0 ? (
@@ -356,7 +408,12 @@ export function MenuWorkspaceBoard({
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {filteredItems.map((item) => (
-            <MenuWorkspaceCard item={item} key={item.id} />
+            <MenuWorkspaceCard
+              isUpdating={updatingItemId === item.id}
+              item={item}
+              key={item.id}
+              onToggleAvailability={onToggleAvailability}
+            />
           ))}
         </div>
       )}
