@@ -18,6 +18,7 @@ export type MenuItemPayload = {
   price: number;
   imageUrl?: string | null;
   categoryId?: string | null;
+  isAvailable?: boolean;
 };
 
 export type CategoryPayload = {
@@ -114,6 +115,23 @@ export const menuApi = {
     return apiClient.post<ApiEnvelope<MenuItem>>("/api/menu-items", {
       json: payload,
     });
+  },
+
+  async createMenuItemWithResult<T = ApiRecord>(
+    payload: MenuItemPayload,
+  ): Promise<MenuApiResult<T>> {
+    const response = await apiFetch("/api/menu-items", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: await readApiEnvelope<T>(response),
+    };
   },
 
   updateMenuItem(id: string, payload: Partial<MenuItemPayload>) {

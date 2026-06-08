@@ -72,7 +72,8 @@ router.post("/menu-items", async (req, res) => {
         .status(404)
         .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
 
-    const { name, description, price, imageUrl, categoryId } = req.body ?? {};
+    const { name, description, price, imageUrl, categoryId, isAvailable } =
+      req.body ?? {};
     if (!name || price === undefined)
       return void res
         .status(400)
@@ -86,6 +87,7 @@ router.post("/menu-items", async (req, res) => {
           price: Number(price),
           imageUrl: imageUrl || null,
           categoryId: categoryId || null,
+          ...(typeof isAvailable === "boolean" ? { isAvailable } : {}),
           restaurantId: restaurant.id,
         },
         include: { category: true },

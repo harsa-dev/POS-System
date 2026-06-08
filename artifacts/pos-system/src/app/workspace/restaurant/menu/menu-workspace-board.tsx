@@ -5,9 +5,12 @@ import {
   ImageIcon,
   Loader2,
   PackageCheck,
+  Pencil,
+  Plus,
   Search,
   Tags,
   UtensilsCrossed,
+  X,
 } from "lucide-react";
 
 import { resolveMediaUrl } from "@/lib/api";
@@ -26,6 +29,20 @@ type MenuWorkspaceBoardProps = {
   errorMessage: string | null;
   updatingItemId: string | null;
   onToggleAvailability: (item: MenuWorkspaceItem) => Promise<void>;
+  isSavingItem: boolean;
+  onCreateMenuItem: (values: MenuWorkspaceFormValues) => Promise<boolean>;
+  onUpdateMenuItem: (
+    item: MenuWorkspaceItem,
+    values: MenuWorkspaceFormValues,
+  ) => Promise<boolean>;
+};
+
+export type MenuWorkspaceFormValues = {
+  name: string;
+  description: string;
+  price: string;
+  categoryId: string;
+  isAvailable: boolean;
 };
 
 const availabilityFilters: Array<{
@@ -43,6 +60,26 @@ const availabilityTone: Record<MenuWorkspaceItem["availability"], string> = {
   NO_RECIPE: "bg-yellow-50 text-yellow-700",
   UNAVAILABLE: "bg-neutral-100 text-neutral-600",
 };
+
+const emptyFormValues: MenuWorkspaceFormValues = {
+  name: "",
+  description: "",
+  price: "",
+  categoryId: "",
+  isAvailable: true,
+};
+
+function getFormValuesFromItem(
+  item: MenuWorkspaceItem,
+): MenuWorkspaceFormValues {
+  return {
+    name: item.name,
+    description: item.description === "No description yet." ? "" : item.description,
+    price: String(item.price),
+    categoryId: item.categoryId ?? "",
+    isAvailable: item.isAvailable,
+  };
+}
 
 function matchesAvailabilityFilter(
   item: MenuWorkspaceItem,
@@ -151,14 +188,182 @@ function MenuSummary({ items }: { items: MenuWorkspaceItem[] }) {
   );
 }
 
+function MenuWorkspaceForm({
+  categories,
+  mode,
+  values,
+  error,
+  isSaving,
+  onCancel,
+  onChange,
+  onSubmit,
+}: {
+  categories: MenuWorkspaceCategory[];
+  mode: "create" | "edit";
+  values: MenuWorkspaceFormValues;
+  error: string | null;
+  isSaving: boolean;
+  onCancel: () => void;
+  onChange: (values: MenuWorkspaceFormValues) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <form
+      className="rounded-2xl border bg-white p-4 shadow-sm"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
+      <div className="flex flex-col gap-3 border-b border-neutral-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-neutral-950">
+            {mode === "create" ? "Create Menu Item" : "Edit Menu Item"}
+          </h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Basic fields only. Image upload, recipe setup, and delete remain in
+            the current menu flow for now.
+          </p>
+        </div>
+        <button
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-neutral-200 px-3 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-50"
+          onClick={onCancel}
+          type="button"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+          Close
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
+          Name
+          <input
+            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400"
+            disabled={isSaving}
+            onChange={(event) =>
+              onChange({ ...values, name: event.target.value })
+            }
+            placeholder="Menu item name"
+            value={values.name}
+          />
+        </label>
+
+        <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
+          Price
+          <input
+            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400"
+            disabled={isSaving}
+            min="0"
+            onChange={(event) =>
+              onChange({ ...values, price: event.target.value })
+            }
+            placeholder="0"
+            step="1"
+            type="number"
+            value={values.price}
+          />
+        </label>
+
+        <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
+          Category
+          <select
+            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400"
+            disabled={isSaving}
+            onChange={(event) =>
+              onChange({ ...values, categoryId: event.target.value })
+            }
+            value={values.categoryId}
+          >
+            <option value="">No category</option>
+            {categories
+              .filter((category) => category.id !== "uncategorized")
+              .map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+          </select>
+        </label>
+
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-700">
+          <span>
+            Available in POS
+            <span className="block text-xs font-normal text-neutral-500">
+              Disabled items stay visible here, but are hidden from POS.
+            </span>
+          </span>
+          <input
+            checked={values.isAvailable}
+            className="h-5 w-5"
+            disabled={isSaving}
+            onChange={(event) =>
+              onChange({ ...values, isAvailable: event.target.checked })
+            }
+            type="checkbox"
+          />
+        </label>
+      </div>
+
+      <label className="mt-4 grid gap-1.5 text-sm font-semibold text-neutral-700">
+        Description
+        <textarea
+          className="min-h-24 rounded-xl border border-neutral-200 px-3 py-2 text-sm font-normal outline-none transition focus:border-neutral-400"
+          disabled={isSaving}
+          onChange={(event) =>
+            onChange({ ...values, description: event.target.value })
+          }
+          placeholder="Optional menu description"
+          value={values.description}
+        />
+      </label>
+
+      {error ? (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <button
+          className="h-10 rounded-xl border border-neutral-200 px-4 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-50"
+          disabled={isSaving}
+          onClick={onCancel}
+          type="button"
+        >
+          Cancel
+        </button>
+        <button
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isSaving}
+          type="submit"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Saving...
+            </>
+          ) : mode === "create" ? (
+            "Create Menu Item"
+          ) : (
+            "Save Changes"
+          )}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function MenuWorkspaceCard({
   item,
   isUpdating,
   onToggleAvailability,
+  onStartEdit,
 }: {
   item: MenuWorkspaceItem;
   isUpdating: boolean;
   onToggleAvailability: (item: MenuWorkspaceItem) => Promise<void>;
+  onStartEdit: (item: MenuWorkspaceItem) => void;
 }) {
   const imageSrc = resolveMediaUrl(item.imageUrl);
   const toggleLabel = item.isAvailable ? "Make Unavailable" : "Make Available";
@@ -230,10 +435,11 @@ function MenuWorkspaceCard({
           </button>
           <div className="grid grid-cols-3 gap-2">
             <button
-              className="h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
-              disabled
+              className="inline-flex h-10 items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
+              onClick={() => onStartEdit(item)}
               type="button"
             >
+              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
               Edit
             </button>
             <button
@@ -257,6 +463,17 @@ function MenuWorkspaceCard({
   );
 }
 
+function validateForm(values: MenuWorkspaceFormValues) {
+  if (!values.name.trim()) return "Name is required.";
+
+  const price = Number(values.price);
+  if (!Number.isFinite(price) || price < 0) {
+    return "Price must be a valid non-negative number.";
+  }
+
+  return null;
+}
+
 export function MenuWorkspaceBoard({
   items,
   categories,
@@ -264,6 +481,9 @@ export function MenuWorkspaceBoard({
   errorMessage,
   updatingItemId,
   onToggleAvailability,
+  isSavingItem,
+  onCreateMenuItem,
+  onUpdateMenuItem,
 }: MenuWorkspaceBoardProps) {
   const [availabilityFilter, setAvailabilityFilter] =
     useState<MenuAvailabilityFilter>("all");
@@ -271,6 +491,52 @@ export function MenuWorkspaceBoard({
     null,
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [formMode, setFormMode] = useState<"create" | "edit" | null>(null);
+  const [editingItem, setEditingItem] = useState<MenuWorkspaceItem | null>(
+    null,
+  );
+  const [formValues, setFormValues] =
+    useState<MenuWorkspaceFormValues>(emptyFormValues);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  function openCreateForm() {
+    setFormMode("create");
+    setEditingItem(null);
+    setFormValues(emptyFormValues);
+    setFormError(null);
+  }
+
+  function openEditForm(item: MenuWorkspaceItem) {
+    setFormMode("edit");
+    setEditingItem(item);
+    setFormValues(getFormValuesFromItem(item));
+    setFormError(null);
+  }
+
+  function closeForm() {
+    if (isSavingItem) return;
+    setFormMode(null);
+    setEditingItem(null);
+    setFormValues(emptyFormValues);
+    setFormError(null);
+  }
+
+  async function submitForm() {
+    const validationError = validateForm(formValues);
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
+    const didSave =
+      formMode === "edit" && editingItem
+        ? await onUpdateMenuItem(editingItem, formValues)
+        : await onCreateMenuItem(formValues);
+
+    if (didSave) {
+      closeForm();
+    }
+  }
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -333,6 +599,14 @@ export function MenuWorkspaceBoard({
               value={searchQuery}
             />
           </div>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800"
+            onClick={openCreateForm}
+            type="button"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Add Item
+          </button>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -381,10 +655,26 @@ export function MenuWorkspaceBoard({
         </div>
       </div>
 
+      {formMode ? (
+        <MenuWorkspaceForm
+          categories={categories}
+          error={formError}
+          isSaving={isSavingItem}
+          mode={formMode}
+          onCancel={closeForm}
+          onChange={(values) => {
+            setFormValues(values);
+            setFormError(null);
+          }}
+          onSubmit={submitForm}
+          values={formValues}
+        />
+      ) : null}
+
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-        Availability toggle is enabled for menu items. Create, edit, delete,
-        and upload remain placeholders.
+        Basic create, edit, and availability are enabled. Delete, image upload,
+        and recipes remain placeholders.
       </div>
 
       {filteredItems.length === 0 ? (
@@ -412,6 +702,7 @@ export function MenuWorkspaceBoard({
               isUpdating={updatingItemId === item.id}
               item={item}
               key={item.id}
+              onStartEdit={openEditForm}
               onToggleAvailability={onToggleAvailability}
             />
           ))}
