@@ -8,6 +8,7 @@ type RestaurantWorkspaceModuleId =
   | "serving"
   | "tables"
   | "menu"
+  | "recipes"
   | "orders";
 
 type WorkspaceRouteExpectation = Readonly<{
@@ -83,6 +84,11 @@ export const restaurantWorkspaceRouteExpectations =
       routePath: ROUTES.WORKSPACE_RESTAURANT_MENU,
     },
     {
+      moduleId: "recipes",
+      routeConstant: "WORKSPACE_RESTAURANT_RECIPES",
+      routePath: ROUTES.WORKSPACE_RESTAURANT_RECIPES,
+    },
+    {
       moduleId: "orders",
       routeConstant: "WORKSPACE_RESTAURANT_ORDERS",
       routePath: ROUTES.WORKSPACE_RESTAURANT_ORDERS,
@@ -115,6 +121,11 @@ export const restaurantWorkspacePlaceholderRoutes =
       moduleId: "menu",
       routePath: ROUTES.WORKSPACE_RESTAURANT_MENU,
       placeholderName: "RestaurantMenuWorkspace",
+    },
+    {
+      moduleId: "recipes",
+      routePath: ROUTES.WORKSPACE_RESTAURANT_RECIPES,
+      placeholderName: "RestaurantRecipesWorkspace",
     },
     {
       moduleId: "orders",

@@ -35,6 +35,7 @@ const RestaurantKitchenWorkspace = lazy(() => import("@/app/workspace/restaurant
 const RestaurantServingWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-serving-workspace"));
 const RestaurantTablesWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-tables-workspace"));
 const RestaurantMenuWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-menu-workspace"));
+const RestaurantRecipesWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-recipes-workspace"));
 const RestaurantOrdersWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-orders-workspace"));
 
 const queryClient = new QueryClient({
@@ -167,6 +168,7 @@ function Router() {
         <Route path={ROUTES.WORKSPACE_RESTAURANT_KITCHEN}><ProtectedRoute requiredMode="fnb"><RestaurantKitchenWorkspace /></ProtectedRoute></Route>
         <Route path={ROUTES.WORKSPACE_RESTAURANT_SERVING}><ProtectedRoute requiredMode="fnb"><RestaurantServingWorkspace /></ProtectedRoute></Route>
         <Route path={ROUTES.WORKSPACE_RESTAURANT_TABLES}><ProtectedRoute requiredMode="fnb"><RestaurantTablesWorkspace /></ProtectedRoute></Route>
+        <Route path={ROUTES.WORKSPACE_RESTAURANT_RECIPES}><ProtectedRoute requiredMode="fnb"><RestaurantRecipesWorkspace /></ProtectedRoute></Route>
         <Route path={ROUTES.WORKSPACE_RESTAURANT_MENU}><ProtectedRoute requiredMode="fnb"><RestaurantMenuWorkspace /></ProtectedRoute></Route>
         <Route path={ROUTES.WORKSPACE_RESTAURANT_ORDERS}><ProtectedRoute requiredMode="fnb"><RestaurantOrdersWorkspace /></ProtectedRoute></Route>
         <Route path={ROUTES.PAYMENTS_SUCCESS}><ProtectedRoute><PaymentSuccessPage /></ProtectedRoute></Route>

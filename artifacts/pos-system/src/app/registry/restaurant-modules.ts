@@ -98,6 +98,7 @@ export const restaurantModules: readonly V3ModuleMetadata[] = [
     status: "active",
     supportedModes: restaurantMode,
     routeBase: "/dashboard/fnb/menu/recipes",
+    workspaceRoute: "/workspace/restaurant/menu/recipes",
     sidebarGroup: "Restaurant Operations",
     sidebarVisible: true,
     sidebarOrder: 170,

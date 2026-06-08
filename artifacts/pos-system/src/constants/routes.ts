@@ -34,6 +34,7 @@ export const ROUTES = {
   WORKSPACE_RESTAURANT_SERVING: "/workspace/restaurant/serving",
   WORKSPACE_RESTAURANT_TABLES: "/workspace/restaurant/tables",
   WORKSPACE_RESTAURANT_MENU: "/workspace/restaurant/menu",
+  WORKSPACE_RESTAURANT_RECIPES: "/workspace/restaurant/menu/recipes",
   WORKSPACE_RESTAURANT_ORDERS: "/workspace/restaurant/orders",
 } as const;
 

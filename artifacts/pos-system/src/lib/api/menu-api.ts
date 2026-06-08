@@ -186,8 +186,8 @@ export const menuApi = {
     return apiClient.get<ApiEnvelope<InventoryItem[]>>("/api/inventory-items");
   },
 
-  listRecipes() {
-    return apiClient.get<ApiEnvelope<Recipe[]>>("/api/recipes");
+  listRecipes<T = Recipe[]>() {
+    return apiClient.get<ApiEnvelope<T>>("/api/recipes");
   },
 
   createRecipe(payload: RecipePayload) {
