@@ -11,18 +11,24 @@ export function DashboardActionButton({
   children,
   variant = "secondary",
   onClick,
+  disabled = false,
+  title,
 }: {
   icon: ElementType;
   children: ReactNode;
   variant?: "primary" | "secondary";
   onClick?: () => void;
+  disabled?: boolean;
+  title?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
+      title={title}
       className={cn(
-        "inline-flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition",
+        "inline-flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
         variant === "primary"
           ? "bg-neutral-950 text-white hover:bg-neutral-800"
           : "border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50",

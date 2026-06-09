@@ -5,6 +5,10 @@ import {
   DashboardActions,
 } from "@/features/shared/dashboard";
 import { formatCurrency } from "@/features/shared/format";
+import {
+  calculateInvoiceLineTotal,
+  clampInvoiceNumber,
+} from "../services/invoice-calculations";
 import type { InvoiceItem } from "@/features/shared/types";
 
 type InvoiceItemsProps = {
@@ -63,7 +67,9 @@ export function InvoiceItems({ items, onChange }: InvoiceItemsProps) {
                     min={0}
                     value={item.quantity}
                     onChange={(event) =>
-                      updateItem(item.id, { quantity: Number(event.target.value) })
+                      updateItem(item.id, {
+                        quantity: clampInvoiceNumber(Number(event.target.value)),
+                      })
                     }
                     className="h-10 w-24 rounded-lg border border-neutral-200 px-3 outline-none focus:border-neutral-400"
                   />
@@ -74,13 +80,15 @@ export function InvoiceItems({ items, onChange }: InvoiceItemsProps) {
                     min={0}
                     value={item.unitPrice}
                     onChange={(event) =>
-                      updateItem(item.id, { unitPrice: Number(event.target.value) })
+                      updateItem(item.id, {
+                        unitPrice: clampInvoiceNumber(Number(event.target.value)),
+                      })
                     }
                     className="h-10 w-36 rounded-lg border border-neutral-200 px-3 outline-none focus:border-neutral-400"
                   />
                 </td>
                 <td className="px-3 py-3 font-semibold text-neutral-950">
-                  {formatCurrency(item.quantity * item.unitPrice)}
+                  {formatCurrency(calculateInvoiceLineTotal(item))}
                 </td>
                 <td className="px-3 py-3 text-right">
                   <button
@@ -107,7 +115,13 @@ export function InvoiceItems({ items, onChange }: InvoiceItemsProps) {
         >
           Add Item
         </DashboardActionButton>
-        <DashboardActionButton icon={Upload}>Import From Receivables</DashboardActionButton>
+        <DashboardActionButton
+          icon={Upload}
+          disabled
+          title="Receivables import is coming soon."
+        >
+          Import From Receivables (Soon)
+        </DashboardActionButton>
       </DashboardActions>
     </div>
   );

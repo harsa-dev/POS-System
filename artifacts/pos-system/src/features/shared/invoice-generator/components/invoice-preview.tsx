@@ -1,5 +1,6 @@
 import { InvoiceStatus } from "./invoice-status";
 import { formatCurrency } from "@/features/shared/format";
+import { calculateInvoiceLineTotal } from "../services/invoice-calculations";
 import type { InvoiceDraft, InvoiceTotals } from "@/features/shared/types";
 
 type InvoicePreviewProps = {
@@ -96,7 +97,7 @@ export function InvoicePreview({ invoice, totals }: InvoicePreviewProps) {
                   {formatCurrency(item.unitPrice)}
                 </td>
                 <td className="py-4 text-right font-semibold text-neutral-950">
-                  {formatCurrency(item.quantity * item.unitPrice)}
+                  {formatCurrency(calculateInvoiceLineTotal(item))}
                 </td>
               </tr>
             ))}

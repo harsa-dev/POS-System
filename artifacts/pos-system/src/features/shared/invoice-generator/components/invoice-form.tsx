@@ -2,25 +2,23 @@ import type { ReactNode } from "react";
 import { Upload } from "lucide-react";
 import { InvoiceItems } from "./invoice-items";
 import { InvoiceStatus } from "./invoice-status";
+import {
+  getInvoiceStatusMetadata,
+  invoicePaymentStatuses,
+} from "../data/invoice-status";
+import { clampInvoiceNumber } from "../services/invoice-calculations";
 import type {
   InvoiceBillingInfo,
   InvoiceBusinessInfo,
   InvoiceCustomerInfo,
   InvoiceDiscount,
   InvoiceDraft,
-  InvoicePaymentStatus,
 } from "@/features/shared/types";
 
 type InvoiceFormProps = {
   invoice: InvoiceDraft;
   onChange: (invoice: InvoiceDraft) => void;
 };
-
-const paymentStatuses: InvoicePaymentStatus[] = [
-  "Pending",
-  "Paid",
-  "Waiting For Payment",
-];
 
 function TextField({
   label,
@@ -65,6 +63,8 @@ function Section({
 }
 
 export function InvoiceForm({ invoice, onChange }: InvoiceFormProps) {
+  const selectedStatus = getInvoiceStatusMetadata(invoice.paymentStatus);
+
   function updateBusiness(updates: Partial<InvoiceBusinessInfo>) {
     onChange({ ...invoice, business: { ...invoice.business, ...updates } });
   }
@@ -193,22 +193,30 @@ export function InvoiceForm({ invoice, onChange }: InvoiceFormProps) {
       <Section title="Payment Status">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
-            {paymentStatuses.map((status) => (
-              <button
-                key={status}
-                type="button"
-                onClick={() => onChange({ ...invoice, paymentStatus: status })}
-                className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                  invoice.paymentStatus === status
-                    ? "border-neutral-950 bg-neutral-950 text-white"
-                    : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
-                }`}
-              >
-                {status}
-              </button>
-            ))}
+            {invoicePaymentStatuses.map((status) => {
+              const metadata = getInvoiceStatusMetadata(status);
+
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => onChange({ ...invoice, paymentStatus: status })}
+                  title={metadata.description}
+                  className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                    invoice.paymentStatus === status
+                      ? "border-neutral-950 bg-neutral-950 text-white"
+                      : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+                  }`}
+                >
+                  {metadata.label}
+                </button>
+              );
+            })}
           </div>
-          <InvoiceStatus status={invoice.paymentStatus} />
+          <div className="grid gap-1 text-sm sm:justify-items-end">
+            <InvoiceStatus status={invoice.paymentStatus} />
+            <p className="max-w-sm text-neutral-500">{selectedStatus.description}</p>
+          </div>
         </div>
       </Section>
 
@@ -218,11 +226,17 @@ export function InvoiceForm({ invoice, onChange }: InvoiceFormProps) {
             <span className="font-medium text-neutral-700">Discount Mode</span>
             <select
               value={invoice.discount.mode}
-              onChange={(event) =>
+              onChange={(event) => {
+                const mode = event.target.value as InvoiceDiscount["mode"];
+
                 updateDiscount({
-                  mode: event.target.value as InvoiceDiscount["mode"],
-                })
-              }
+                  mode,
+                  value:
+                    mode === "percentage"
+                      ? clampInvoiceNumber(invoice.discount.value, 100)
+                      : clampInvoiceNumber(invoice.discount.value),
+                });
+              }}
               className="h-10 rounded-lg border border-neutral-200 px-3 outline-none focus:border-neutral-400"
             >
               <option value="percentage">Percentage (%)</option>
@@ -237,9 +251,19 @@ export function InvoiceForm({ invoice, onChange }: InvoiceFormProps) {
             }
             type="number"
             value={String(invoice.discount.value)}
-            onChange={(value) => updateDiscount({ value: Number(value) })}
+            onChange={(value) =>
+              updateDiscount({
+                value:
+                  invoice.discount.mode === "percentage"
+                    ? clampInvoiceNumber(Number(value), 100)
+                    : clampInvoiceNumber(Number(value)),
+              })
+            }
           />
         </div>
+        <p className="text-xs text-neutral-500">
+          Percentage discounts are limited to 0-100%. Fixed discounts are capped to the subtotal in the preview.
+        </p>
       </Section>
 
       <Section title="Notes Section">

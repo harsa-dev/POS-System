@@ -3,33 +3,27 @@
 import { useMemo, useState } from "react";
 import { Download, History, RefreshCw, Save } from "lucide-react";
 
-import { DashboardActionButton, DashboardActions, DashboardPanel, DashboardShell } from "@/features/shared/dashboard";
+import {
+  DashboardActionButton,
+  DashboardActions,
+  DashboardPanel,
+  DashboardShell,
+} from "@/features/shared/dashboard";
 import { InvoiceForm } from "../components/invoice-form";
 import { InvoicePreview } from "../components/invoice-preview";
 import { InvoiceStatus } from "../components/invoice-status";
 import { createInitialInvoice } from "../data/invoice-mock";
+import { calculateInvoiceTotals } from "../services/invoice-calculations";
 import { downloadInvoicePdf } from "../services/invoice-pdf";
-import type { InvoiceDraft, InvoiceTotals } from "@/features/shared/types";
-
-function calculateTotals(invoice: InvoiceDraft): InvoiceTotals {
-  const subtotal = invoice.items.reduce(
-    (total, item) => total + item.quantity * item.unitPrice,
-    0,
-  );
-  const discountAmount =
-    invoice.discount.mode === "percentage"
-      ? subtotal * (invoice.discount.value / 100)
-      : invoice.discount.value;
-  const grandTotal = Math.max(subtotal - discountAmount, 0);
-
-  return { subtotal, discountAmount, grandTotal };
-}
+import { validateInvoiceDraft } from "../services/invoice-validation";
+import type { InvoiceDraft } from "@/features/shared/types";
 
 export function InvoiceGeneratorDashboard() {
   const [invoice, setInvoice] = useState<InvoiceDraft>(() => createInitialInvoice());
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
-  const totals = useMemo(() => calculateTotals(invoice), [invoice]);
+  const totals = useMemo(() => calculateInvoiceTotals(invoice), [invoice]);
+  const validationIssues = useMemo(() => validateInvoiceDraft(invoice), [invoice]);
 
   function handleReset() {
     setInvoice(createInitialInvoice());
@@ -43,7 +37,7 @@ export function InvoiceGeneratorDashboard() {
   return (
     <DashboardShell
       title="Invoice Generator"
-      description="Create, preview, save, and download reusable business invoices as PDF."
+      description="Create and print local invoice drafts without backend persistence."
     >
       <DashboardPanel>
         <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -52,17 +46,30 @@ export function InvoiceGeneratorDashboard() {
               <InvoiceStatus status={invoice.paymentStatus} />
               {lastSavedAt && (
                 <span className="text-sm text-neutral-500">
-                  Last saved: {lastSavedAt}
+                  Local draft saved: {lastSavedAt}
                 </span>
               )}
             </div>
+            <p className="mt-2 text-sm text-neutral-500">
+              This module is local-only for now. Save records a timestamp in this screen, and Print / Save PDF uses the browser print dialog.
+            </p>
           </div>
           <DashboardActions>
-            <DashboardActionButton icon={History}>History</DashboardActionButton>
-            <DashboardActionButton icon={RefreshCw} onClick={handleReset}>Reset</DashboardActionButton>
-            <DashboardActionButton icon={Save} onClick={handleSave}>Save</DashboardActionButton>
+            <DashboardActionButton
+              icon={History}
+              disabled
+              title="Invoice history is coming soon."
+            >
+              History (Soon)
+            </DashboardActionButton>
+            <DashboardActionButton icon={RefreshCw} onClick={handleReset}>
+              Reset
+            </DashboardActionButton>
+            <DashboardActionButton icon={Save} onClick={handleSave}>
+              Save Local Draft
+            </DashboardActionButton>
             <DashboardActionButton icon={Download} variant="primary" onClick={downloadInvoicePdf}>
-              Download PDF
+              Print / Save PDF
             </DashboardActionButton>
           </DashboardActions>
         </div>
@@ -71,6 +78,16 @@ export function InvoiceGeneratorDashboard() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.85fr)]">
         <DashboardPanel title="Invoice Editor">
           <div className="p-4">
+            {validationIssues.length > 0 && (
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                <p className="font-semibold">Draft values adjusted for safe totals</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {validationIssues.map((issue) => (
+                    <li key={`${issue.field}-${issue.message}`}>{issue.message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <InvoiceForm invoice={invoice} onChange={setInvoice} />
           </div>
         </DashboardPanel>
@@ -86,11 +103,19 @@ export function InvoiceGeneratorDashboard() {
             <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <InvoiceStatus status={invoice.paymentStatus} />
               <DashboardActions>
-                <DashboardActionButton icon={Download} variant="primary" onClick={downloadInvoicePdf}>
-                  Download PDF
+                <DashboardActionButton
+                  icon={Download}
+                  variant="primary"
+                  onClick={downloadInvoicePdf}
+                >
+                  Print / Save PDF
                 </DashboardActionButton>
-                <DashboardActionButton icon={Save} onClick={handleSave}>Save</DashboardActionButton>
-                <DashboardActionButton icon={RefreshCw} onClick={handleReset}>Reset</DashboardActionButton>
+                <DashboardActionButton icon={Save} onClick={handleSave}>
+                  Save Local Draft
+                </DashboardActionButton>
+                <DashboardActionButton icon={RefreshCw} onClick={handleReset}>
+                  Reset
+                </DashboardActionButton>
               </DashboardActions>
             </div>
           </DashboardPanel>
