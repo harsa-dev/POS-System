@@ -66,7 +66,25 @@ function mapMenuItemToProduct(menuItem: MenuItem): PosProductItem {
 }
 
 function isSellableMenuItem(menuItem: MenuItem) {
-  return menuItem.isAvailable !== false && menuItem.hasRecipe !== false;
+  if (menuItem.isAvailable === false) return false;
+  if (menuItem.availabilityStatus === "NO_RECIPE") return false;
+  if (menuItem.hasRecipe === false) return false;
+  if (
+    "recipeCount" in menuItem &&
+    typeof menuItem.recipeCount === "number" &&
+    menuItem.recipeCount <= 0
+  ) {
+    return false;
+  }
+  if (
+    "recipes" in menuItem &&
+    Array.isArray(menuItem.recipes) &&
+    menuItem.recipes.length === 0
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 function mapCategories(
