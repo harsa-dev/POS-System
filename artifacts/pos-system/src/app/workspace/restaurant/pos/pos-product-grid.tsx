@@ -15,16 +15,15 @@ function PosProductGridSkeleton() {
     <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
       {Array.from({ length: 6 }).map((_, index) => (
         <div
-          className="min-h-36 animate-pulse rounded-2xl border border-neutral-200 bg-neutral-50 p-4"
+          className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
           key={index}
         >
-          <div className="flex items-start justify-between">
-            <div className="h-11 w-11 rounded-2xl bg-neutral-200" />
-            <div className="h-6 w-16 rounded-full bg-neutral-200" />
+          <div className="aspect-[4/3] animate-pulse bg-neutral-100" />
+          <div className="p-4">
+            <div className="h-4 w-3/4 animate-pulse rounded bg-neutral-200" />
+            <div className="mt-3 h-3 w-1/2 animate-pulse rounded bg-neutral-100" />
+            <div className="mt-5 h-4 w-24 animate-pulse rounded bg-neutral-200" />
           </div>
-          <div className="mt-5 h-4 w-3/4 rounded bg-neutral-200" />
-          <div className="mt-3 h-3 w-1/2 rounded bg-neutral-200" />
-          <div className="mt-5 h-4 w-24 rounded bg-neutral-200" />
         </div>
       ))}
     </div>
