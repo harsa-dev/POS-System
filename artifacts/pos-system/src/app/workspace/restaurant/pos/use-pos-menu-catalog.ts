@@ -65,6 +65,10 @@ function mapMenuItemToProduct(menuItem: MenuItem): PosProductItem {
   };
 }
 
+function isSellableMenuItem(menuItem: MenuItem) {
+  return menuItem.isAvailable !== false && menuItem.hasRecipe !== false;
+}
+
 function mapCategories(
   categories: Category[],
   products: PosProductItem[],
@@ -121,19 +125,25 @@ export function usePosMenuCatalog(): MenuCatalogState {
         ]);
         if (!isMounted) return;
 
-        const menuItems = menuItemsResponse.data ?? [];
+        if (!menuItemsResponse.success) {
+          throw new Error(menuItemsResponse.message ?? "Failed to load menu");
+        }
+
+        if (!categoriesResponse.success) {
+          throw new Error(
+            categoriesResponse.message ?? "Failed to load categories",
+          );
+        }
+
+        const menuItems = (menuItemsResponse.data ?? []).filter(
+          isSellableMenuItem,
+        );
         const categoryData = categoriesResponse.data ?? [];
         const mappedProducts = menuItems.map(mapMenuItemToProduct);
 
-        if (mappedProducts.length === 0) {
-          setProducts(fallbackProducts);
-          setCategories(fallbackCategories);
-          setIsUsingFallback(true);
-        } else {
-          setProducts(mappedProducts);
-          setCategories(mapCategories(categoryData, mappedProducts));
-          setIsUsingFallback(false);
-        }
+        setProducts(mappedProducts);
+        setCategories(mapCategories(categoryData, mappedProducts));
+        setIsUsingFallback(false);
 
         setStatus("ready");
       } catch (error) {

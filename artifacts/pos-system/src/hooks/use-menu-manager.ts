@@ -30,7 +30,9 @@ export function useMenuManager() {
 
   async function fetchMenuItems() {
     try {
-      const data = await menuApi.listMenuItems();
+      const data = await menuApi.listMenuItemsWithOptions<MenuItem[]>({
+        includeUnavailable: true,
+      });
 
       if (data.success) {
         setMenuItems(data.data ?? []);

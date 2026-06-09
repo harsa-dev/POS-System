@@ -9,7 +9,7 @@ type MenuItem = {
   name: string;
   price: number;
   imageUrl?: string | null;
-  availabilityStatus: "AVAILABLE" | "OUT_OF_STOCK" | "NO_RECIPE";
+  availabilityStatus: "AVAILABLE" | "OUT_OF_STOCK" | "NO_RECIPE" | "UNAVAILABLE";
 };
 
 type MenuGridProps = {

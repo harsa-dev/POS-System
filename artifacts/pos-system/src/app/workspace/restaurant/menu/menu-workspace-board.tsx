@@ -367,6 +367,7 @@ function MenuWorkspaceCard({
 }) {
   const imageSrc = resolveMediaUrl(item.imageUrl);
   const toggleLabel = item.isAvailable ? "Make Unavailable" : "Make Available";
+  const cannotMakeAvailable = !item.isAvailable && !item.hasRecipe;
 
   return (
     <article className="overflow-hidden rounded-2xl border bg-white shadow-sm">
@@ -393,11 +394,18 @@ function MenuWorkspaceCard({
               {item.categoryName}
             </p>
           </div>
-          <span
-            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${availabilityTone[item.availability]}`}
-          >
-            {item.availabilityLabel}
-          </span>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-bold ${availabilityTone[item.availability]}`}
+            >
+              {item.availabilityLabel}
+            </span>
+            {!item.hasRecipe ? (
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+                Recipe required
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <p className="mt-3 line-clamp-2 min-h-10 text-sm text-neutral-500">
@@ -420,7 +428,7 @@ function MenuWorkspaceCard({
                 ? "bg-neutral-950 text-white hover:bg-neutral-800"
                 : "bg-green-600 text-white hover:bg-green-700"
             }`}
-            disabled={isUpdating}
+            disabled={isUpdating || cannotMakeAvailable}
             onClick={() => void onToggleAvailability(item)}
             type="button"
           >
@@ -433,6 +441,12 @@ function MenuWorkspaceCard({
               toggleLabel
             )}
           </button>
+          {!item.hasRecipe ? (
+            <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-800">
+              Add at least one recipe ingredient before making this item
+              available.
+            </p>
+          ) : null}
           <div className="grid grid-cols-3 gap-2">
             <button
               className="inline-flex h-10 items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"

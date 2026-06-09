@@ -23,10 +23,14 @@ export type MenuItem = {
   name: string;
   description?: string | null;
   price: number;
+  isAvailable?: boolean;
+  hasRecipe?: boolean;
+  recipeCount?: number;
   availabilityStatus:
   | "AVAILABLE"
   | "OUT_OF_STOCK"
-  | "NO_RECIPE";
+  | "NO_RECIPE"
+  | "UNAVAILABLE";
   imageUrl?: string | null;
   categoryId?: string | null;
   category?: {

@@ -26,6 +26,9 @@ export type MenuWorkspaceItem = {
   availability: MenuWorkspaceAvailability;
   availabilityLabel: string;
   isAvailable: boolean;
+  hasRecipe: boolean;
+  recipeCount: number;
+  isSellable: boolean;
   imageUrl: string | null;
 };
 
@@ -45,9 +48,12 @@ type MenuItemResponse = {
   description?: string | null;
   price: number;
   isAvailable?: boolean | null;
+  hasRecipe?: boolean | null;
+  recipeCount?: number | null;
   availabilityStatus?: string | null;
   imageUrl?: string | null;
   categoryId?: string | null;
+  recipes?: unknown[] | null;
   category?: {
     id?: string | null;
     name?: string | null;
@@ -85,8 +91,22 @@ function mapMenuItemToWorkspaceItem(
   menuItem: MenuItemResponse,
 ): MenuWorkspaceItem {
   const isAvailable = menuItem.isAvailable ?? true;
+  const recipeCount =
+    typeof menuItem.recipeCount === "number"
+      ? menuItem.recipeCount
+      : Array.isArray(menuItem.recipes)
+        ? menuItem.recipes.length
+        : menuItem.hasRecipe === true
+          ? 1
+          : 0;
+  const hasRecipe =
+    typeof menuItem.hasRecipe === "boolean"
+      ? menuItem.hasRecipe
+      : recipeCount > 0;
   const availability = isAvailable
-    ? normalizeAvailability(menuItem.availabilityStatus)
+    ? hasRecipe
+      ? normalizeAvailability(menuItem.availabilityStatus)
+      : "NO_RECIPE"
     : "UNAVAILABLE";
 
   return {
@@ -100,6 +120,9 @@ function mapMenuItemToWorkspaceItem(
     availability,
     availabilityLabel: availabilityLabels[availability],
     isAvailable,
+    hasRecipe,
+    recipeCount,
+    isSellable: isAvailable && hasRecipe,
     imageUrl: menuItem.imageUrl ?? null,
   };
 }
