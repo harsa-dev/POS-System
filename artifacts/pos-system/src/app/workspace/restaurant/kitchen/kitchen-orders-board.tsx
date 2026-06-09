@@ -123,7 +123,7 @@ function KitchenOrderCard({
 
   return (
     <article
-      className={`rounded-2xl border bg-white p-4 shadow-sm ${
+      className={`rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-300 ${
         isCooking ? "border-orange-200 ring-1 ring-orange-100" : ""
       }`}
     >
@@ -169,7 +169,7 @@ function KitchenOrderCard({
 
       <div className="mt-4 border-t border-neutral-100 pt-4">
         <button
-          className={`flex h-10 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`flex h-10 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
             isCooking
               ? "bg-green-600 text-white hover:bg-green-700"
               : "bg-neutral-950 text-white hover:bg-neutral-800"

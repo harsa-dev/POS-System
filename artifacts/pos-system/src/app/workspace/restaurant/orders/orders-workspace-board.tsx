@@ -159,7 +159,7 @@ function OrdersWorkspaceCard({
   const canComplete = order.status === "SERVED";
 
   return (
-    <article className="rounded-2xl border bg-white p-4 shadow-sm">
+    <article className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-300">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -240,7 +240,7 @@ function OrdersWorkspaceCard({
           </div>
           {canComplete ? (
             <button
-              className="mt-1 flex h-10 items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-1 flex h-10 items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isUpdating}
               onClick={() => void onCompleteOrder(order)}
               type="button"
@@ -256,7 +256,7 @@ function OrdersWorkspaceCard({
             </button>
           ) : (
             <button
-              className="mt-1 h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-1 h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-80"
               disabled
               type="button"
             >

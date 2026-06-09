@@ -23,7 +23,8 @@ export function PosProductCard({
 
   return (
     <button
-      className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white text-left shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50"
+      aria-label={`Add ${product.name} to cart`}
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white text-left shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
       onClick={() => onAddProduct(product)}
       type="button"
     >
@@ -36,7 +37,7 @@ export function PosProductCard({
             src={imageUrl}
           />
         ) : (
-          <div className="flex flex-col items-center gap-2 text-neutral-400">
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-neutral-100 text-neutral-400">
             <ImageIcon className="h-8 w-8" aria-hidden="true" />
             <span className="text-xs font-semibold">No image</span>
           </div>
@@ -46,8 +47,8 @@ export function PosProductCard({
         </span>
       </div>
 
-      <div className="p-4">
-        <div className="min-h-14">
+      <div className="flex flex-1 flex-col p-4">
+        <div className="min-h-14 flex-1">
           <p className="line-clamp-2 text-sm font-bold text-neutral-950">
             {product.name}
           </p>
@@ -57,7 +58,7 @@ export function PosProductCard({
           <span className="text-base font-bold text-neutral-950">
             {product.price}
           </span>
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-400 group-hover:text-neutral-600">
+          <span className="inline-flex h-8 items-center gap-1 rounded-full bg-neutral-950 px-3 text-xs font-semibold text-white shadow-sm transition group-hover:bg-neutral-800">
             <ShoppingCart className="h-3.5 w-3.5" aria-hidden="true" />
             Add
           </span>

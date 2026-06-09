@@ -18,7 +18,7 @@ type StatusBadgeProps = WorkspaceFeedbackProps & {
 export function StatusBadge({ children, className = "", tone }: StatusBadgeProps) {
   return (
     <span
-      className={`rounded-full px-2.5 py-1 text-xs font-bold ${tone} ${className}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-full border border-transparent px-2.5 py-1 text-xs font-bold leading-none ${tone} ${className}`}
     >
       {children}
     </span>
@@ -34,7 +34,7 @@ export function RefreshingIndicator({
 }) {
   return (
     <span
-      className={`rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ${className}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold leading-none text-blue-700 ${className}`}
     >
       {label}
     </span>
@@ -44,7 +44,7 @@ export function RefreshingIndicator({
 export function InlineErrorNotice({ children, className = "" }: WorkspaceFeedbackProps) {
   return (
     <div
-      className={`rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 ${className}`}
+      className={`rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800 ${className}`}
     >
       {children}
     </div>
@@ -53,7 +53,7 @@ export function InlineErrorNotice({ children, className = "" }: WorkspaceFeedbac
 
 export function LoadErrorState({ description, icon: Icon, title }: WorkspaceStateProps) {
   return (
-    <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+    <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center shadow-sm">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-red-600">
         <Icon className="h-6 w-6" aria-hidden="true" />
       </div>
@@ -65,7 +65,7 @@ export function LoadErrorState({ description, icon: Icon, title }: WorkspaceStat
 
 export function EmptyState({ description, icon: Icon, title }: WorkspaceStateProps) {
   return (
-    <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-white p-10 text-center">
+    <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-white p-10 text-center shadow-sm">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500">
         <Icon className="h-7 w-7" aria-hidden="true" />
       </div>

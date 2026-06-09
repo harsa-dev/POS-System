@@ -255,7 +255,7 @@ function MenuWorkspaceForm({
 
   return (
     <form
-      className="rounded-2xl border bg-white p-4 shadow-sm"
+      className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
@@ -284,7 +284,7 @@ function MenuWorkspaceForm({
         <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
           Name
           <input
-            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400"
+            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
             disabled={isSaving}
             onChange={(event) =>
               onChange({ ...values, name: event.target.value })
@@ -297,7 +297,7 @@ function MenuWorkspaceForm({
         <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
           Price
           <input
-            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400"
+            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
             disabled={isSaving}
             min="0"
             onChange={(event) =>
@@ -313,7 +313,7 @@ function MenuWorkspaceForm({
         <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
           Category
           <select
-            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400"
+            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
             disabled={isSaving}
             onChange={(event) =>
               onChange({ ...values, categoryId: event.target.value })
@@ -353,7 +353,7 @@ function MenuWorkspaceForm({
       <label className="mt-4 grid gap-1.5 text-sm font-semibold text-neutral-700">
         Description
         <textarea
-          className="min-h-24 rounded-xl border border-neutral-200 px-3 py-2 text-sm font-normal outline-none transition focus:border-neutral-400"
+          className="min-h-24 rounded-xl border border-neutral-200 px-3 py-2 text-sm font-normal outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
           disabled={isSaving}
           onChange={(event) =>
             onChange({ ...values, description: event.target.value })
@@ -363,7 +363,7 @@ function MenuWorkspaceForm({
         />
       </label>
 
-      <div className="mt-4 grid gap-3 rounded-2xl border border-neutral-200 p-3 sm:grid-cols-[160px_minmax(0,1fr)]">
+      <div className="mt-4 grid gap-4 rounded-2xl border border-neutral-200 bg-neutral-50/50 p-3 sm:grid-cols-[160px_minmax(0,1fr)]">
         <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-neutral-100">
           {previewSrc ? (
             <img
@@ -380,7 +380,7 @@ function MenuWorkspaceForm({
             Menu Image
             <input
               accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-              className="rounded-xl border border-neutral-200 px-3 py-2 text-sm font-normal file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-950 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
+              className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-normal file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-950 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
               disabled={isSaving}
               onChange={handleImageChange}
               type="file"
@@ -403,7 +403,7 @@ function MenuWorkspaceForm({
       </div>
 
       {error ? (
-        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold leading-6 text-red-700">
           {error}
         </div>
       ) : null}
@@ -454,7 +454,7 @@ function MenuWorkspaceCard({
   const cannotMakeAvailable = !item.isAvailable && !item.hasRecipe;
 
   return (
-    <article className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition hover:border-neutral-300">
       <div className="flex aspect-[4/3] items-center justify-center bg-neutral-100">
         {imageSrc ? (
           <img
@@ -467,7 +467,7 @@ function MenuWorkspaceCard({
         )}
       </div>
 
-      <div className="p-4">
+      <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="truncate text-base font-bold text-neutral-950">
@@ -499,11 +499,11 @@ function MenuWorkspaceCard({
           </p>
         </div>
 
-        <div className="mt-4 grid gap-2 border-t border-neutral-100 pt-4">
+        <div className="mt-auto grid gap-2 border-t border-neutral-100 pt-4">
           <button
             className={`flex h-10 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
               item.isAvailable
-                ? "bg-neutral-950 text-white hover:bg-neutral-800"
+                ? "border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
                 : "bg-green-600 text-white hover:bg-green-700"
             }`}
             disabled={isUpdating || cannotMakeAvailable}
@@ -527,7 +527,7 @@ function MenuWorkspaceCard({
           ) : null}
           <div className="grid grid-cols-3 gap-2">
             <button
-              className="inline-flex h-10 items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
+              className="inline-flex h-10 items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
               onClick={() => onStartEdit(item)}
               type="button"
             >
@@ -535,7 +535,7 @@ function MenuWorkspaceCard({
               Edit
             </button>
             <button
-              className="h-10 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
+              className="h-10 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
               onClick={() => onStartEdit(item)}
               type="button"
             >

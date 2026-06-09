@@ -263,7 +263,7 @@ function RecipesWorkspaceForm({
 }) {
   return (
     <form
-      className="rounded-2xl border bg-white p-4 shadow-sm"
+      className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
@@ -293,7 +293,7 @@ function RecipesWorkspaceForm({
           <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
             Menu Item
             <select
-              className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400"
+              className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
               disabled={isSaving}
               onChange={(event) =>
                 onChange({ ...values, menuItemId: event.target.value })
@@ -322,7 +322,7 @@ function RecipesWorkspaceForm({
         <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
           Inventory Ingredient
           <select
-            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400"
+            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
             disabled={isSaving}
             onChange={(event) =>
               onChange({ ...values, inventoryItemId: event.target.value })
@@ -341,7 +341,7 @@ function RecipesWorkspaceForm({
         <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
           Quantity
           <input
-            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400"
+            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
             disabled={isSaving}
             min="0"
             onChange={(event) =>
@@ -356,7 +356,7 @@ function RecipesWorkspaceForm({
       </div>
 
       {error ? (
-        <div className="mt-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">
+        <div className="mt-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-semibold leading-6 text-red-700">
           {error}
         </div>
       ) : null}
@@ -404,7 +404,7 @@ function RecipeItemCard({
   const isBusy = activeRecipeAction !== null;
 
   return (
-    <article className="rounded-2xl border bg-white p-4 shadow-sm">
+    <article className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-300">
       <div className="flex flex-col gap-3 border-b border-neutral-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -435,60 +435,62 @@ function RecipeItemCard({
       </div>
 
       {item.ingredients.length > 0 ? (
-        <div className="mt-4 overflow-hidden rounded-xl border border-neutral-100">
-          <div className="grid grid-cols-[1.2fr_0.65fr_0.65fr_0.65fr_1fr] gap-3 bg-neutral-50 px-3 py-2 text-xs font-semibold uppercase text-neutral-500">
-            <span>Ingredient</span>
-            <span>Needed</span>
-            <span>Stock</span>
-            <span>Cost</span>
-            <span>Actions</span>
-          </div>
-          <div className="divide-y divide-neutral-100">
-            {item.ingredients.map((ingredient) => (
-              <div
-                className="grid grid-cols-[1.2fr_0.65fr_0.65fr_0.65fr_1fr] gap-3 px-3 py-3 text-sm"
-                key={ingredient.id}
-              >
-                <span className="font-semibold text-neutral-900">
-                  {ingredient.name}
-                </span>
-                <span className="text-neutral-600">
-                  {ingredient.quantityLabel}
-                </span>
-                <span className="text-neutral-600">
-                  {ingredient.currentStockLabel}
-                </span>
-                <span className="font-semibold text-neutral-800">
-                  {ingredient.estimatedCostLabel ?? "-"}
-                </span>
-                <span className="flex flex-wrap gap-2">
-                  <button
-                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 px-2.5 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400"
-                    disabled={isBusy}
-                    onClick={() => onEditIngredient(item, ingredient)}
-                    type="button"
-                  >
-                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                    {activeRecipeAction?.key === ingredient.id &&
-                    activeRecipeAction.type === "save"
-                      ? "Saving"
-                      : "Edit"}
-                  </button>
-                  <button
-                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-red-100 px-2.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-neutral-400"
-                    disabled={isBusy}
-                    onClick={() => onRequestDeleteIngredient(item, ingredient)}
-                    type="button"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                    {activeRecipeAction?.key === ingredient.id &&
-                    activeRecipeAction.type === "delete"
-                      ? "Removing"
-                      : "Remove"}
-                  </button>
-                </span>
-              </div>
-            ))}
+        <div className="mt-4 overflow-x-auto rounded-xl border border-neutral-100">
+          <div className="min-w-[680px]">
+            <div className="grid grid-cols-[1.2fr_0.65fr_0.65fr_0.65fr_1fr] gap-3 bg-neutral-50 px-3 py-2 text-xs font-semibold uppercase text-neutral-500">
+              <span>Ingredient</span>
+              <span>Needed</span>
+              <span>Stock</span>
+              <span>Cost</span>
+              <span>Actions</span>
+            </div>
+            <div className="divide-y divide-neutral-100">
+              {item.ingredients.map((ingredient) => (
+                <div
+                  className="grid grid-cols-[1.2fr_0.65fr_0.65fr_0.65fr_1fr] gap-3 px-3 py-3 text-sm"
+                  key={ingredient.id}
+                >
+                  <span className="font-semibold text-neutral-900">
+                    {ingredient.name}
+                  </span>
+                  <span className="text-neutral-600">
+                    {ingredient.quantityLabel}
+                  </span>
+                  <span className="text-neutral-600">
+                    {ingredient.currentStockLabel}
+                  </span>
+                  <span className="font-semibold text-neutral-800">
+                    {ingredient.estimatedCostLabel ?? "-"}
+                  </span>
+                  <span className="flex flex-wrap gap-2">
+                    <button
+                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400"
+                      disabled={isBusy}
+                      onClick={() => onEditIngredient(item, ingredient)}
+                      type="button"
+                    >
+                      <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                      {activeRecipeAction?.key === ingredient.id &&
+                      activeRecipeAction.type === "save"
+                        ? "Saving"
+                        : "Edit"}
+                    </button>
+                    <button
+                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-red-100 bg-white px-2.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-neutral-400"
+                      disabled={isBusy}
+                      onClick={() => onRequestDeleteIngredient(item, ingredient)}
+                      type="button"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      {activeRecipeAction?.key === ingredient.id &&
+                      activeRecipeAction.type === "delete"
+                        ? "Removing"
+                        : "Remove"}
+                    </button>
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       ) : (

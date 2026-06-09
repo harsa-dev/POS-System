@@ -125,7 +125,7 @@ function ServingOrderCard({
   ) => Promise<void>;
 }) {
   return (
-    <article className="rounded-2xl border border-green-200 bg-white p-4 shadow-sm ring-1 ring-green-50">
+    <article className="rounded-2xl border border-green-200 bg-white p-4 shadow-sm ring-1 ring-green-50 transition hover:border-green-300">
       <div className="border-b border-neutral-100 pb-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -181,7 +181,7 @@ function ServingOrderCard({
 
       <div className="mt-4 border-t border-neutral-100 pt-4">
         <button
-          className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isUpdating}
           onClick={() => void onUpdateStatus(order.id, "SERVED")}
           type="button"
