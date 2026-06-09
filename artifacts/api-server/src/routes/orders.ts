@@ -71,6 +71,14 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+function getNoRecipeOrderMessage(menuItemName: string) {
+  return `Menu item "${menuItemName}" has no recipe configured and cannot be ordered. Add at least one ingredient first.`;
+}
+
+function getNoRecipeProcessingMessage(menuItemName: string) {
+  return `Menu item "${menuItemName}" has no recipe configured and cannot be processed. Add at least one ingredient first.`;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -272,6 +280,11 @@ router.post("/orders", async (req, res) => {
     for (const item of items) {
       const mi = menuItemById.get(item.menuItemId);
       if (!mi) return void res.status(400).json({ success: false, message: `Menu item not found: ${item.menuItemId}` });
+      if (mi.recipes.length === 0)
+        return void res.status(400).json({
+          success: false,
+          message: getNoRecipeOrderMessage(mi.name),
+        });
 
       const lineTotal = mi.price * item.quantity;
       subtotal += lineTotal;
@@ -596,6 +609,18 @@ router.patch("/orders/:id/status", async (req, res) => {
       status === "READY" &&
       !existingOrder.inventoryDeducted;
     const shouldRestoreStock = isCancelling && existingOrder.inventoryDeducted;
+
+    if (shouldDeductStock || shouldRestoreStock) {
+      const noRecipeOrderItem = existingOrder.items.find(
+        (item) => item.menuItem.recipes.length === 0,
+      );
+
+      if (noRecipeOrderItem)
+        return void res.status(400).json({
+          success: false,
+          message: getNoRecipeProcessingMessage(noRecipeOrderItem.menuItem.name),
+        });
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.order.update({

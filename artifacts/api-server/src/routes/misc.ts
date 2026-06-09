@@ -219,6 +219,15 @@ router.delete("/recipes/:id", async (req, res) => {
         message:
           "This ingredient cannot be removed while active orders for this menu item exist.",
       });
+    const recipeCount = await prisma.recipe.count({
+      where: { menuItemId: recipe.menuItemId },
+    });
+    if (recipe.menuItem.isAvailable && recipeCount <= 1)
+      return void res.status(400).json({
+        success: false,
+        message:
+          "Cannot remove the last ingredient while this menu item is available. Make the menu item unavailable first.",
+      });
     await prisma.recipe.delete({ where: { id } });
     res.json({ success: true, message: "Recipe deleted" });
   } catch {

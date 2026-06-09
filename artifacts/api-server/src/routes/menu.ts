@@ -125,6 +125,7 @@ router.patch("/menu-items/:id", async (req, res) => {
     const { id } = req.params;
     const existing = await prisma.menuItem.findFirst({
       where: { id, restaurantId: restaurant.id },
+      include: { _count: { select: { recipes: true } } },
     });
     if (!existing)
       return void res
@@ -133,6 +134,12 @@ router.patch("/menu-items/:id", async (req, res) => {
 
     const { name, description, price, imageUrl, categoryId, isAvailable } =
       req.body ?? {};
+    if (isAvailable === true && existing._count.recipes === 0)
+      return void res.status(400).json({
+        success: false,
+        message:
+          "This menu item cannot be made available until at least one recipe ingredient is configured.",
+      });
 
     const menuItem = await prisma.menuItem.update({
       where: { id },
