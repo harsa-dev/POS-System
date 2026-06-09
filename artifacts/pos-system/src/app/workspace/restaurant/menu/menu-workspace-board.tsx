@@ -1,4 +1,9 @@
-import { useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   AlertTriangle,
   CheckCheck,
@@ -43,7 +48,19 @@ export type MenuWorkspaceFormValues = {
   price: string;
   categoryId: string;
   isAvailable: boolean;
+  imageFile: File | null;
+  imagePreviewUrl: string | null;
+  imageUrl: string | null;
 };
+
+const supportedImageExtensions = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "gif",
+  "avif",
+]);
 
 const availabilityFilters: Array<{
   id: MenuAvailabilityFilter;
@@ -67,7 +84,19 @@ const emptyFormValues: MenuWorkspaceFormValues = {
   price: "",
   categoryId: "",
   isAvailable: true,
+  imageFile: null,
+  imagePreviewUrl: null,
+  imageUrl: null,
 };
+
+function isSupportedImageFile(file: File) {
+  if (file.type.startsWith("image/") && file.type !== "image/svg+xml") {
+    return true;
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  return extension ? supportedImageExtensions.has(extension) : false;
+}
 
 function getFormValuesFromItem(
   item: MenuWorkspaceItem,
@@ -78,6 +107,9 @@ function getFormValuesFromItem(
     price: String(item.price),
     categoryId: item.categoryId ?? "",
     isAvailable: item.isAvailable,
+    imageFile: null,
+    imagePreviewUrl: item.imageUrl,
+    imageUrl: item.imageUrl,
   };
 }
 
@@ -196,6 +228,7 @@ function MenuWorkspaceForm({
   isSaving,
   onCancel,
   onChange,
+  onImageFileChange,
   onSubmit,
 }: {
   categories: MenuWorkspaceCategory[];
@@ -205,8 +238,18 @@ function MenuWorkspaceForm({
   isSaving: boolean;
   onCancel: () => void;
   onChange: (values: MenuWorkspaceFormValues) => void;
+  onImageFileChange: (file: File | null) => void;
   onSubmit: () => void;
 }) {
+  const previewSrc = resolveMediaUrl(
+    values.imagePreviewUrl ?? values.imageUrl,
+  );
+
+  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+    onImageFileChange(event.target.files?.[0] ?? null);
+    event.target.value = "";
+  }
+
   return (
     <form
       className="rounded-2xl border bg-white p-4 shadow-sm"
@@ -221,8 +264,7 @@ function MenuWorkspaceForm({
             {mode === "create" ? "Create Menu Item" : "Edit Menu Item"}
           </h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Basic fields only. Image upload, recipe setup, and delete remain in
-            the current menu flow for now.
+            Basic fields only. Images upload when this form is saved.
           </p>
         </div>
         <button
@@ -317,6 +359,45 @@ function MenuWorkspaceForm({
           value={values.description}
         />
       </label>
+
+      <div className="mt-4 grid gap-3 rounded-2xl border border-neutral-200 p-3 sm:grid-cols-[160px_minmax(0,1fr)]">
+        <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-neutral-100">
+          {previewSrc ? (
+            <img
+              alt=""
+              className="h-full w-full object-cover"
+              src={previewSrc}
+            />
+          ) : (
+            <ImageIcon className="h-8 w-8 text-neutral-400" aria-hidden="true" />
+          )}
+        </div>
+        <div className="flex flex-col justify-center gap-2">
+          <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
+            Menu Image
+            <input
+              accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+              className="rounded-xl border border-neutral-200 px-3 py-2 text-sm font-normal file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-950 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
+              disabled={isSaving}
+              onChange={handleImageChange}
+              type="file"
+            />
+          </label>
+          <p className="text-xs leading-5 text-neutral-500">
+            Choose an image now and it will upload only after Save.
+          </p>
+          {values.imageFile ? (
+            <button
+              className="w-fit rounded-xl border border-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-50"
+              disabled={isSaving}
+              onClick={() => onImageFileChange(null)}
+              type="button"
+            >
+              {values.imageUrl ? "Keep existing image" : "Remove selected image"}
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       {error ? (
         <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
@@ -457,11 +538,11 @@ function MenuWorkspaceCard({
               Edit
             </button>
             <button
-              className="h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
-              disabled
+              className="h-10 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
+              onClick={() => onStartEdit(item)}
               type="button"
             >
-              Upload
+              Image
             </button>
             <button
               className="h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-70"
@@ -513,6 +594,16 @@ export function MenuWorkspaceBoard({
     useState<MenuWorkspaceFormValues>(emptyFormValues);
   const [formError, setFormError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const previewUrl = formValues.imagePreviewUrl;
+
+    return () => {
+      if (previewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [formValues.imagePreviewUrl]);
+
   function openCreateForm() {
     setFormMode("create");
     setEditingItem(null);
@@ -532,6 +623,30 @@ export function MenuWorkspaceBoard({
     setFormMode(null);
     setEditingItem(null);
     setFormValues(emptyFormValues);
+    setFormError(null);
+  }
+
+  function updateImageFile(file: File | null) {
+    if (!file) {
+      setFormValues((currentValues) => ({
+        ...currentValues,
+        imageFile: null,
+        imagePreviewUrl: currentValues.imageUrl,
+      }));
+      setFormError(null);
+      return;
+    }
+
+    if (!isSupportedImageFile(file)) {
+      setFormError("File must be a JPG, PNG, WebP, GIF, or AVIF image.");
+      return;
+    }
+
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      imageFile: file,
+      imagePreviewUrl: URL.createObjectURL(file),
+    }));
     setFormError(null);
   }
 
@@ -680,6 +795,7 @@ export function MenuWorkspaceBoard({
             setFormValues(values);
             setFormError(null);
           }}
+          onImageFileChange={updateImageFile}
           onSubmit={submitForm}
           values={formValues}
         />
@@ -687,8 +803,8 @@ export function MenuWorkspaceBoard({
 
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-        Basic create, edit, and availability are enabled. Delete, image upload,
-        and recipes remain placeholders.
+        Basic create, edit, image, and availability are enabled. Delete and
+        recipes remain placeholders.
       </div>
 
       {filteredItems.length === 0 ? (

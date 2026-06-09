@@ -11,7 +11,12 @@ import {
 } from "@/app/workspace/restaurant/menu/use-menu-workspace-catalog";
 import { WorkspaceShell } from "@/app/workspace/workspace-shell";
 import { ROUTES } from "@/constants/routes";
-import { getApiErrorMessage, menuApi, type MenuItemPayload } from "@/lib/api";
+import {
+  getApiErrorMessage,
+  menuApi,
+  type MenuItemPayload,
+  type UploadImageResponse,
+} from "@/lib/api";
 
 export default function RestaurantMenuWorkspace() {
   const catalog = useMenuWorkspaceCatalog();
@@ -22,14 +27,56 @@ export default function RestaurantMenuWorkspace() {
 
   function buildMenuItemPayload(
     values: MenuWorkspaceFormValues,
+    imageUrl?: string,
   ): MenuItemPayload {
-    return {
+    const payload: MenuItemPayload = {
       name: values.name.trim(),
       description: values.description.trim() || null,
       price: Number(values.price),
       categoryId: values.categoryId || null,
       isAvailable: values.isAvailable,
     };
+
+    if (imageUrl !== undefined) {
+      payload.imageUrl = imageUrl;
+    }
+
+    return payload;
+  }
+
+  function getUploadedImageUrl(response: UploadImageResponse) {
+    return (
+      response.data?.imageUrl ??
+      response.data?.url ??
+      response.imageUrl ??
+      response.url ??
+      null
+    );
+  }
+
+  async function uploadImageForSave(values: MenuWorkspaceFormValues) {
+    if (!values.imageFile) return undefined;
+
+    try {
+      const response = await menuApi.uploadImage(values.imageFile);
+
+      if (!response.success) {
+        toast.error(response.message || "Failed to upload image");
+        return null;
+      }
+
+      const uploadedImageUrl = getUploadedImageUrl(response);
+
+      if (!uploadedImageUrl) {
+        toast.error("Upload completed without an image URL.");
+        return null;
+      }
+
+      return uploadedImageUrl;
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to upload image"));
+      return null;
+    }
   }
 
   async function handleCreateMenuItem(values: MenuWorkspaceFormValues) {
@@ -39,8 +86,14 @@ export default function RestaurantMenuWorkspace() {
     setIsSavingItem(true);
 
     try {
+      const uploadedImageUrl = await uploadImageForSave(values);
+
+      if (uploadedImageUrl === null) {
+        return false;
+      }
+
       const result = await menuApi.createMenuItemWithResult(
-        buildMenuItemPayload(values),
+        buildMenuItemPayload(values, uploadedImageUrl),
       );
 
       if (!result.ok || !result.body.success) {
@@ -73,9 +126,15 @@ export default function RestaurantMenuWorkspace() {
     setIsSavingItem(true);
 
     try {
+      const uploadedImageUrl = await uploadImageForSave(values);
+
+      if (uploadedImageUrl === null) {
+        return false;
+      }
+
       const result = await menuApi.updateMenuItemWithResult(
         item.id,
-        buildMenuItemPayload(values),
+        buildMenuItemPayload(values, uploadedImageUrl),
       );
 
       if (!result.ok || !result.body.success) {
