@@ -4,6 +4,16 @@ import type {
   PosTableItem,
   PosTableSummary,
 } from "./pos-workspace-types";
+import {
+  normalizeRestaurantTableStatus,
+  restaurantTableStatusLabels,
+  restaurantTableStatusTones,
+  type RestaurantTableStatus,
+} from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
+import {
+  InlineErrorNotice,
+  StatusBadge,
+} from "@/app/workspace/restaurant/shared/workspace-feedback";
 
 type PosTableStatusPanelProps = {
   tables: PosTableItem[];
@@ -16,28 +26,17 @@ type PosTableStatusPanelProps = {
   onSelectTable: (tableId: string | null) => void;
 };
 
-const tableSummaryItems = [
-  { key: "available", label: "Available", className: "bg-green-50 text-green-700" },
-  { key: "occupied", label: "Occupied", className: "bg-red-50 text-red-700" },
-  { key: "reserved", label: "Reserved", className: "bg-blue-50 text-blue-700" },
-  { key: "cleaning", label: "Cleaning", className: "bg-yellow-50 text-yellow-700" },
+type TableSummaryKey = Exclude<keyof PosTableSummary, "total">;
+
+const tableSummaryItems: Array<{
+  key: TableSummaryKey;
+  status: RestaurantTableStatus;
+}> = [
+  { key: "available", status: "AVAILABLE" },
+  { key: "occupied", status: "OCCUPIED" },
+  { key: "reserved", status: "RESERVED" },
+  { key: "cleaning", status: "CLEANING" },
 ] as const;
-
-function getTableStatusClassName(status: string) {
-  if (status === "AVAILABLE") return "bg-green-100 text-green-700";
-  if (status === "OCCUPIED") return "bg-red-100 text-red-700";
-  if (status === "RESERVED") return "bg-blue-100 text-blue-700";
-  if (status === "CLEANING") return "bg-yellow-100 text-yellow-700";
-  return "bg-neutral-100 text-neutral-700";
-}
-
-function formatTableStatus(status: string) {
-  return status
-    .toLowerCase()
-    .split("_")
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-}
 
 export function PosTableStatusPanel({
   tables,
@@ -68,9 +67,9 @@ export function PosTableStatusPanel({
       </div>
 
       {errorMessage ? (
-        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+        <InlineErrorNotice className="mt-4 p-3 text-xs leading-5">
           {errorMessage}
-        </div>
+        </InlineErrorNotice>
       ) : null}
 
       <div className="mt-4 grid grid-cols-2 gap-2">
@@ -78,12 +77,19 @@ export function PosTableStatusPanel({
           <p className="text-xs font-medium text-white/70">Total</p>
           <p className="mt-1 text-xl font-bold">{summary.total}</p>
         </div>
-        {tableSummaryItems.map((item) => (
-          <div className={`rounded-2xl p-3 ${item.className}`} key={item.key}>
-            <p className="text-xs font-medium opacity-80">{item.label}</p>
-            <p className="mt-1 text-xl font-bold">{summary[item.key]}</p>
-          </div>
-        ))}
+        {tableSummaryItems.map((item) => {
+          return (
+            <div
+              className={`rounded-2xl p-3 ${restaurantTableStatusTones[item.status]}`}
+              key={item.key}
+            >
+              <p className="text-xs font-medium opacity-80">
+                {restaurantTableStatusLabels[item.status]}
+              </p>
+              <p className="mt-1 text-xl font-bold">{summary[item.key]}</p>
+            </div>
+          );
+        })}
       </div>
 
       {isLoading ? (
@@ -121,6 +127,7 @@ export function PosTableStatusPanel({
 
           {tables.slice(0, 6).map((table) => {
             const isSelected = selectedTableId === table.id;
+            const tableStatus = normalizeRestaurantTableStatus(table.status);
 
             return (
               <button
@@ -140,15 +147,16 @@ export function PosTableStatusPanel({
                     {table.capacity} seats
                   </span>
                 </span>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                <StatusBadge
+                  className="px-2 py-0.5"
+                  tone={
                     isSelected
                       ? "bg-white/15 text-white"
-                      : getTableStatusClassName(table.status)
-                  }`}
+                      : restaurantTableStatusTones[tableStatus]
+                  }
                 >
-                  {formatTableStatus(table.status)}
-                </span>
+                  {restaurantTableStatusLabels[tableStatus]}
+                </StatusBadge>
               </button>
             );
           })}

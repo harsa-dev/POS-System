@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { orderApi } from "@/lib/api";
 import { formatDateTime, formatOrderNumber } from "@/lib/utils/format";
+import { kitchenOrderStatusLabels } from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
 
 export type KitchenOrderStatus = "PAID" | "PREPARING";
 export type KitchenOrderTargetStatus = "PREPARING" | "READY";
@@ -64,10 +65,6 @@ function isKitchenOrderResponse(
   return isKitchenStatus(order.status);
 }
 
-function getStatusLabel(status: KitchenOrderStatus) {
-  return status === "PAID" ? "Queued" : "Cooking";
-}
-
 function mapOrderToKitchenOrder(order: KitchenOrderResponse): KitchenOrder {
   const timezone = order.restaurant?.timezone ?? "Asia/Makassar";
   const orderPrefix = order.restaurant?.orderPrefix ?? "ORD";
@@ -82,7 +79,7 @@ function mapOrderToKitchenOrder(order: KitchenOrderResponse): KitchenOrder {
     orderCode: formatOrderNumber(order.orderNumber, orderPrefix),
     orderNumber: order.orderNumber,
     status: order.status,
-    statusLabel: getStatusLabel(order.status),
+    statusLabel: kitchenOrderStatusLabels[order.status],
     destination:
       order.type === "DINE_IN"
         ? `Table ${order.table?.name ?? "Unknown"}`

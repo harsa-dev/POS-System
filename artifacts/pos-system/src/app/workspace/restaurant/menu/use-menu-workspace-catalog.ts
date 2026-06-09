@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { menuApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils/format";
+import {
+  menuAvailabilityLabels,
+  normalizeMenuAvailabilityStatus,
+  type MenuAvailabilityStatus,
+} from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
 
-export type MenuWorkspaceAvailability =
-  | "AVAILABLE"
-  | "OUT_OF_STOCK"
-  | "NO_RECIPE"
-  | "UNAVAILABLE";
+export type MenuWorkspaceAvailability = MenuAvailabilityStatus;
 
 export type MenuWorkspaceCategory = {
   id: string;
@@ -66,28 +67,6 @@ type CategoryResponse = {
   name: string;
 };
 
-const availabilityLabels: Record<MenuWorkspaceAvailability, string> = {
-  AVAILABLE: "Available",
-  OUT_OF_STOCK: "Out of Stock",
-  NO_RECIPE: "No Recipe",
-  UNAVAILABLE: "Unavailable",
-};
-
-function normalizeAvailability(
-  availabilityStatus?: string | null,
-): MenuWorkspaceAvailability {
-  if (
-    availabilityStatus === "AVAILABLE" ||
-    availabilityStatus === "OUT_OF_STOCK" ||
-    availabilityStatus === "NO_RECIPE" ||
-    availabilityStatus === "UNAVAILABLE"
-  ) {
-    return availabilityStatus;
-  }
-
-  return "NO_RECIPE";
-}
-
 function mapMenuItemToWorkspaceItem(
   menuItem: MenuItemResponse,
 ): MenuWorkspaceItem {
@@ -106,7 +85,7 @@ function mapMenuItemToWorkspaceItem(
       : recipeCount > 0;
   const availability = isAvailable
     ? hasRecipe
-      ? normalizeAvailability(menuItem.availabilityStatus)
+      ? normalizeMenuAvailabilityStatus(menuItem.availabilityStatus)
       : "NO_RECIPE"
     : "UNAVAILABLE";
 
@@ -119,7 +98,7 @@ function mapMenuItemToWorkspaceItem(
     price: menuItem.price,
     priceLabel: formatCurrency(menuItem.price),
     availability,
-    availabilityLabel: availabilityLabels[availability],
+    availabilityLabel: menuAvailabilityLabels[availability],
     isAvailable,
     hasRecipe,
     recipeCount,

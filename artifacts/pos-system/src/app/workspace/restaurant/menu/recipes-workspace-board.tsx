@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   Beaker,
   CheckCircle2,
-  Loader2,
   PackageSearch,
   Pencil,
   Plus,
@@ -20,6 +19,14 @@ import type {
   RecipesWorkspaceMenuOption,
   RecipesWorkspaceMenuItem,
 } from "./use-recipes-workspace-catalog";
+import { menuAvailabilityTones } from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
+import {
+  EmptyState,
+  InlineErrorNotice,
+  LoadErrorState,
+  RefreshingIndicator,
+  StatusBadge,
+} from "@/app/workspace/restaurant/shared/workspace-feedback";
 
 type RecipesWorkspaceBoardProps = {
   items: RecipesWorkspaceMenuItem[];
@@ -402,15 +409,15 @@ function RecipeItemCard({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-bold text-neutral-950">{item.name}</h2>
-            <span
-              className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+            <StatusBadge
+              tone={
                 item.isAvailable
-                  ? "bg-green-50 text-green-700"
-                  : "bg-neutral-100 text-neutral-600"
-              }`}
+                  ? menuAvailabilityTones.AVAILABLE
+                  : menuAvailabilityTones.UNAVAILABLE
+              }
             >
               {item.availabilityLabel}
-            </span>
+            </StatusBadge>
           </div>
           <p className="mt-1 text-sm text-neutral-500">
             {item.categoryName} - {item.recipeCount} ingredient
@@ -606,15 +613,11 @@ export function RecipesWorkspaceBoard({
 
   if (status === "error") {
     return (
-      <div className="rounded-2xl border border-red-100 bg-red-50 p-5 text-sm text-red-700">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="mt-0.5 h-5 w-5" aria-hidden="true" />
-          <div>
-            <p className="font-bold">Recipes could not be loaded.</p>
-            <p className="mt-1">{errorMessage ?? "Please try again later."}</p>
-          </div>
-        </div>
-      </div>
+      <LoadErrorState
+        description={errorMessage ?? "Please try again later."}
+        icon={AlertTriangle}
+        title="Recipes could not be loaded."
+      />
     );
   }
 
@@ -623,9 +626,7 @@ export function RecipesWorkspaceBoard({
       <RecipesSummary items={items} />
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {errorMessage}
-        </div>
+        <InlineErrorNotice>{errorMessage}</InlineErrorNotice>
       ) : null}
 
       <section className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -639,11 +640,7 @@ export function RecipesWorkspaceBoard({
                 Ingredient usage by menu item. Create, edit, and remove actions
                 are limited to ingredient mappings.
               </span>
-              {isRefreshing ? (
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                  Refreshing...
-                </span>
-              ) : null}
+              {isRefreshing ? <RefreshingIndicator /> : null}
             </div>
           </div>
           <button
@@ -764,18 +761,11 @@ export function RecipesWorkspaceBoard({
           ))}
         </div>
       ) : (
-        <div className="rounded-2xl border border-dashed bg-white p-8 text-center shadow-sm">
-          <Loader2
-            className="mx-auto h-8 w-8 text-neutral-300"
-            aria-hidden="true"
-          />
-          <p className="mt-4 text-sm font-bold text-neutral-950">
-            No recipe mapping found.
-          </p>
-          <p className="mt-1 text-sm text-neutral-500">
-            Try a different search or filter.
-          </p>
-        </div>
+        <EmptyState
+          description="Try a different search or filter."
+          icon={PackageSearch}
+          title="No recipe mapping found."
+        />
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { PosProductCard } from "./pos-product-card";
 import type { PosProductItem } from "./pos-workspace-types";
+import { InlineErrorNotice } from "@/app/workspace/restaurant/shared/workspace-feedback";
 
 type PosProductGridProps = {
   products: PosProductItem[];
@@ -56,9 +57,9 @@ export function PosProductGrid({
       </div>
 
       {errorMessage ? (
-        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+        <InlineErrorNotice className="mt-4 p-3 text-xs leading-5">
           {errorMessage}
-        </div>
+        </InlineErrorNotice>
       ) : null}
 
       {isLoading ? <PosProductGridSkeleton /> : null}

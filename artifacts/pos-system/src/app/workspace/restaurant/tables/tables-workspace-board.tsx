@@ -10,9 +10,16 @@ import {
 } from "lucide-react";
 
 import type {
-  TablesWorkspaceStatus,
   TablesWorkspaceTable,
 } from "./use-tables-workspace-tables";
+import { restaurantTableStatusTones } from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
+import {
+  EmptyState,
+  InlineErrorNotice,
+  LoadErrorState,
+  RefreshingIndicator,
+  StatusBadge,
+} from "@/app/workspace/restaurant/shared/workspace-feedback";
 
 type TablesWorkspaceFilter = "all" | "available" | "occupied" | "cleaning";
 
@@ -31,15 +38,6 @@ const filters: Array<{ id: TablesWorkspaceFilter; label: string }> = [
   { id: "occupied", label: "Occupied" },
   { id: "cleaning", label: "Cleaning" },
 ];
-
-const statusTone: Record<TablesWorkspaceStatus, string> = {
-  AVAILABLE: "bg-green-50 text-green-700",
-  OCCUPIED: "bg-red-50 text-red-700",
-  CLEANING: "bg-yellow-50 text-yellow-700",
-  RESERVED: "bg-blue-50 text-blue-700",
-  INACTIVE: "bg-neutral-100 text-neutral-500",
-  UNKNOWN: "bg-neutral-100 text-neutral-700",
-};
 
 function matchesFilter(
   table: TablesWorkspaceTable,
@@ -160,11 +158,12 @@ function TablesWorkspaceCard({
             {table.name}
           </h2>
         </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-bold ${statusTone[table.status]}`}
+        <StatusBadge
+          className="px-3"
+          tone={restaurantTableStatusTones[table.status]}
         >
           {table.statusLabel}
-        </span>
+        </StatusBadge>
       </div>
 
       <div className="mt-4 grid gap-2">
@@ -257,15 +256,11 @@ export function TablesWorkspaceBoard({
 
   if (status === "error") {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-red-600">
-          <AlertTriangle className="h-6 w-6" aria-hidden="true" />
-        </div>
-        <p className="mt-4 font-bold text-red-700">Failed to load tables</p>
-        <p className="mt-2 text-sm text-red-600">
-          {errorMessage ?? "Please check the connection and try again."}
-        </p>
-      </div>
+      <LoadErrorState
+        description={errorMessage ?? "Please check the connection and try again."}
+        icon={AlertTriangle}
+        title="Failed to load tables"
+      />
     );
   }
 
@@ -274,9 +269,7 @@ export function TablesWorkspaceBoard({
       <TablesSummary tables={tables} />
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {errorMessage}
-        </div>
+        <InlineErrorNotice>{errorMessage}</InlineErrorNotice>
       ) : null}
 
       <div className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -291,9 +284,7 @@ export function TablesWorkspaceBoard({
                 cleaning states.
               </span>
               {isRefreshing ? (
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                  Refreshing...
-                </span>
+                <RefreshingIndicator />
               ) : null}
             </div>
           </div>
@@ -334,23 +325,15 @@ export function TablesWorkspaceBoard({
       </div>
 
       {filteredTables.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-white p-10 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500">
-            {tables.length === 0 ? (
-              <Table2 className="h-7 w-7" aria-hidden="true" />
-            ) : (
-              <CheckCheck className="h-7 w-7" aria-hidden="true" />
-            )}
-          </div>
-          <p className="mt-4 text-lg font-bold text-neutral-800">
-            {tables.length === 0 ? "No tables yet" : "No matching tables"}
-          </p>
-          <p className="mt-2 text-sm text-neutral-500">
-            {tables.length === 0
+        <EmptyState
+          description={
+            tables.length === 0
               ? "Tables created in the current F&B route will appear here."
-              : "Try changing the lifecycle filter or search term."}
-          </p>
-        </div>
+              : "Try changing the lifecycle filter or search term."
+          }
+          icon={tables.length === 0 ? Table2 : CheckCheck}
+          title={tables.length === 0 ? "No tables yet" : "No matching tables"}
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {filteredTables.map((table) => (

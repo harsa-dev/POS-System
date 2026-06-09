@@ -6,15 +6,13 @@ import {
   formatDateTime,
   formatOrderNumber,
 } from "@/lib/utils/format";
+import {
+  isRestaurantOrderStatus,
+  restaurantOrderStatusLabels,
+  type RestaurantOrderStatus,
+} from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
 
-export type OrdersWorkspaceStatus =
-  | "PENDING_PAYMENT"
-  | "PAID"
-  | "PREPARING"
-  | "READY"
-  | "SERVED"
-  | "COMPLETED"
-  | "CANCELLED";
+export type OrdersWorkspaceStatus = RestaurantOrderStatus;
 
 export type OrdersWorkspaceItem = {
   id: string;
@@ -78,26 +76,10 @@ type OrdersWorkspaceOrderResponse = OrderResponse & {
   status: OrdersWorkspaceStatus;
 };
 
-const orderStatusLabels: Record<OrdersWorkspaceStatus, string> = {
-  PENDING_PAYMENT: "Pending Payment",
-  PAID: "Paid",
-  PREPARING: "Preparing",
-  READY: "Ready",
-  SERVED: "Served",
-  COMPLETED: "Completed",
-  CANCELLED: "Cancelled",
-};
-
-function isOrdersWorkspaceStatus(
-  status: string,
-): status is OrdersWorkspaceStatus {
-  return status in orderStatusLabels;
-}
-
 function isOrdersWorkspaceOrderResponse(
   order: OrderResponse,
 ): order is OrdersWorkspaceOrderResponse {
-  return isOrdersWorkspaceStatus(order.status);
+  return isRestaurantOrderStatus(order.status);
 }
 
 function mapOrderToWorkspaceOrder(
@@ -120,7 +102,7 @@ function mapOrderToWorkspaceOrder(
     orderCode: formatOrderNumber(order.orderNumber, orderPrefix),
     orderNumber: order.orderNumber,
     status: order.status,
-    statusLabel: orderStatusLabels[order.status],
+    statusLabel: restaurantOrderStatusLabels[order.status],
     paymentStatus: order.payment?.status ?? "-",
     destination: isDineIn
       ? `Table ${order.table?.name ?? "Unknown"}`

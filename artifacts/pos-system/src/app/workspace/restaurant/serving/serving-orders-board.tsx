@@ -13,6 +13,14 @@ import type {
   ServingOrder,
   ServingOrderTargetStatus,
 } from "./use-serving-orders";
+import { restaurantOrderStatusTones } from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
+import {
+  EmptyState,
+  InlineErrorNotice,
+  LoadErrorState,
+  RefreshingIndicator,
+  StatusBadge,
+} from "@/app/workspace/restaurant/shared/workspace-feedback";
 
 type ServingOrdersBoardProps = {
   orders: ServingOrder[];
@@ -135,9 +143,12 @@ function ServingOrderCard({
               </span>
             </div>
           </div>
-          <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700">
+          <StatusBadge
+            className="px-3"
+            tone={restaurantOrderStatusTones[order.status]}
+          >
             {order.statusLabel}
-          </span>
+          </StatusBadge>
         </div>
       </div>
 
@@ -206,33 +217,21 @@ export function ServingOrdersBoard({
 
   if (status === "error") {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-red-600">
-          <AlertTriangle className="h-6 w-6" aria-hidden="true" />
-        </div>
-        <p className="mt-4 font-bold text-red-700">
-          Failed to load serving orders
-        </p>
-        <p className="mt-2 text-sm text-red-600">
-          {errorMessage ?? "Please check the connection and try again."}
-        </p>
-      </div>
+      <LoadErrorState
+        description={errorMessage ?? "Please check the connection and try again."}
+        icon={AlertTriangle}
+        title="Failed to load serving orders"
+      />
     );
   }
 
   if (orders.length === 0) {
     return (
-      <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-white p-10 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500">
-          <CheckCheck className="h-7 w-7" aria-hidden="true" />
-        </div>
-        <p className="mt-4 text-lg font-bold text-neutral-800">
-          No ready orders
-        </p>
-        <p className="mt-2 text-sm text-neutral-500">
-          Orders marked ready from Kitchen V3 will appear here.
-        </p>
-      </div>
+      <EmptyState
+        description="Orders marked ready from Kitchen V3 will appear here."
+        icon={CheckCheck}
+        title="No ready orders"
+      />
     );
   }
 
@@ -242,16 +241,10 @@ export function ServingOrdersBoard({
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
         <span>Serving actions update order status after backend confirmation.</span>
-        {isRefreshing ? (
-          <span className="ml-auto rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-            Refreshing...
-          </span>
-        ) : null}
+        {isRefreshing ? <RefreshingIndicator className="ml-auto" /> : null}
       </div>
       {errorMessage ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {errorMessage}
-        </div>
+        <InlineErrorNotice>{errorMessage}</InlineErrorNotice>
       ) : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {orders.map((order) => (

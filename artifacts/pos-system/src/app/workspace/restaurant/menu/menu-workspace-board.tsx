@@ -19,6 +19,15 @@ import {
 } from "lucide-react";
 
 import { resolveMediaUrl } from "@/lib/api";
+import { menuAvailabilityTones } from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
+import {
+  EmptyState,
+  InlineErrorNotice,
+  LoadErrorState,
+  RecipeRequiredBadge,
+  RefreshingIndicator,
+  StatusBadge,
+} from "@/app/workspace/restaurant/shared/workspace-feedback";
 
 import type {
   MenuWorkspaceCategory,
@@ -71,13 +80,6 @@ const availabilityFilters: Array<{
   { id: "available", label: "Available" },
   { id: "unavailable", label: "Unavailable" },
 ];
-
-const availabilityTone: Record<MenuWorkspaceItem["availability"], string> = {
-  AVAILABLE: "bg-green-50 text-green-700",
-  OUT_OF_STOCK: "bg-red-50 text-red-700",
-  NO_RECIPE: "bg-yellow-50 text-yellow-700",
-  UNAVAILABLE: "bg-neutral-100 text-neutral-600",
-};
 
 const emptyFormValues: MenuWorkspaceFormValues = {
   name: "",
@@ -477,16 +479,10 @@ function MenuWorkspaceCard({
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
-            <span
-              className={`rounded-full px-2.5 py-1 text-xs font-bold ${availabilityTone[item.availability]}`}
-            >
+            <StatusBadge tone={menuAvailabilityTones[item.availability]}>
               {item.availabilityLabel}
-            </span>
-            {!item.hasRecipe ? (
-              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
-                Recipe required
-              </span>
-            ) : null}
+            </StatusBadge>
+            {!item.hasRecipe ? <RecipeRequiredBadge /> : null}
           </div>
         </div>
 
@@ -693,15 +689,11 @@ export function MenuWorkspaceBoard({
 
   if (status === "error") {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-red-600">
-          <AlertTriangle className="h-6 w-6" aria-hidden="true" />
-        </div>
-        <p className="mt-4 font-bold text-red-700">Failed to load menu</p>
-        <p className="mt-2 text-sm text-red-600">
-          {errorMessage ?? "Please check the connection and try again."}
-        </p>
-      </div>
+      <LoadErrorState
+        description={errorMessage ?? "Please check the connection and try again."}
+        icon={AlertTriangle}
+        title="Failed to load menu"
+      />
     );
   }
 
@@ -710,9 +702,7 @@ export function MenuWorkspaceBoard({
       <MenuSummary items={items} />
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {errorMessage}
-        </div>
+        <InlineErrorNotice>{errorMessage}</InlineErrorNotice>
       ) : null}
 
       <div className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -727,9 +717,7 @@ export function MenuWorkspaceBoard({
                 and recipe readiness.
               </span>
               {isRefreshing ? (
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                  Refreshing...
-                </span>
+                <RefreshingIndicator />
               ) : null}
             </div>
           </div>
@@ -823,23 +811,17 @@ export function MenuWorkspaceBoard({
       </div>
 
       {filteredItems.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-white p-10 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500">
-            {items.length === 0 ? (
-              <UtensilsCrossed className="h-7 w-7" aria-hidden="true" />
-            ) : (
-              <CheckCheck className="h-7 w-7" aria-hidden="true" />
-            )}
-          </div>
-          <p className="mt-4 text-lg font-bold text-neutral-800">
-            {items.length === 0 ? "No menu items yet" : "No matching menu items"}
-          </p>
-          <p className="mt-2 text-sm text-neutral-500">
-            {items.length === 0
+        <EmptyState
+          description={
+            items.length === 0
               ? "Menu items created in the current F&B route will appear here."
-              : "Try changing the search, availability filter, or category."}
-          </p>
-        </div>
+              : "Try changing the search, availability filter, or category."
+          }
+          icon={items.length === 0 ? UtensilsCrossed : CheckCheck}
+          title={
+            items.length === 0 ? "No menu items yet" : "No matching menu items"
+          }
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {filteredItems.map((item) => (

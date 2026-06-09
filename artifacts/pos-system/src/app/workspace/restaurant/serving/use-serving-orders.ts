@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { orderApi } from "@/lib/api";
 import { formatDateTime, formatOrderNumber } from "@/lib/utils/format";
+import { servingOrderStatusLabels } from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
 
 export type ServingOrderStatus = "READY";
 export type ServingOrderTargetStatus = "SERVED";
@@ -80,7 +81,7 @@ function mapOrderToServingOrder(order: ServingOrderResponse): ServingOrder {
     orderCode: formatOrderNumber(order.orderNumber, orderPrefix),
     orderNumber: order.orderNumber,
     status: order.status,
-    statusLabel: "Ready",
+    statusLabel: servingOrderStatusLabels[order.status],
     destination: isDineIn
       ? `Table ${order.table?.name ?? "Unknown"}`
       : "Takeaway counter",

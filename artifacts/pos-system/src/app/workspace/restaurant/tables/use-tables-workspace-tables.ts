@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { tablesApi } from "@/lib/api";
+import {
+  normalizeRestaurantTableStatus,
+  restaurantTableStatusLabels,
+  type RestaurantTableStatus,
+} from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
 
-export type TablesWorkspaceStatus =
-  | "AVAILABLE"
-  | "OCCUPIED"
-  | "CLEANING"
-  | "RESERVED"
-  | "INACTIVE"
-  | "UNKNOWN";
+export type TablesWorkspaceStatus = RestaurantTableStatus;
 
 export type TablesWorkspaceTable = {
   id: string;
@@ -38,33 +37,10 @@ type TableResponse = {
   isActive?: boolean | null;
 };
 
-const tableStatusLabels: Record<TablesWorkspaceStatus, string> = {
-  AVAILABLE: "Available",
-  OCCUPIED: "Occupied",
-  CLEANING: "Cleaning",
-  RESERVED: "Reserved",
-  INACTIVE: "Inactive",
-  UNKNOWN: "Unknown",
-};
-
-function normalizeTableStatus(status?: string | null): TablesWorkspaceStatus {
-  if (
-    status === "AVAILABLE" ||
-    status === "OCCUPIED" ||
-    status === "CLEANING" ||
-    status === "RESERVED" ||
-    status === "INACTIVE"
-  ) {
-    return status;
-  }
-
-  return "UNKNOWN";
-}
-
 function mapTableToWorkspaceTable(
   table: TableResponse,
 ): TablesWorkspaceTable {
-  const status = normalizeTableStatus(table.status);
+  const status = normalizeRestaurantTableStatus(table.status);
   const isActive = table.isActive ?? true;
 
   return {
@@ -72,7 +48,7 @@ function mapTableToWorkspaceTable(
     name: table.name,
     capacity: table.capacity ?? 0,
     status,
-    statusLabel: tableStatusLabels[status],
+    statusLabel: restaurantTableStatusLabels[status],
     isActive,
     activeLabel: isActive ? "Active" : "Inactive",
   };

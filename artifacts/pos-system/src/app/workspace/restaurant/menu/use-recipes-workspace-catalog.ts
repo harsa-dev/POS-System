@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { menuApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils/format";
+import {
+  formatRestaurantQuantity,
+  menuAvailabilityLabels,
+} from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
 
 type RecipesWorkspaceState = "loading" | "ready" | "error";
 
@@ -91,22 +95,13 @@ type InventoryItemResponse = {
   currentStock?: number | null;
 };
 
-const availabilityLabels: Record<string, string> = {
-  AVAILABLE: "Available",
-  OUT_OF_STOCK: "Out of Stock",
-  NO_RECIPE: "No Recipe",
-  UNAVAILABLE: "Unavailable",
-};
-
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("id-ID", {
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
 function getAvailabilityLabel(menuItem: MenuItemResponse) {
-  if (menuItem.isAvailable === false) return availabilityLabels.UNAVAILABLE;
-  return availabilityLabels[menuItem.availabilityStatus ?? ""] ?? "Available";
+  if (menuItem.isAvailable === false) return menuAvailabilityLabels.UNAVAILABLE;
+  return (
+    menuAvailabilityLabels[
+      menuItem.availabilityStatus as keyof typeof menuAvailabilityLabels
+    ] ?? menuAvailabilityLabels.AVAILABLE
+  );
 }
 
 function mapRecipeToIngredient(
@@ -125,9 +120,9 @@ function mapRecipeToIngredient(
     inventoryItemId: recipe.inventoryItemId,
     name: recipe.inventoryItem?.name ?? "Unknown ingredient",
     quantityNeeded: recipe.quantityNeeded,
-    quantityLabel: `${formatNumber(recipe.quantityNeeded)} ${unitLabel}`,
+    quantityLabel: `${formatRestaurantQuantity(recipe.quantityNeeded)} ${unitLabel}`,
     unitLabel,
-    currentStockLabel: `${formatNumber(currentStock)} ${unitLabel}`,
+    currentStockLabel: `${formatRestaurantQuantity(currentStock)} ${unitLabel}`,
     estimatedCost,
     estimatedCostLabel:
       estimatedCost !== null ? formatCurrency(estimatedCost) : null,
@@ -209,7 +204,7 @@ function mapInventoryOptions(
         id: item.id,
         name: item.name,
         unitLabel,
-        currentStockLabel: `${formatNumber(item.currentStock ?? 0)} ${unitLabel}`,
+        currentStockLabel: `${formatRestaurantQuantity(item.currentStock ?? 0)} ${unitLabel}`,
       };
     })
     .sort((left, right) => left.name.localeCompare(right.name));

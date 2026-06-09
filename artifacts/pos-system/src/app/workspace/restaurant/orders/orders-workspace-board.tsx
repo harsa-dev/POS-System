@@ -13,8 +13,15 @@ import {
 
 import type {
   OrdersWorkspaceOrder,
-  OrdersWorkspaceStatus,
 } from "./use-orders-workspace-orders";
+import { restaurantOrderStatusTones } from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
+import {
+  EmptyState,
+  InlineErrorNotice,
+  LoadErrorState,
+  RefreshingIndicator,
+  StatusBadge,
+} from "@/app/workspace/restaurant/shared/workspace-feedback";
 
 type OrdersWorkspaceFilter =
   | "all"
@@ -41,16 +48,6 @@ const filters: Array<{ id: OrdersWorkspaceFilter; label: string }> = [
   { id: "served", label: "Served" },
   { id: "closed", label: "Completed / Cancelled" },
 ];
-
-const statusTone: Record<OrdersWorkspaceStatus, string> = {
-  PENDING_PAYMENT: "bg-yellow-50 text-yellow-700",
-  PAID: "bg-blue-50 text-blue-700",
-  PREPARING: "bg-orange-50 text-orange-700",
-  READY: "bg-green-50 text-green-700",
-  SERVED: "bg-purple-50 text-purple-700",
-  COMPLETED: "bg-emerald-50 text-emerald-700",
-  CANCELLED: "bg-red-50 text-red-700",
-};
 
 function matchesFilter(
   order: OrdersWorkspaceOrder,
@@ -185,11 +182,12 @@ function OrdersWorkspaceCard({
                 </span>
               </div>
             </div>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-bold ${statusTone[order.status]}`}
+            <StatusBadge
+              className="px-3"
+              tone={restaurantOrderStatusTones[order.status]}
             >
               {order.statusLabel}
-            </span>
+            </StatusBadge>
           </div>
 
           <div className="mt-4 grid gap-2 md:grid-cols-3">
@@ -311,15 +309,11 @@ export function OrdersWorkspaceBoard({
 
   if (status === "error") {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-red-600">
-          <AlertTriangle className="h-6 w-6" aria-hidden="true" />
-        </div>
-        <p className="mt-4 font-bold text-red-700">Failed to load orders</p>
-        <p className="mt-2 text-sm text-red-600">
-          {errorMessage ?? "Please check the connection and try again."}
-        </p>
-      </div>
+      <LoadErrorState
+        description={errorMessage ?? "Please check the connection and try again."}
+        icon={AlertTriangle}
+        title="Failed to load orders"
+      />
     );
   }
 
@@ -328,9 +322,7 @@ export function OrdersWorkspaceBoard({
       <OrdersSummary orders={orders} />
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {errorMessage}
-        </div>
+        <InlineErrorNotice>{errorMessage}</InlineErrorNotice>
       ) : null}
 
       <div className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -345,9 +337,7 @@ export function OrdersWorkspaceBoard({
                 closure states.
               </span>
               {isRefreshing ? (
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                  Refreshing...
-                </span>
+                <RefreshingIndicator />
               ) : null}
             </div>
           </div>
@@ -388,23 +378,15 @@ export function OrdersWorkspaceBoard({
       </div>
 
       {filteredOrders.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-white p-10 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500">
-            {orders.length === 0 ? (
-              <ReceiptText className="h-7 w-7" aria-hidden="true" />
-            ) : (
-              <CheckCheck className="h-7 w-7" aria-hidden="true" />
-            )}
-          </div>
-          <p className="mt-4 text-lg font-bold text-neutral-800">
-            {orders.length === 0 ? "No orders yet" : "No matching orders"}
-          </p>
-          <p className="mt-2 text-sm text-neutral-500">
-            {orders.length === 0
+        <EmptyState
+          description={
+            orders.length === 0
               ? "Orders created from POS V3 will appear here."
-              : "Try changing the lifecycle filter or search term."}
-          </p>
-        </div>
+              : "Try changing the lifecycle filter or search term."
+          }
+          icon={orders.length === 0 ? ReceiptText : CheckCheck}
+          title={orders.length === 0 ? "No orders yet" : "No matching orders"}
+        />
       ) : (
         <div className="space-y-3">
           {filteredOrders.map((order) => (
