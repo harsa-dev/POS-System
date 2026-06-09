@@ -18,6 +18,7 @@ export {
   type CategoryPayload,
   type MenuItemPayload,
   type RecipePayload,
+  type RecipeUpdatePayload,
   type UploadImageResponse,
 } from "@/lib/api/menu-api";
 export {

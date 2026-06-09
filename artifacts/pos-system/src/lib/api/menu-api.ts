@@ -31,6 +31,11 @@ export type RecipePayload = {
   quantityNeeded: number;
 };
 
+export type RecipeUpdatePayload = {
+  inventoryItemId?: string;
+  quantityNeeded?: number;
+};
+
 export type UploadImageResponse = ApiEnvelope<{
   imageUrl?: string;
   url?: string;
@@ -194,6 +199,47 @@ export const menuApi = {
     return apiClient.post<ApiEnvelope<Recipe>>("/api/recipes", {
       json: payload,
     });
+  },
+
+  async createRecipeWithResult<T = ApiRecord>(
+    payload: RecipePayload,
+  ): Promise<MenuApiResult<T>> {
+    const response = await apiFetch("/api/recipes", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: await readApiEnvelope<T>(response),
+    };
+  },
+
+  updateRecipe(id: string, payload: RecipeUpdatePayload) {
+    return apiClient.patch<ApiEnvelope<Recipe>>(`/api/recipes/${id}`, {
+      json: payload,
+    });
+  },
+
+  async updateRecipeWithResult<T = ApiRecord>(
+    id: string,
+    payload: RecipeUpdatePayload,
+  ): Promise<MenuApiResult<T>> {
+    const response = await apiFetch(`/api/recipes/${id}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: await readApiEnvelope<T>(response),
+    };
   },
 
   deleteRecipe(id: string) {

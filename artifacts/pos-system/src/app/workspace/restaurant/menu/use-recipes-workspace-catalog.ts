@@ -23,6 +23,21 @@ export type RecipesWorkspaceIngredient = {
   estimatedCostLabel: string | null;
 };
 
+export type RecipesWorkspaceMenuOption = {
+  id: string;
+  name: string;
+  categoryName: string;
+  isAvailable: boolean;
+  availabilityLabel: string;
+};
+
+export type RecipesWorkspaceInventoryOption = {
+  id: string;
+  name: string;
+  unitLabel: string;
+  currentStockLabel: string;
+};
+
 export type RecipesWorkspaceMenuItem = {
   id: string;
   name: string;
@@ -36,6 +51,8 @@ export type RecipesWorkspaceMenuItem = {
 
 type RecipesWorkspaceCatalogResult = {
   items: RecipesWorkspaceMenuItem[];
+  menuOptions: RecipesWorkspaceMenuOption[];
+  inventoryOptions: RecipesWorkspaceInventoryOption[];
   status: RecipesWorkspaceState;
   errorMessage: string | null;
   reload: () => Promise<void>;
@@ -64,6 +81,13 @@ type RecipeResponse = {
     currentStock?: number | null;
     costPerUnit?: number | null;
   } | null;
+};
+
+type InventoryItemResponse = {
+  id: string;
+  name: string;
+  unit?: string | null;
+  currentStock?: number | null;
 };
 
 const availabilityLabels: Record<string, string> = {
@@ -160,6 +184,36 @@ function mapMenuItemsToRecipeWorkspace(
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
+function mapMenuOptions(
+  menuItems: MenuItemResponse[],
+): RecipesWorkspaceMenuOption[] {
+  return menuItems
+    .map((menuItem) => ({
+      id: menuItem.id,
+      name: menuItem.name,
+      categoryName: menuItem.category?.name ?? "Uncategorized",
+      isAvailable: menuItem.isAvailable ?? true,
+      availabilityLabel: getAvailabilityLabel(menuItem),
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function mapInventoryOptions(
+  inventoryItems: InventoryItemResponse[],
+): RecipesWorkspaceInventoryOption[] {
+  return inventoryItems
+    .map((item) => {
+      const unitLabel = item.unit ?? "-";
+      return {
+        id: item.id,
+        name: item.name,
+        unitLabel,
+        currentStockLabel: `${formatNumber(item.currentStock ?? 0)} ${unitLabel}`,
+      };
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) return error.message;
   return "Recipe catalog is unavailable.";
@@ -167,6 +221,12 @@ function getErrorMessage(error: unknown) {
 
 export function useRecipesWorkspaceCatalog(): RecipesWorkspaceCatalogResult {
   const [items, setItems] = useState<RecipesWorkspaceMenuItem[]>([]);
+  const [menuOptions, setMenuOptions] = useState<RecipesWorkspaceMenuOption[]>(
+    [],
+  );
+  const [inventoryOptions, setInventoryOptions] = useState<
+    RecipesWorkspaceInventoryOption[]
+  >([]);
   const [status, setStatus] = useState<RecipesWorkspaceState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -175,11 +235,13 @@ export function useRecipesWorkspaceCatalog(): RecipesWorkspaceCatalogResult {
     setErrorMessage(null);
 
     try {
-      const [menuItemsResponse, recipesResponse] = await Promise.all([
+      const [menuItemsResponse, recipesResponse, inventoryItemsResponse] =
+        await Promise.all([
         menuApi.listMenuItemsWithOptions<MenuItemResponse[]>({
           includeUnavailable: true,
         }),
         menuApi.listRecipes<RecipeResponse[]>(),
+        menuApi.listInventoryItems(),
       ]);
 
       if (!menuItemsResponse.success) {
@@ -190,15 +252,27 @@ export function useRecipesWorkspaceCatalog(): RecipesWorkspaceCatalogResult {
         throw new Error(recipesResponse.message ?? "Failed to load recipes");
       }
 
+      if (!inventoryItemsResponse.success) {
+        throw new Error(
+          inventoryItemsResponse.message ?? "Failed to load inventory items",
+        );
+      }
+
       setItems(
         mapMenuItemsToRecipeWorkspace(
           menuItemsResponse.data ?? [],
           recipesResponse.data ?? [],
         ),
       );
+      setMenuOptions(mapMenuOptions(menuItemsResponse.data ?? []));
+      setInventoryOptions(
+        mapInventoryOptions(inventoryItemsResponse.data ?? []),
+      );
       setStatus("ready");
     } catch (error) {
       setItems([]);
+      setMenuOptions([]);
+      setInventoryOptions([]);
       setErrorMessage(getErrorMessage(error));
       setStatus("error");
     }
@@ -211,10 +285,12 @@ export function useRecipesWorkspaceCatalog(): RecipesWorkspaceCatalogResult {
   return useMemo(
     () => ({
       items,
+      menuOptions,
+      inventoryOptions,
       status,
       errorMessage,
       reload: loadCatalog,
     }),
-    [errorMessage, items, loadCatalog, status],
+    [errorMessage, inventoryOptions, items, loadCatalog, menuOptions, status],
   );
 }

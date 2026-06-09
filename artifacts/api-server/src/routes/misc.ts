@@ -5,6 +5,15 @@ import { MANAGEMENT_ROLES, OWNER_ONLY, ERR } from "../lib/constants.js";
 
 const router = Router();
 
+function cleanOptionalString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function parsePositiveQuantity(value: unknown) {
+  const quantity = Number(value);
+  return Number.isFinite(quantity) && quantity > 0 ? quantity : null;
+}
+
 // Settings
 router.get("/settings", async (req, res) => {
   try {
@@ -83,13 +92,32 @@ router.post("/recipes", async (req, res) => {
     if (!user) return;
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    const { menuItemId, inventoryItemId, quantityNeeded } = req.body ?? {};
+    const menuItemId = cleanOptionalString(req.body?.menuItemId);
+    const inventoryItemId = cleanOptionalString(req.body?.inventoryItemId);
+    const { quantityNeeded } = req.body ?? {};
     if (!menuItemId || !inventoryItemId || quantityNeeded === undefined)
       return void res.status(400).json({ success: false, message: "menuItemId, inventoryItemId, quantityNeeded required" });
+    const quantity = parsePositiveQuantity(quantityNeeded);
+    if (quantity === null)
+      return void res.status(400).json({ success: false, message: "quantityNeeded must be a positive number" });
+    const [menuItem, inventoryItem] = await Promise.all([
+      prisma.menuItem.findFirst({
+        where: { id: menuItemId, restaurantId: restaurant.id },
+        select: { id: true },
+      }),
+      prisma.inventoryItem.findFirst({
+        where: { id: inventoryItemId, restaurantId: restaurant.id },
+        select: { id: true },
+      }),
+    ]);
+    if (!menuItem)
+      return void res.status(404).json({ success: false, message: "Menu item not found" });
+    if (!inventoryItem)
+      return void res.status(404).json({ success: false, message: "Inventory item not found" });
     const recipe = await prisma.recipe.upsert({
       where: { menuItemId_inventoryItemId: { menuItemId, inventoryItemId } },
-      create: { menuItemId, inventoryItemId, quantityNeeded: Number(quantityNeeded) },
-      update: { quantityNeeded: Number(quantityNeeded) },
+      create: { menuItemId, inventoryItemId, quantityNeeded: quantity },
+      update: { quantityNeeded: quantity },
       include: { menuItem: true, inventoryItem: true },
     });
     res.status(201).json({ success: true, data: recipe });
@@ -105,14 +133,47 @@ router.patch("/recipes/:id", async (req, res) => {
     const restaurant = await getRestaurantForUser(user);
     if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
     const { id } = req.params;
+    const inventoryItemId = cleanOptionalString(req.body?.inventoryItemId);
     const { quantityNeeded } = req.body ?? {};
+    if (!inventoryItemId && quantityNeeded === undefined)
+      return void res.status(400).json({ success: false, message: "inventoryItemId or quantityNeeded required" });
+    let quantity: number | undefined;
+    if (quantityNeeded !== undefined) {
+      const parsedQuantity = parsePositiveQuantity(quantityNeeded);
+      if (parsedQuantity === null)
+        return void res.status(400).json({ success: false, message: "quantityNeeded must be a positive number" });
+      quantity = parsedQuantity;
+    }
     const recipe = await prisma.recipe.findFirst({
       where: { id, menuItem: { restaurantId: restaurant.id } },
     });
     if (!recipe) return void res.status(404).json({ success: false, message: "Recipe not found" });
+    if (inventoryItemId) {
+      const inventoryItem = await prisma.inventoryItem.findFirst({
+        where: { id: inventoryItemId, restaurantId: restaurant.id },
+        select: { id: true },
+      });
+      if (!inventoryItem)
+        return void res.status(404).json({ success: false, message: "Inventory item not found" });
+      const duplicateRecipe = await prisma.recipe.findFirst({
+        where: {
+          id: { not: id },
+          menuItemId: recipe.menuItemId,
+          inventoryItemId,
+        },
+        select: { id: true },
+      });
+      if (duplicateRecipe)
+        return void res.status(400).json({ success: false, message: "Recipe ingredient already exists for this menu item" });
+    }
     const updated = await prisma.recipe.update({
       where: { id },
-      data: { quantityNeeded: Number(quantityNeeded) },
+      data: {
+        ...(inventoryItemId
+          ? { inventoryItem: { connect: { id: inventoryItemId } } }
+          : {}),
+        ...(quantity !== undefined ? { quantityNeeded: quantity } : {}),
+      },
       include: { menuItem: true, inventoryItem: true },
     });
     res.json({ success: true, data: updated });

@@ -6,20 +6,42 @@ import {
   ClipboardList,
   Loader2,
   PackageSearch,
+  Pencil,
+  Plus,
   Search,
   UtensilsCrossed,
+  X,
 } from "lucide-react";
 
 import type {
   RecipesWorkspaceFilter,
+  RecipesWorkspaceIngredient,
+  RecipesWorkspaceInventoryOption,
+  RecipesWorkspaceMenuOption,
   RecipesWorkspaceMenuItem,
 } from "./use-recipes-workspace-catalog";
 
 type RecipesWorkspaceBoardProps = {
   items: RecipesWorkspaceMenuItem[];
+  menuOptions: RecipesWorkspaceMenuOption[];
+  inventoryOptions: RecipesWorkspaceInventoryOption[];
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
+  savingRecipeKey: string | null;
+  onCreateRecipe: (values: RecipesWorkspaceFormValues) => Promise<boolean>;
+  onUpdateRecipe: (
+    recipeId: string,
+    values: RecipesWorkspaceFormValues,
+  ) => Promise<boolean>;
 };
+
+export type RecipesWorkspaceFormValues = {
+  menuItemId: string;
+  inventoryItemId: string;
+  quantity: string;
+};
+
+type RecipesWorkspaceFormMode = "create" | "edit";
 
 const recipeFilters: Array<{
   id: RecipesWorkspaceFilter;
@@ -30,6 +52,53 @@ const recipeFilters: Array<{
   { id: "without-recipes", label: "Without Recipes" },
   { id: "unavailable", label: "Unavailable" },
 ];
+
+const emptyFormValues: RecipesWorkspaceFormValues = {
+  menuItemId: "",
+  inventoryItemId: "",
+  quantity: "",
+};
+
+function getCreateFormValues(
+  menuItemId = "",
+): RecipesWorkspaceFormValues {
+  return {
+    ...emptyFormValues,
+    menuItemId,
+  };
+}
+
+function getEditFormValues(
+  item: RecipesWorkspaceMenuItem,
+  ingredient: RecipesWorkspaceIngredient,
+): RecipesWorkspaceFormValues {
+  return {
+    menuItemId: item.id,
+    inventoryItemId: ingredient.inventoryItemId,
+    quantity: String(ingredient.quantityNeeded),
+  };
+}
+
+function validateRecipeForm(
+  values: RecipesWorkspaceFormValues,
+  mode: RecipesWorkspaceFormMode,
+) {
+  if (mode === "create" && !values.menuItemId) {
+    return "Choose a menu item first.";
+  }
+
+  if (!values.inventoryItemId) {
+    return "Choose an inventory ingredient.";
+  }
+
+  const quantity = Number(values.quantity);
+
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    return "Quantity must be a positive number.";
+  }
+
+  return null;
+}
 
 function matchesFilter(
   item: RecipesWorkspaceMenuItem,
@@ -149,7 +218,165 @@ function RecipesSummary({ items }: { items: RecipesWorkspaceMenuItem[] }) {
   );
 }
 
-function RecipeItemCard({ item }: { item: RecipesWorkspaceMenuItem }) {
+function RecipesWorkspaceForm({
+  error,
+  inventoryOptions,
+  isSaving,
+  menuOptions,
+  mode,
+  selectedMenuName,
+  values,
+  onCancel,
+  onChange,
+  onSubmit,
+}: {
+  error: string | null;
+  inventoryOptions: RecipesWorkspaceInventoryOption[];
+  isSaving: boolean;
+  menuOptions: RecipesWorkspaceMenuOption[];
+  mode: RecipesWorkspaceFormMode;
+  selectedMenuName: string | null;
+  values: RecipesWorkspaceFormValues;
+  onCancel: () => void;
+  onChange: (values: RecipesWorkspaceFormValues) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <form
+      className="rounded-2xl border bg-white p-4 shadow-sm"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
+      <div className="flex flex-col gap-3 border-b border-neutral-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-neutral-950">
+            {mode === "create" ? "Create Recipe Ingredient" : "Edit Recipe Ingredient"}
+          </h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Basic mapping only. Delete and advanced recipe costing are not wired
+            in V3 yet.
+          </p>
+        </div>
+        <button
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-neutral-200 px-3 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-50"
+          onClick={onCancel}
+          type="button"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+          Close
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        {mode === "create" ? (
+          <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
+            Menu Item
+            <select
+              className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400"
+              disabled={isSaving}
+              onChange={(event) =>
+                onChange({ ...values, menuItemId: event.target.value })
+              }
+              value={values.menuItemId}
+            >
+              <option value="">Choose menu item</option>
+              {menuOptions.map((menuItem) => (
+                <option key={menuItem.id} value={menuItem.id}>
+                  {menuItem.name} - {menuItem.categoryName}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-3">
+            <p className="text-xs font-semibold uppercase text-neutral-500">
+              Menu Item
+            </p>
+            <p className="mt-1 text-sm font-bold text-neutral-950">
+              {selectedMenuName ?? "Selected menu item"}
+            </p>
+          </div>
+        )}
+
+        <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
+          Inventory Ingredient
+          <select
+            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400"
+            disabled={isSaving}
+            onChange={(event) =>
+              onChange({ ...values, inventoryItemId: event.target.value })
+            }
+            value={values.inventoryItemId}
+          >
+            <option value="">Choose inventory item</option>
+            {inventoryOptions.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name} - stock {item.currentStockLabel}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="grid gap-1.5 text-sm font-semibold text-neutral-700">
+          Quantity
+          <input
+            className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal outline-none transition focus:border-neutral-400"
+            disabled={isSaving}
+            min="0"
+            onChange={(event) =>
+              onChange({ ...values, quantity: event.target.value })
+            }
+            placeholder="Quantity needed"
+            step="0.001"
+            type="number"
+            value={values.quantity}
+          />
+        </label>
+      </div>
+
+      {error ? (
+        <div className="mt-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <button
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-neutral-200 px-4 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-50"
+          disabled={isSaving}
+          onClick={onCancel}
+          type="button"
+        >
+          Cancel
+        </button>
+        <button
+          className="inline-flex h-10 items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300"
+          disabled={isSaving}
+          type="submit"
+        >
+          {isSaving ? "Saving..." : "Save Recipe"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function RecipeItemCard({
+  item,
+  savingRecipeKey,
+  onCreateForMenuItem,
+  onEditIngredient,
+}: {
+  item: RecipesWorkspaceMenuItem;
+  savingRecipeKey: string | null;
+  onCreateForMenuItem: (item: RecipesWorkspaceMenuItem) => void;
+  onEditIngredient: (
+    item: RecipesWorkspaceMenuItem,
+    ingredient: RecipesWorkspaceIngredient,
+  ) => void;
+}) {
   return (
     <article className="rounded-2xl border bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-3 border-b border-neutral-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
@@ -219,26 +446,35 @@ function RecipeItemCard({ item }: { item: RecipesWorkspaceMenuItem }) {
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-neutral-200 px-3 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400"
+          disabled={savingRecipeKey !== null}
+          onClick={() => onCreateForMenuItem(item)}
+          type="button"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Add Ingredient
+        </button>
+        {item.ingredients.map((ingredient) => (
+          <button
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-neutral-200 px-3 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400"
+            disabled={savingRecipeKey !== null}
+            key={ingredient.id}
+            onClick={() => onEditIngredient(item, ingredient)}
+            type="button"
+          >
+            <Pencil className="h-4 w-4" aria-hidden="true" />
+            {savingRecipeKey === ingredient.id
+              ? "Saving..."
+              : `Edit ${ingredient.name}`}
+          </button>
+        ))}
+        <button
           className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-neutral-200 px-3 text-sm font-semibold text-neutral-400"
           disabled
           type="button"
         >
           <ClipboardList className="h-4 w-4" aria-hidden="true" />
-          Edit Recipe
-        </button>
-        <button
-          className="inline-flex h-9 items-center justify-center rounded-xl border border-neutral-200 px-3 text-sm font-semibold text-neutral-400"
-          disabled
-          type="button"
-        >
-          Add Ingredient
-        </button>
-        <button
-          className="inline-flex h-9 items-center justify-center rounded-xl border border-neutral-200 px-3 text-sm font-semibold text-neutral-400"
-          disabled
-          type="button"
-        >
-          Delete Ingredient
+          Delete Not Wired Yet
         </button>
       </div>
     </article>
@@ -247,11 +483,24 @@ function RecipeItemCard({ item }: { item: RecipesWorkspaceMenuItem }) {
 
 export function RecipesWorkspaceBoard({
   items,
+  menuOptions,
+  inventoryOptions,
   status,
   errorMessage,
+  savingRecipeKey,
+  onCreateRecipe,
+  onUpdateRecipe,
 }: RecipesWorkspaceBoardProps) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RecipesWorkspaceFilter>("all");
+  const [formMode, setFormMode] = useState<RecipesWorkspaceFormMode | null>(
+    null,
+  );
+  const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
+  const [selectedMenuName, setSelectedMenuName] = useState<string | null>(null);
+  const [formValues, setFormValues] =
+    useState<RecipesWorkspaceFormValues>(emptyFormValues);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const filteredItems = useMemo(
     () =>
@@ -260,6 +509,52 @@ export function RecipesWorkspaceBoard({
       ),
     [filter, items, query],
   );
+
+  function closeForm() {
+    setFormMode(null);
+    setEditingRecipeId(null);
+    setSelectedMenuName(null);
+    setFormValues(emptyFormValues);
+    setFormError(null);
+  }
+
+  function openCreateForm(menuItem?: RecipesWorkspaceMenuItem) {
+    setFormMode("create");
+    setEditingRecipeId(null);
+    setSelectedMenuName(menuItem?.name ?? null);
+    setFormValues(getCreateFormValues(menuItem?.id));
+    setFormError(null);
+  }
+
+  function openEditForm(
+    item: RecipesWorkspaceMenuItem,
+    ingredient: RecipesWorkspaceIngredient,
+  ) {
+    setFormMode("edit");
+    setEditingRecipeId(ingredient.id);
+    setSelectedMenuName(item.name);
+    setFormValues(getEditFormValues(item, ingredient));
+    setFormError(null);
+  }
+
+  async function submitForm() {
+    if (!formMode) return;
+
+    const validationError = validateRecipeForm(formValues, formMode);
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
+    const didSave =
+      formMode === "create"
+        ? await onCreateRecipe(formValues)
+        : editingRecipeId
+          ? await onUpdateRecipe(editingRecipeId, formValues)
+          : false;
+
+    if (didSave) closeForm();
+  }
 
   if (status === "loading") return <RecipesWorkspaceSkeleton />;
 
@@ -293,10 +588,12 @@ export function RecipesWorkspaceBoard({
             </p>
           </div>
           <button
-            className="inline-flex h-10 items-center justify-center rounded-xl border border-neutral-200 px-4 text-sm font-semibold text-neutral-400"
-            disabled
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-neutral-200 px-4 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400"
+            disabled={savingRecipeKey !== null}
+            onClick={() => openCreateForm()}
             type="button"
           >
+            <Plus className="h-4 w-4" aria-hidden="true" />
             Add Recipe
           </button>
         </div>
@@ -334,10 +631,34 @@ export function RecipesWorkspaceBoard({
         </div>
       </section>
 
+      {formMode ? (
+        <RecipesWorkspaceForm
+          error={formError}
+          inventoryOptions={inventoryOptions}
+          isSaving={savingRecipeKey !== null}
+          menuOptions={menuOptions}
+          mode={formMode}
+          onCancel={closeForm}
+          onChange={(nextValues) => {
+            setFormValues(nextValues);
+            setFormError(null);
+          }}
+          onSubmit={submitForm}
+          selectedMenuName={selectedMenuName}
+          values={formValues}
+        />
+      ) : null}
+
       {filteredItems.length > 0 ? (
         <div className="grid gap-4 xl:grid-cols-2">
           {filteredItems.map((item) => (
-            <RecipeItemCard item={item} key={item.id} />
+            <RecipeItemCard
+              item={item}
+              key={item.id}
+              onCreateForMenuItem={openCreateForm}
+              onEditIngredient={openEditForm}
+              savingRecipeKey={savingRecipeKey}
+            />
           ))}
         </div>
       ) : (
