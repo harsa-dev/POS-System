@@ -26,7 +26,9 @@ export function ModeSelector() {
 
   function handleSelectMode(mode: BusinessMode) {
     setStoredBusinessMode(mode);
-    setLocation(ROUTES.ANALYTICS);
+    setLocation(
+      mode === "fnb" ? ROUTES.WORKSPACE_RESTAURANT_POS : ROUTES.ANALYTICS,
+    );
   }
 
   return (

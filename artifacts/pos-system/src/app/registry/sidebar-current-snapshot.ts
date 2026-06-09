@@ -1,4 +1,5 @@
 import type { V3RuntimeRole } from "./module-types";
+import { ROUTES } from "../../constants/routes";
 
 export type CurrentSidebarSnapshotItem = Readonly<{
   label: string;
@@ -61,7 +62,7 @@ export const currentSidebarSnapshot = [
   },
   {
     label: "Cashier",
-    routePath: "/dashboard/fnb/server/checkout",
+    routePath: ROUTES.WORKSPACE_RESTAURANT_POS,
     group: "F&B Server",
     roles: ["OWNER", "MANAGER", "CASHIER"],
     modes: ["fnb"],
@@ -69,7 +70,7 @@ export const currentSidebarSnapshot = [
   },
   {
     label: "Orders",
-    routePath: "/dashboard/fnb/server/orders",
+    routePath: ROUTES.WORKSPACE_RESTAURANT_ORDERS,
     group: "F&B Server",
     roles: ["OWNER", "MANAGER", "CASHIER"],
     modes: ["fnb"],
@@ -77,7 +78,7 @@ export const currentSidebarSnapshot = [
   },
   {
     label: "Serving",
-    routePath: "/dashboard/fnb/server/serving",
+    routePath: ROUTES.WORKSPACE_RESTAURANT_SERVING,
     group: "F&B Server",
     roles: ["OWNER", "MANAGER", "SERVER", "CASHIER"],
     modes: ["fnb"],
@@ -85,23 +86,15 @@ export const currentSidebarSnapshot = [
   },
   {
     label: "Tables",
-    routePath: "/dashboard/fnb/server/tables",
+    routePath: ROUTES.WORKSPACE_RESTAURANT_TABLES,
     group: "F&B Server",
     roles: ["OWNER", "MANAGER", "SERVER", "CASHIER"],
     modes: ["fnb"],
     order: 140,
   },
   {
-    label: "Payments",
-    routePath: "/dashboard/fnb/server/payments",
-    group: "F&B Server",
-    roles: ["OWNER", "MANAGER"],
-    modes: ["fnb"],
-    order: 150,
-  },
-  {
     label: "Menu",
-    routePath: "/dashboard/fnb/menu",
+    routePath: ROUTES.WORKSPACE_RESTAURANT_MENU,
     group: "F&B Menu & Kitchen",
     roles: ["OWNER", "MANAGER"],
     modes: ["fnb"],
@@ -109,7 +102,7 @@ export const currentSidebarSnapshot = [
   },
   {
     label: "Recipes",
-    routePath: "/dashboard/fnb/menu/recipes",
+    routePath: ROUTES.WORKSPACE_RESTAURANT_RECIPES,
     group: "F&B Menu & Kitchen",
     roles: ["OWNER", "MANAGER"],
     modes: ["fnb"],
@@ -117,7 +110,7 @@ export const currentSidebarSnapshot = [
   },
   {
     label: "Kitchen (KDS)",
-    routePath: "/dashboard/fnb/kitchen",
+    routePath: ROUTES.WORKSPACE_RESTAURANT_KITCHEN,
     group: "F&B Menu & Kitchen",
     roles: ["OWNER", "MANAGER", "KITCHEN"],
     modes: ["fnb"],

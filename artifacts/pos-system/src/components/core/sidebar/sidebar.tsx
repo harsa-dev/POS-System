@@ -125,7 +125,6 @@ const fnbServerModuleIds = [
   "orders",
   "serving",
   "tables",
-  "payments",
 ] satisfies readonly V3ModuleId[];
 
 const fnbMenuKitchenModuleIds = [

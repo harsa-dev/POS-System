@@ -1,6 +1,10 @@
 import type { V3ModuleMetadata } from "./module-types";
+import { ROUTES } from "../../constants/routes";
 
 const restaurantMode = ["restaurant"] as const;
+
+// V3 workspaces are now the main Restaurant navigation targets.
+// Legacy /dashboard/fnb routes remain registered in App.tsx as manual fallback URLs.
 
 export const restaurantModules: readonly V3ModuleMetadata[] = [
   {
@@ -10,8 +14,8 @@ export const restaurantModules: readonly V3ModuleMetadata[] = [
     layer: "restaurant",
     status: "active",
     supportedModes: restaurantMode,
-    routeBase: "/dashboard/fnb/server/checkout",
-    workspaceRoute: "/workspace/restaurant/pos",
+    routeBase: ROUTES.WORKSPACE_RESTAURANT_POS,
+    workspaceRoute: ROUTES.WORKSPACE_RESTAURANT_POS,
     sidebarGroup: "Restaurant Operations",
     sidebarVisible: true,
     sidebarLabel: "Cashier",
@@ -28,8 +32,8 @@ export const restaurantModules: readonly V3ModuleMetadata[] = [
     layer: "restaurant",
     status: "active",
     supportedModes: restaurantMode,
-    routeBase: "/dashboard/fnb/kitchen",
-    workspaceRoute: "/workspace/restaurant/kitchen",
+    routeBase: ROUTES.WORKSPACE_RESTAURANT_KITCHEN,
+    workspaceRoute: ROUTES.WORKSPACE_RESTAURANT_KITCHEN,
     sidebarGroup: "Restaurant Operations",
     sidebarVisible: true,
     sidebarLabel: "Kitchen (KDS)",
@@ -46,8 +50,8 @@ export const restaurantModules: readonly V3ModuleMetadata[] = [
     layer: "restaurant",
     status: "active",
     supportedModes: restaurantMode,
-    routeBase: "/dashboard/fnb/server/serving",
-    workspaceRoute: "/workspace/restaurant/serving",
+    routeBase: ROUTES.WORKSPACE_RESTAURANT_SERVING,
+    workspaceRoute: ROUTES.WORKSPACE_RESTAURANT_SERVING,
     sidebarGroup: "Restaurant Operations",
     sidebarVisible: true,
     sidebarOrder: 130,
@@ -63,8 +67,8 @@ export const restaurantModules: readonly V3ModuleMetadata[] = [
     layer: "restaurant",
     status: "active",
     supportedModes: restaurantMode,
-    routeBase: "/dashboard/fnb/server/tables",
-    workspaceRoute: "/workspace/restaurant/tables",
+    routeBase: ROUTES.WORKSPACE_RESTAURANT_TABLES,
+    workspaceRoute: ROUTES.WORKSPACE_RESTAURANT_TABLES,
     sidebarGroup: "Restaurant Operations",
     sidebarVisible: true,
     sidebarOrder: 140,
@@ -80,8 +84,8 @@ export const restaurantModules: readonly V3ModuleMetadata[] = [
     layer: "restaurant",
     status: "active",
     supportedModes: restaurantMode,
-    routeBase: "/dashboard/fnb/menu",
-    workspaceRoute: "/workspace/restaurant/menu",
+    routeBase: ROUTES.WORKSPACE_RESTAURANT_MENU,
+    workspaceRoute: ROUTES.WORKSPACE_RESTAURANT_MENU,
     sidebarGroup: "Restaurant Operations",
     sidebarVisible: true,
     sidebarOrder: 160,
@@ -97,8 +101,8 @@ export const restaurantModules: readonly V3ModuleMetadata[] = [
     layer: "restaurant",
     status: "active",
     supportedModes: restaurantMode,
-    routeBase: "/dashboard/fnb/menu/recipes",
-    workspaceRoute: "/workspace/restaurant/menu/recipes",
+    routeBase: ROUTES.WORKSPACE_RESTAURANT_RECIPES,
+    workspaceRoute: ROUTES.WORKSPACE_RESTAURANT_RECIPES,
     sidebarGroup: "Restaurant Operations",
     sidebarVisible: true,
     sidebarOrder: 170,
@@ -114,8 +118,8 @@ export const restaurantModules: readonly V3ModuleMetadata[] = [
     layer: "restaurant",
     status: "active",
     supportedModes: restaurantMode,
-    routeBase: "/dashboard/fnb/server/orders",
-    workspaceRoute: "/workspace/restaurant/orders",
+    routeBase: ROUTES.WORKSPACE_RESTAURANT_ORDERS,
+    workspaceRoute: ROUTES.WORKSPACE_RESTAURANT_ORDERS,
     sidebarGroup: "Restaurant Operations",
     sidebarVisible: true,
     sidebarOrder: 120,

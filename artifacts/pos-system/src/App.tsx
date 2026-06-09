@@ -9,7 +9,11 @@ import { createContext, useContext, useEffect, useState, lazy, Suspense } from "
 import { LoginForm } from "@/components/auth/login-form";
 import { RegisterForm } from "@/components/auth/register-form";
 import { ModeSelector } from "@/components/core/mode-selector";
-import { RouteGuard, getStoredBusinessMode } from "@/components/core/route-guard";
+import {
+  RouteGuard,
+  getStoredBusinessMode,
+  type BusinessMode,
+} from "@/components/core/route-guard";
 import { authApi } from "@/lib/api";
 
 const CheckoutPage         = lazy(() => import("@/pages/dashboard/checkout"));
@@ -128,6 +132,10 @@ function ModeProtectedRoute({
   return <>{children}</>;
 }
 
+function getBusinessModeEntryRoute(mode: BusinessMode | null) {
+  return mode === "fnb" ? ROUTES.WORKSPACE_RESTAURANT_POS : ROUTES.ANALYTICS;
+}
+
 function ModeSelectionRoute() {
   const { user, isLoading } = useAuth();
 
@@ -140,9 +148,16 @@ function ModeSelectionRoute() {
   }
 
   if (!user) return <Redirect to={ROUTES.LOGIN} />;
-  if (getStoredBusinessMode()) return <Redirect to={ROUTES.ANALYTICS} />;
+  const storedMode = getStoredBusinessMode();
+  if (storedMode) {
+    return <Redirect to={getBusinessModeEntryRoute(storedMode)} />;
+  }
 
   return <ModeSelector />;
+}
+
+function DashboardEntryRedirect() {
+  return <Redirect to={getBusinessModeEntryRoute(getStoredBusinessMode())} />;
 }
 
 function PageFallback() {
@@ -223,7 +238,7 @@ function ProtectedAppRoutes() {
     <ProtectedRoute>
       <Suspense fallback={<PageFallback />}>
         <Switch>
-          <Route path={ROUTES.DASHBOARD}><Redirect to={ROUTES.ANALYTICS} /></Route>
+          <Route path={ROUTES.DASHBOARD}><DashboardEntryRedirect /></Route>
           <Route path="/dashboard/checkout"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.CHECKOUT} /></ModeProtectedRoute></Route>
           <Route path="/dashboard/orders/:id">
             {(params) => <ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.ORDER_DETAIL(params.id)} /></ModeProtectedRoute>}
