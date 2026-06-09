@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { ROUTES } from "@/constants/routes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -112,6 +112,22 @@ function ProtectedRoute({
   );
 }
 
+function ModeProtectedRoute({
+  children,
+  requiredMode,
+}: {
+  children: React.ReactNode;
+  requiredMode?: "fnb";
+}) {
+  const currentMode = getStoredBusinessMode();
+
+  if (requiredMode && currentMode !== requiredMode) {
+    return <Redirect to={ROUTES.ANALYTICS} />;
+  }
+
+  return <>{children}</>;
+}
+
 function ModeSelectionRoute() {
   const { user, isLoading } = useAuth();
 
@@ -137,68 +153,153 @@ function PageFallback() {
   );
 }
 
-function Router() {
+function isProtectedAppPath(pathname: string) {
   return (
-    <Suspense fallback={<PageFallback />}>
-      <Switch>
-        <Route path={ROUTES.ROOT}><Redirect to={ROUTES.LOGIN} /></Route>
-        <Route path={ROUTES.LOGIN}>
-          <main className="flex min-h-screen items-center justify-center bg-neutral-50">
-            <LoginForm />
-          </main>
-        </Route>
-        <Route path={ROUTES.REGISTER}>
-          <main className="flex min-h-screen items-center justify-center bg-neutral-50">
-            <RegisterForm />
-          </main>
-        </Route>
-        <Route path={ROUTES.SELECT_MODE}><ModeSelectionRoute /></Route>
-        <Route path={ROUTES.DASHBOARD}><ProtectedRoute><Redirect to={ROUTES.ANALYTICS} /></ProtectedRoute></Route>
-        <Route path="/dashboard/checkout"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.CHECKOUT} /></ProtectedRoute></Route>
-        <Route path="/dashboard/orders/:id">
-          {(params) => <ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.ORDER_DETAIL(params.id)} /></ProtectedRoute>}
-        </Route>
-        <Route path="/dashboard/orders"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.ORDERS} /></ProtectedRoute></Route>
-        <Route path="/dashboard/menu"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.MENU} /></ProtectedRoute></Route>
-        <Route path="/dashboard/recipes"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.RECIPES} /></ProtectedRoute></Route>
-        <Route path="/dashboard/tables"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.TABLES} /></ProtectedRoute></Route>
-        <Route path="/dashboard/kds"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.KDS} /></ProtectedRoute></Route>
-        <Route path="/dashboard/serving"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.SERVING} /></ProtectedRoute></Route>
-        <Route path={ROUTES.WORKSPACE_RESTAURANT_POS}><ProtectedRoute requiredMode="fnb"><RestaurantPosWorkspace /></ProtectedRoute></Route>
-        <Route path={ROUTES.WORKSPACE_RESTAURANT_KITCHEN}><ProtectedRoute requiredMode="fnb"><RestaurantKitchenWorkspace /></ProtectedRoute></Route>
-        <Route path={ROUTES.WORKSPACE_RESTAURANT_SERVING}><ProtectedRoute requiredMode="fnb"><RestaurantServingWorkspace /></ProtectedRoute></Route>
-        <Route path={ROUTES.WORKSPACE_RESTAURANT_TABLES}><ProtectedRoute requiredMode="fnb"><RestaurantTablesWorkspace /></ProtectedRoute></Route>
-        <Route path={ROUTES.WORKSPACE_RESTAURANT_RECIPES}><ProtectedRoute requiredMode="fnb"><RestaurantRecipesWorkspace /></ProtectedRoute></Route>
-        <Route path={ROUTES.WORKSPACE_RESTAURANT_MENU}><ProtectedRoute requiredMode="fnb"><RestaurantMenuWorkspace /></ProtectedRoute></Route>
-        <Route path={ROUTES.WORKSPACE_RESTAURANT_ORDERS}><ProtectedRoute requiredMode="fnb"><RestaurantOrdersWorkspace /></ProtectedRoute></Route>
-        <Route path={ROUTES.PAYMENTS_SUCCESS}><ProtectedRoute><PaymentSuccessPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.PAYMENTS_ERROR}><ProtectedRoute><PaymentErrorPage /></ProtectedRoute></Route>
-        <Route path="/dashboard/payments"><ProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.PAYMENTS} /></ProtectedRoute></Route>
-        <Route path={ROUTES.CHECKOUT}><ProtectedRoute requiredMode="fnb"><CheckoutPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.ORDERS}><ProtectedRoute requiredMode="fnb"><OrdersPage /></ProtectedRoute></Route>
-        <Route path={`${ROUTES.ORDERS}/:id`}>
-          {(params) => <ProtectedRoute requiredMode="fnb"><OrderDetailPage id={params.id} /></ProtectedRoute>}
-        </Route>
-        <Route path={ROUTES.MENU}><ProtectedRoute requiredMode="fnb"><MenuPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.RECIPES}><ProtectedRoute requiredMode="fnb"><RecipesPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.TABLES}><ProtectedRoute requiredMode="fnb"><TablesPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.KDS}><ProtectedRoute requiredMode="fnb"><KDSPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.ANALYTICS}><ProtectedRoute><AnalyticsPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.CUSTOMERS}><ProtectedRoute><CustomersPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.CASHFLOW}><ProtectedRoute><CashflowPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.FINANCIAL_REPORTS}><ProtectedRoute><FinancialReportsPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.INVOICE_GENERATOR}><ProtectedRoute><InvoiceGeneratorPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.CASHIER_SHIFT_REPORTS}><ProtectedRoute><CashierShiftReportsPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.PAYMENTS}><ProtectedRoute requiredMode="fnb"><PaymentsPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.INVENTORY}><ProtectedRoute><InventoryPage /></ProtectedRoute></Route>
-        <Route path={ROUTES.SERVING}><ProtectedRoute requiredMode="fnb"><ServingPage /></ProtectedRoute></Route>
-        <Route>
-          <div className="flex min-h-screen items-center justify-center">
-            <h1 className="text-2xl font-bold">404 - Page Not Found</h1>
-          </div>
-        </Route>
-      </Switch>
-    </Suspense>
+    pathname === ROUTES.DASHBOARD ||
+    pathname.startsWith(`${ROUTES.DASHBOARD}/`) ||
+    pathname.startsWith("/workspace/")
+  );
+}
+
+function InternalNavigationBoundary() {
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    function handleDocumentClick(event: MouseEvent) {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const targetNode = event.target;
+      const targetElement =
+        targetNode instanceof Element
+          ? targetNode
+          : targetNode instanceof Node
+            ? targetNode.parentElement
+            : null;
+      const anchor = targetElement?.closest("a[href]");
+      if (!anchor) return;
+
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+
+      const target = anchor.getAttribute("target");
+      if (target && target !== "_self") return;
+      if (anchor.hasAttribute("download")) return;
+
+      const url = new URL(href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      if (
+        url.pathname === window.location.pathname &&
+        url.search === window.location.search &&
+        url.hash
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setLocation(`${url.pathname}${url.search}${url.hash}`);
+    }
+
+    document.addEventListener("click", handleDocumentClick);
+
+    return () => {
+      document.removeEventListener("click", handleDocumentClick);
+    };
+  }, [setLocation]);
+
+  return null;
+}
+
+function ProtectedAppRoutes() {
+  return (
+    <ProtectedRoute>
+      <Suspense fallback={<PageFallback />}>
+        <Switch>
+          <Route path={ROUTES.DASHBOARD}><Redirect to={ROUTES.ANALYTICS} /></Route>
+          <Route path="/dashboard/checkout"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.CHECKOUT} /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/orders/:id">
+            {(params) => <ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.ORDER_DETAIL(params.id)} /></ModeProtectedRoute>}
+          </Route>
+          <Route path="/dashboard/orders"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.ORDERS} /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/menu"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.MENU} /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/recipes"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.RECIPES} /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/tables"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.TABLES} /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/kds"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.KDS} /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/serving"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.SERVING} /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_POS}><ModeProtectedRoute requiredMode="fnb"><RestaurantPosWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_KITCHEN}><ModeProtectedRoute requiredMode="fnb"><RestaurantKitchenWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_SERVING}><ModeProtectedRoute requiredMode="fnb"><RestaurantServingWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_TABLES}><ModeProtectedRoute requiredMode="fnb"><RestaurantTablesWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_RECIPES}><ModeProtectedRoute requiredMode="fnb"><RestaurantRecipesWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_MENU}><ModeProtectedRoute requiredMode="fnb"><RestaurantMenuWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_ORDERS}><ModeProtectedRoute requiredMode="fnb"><RestaurantOrdersWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.PAYMENTS_SUCCESS}><PaymentSuccessPage /></Route>
+          <Route path={ROUTES.PAYMENTS_ERROR}><PaymentErrorPage /></Route>
+          <Route path="/dashboard/payments"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.PAYMENTS} /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.CHECKOUT}><ModeProtectedRoute requiredMode="fnb"><CheckoutPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.ORDERS}><ModeProtectedRoute requiredMode="fnb"><OrdersPage /></ModeProtectedRoute></Route>
+          <Route path={`${ROUTES.ORDERS}/:id`}>
+            {(params) => <ModeProtectedRoute requiredMode="fnb"><OrderDetailPage id={params.id} /></ModeProtectedRoute>}
+          </Route>
+          <Route path={ROUTES.MENU}><ModeProtectedRoute requiredMode="fnb"><MenuPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.RECIPES}><ModeProtectedRoute requiredMode="fnb"><RecipesPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.TABLES}><ModeProtectedRoute requiredMode="fnb"><TablesPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.KDS}><ModeProtectedRoute requiredMode="fnb"><KDSPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.ANALYTICS}><AnalyticsPage /></Route>
+          <Route path={ROUTES.CUSTOMERS}><CustomersPage /></Route>
+          <Route path={ROUTES.CASHFLOW}><CashflowPage /></Route>
+          <Route path={ROUTES.FINANCIAL_REPORTS}><FinancialReportsPage /></Route>
+          <Route path={ROUTES.INVOICE_GENERATOR}><InvoiceGeneratorPage /></Route>
+          <Route path={ROUTES.CASHIER_SHIFT_REPORTS}><CashierShiftReportsPage /></Route>
+          <Route path={ROUTES.PAYMENTS}><ModeProtectedRoute requiredMode="fnb"><PaymentsPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.INVENTORY}><InventoryPage /></Route>
+          <Route path={ROUTES.SERVING}><ModeProtectedRoute requiredMode="fnb"><ServingPage /></ModeProtectedRoute></Route>
+          <Route>
+            <div className="flex min-h-[40vh] items-center justify-center">
+              <h1 className="text-2xl font-bold">404 - Page Not Found</h1>
+            </div>
+          </Route>
+        </Switch>
+      </Suspense>
+    </ProtectedRoute>
+  );
+}
+
+function Router() {
+  const [pathname] = useLocation();
+
+  if (isProtectedAppPath(pathname)) {
+    return <ProtectedAppRoutes />;
+  }
+
+  return (
+    <Switch>
+      <Route path={ROUTES.ROOT}><Redirect to={ROUTES.LOGIN} /></Route>
+      <Route path={ROUTES.LOGIN}>
+        <main className="flex min-h-screen items-center justify-center bg-neutral-50">
+          <LoginForm />
+        </main>
+      </Route>
+      <Route path={ROUTES.REGISTER}>
+        <main className="flex min-h-screen items-center justify-center bg-neutral-50">
+          <RegisterForm />
+        </main>
+      </Route>
+      <Route path={ROUTES.SELECT_MODE}><ModeSelectionRoute /></Route>
+      <Route>
+        <div className="flex min-h-screen items-center justify-center">
+          <h1 className="text-2xl font-bold">404 - Page Not Found</h1>
+        </div>
+      </Route>
+    </Switch>
   );
 }
 
@@ -209,6 +310,7 @@ function App() {
         <TooltipProvider>
           <AuthProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <InternalNavigationBoundary />
               <Router />
             </WouterRouter>
             <Toaster />
