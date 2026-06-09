@@ -71,6 +71,7 @@ export default function RestaurantKitchenWorkspace() {
     >
       <KitchenOrdersBoard
         errorMessage={kitchenOrders.errorMessage}
+        isRefreshing={kitchenOrders.isRefreshing}
         onUpdateStatus={handleUpdateStatus}
         orders={kitchenOrders.orders}
         status={kitchenOrders.status}

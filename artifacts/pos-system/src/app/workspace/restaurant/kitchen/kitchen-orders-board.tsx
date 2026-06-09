@@ -16,6 +16,7 @@ type KitchenOrdersBoardProps = {
   orders: KitchenOrder[];
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
+  isRefreshing: boolean;
   updatingOrderId: string | null;
   onUpdateStatus: (
     orderId: string,
@@ -190,6 +191,7 @@ export function KitchenOrdersBoard({
   orders,
   status,
   errorMessage,
+  isRefreshing,
   updatingOrderId,
   onUpdateStatus,
 }: KitchenOrdersBoardProps) {
@@ -234,8 +236,18 @@ export function KitchenOrdersBoard({
       <KitchenSummary orders={orders} />
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-        Kitchen actions update order status after backend confirmation.
+        <span>Kitchen actions update order status after backend confirmation.</span>
+        {isRefreshing ? (
+          <span className="ml-auto rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+            Refreshing...
+          </span>
+        ) : null}
       </div>
+      {errorMessage ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {errorMessage}
+        </div>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {orders.map((order) => (
           <KitchenOrderCard

@@ -67,6 +67,7 @@ export default function RestaurantOrdersWorkspace() {
     >
       <OrdersWorkspaceBoard
         errorMessage={orders.errorMessage}
+        isRefreshing={orders.isRefreshing}
         onCompleteOrder={handleCompleteOrder}
         orders={orders.orders}
         status={orders.status}

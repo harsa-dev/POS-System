@@ -159,6 +159,7 @@ export default function RestaurantRecipesWorkspace() {
         activeRecipeAction={activeRecipeAction}
         errorMessage={catalog.errorMessage}
         inventoryOptions={catalog.inventoryOptions}
+        isRefreshing={catalog.isRefreshing}
         items={catalog.items}
         menuOptions={catalog.menuOptions}
         onCreateRecipe={handleCreateRecipe}

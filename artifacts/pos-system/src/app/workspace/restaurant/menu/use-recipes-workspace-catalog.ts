@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { menuApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils/format";
@@ -55,6 +55,7 @@ type RecipesWorkspaceCatalogResult = {
   inventoryOptions: RecipesWorkspaceInventoryOption[];
   status: RecipesWorkspaceState;
   errorMessage: string | null;
+  isRefreshing: boolean;
   reload: () => Promise<void>;
 };
 
@@ -229,9 +230,16 @@ export function useRecipesWorkspaceCatalog(): RecipesWorkspaceCatalogResult {
   >([]);
   const [status, setStatus] = useState<RecipesWorkspaceState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
 
   const loadCatalog = useCallback(async () => {
-    setStatus("loading");
+    const isBackgroundRefresh = hasLoadedOnceRef.current;
+    if (isBackgroundRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setStatus("loading");
+    }
     setErrorMessage(null);
 
     try {
@@ -268,13 +276,20 @@ export function useRecipesWorkspaceCatalog(): RecipesWorkspaceCatalogResult {
       setInventoryOptions(
         mapInventoryOptions(inventoryItemsResponse.data ?? []),
       );
+      hasLoadedOnceRef.current = true;
       setStatus("ready");
     } catch (error) {
-      setItems([]);
-      setMenuOptions([]);
-      setInventoryOptions([]);
       setErrorMessage(getErrorMessage(error));
-      setStatus("error");
+      if (hasLoadedOnceRef.current) {
+        setStatus("ready");
+      } else {
+        setItems([]);
+        setMenuOptions([]);
+        setInventoryOptions([]);
+        setStatus("error");
+      }
+    } finally {
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -289,8 +304,17 @@ export function useRecipesWorkspaceCatalog(): RecipesWorkspaceCatalogResult {
       inventoryOptions,
       status,
       errorMessage,
+      isRefreshing,
       reload: loadCatalog,
     }),
-    [errorMessage, inventoryOptions, items, loadCatalog, menuOptions, status],
+    [
+      errorMessage,
+      inventoryOptions,
+      isRefreshing,
+      items,
+      loadCatalog,
+      menuOptions,
+      status,
+    ],
   );
 }

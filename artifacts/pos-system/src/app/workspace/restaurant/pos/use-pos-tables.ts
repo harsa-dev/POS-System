@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { v3PosTables } from "@/app/workspace/restaurant/pos-placeholder-data";
 import type {
@@ -15,6 +15,7 @@ type PosTablesState = {
   status: PosTablesStatus;
   errorMessage: string | null;
   isUsingFallback: boolean;
+  isRefreshing: boolean;
   reload: () => void;
 };
 
@@ -72,7 +73,9 @@ export function usePosTables(): PosTablesState {
   const [status, setStatus] = useState<PosTablesStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [reloadVersion, setReloadVersion] = useState(0);
+  const hasLoadedOnceRef = useRef(false);
 
   const reload = useCallback(() => {
     setReloadVersion((version) => version + 1);
@@ -82,7 +85,12 @@ export function usePosTables(): PosTablesState {
     let isMounted = true;
 
     async function loadTables() {
-      setStatus("loading");
+      const isBackgroundRefresh = hasLoadedOnceRef.current;
+      if (isBackgroundRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setStatus("loading");
+      }
       setErrorMessage(null);
 
       try {
@@ -94,14 +102,23 @@ export function usePosTables(): PosTablesState {
         );
         setTables(activeTables.map(mapDiningTableToPosTable));
         setIsUsingFallback(false);
+        hasLoadedOnceRef.current = true;
         setStatus("ready");
       } catch (error) {
         if (!isMounted) return;
 
-        setTables(fallbackTables);
         setErrorMessage(getErrorMessage(error));
-        setIsUsingFallback(true);
-        setStatus("error");
+        if (hasLoadedOnceRef.current) {
+          setStatus("ready");
+        } else {
+          setTables(fallbackTables);
+          setIsUsingFallback(true);
+          setStatus("error");
+        }
+      } finally {
+        if (isMounted) {
+          setIsRefreshing(false);
+        }
       }
     }
 
@@ -121,8 +138,9 @@ export function usePosTables(): PosTablesState {
       status,
       errorMessage,
       isUsingFallback,
+      isRefreshing,
       reload,
     }),
-    [errorMessage, isUsingFallback, reload, status, summary, tables],
+    [errorMessage, isRefreshing, isUsingFallback, reload, status, summary, tables],
   );
 }

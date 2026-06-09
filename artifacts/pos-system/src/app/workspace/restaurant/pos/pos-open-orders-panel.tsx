@@ -7,6 +7,7 @@ type PosOpenOrdersPanelProps = {
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
   isUsingFallback: boolean;
+  isRefreshing: boolean;
   selectedOrderId: string | null;
   onSelectOrder: (orderId: string | null) => void;
 };
@@ -16,6 +17,7 @@ export function PosOpenOrdersPanel({
   status,
   errorMessage,
   isUsingFallback,
+  isRefreshing,
   selectedOrderId,
   onSelectOrder,
 }: PosOpenOrdersPanelProps) {
@@ -27,7 +29,11 @@ export function PosOpenOrdersPanel({
         <div>
           <h3 className="text-sm font-bold text-neutral-950">Open Orders</h3>
           <p className="mt-1 text-xs text-neutral-500">
-            {isUsingFallback ? "Static preview orders" : "Read-only active orders"}
+            {isRefreshing
+              ? "Refreshing active orders..."
+              : isUsingFallback
+                ? "Static preview orders"
+                : "Read-only active orders"}
           </p>
         </div>
         <Clock3 className="h-4 w-4 text-neutral-400" aria-hidden="true" />

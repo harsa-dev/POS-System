@@ -32,6 +32,7 @@ type MenuWorkspaceBoardProps = {
   categories: MenuWorkspaceCategory[];
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
+  isRefreshing: boolean;
   updatingItemId: string | null;
   onToggleAvailability: (item: MenuWorkspaceItem) => Promise<void>;
   isSavingItem: boolean;
@@ -574,6 +575,7 @@ export function MenuWorkspaceBoard({
   categories,
   status,
   errorMessage,
+  isRefreshing,
   updatingItemId,
   onToggleAvailability,
   isSavingItem,
@@ -707,16 +709,29 @@ export function MenuWorkspaceBoard({
     <div className="space-y-4">
       <MenuSummary items={items} />
 
+      {errorMessage ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {errorMessage}
+        </div>
+      ) : null}
+
       <div className="rounded-2xl border bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-lg font-bold text-neutral-950">
               Menu Catalog
             </h2>
-            <p className="mt-1 text-sm text-neutral-500">
-              Read-only V3 menu visibility across categories, stock readiness,
-              and recipe readiness.
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-neutral-500">
+              <span>
+                Read-only V3 menu visibility across categories, stock readiness,
+                and recipe readiness.
+              </span>
+              {isRefreshing ? (
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                  Refreshing...
+                </span>
+              ) : null}
+            </div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-500 lg:w-72">
             <Search className="h-4 w-4 shrink-0" aria-hidden="true" />

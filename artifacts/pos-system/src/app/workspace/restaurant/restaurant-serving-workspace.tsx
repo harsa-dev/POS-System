@@ -67,6 +67,7 @@ export default function RestaurantServingWorkspace() {
     >
       <ServingOrdersBoard
         errorMessage={servingOrders.errorMessage}
+        isRefreshing={servingOrders.isRefreshing}
         onUpdateStatus={handleUpdateStatus}
         orders={servingOrders.orders}
         status={servingOrders.status}

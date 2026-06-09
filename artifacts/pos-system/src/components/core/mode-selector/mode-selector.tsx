@@ -5,6 +5,7 @@ import {
   Scissors,
   ShoppingBag,
 } from "lucide-react";
+import { useLocation } from "wouter";
 
 import { ROUTES } from "@/constants/routes";
 import {
@@ -21,9 +22,11 @@ const modeIcons: Record<BusinessMode, typeof ChefHat> = {
 };
 
 export function ModeSelector() {
+  const [, setLocation] = useLocation();
+
   function handleSelectMode(mode: BusinessMode) {
     setStoredBusinessMode(mode);
-    window.location.href = ROUTES.ANALYTICS;
+    setLocation(ROUTES.ANALYTICS);
   }
 
   return (

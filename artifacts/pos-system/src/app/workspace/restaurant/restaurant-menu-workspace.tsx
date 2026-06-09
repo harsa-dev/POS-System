@@ -214,6 +214,7 @@ export default function RestaurantMenuWorkspace() {
       <MenuWorkspaceBoard
         categories={catalog.categories}
         errorMessage={catalog.errorMessage}
+        isRefreshing={catalog.isRefreshing}
         isSavingItem={isSavingItem}
         items={catalog.items}
         onCreateMenuItem={handleCreateMenuItem}

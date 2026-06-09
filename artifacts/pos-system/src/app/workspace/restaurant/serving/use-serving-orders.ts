@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { orderApi } from "@/lib/api";
 import { formatDateTime, formatOrderNumber } from "@/lib/utils/format";
@@ -32,6 +32,7 @@ type ServingOrdersResult = {
   orders: ServingOrder[];
   status: ServingOrdersState;
   errorMessage: string | null;
+  isRefreshing: boolean;
   reload: () => Promise<void>;
 };
 
@@ -100,9 +101,16 @@ export function useServingOrders(): ServingOrdersResult {
   const [orders, setOrders] = useState<ServingOrder[]>([]);
   const [status, setStatus] = useState<ServingOrdersState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
 
   const loadOrders = useCallback(async () => {
-    setStatus("loading");
+    const isBackgroundRefresh = hasLoadedOnceRef.current;
+    if (isBackgroundRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setStatus("loading");
+    }
     setErrorMessage(null);
 
     try {
@@ -122,11 +130,18 @@ export function useServingOrders(): ServingOrdersResult {
         );
 
       setOrders(mappedOrders);
+      hasLoadedOnceRef.current = true;
       setStatus("ready");
     } catch (error) {
-      setOrders([]);
       setErrorMessage(getErrorMessage(error));
-      setStatus("error");
+      if (hasLoadedOnceRef.current) {
+        setStatus("ready");
+      } else {
+        setOrders([]);
+        setStatus("error");
+      }
+    } finally {
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -139,8 +154,9 @@ export function useServingOrders(): ServingOrdersResult {
       orders,
       status,
       errorMessage,
+      isRefreshing,
       reload: loadOrders,
     }),
-    [errorMessage, loadOrders, orders, status],
+    [errorMessage, isRefreshing, loadOrders, orders, status],
   );
 }

@@ -449,6 +449,7 @@ export function PosWorkspaceLayout() {
           <PosTableStatusPanel
             errorMessage={tableCatalog.errorMessage}
             isUsingFallback={tableCatalog.isUsingFallback}
+            isRefreshing={tableCatalog.isRefreshing}
             onSelectTable={setSelectedTableId}
             selectedTableId={selectedTableId}
             status={tableCatalog.status}
@@ -465,6 +466,7 @@ export function PosWorkspaceLayout() {
           <PosOpenOrdersPanel
             errorMessage={openOrders.errorMessage}
             isUsingFallback={openOrders.isUsingFallback}
+            isRefreshing={openOrders.isRefreshing}
             onSelectOrder={setSelectedOrderId}
             orders={openOrders.orders}
             selectedOrderId={selectedOrderId}

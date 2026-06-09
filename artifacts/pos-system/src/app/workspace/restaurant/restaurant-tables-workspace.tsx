@@ -63,6 +63,7 @@ export default function RestaurantTablesWorkspace() {
     >
       <TablesWorkspaceBoard
         errorMessage={tables.errorMessage}
+        isRefreshing={tables.isRefreshing}
         onMarkClean={handleMarkClean}
         status={tables.status}
         tables={tables.tables}

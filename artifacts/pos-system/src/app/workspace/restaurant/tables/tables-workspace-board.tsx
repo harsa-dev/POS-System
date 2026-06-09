@@ -20,6 +20,7 @@ type TablesWorkspaceBoardProps = {
   tables: TablesWorkspaceTable[];
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
+  isRefreshing: boolean;
   updatingTableId: string | null;
   onMarkClean: (table: TablesWorkspaceTable) => Promise<void>;
 };
@@ -222,6 +223,7 @@ export function TablesWorkspaceBoard({
   tables,
   status,
   errorMessage,
+  isRefreshing,
   updatingTableId,
   onMarkClean,
 }: TablesWorkspaceBoardProps) {
@@ -271,16 +273,29 @@ export function TablesWorkspaceBoard({
     <div className="space-y-4">
       <TablesSummary tables={tables} />
 
+      {errorMessage ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {errorMessage}
+        </div>
+      ) : null}
+
       <div className="rounded-2xl border bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-lg font-bold text-neutral-950">
               Table Lifecycle
             </h2>
-            <p className="mt-1 text-sm text-neutral-500">
-              Read-only V3 table visibility across available, occupied, and
-              cleaning states.
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-neutral-500">
+              <span>
+                Read-only V3 table visibility across available, occupied, and
+                cleaning states.
+              </span>
+              {isRefreshing ? (
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                  Refreshing...
+                </span>
+              ) : null}
+            </div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-500 lg:w-72">
             <Search className="h-4 w-4 shrink-0" aria-hidden="true" />

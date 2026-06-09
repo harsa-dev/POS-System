@@ -11,6 +11,7 @@ type PosTableStatusPanelProps = {
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
   isUsingFallback: boolean;
+  isRefreshing: boolean;
   selectedTableId: string | null;
   onSelectTable: (tableId: string | null) => void;
 };
@@ -44,6 +45,7 @@ export function PosTableStatusPanel({
   status,
   errorMessage,
   isUsingFallback,
+  isRefreshing,
   selectedTableId,
   onSelectTable,
 }: PosTableStatusPanelProps) {
@@ -55,9 +57,11 @@ export function PosTableStatusPanel({
         <div>
           <h3 className="text-sm font-bold text-neutral-950">Table Status</h3>
           <p className="mt-1 text-xs text-neutral-500">
-            {isUsingFallback
-              ? "Static preview table data"
-              : "Read-only floor snapshot"}
+            {isRefreshing
+              ? "Refreshing floor snapshot..."
+              : isUsingFallback
+                ? "Static preview table data"
+                : "Read-only floor snapshot"}
           </p>
         </div>
         <Table2 className="h-4 w-4 text-neutral-400" aria-hidden="true" />

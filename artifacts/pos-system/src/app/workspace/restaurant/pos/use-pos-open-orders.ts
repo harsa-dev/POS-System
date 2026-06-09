@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { v3PosOpenOrders } from "@/app/workspace/restaurant/pos-placeholder-data";
 import type { PosOpenOrderItem } from "@/app/workspace/restaurant/pos/pos-workspace-types";
@@ -12,6 +12,7 @@ type PosOpenOrdersState = {
   status: PosOpenOrdersStatus;
   errorMessage: string | null;
   isUsingFallback: boolean;
+  isRefreshing: boolean;
   reload: () => void;
 };
 
@@ -103,7 +104,9 @@ export function usePosOpenOrders(): PosOpenOrdersState {
   const [status, setStatus] = useState<PosOpenOrdersStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [reloadVersion, setReloadVersion] = useState(0);
+  const hasLoadedOnceRef = useRef(false);
 
   const reload = useCallback(() => {
     setReloadVersion((version) => version + 1);
@@ -113,7 +116,12 @@ export function usePosOpenOrders(): PosOpenOrdersState {
     let isMounted = true;
 
     async function loadOpenOrders() {
-      setStatus("loading");
+      const isBackgroundRefresh = hasLoadedOnceRef.current;
+      if (isBackgroundRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setStatus("loading");
+      }
       setErrorMessage(null);
 
       try {
@@ -126,14 +134,23 @@ export function usePosOpenOrders(): PosOpenOrdersState {
 
         setOrders(activeOrders);
         setIsUsingFallback(false);
+        hasLoadedOnceRef.current = true;
         setStatus("ready");
       } catch (error) {
         if (!isMounted) return;
 
-        setOrders(fallbackOrders);
         setErrorMessage(getErrorMessage(error));
-        setIsUsingFallback(true);
-        setStatus("error");
+        if (hasLoadedOnceRef.current) {
+          setStatus("ready");
+        } else {
+          setOrders(fallbackOrders);
+          setIsUsingFallback(true);
+          setStatus("error");
+        }
+      } finally {
+        if (isMounted) {
+          setIsRefreshing(false);
+        }
       }
     }
 
@@ -150,8 +167,9 @@ export function usePosOpenOrders(): PosOpenOrdersState {
       status,
       errorMessage,
       isUsingFallback,
+      isRefreshing,
       reload,
     }),
-    [errorMessage, isUsingFallback, orders, reload, status],
+    [errorMessage, isRefreshing, isUsingFallback, orders, reload, status],
   );
 }

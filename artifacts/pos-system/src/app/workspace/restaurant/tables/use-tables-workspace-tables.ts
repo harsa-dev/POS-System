@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { tablesApi } from "@/lib/api";
 
@@ -26,6 +26,7 @@ type TablesWorkspaceResult = {
   tables: TablesWorkspaceTable[];
   status: TablesWorkspaceState;
   errorMessage: string | null;
+  isRefreshing: boolean;
   reload: () => Promise<void>;
 };
 
@@ -86,9 +87,16 @@ export function useTablesWorkspaceTables(): TablesWorkspaceResult {
   const [tables, setTables] = useState<TablesWorkspaceTable[]>([]);
   const [status, setStatus] = useState<TablesWorkspaceState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
 
   const loadTables = useCallback(async () => {
-    setStatus("loading");
+    const isBackgroundRefresh = hasLoadedOnceRef.current;
+    if (isBackgroundRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setStatus("loading");
+    }
     setErrorMessage(null);
 
     try {
@@ -105,11 +113,18 @@ export function useTablesWorkspaceTables(): TablesWorkspaceResult {
         );
 
       setTables(mappedTables);
+      hasLoadedOnceRef.current = true;
       setStatus("ready");
     } catch (error) {
-      setTables([]);
       setErrorMessage(getErrorMessage(error));
-      setStatus("error");
+      if (hasLoadedOnceRef.current) {
+        setStatus("ready");
+      } else {
+        setTables([]);
+        setStatus("error");
+      }
+    } finally {
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -122,8 +137,9 @@ export function useTablesWorkspaceTables(): TablesWorkspaceResult {
       tables,
       status,
       errorMessage,
+      isRefreshing,
       reload: loadTables,
     }),
-    [errorMessage, loadTables, status, tables],
+    [errorMessage, isRefreshing, loadTables, status, tables],
   );
 }

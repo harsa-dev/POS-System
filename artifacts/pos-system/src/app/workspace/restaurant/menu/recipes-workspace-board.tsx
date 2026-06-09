@@ -27,6 +27,7 @@ type RecipesWorkspaceBoardProps = {
   inventoryOptions: RecipesWorkspaceInventoryOption[];
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
+  isRefreshing: boolean;
   activeRecipeAction: RecipesWorkspaceActionState;
   onCreateRecipe: (values: RecipesWorkspaceFormValues) => Promise<boolean>;
   onUpdateRecipe: (
@@ -510,6 +511,7 @@ export function RecipesWorkspaceBoard({
   inventoryOptions,
   status,
   errorMessage,
+  isRefreshing,
   activeRecipeAction,
   onCreateRecipe,
   onUpdateRecipe,
@@ -620,16 +622,29 @@ export function RecipesWorkspaceBoard({
     <div className="space-y-5">
       <RecipesSummary items={items} />
 
+      {errorMessage ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {errorMessage}
+        </div>
+      ) : null}
+
       <section className="rounded-2xl border bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h2 className="text-lg font-bold text-neutral-950">
               Recipe Mapping
             </h2>
-            <p className="mt-1 text-sm text-neutral-500">
-              Ingredient usage by menu item. Create, edit, and remove actions
-              are limited to ingredient mappings.
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-neutral-500">
+              <span>
+                Ingredient usage by menu item. Create, edit, and remove actions
+                are limited to ingredient mappings.
+              </span>
+              {isRefreshing ? (
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                  Refreshing...
+                </span>
+              ) : null}
+            </div>
           </div>
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-neutral-200 px-4 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400"

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { menuApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils/format";
@@ -39,6 +39,7 @@ type MenuWorkspaceCatalogResult = {
   categories: MenuWorkspaceCategory[];
   status: MenuWorkspaceState;
   errorMessage: string | null;
+  isRefreshing: boolean;
   reload: () => Promise<void>;
 };
 
@@ -173,9 +174,16 @@ export function useMenuWorkspaceCatalog(): MenuWorkspaceCatalogResult {
   const [categories, setCategories] = useState<MenuWorkspaceCategory[]>([]);
   const [status, setStatus] = useState<MenuWorkspaceState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
 
   const loadCatalog = useCallback(async () => {
-    setStatus("loading");
+    const isBackgroundRefresh = hasLoadedOnceRef.current;
+    if (isBackgroundRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setStatus("loading");
+    }
     setErrorMessage(null);
 
     try {
@@ -204,12 +212,19 @@ export function useMenuWorkspaceCatalog(): MenuWorkspaceCatalogResult {
 
       setItems(mappedItems);
       setCategories(mappedCategories);
+      hasLoadedOnceRef.current = true;
       setStatus("ready");
     } catch (error) {
-      setItems([]);
-      setCategories([]);
       setErrorMessage(getErrorMessage(error));
-      setStatus("error");
+      if (hasLoadedOnceRef.current) {
+        setStatus("ready");
+      } else {
+        setItems([]);
+        setCategories([]);
+        setStatus("error");
+      }
+    } finally {
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -223,8 +238,9 @@ export function useMenuWorkspaceCatalog(): MenuWorkspaceCatalogResult {
       categories,
       status,
       errorMessage,
+      isRefreshing,
       reload: loadCatalog,
     }),
-    [categories, errorMessage, items, loadCatalog, status],
+    [categories, errorMessage, isRefreshing, items, loadCatalog, status],
   );
 }

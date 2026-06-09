@@ -168,7 +168,7 @@ function SidebarContent({
   onCloseMobile?: () => void;
   showMobileClose?: boolean;
 }) {
-  const [pathname] = useLocation();
+  const [pathname, setLocation] = useLocation();
   const currentMode = getStoredBusinessMode();
 
   const visibleGroups = useMemo(
@@ -192,7 +192,7 @@ function SidebarContent({
   async function handleLogout() {
     await authApi.logout();
 
-    window.location.href = ROUTES.LOGIN;
+    setLocation(ROUTES.LOGIN);
   }
 
   return (
