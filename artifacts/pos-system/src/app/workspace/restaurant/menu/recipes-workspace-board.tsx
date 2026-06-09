@@ -3,12 +3,12 @@ import {
   AlertTriangle,
   Beaker,
   CheckCircle2,
-  ClipboardList,
   Loader2,
   PackageSearch,
   Pencil,
   Plus,
   Search,
+  Trash2,
   UtensilsCrossed,
   X,
 } from "lucide-react";
@@ -27,12 +27,13 @@ type RecipesWorkspaceBoardProps = {
   inventoryOptions: RecipesWorkspaceInventoryOption[];
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
-  savingRecipeKey: string | null;
+  activeRecipeAction: RecipesWorkspaceActionState;
   onCreateRecipe: (values: RecipesWorkspaceFormValues) => Promise<boolean>;
   onUpdateRecipe: (
     recipeId: string,
     values: RecipesWorkspaceFormValues,
   ) => Promise<boolean>;
+  onDeleteRecipe: (recipeId: string) => Promise<boolean>;
 };
 
 export type RecipesWorkspaceFormValues = {
@@ -42,6 +43,17 @@ export type RecipesWorkspaceFormValues = {
 };
 
 type RecipesWorkspaceFormMode = "create" | "edit";
+
+export type RecipesWorkspaceActionState = {
+  key: string;
+  type: "save" | "delete";
+} | null;
+
+type PendingRecipeDelete = {
+  recipeId: string;
+  menuItemName: string;
+  ingredientName: string;
+} | null;
 
 const recipeFilters: Array<{
   id: RecipesWorkspaceFilter;
@@ -255,8 +267,7 @@ function RecipesWorkspaceForm({
             {mode === "create" ? "Create Recipe Ingredient" : "Edit Recipe Ingredient"}
           </h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Basic mapping only. Delete and advanced recipe costing are not wired
-            in V3 yet.
+            Basic mapping only. Advanced recipe costing is not wired in V3 yet.
           </p>
         </div>
         <button
@@ -365,18 +376,25 @@ function RecipesWorkspaceForm({
 
 function RecipeItemCard({
   item,
-  savingRecipeKey,
+  activeRecipeAction,
   onCreateForMenuItem,
   onEditIngredient,
+  onRequestDeleteIngredient,
 }: {
   item: RecipesWorkspaceMenuItem;
-  savingRecipeKey: string | null;
+  activeRecipeAction: RecipesWorkspaceActionState;
   onCreateForMenuItem: (item: RecipesWorkspaceMenuItem) => void;
   onEditIngredient: (
     item: RecipesWorkspaceMenuItem,
     ingredient: RecipesWorkspaceIngredient,
   ) => void;
+  onRequestDeleteIngredient: (
+    item: RecipesWorkspaceMenuItem,
+    ingredient: RecipesWorkspaceIngredient,
+  ) => void;
 }) {
+  const isBusy = activeRecipeAction !== null;
+
   return (
     <article className="rounded-2xl border bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-3 border-b border-neutral-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
@@ -410,16 +428,17 @@ function RecipeItemCard({
 
       {item.ingredients.length > 0 ? (
         <div className="mt-4 overflow-hidden rounded-xl border border-neutral-100">
-          <div className="grid grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr] gap-3 bg-neutral-50 px-3 py-2 text-xs font-semibold uppercase text-neutral-500">
+          <div className="grid grid-cols-[1.2fr_0.65fr_0.65fr_0.65fr_1fr] gap-3 bg-neutral-50 px-3 py-2 text-xs font-semibold uppercase text-neutral-500">
             <span>Ingredient</span>
             <span>Needed</span>
             <span>Stock</span>
             <span>Cost</span>
+            <span>Actions</span>
           </div>
           <div className="divide-y divide-neutral-100">
             {item.ingredients.map((ingredient) => (
               <div
-                className="grid grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr] gap-3 px-3 py-3 text-sm"
+                className="grid grid-cols-[1.2fr_0.65fr_0.65fr_0.65fr_1fr] gap-3 px-3 py-3 text-sm"
                 key={ingredient.id}
               >
                 <span className="font-semibold text-neutral-900">
@@ -434,6 +453,32 @@ function RecipeItemCard({
                 <span className="font-semibold text-neutral-800">
                   {ingredient.estimatedCostLabel ?? "-"}
                 </span>
+                <span className="flex flex-wrap gap-2">
+                  <button
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 px-2.5 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400"
+                    disabled={isBusy}
+                    onClick={() => onEditIngredient(item, ingredient)}
+                    type="button"
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                    {activeRecipeAction?.key === ingredient.id &&
+                    activeRecipeAction.type === "save"
+                      ? "Saving"
+                      : "Edit"}
+                  </button>
+                  <button
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-red-100 px-2.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-neutral-400"
+                    disabled={isBusy}
+                    onClick={() => onRequestDeleteIngredient(item, ingredient)}
+                    type="button"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    {activeRecipeAction?.key === ingredient.id &&
+                    activeRecipeAction.type === "delete"
+                      ? "Removing"
+                      : "Remove"}
+                  </button>
+                </span>
               </div>
             ))}
           </div>
@@ -447,34 +492,12 @@ function RecipeItemCard({
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-neutral-200 px-3 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400"
-          disabled={savingRecipeKey !== null}
+          disabled={isBusy}
           onClick={() => onCreateForMenuItem(item)}
           type="button"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           Add Ingredient
-        </button>
-        {item.ingredients.map((ingredient) => (
-          <button
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-neutral-200 px-3 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400"
-            disabled={savingRecipeKey !== null}
-            key={ingredient.id}
-            onClick={() => onEditIngredient(item, ingredient)}
-            type="button"
-          >
-            <Pencil className="h-4 w-4" aria-hidden="true" />
-            {savingRecipeKey === ingredient.id
-              ? "Saving..."
-              : `Edit ${ingredient.name}`}
-          </button>
-        ))}
-        <button
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-neutral-200 px-3 text-sm font-semibold text-neutral-400"
-          disabled
-          type="button"
-        >
-          <ClipboardList className="h-4 w-4" aria-hidden="true" />
-          Delete Not Wired Yet
         </button>
       </div>
     </article>
@@ -487,9 +510,10 @@ export function RecipesWorkspaceBoard({
   inventoryOptions,
   status,
   errorMessage,
-  savingRecipeKey,
+  activeRecipeAction,
   onCreateRecipe,
   onUpdateRecipe,
+  onDeleteRecipe,
 }: RecipesWorkspaceBoardProps) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RecipesWorkspaceFilter>("all");
@@ -501,6 +525,8 @@ export function RecipesWorkspaceBoard({
   const [formValues, setFormValues] =
     useState<RecipesWorkspaceFormValues>(emptyFormValues);
   const [formError, setFormError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] =
+    useState<PendingRecipeDelete>(null);
 
   const filteredItems = useMemo(
     () =>
@@ -537,6 +563,17 @@ export function RecipesWorkspaceBoard({
     setFormError(null);
   }
 
+  function openDeleteConfirmation(
+    item: RecipesWorkspaceMenuItem,
+    ingredient: RecipesWorkspaceIngredient,
+  ) {
+    setPendingDelete({
+      recipeId: ingredient.id,
+      menuItemName: item.name,
+      ingredientName: ingredient.name,
+    });
+  }
+
   async function submitForm() {
     if (!formMode) return;
 
@@ -554,6 +591,13 @@ export function RecipesWorkspaceBoard({
           : false;
 
     if (didSave) closeForm();
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+
+    const didDelete = await onDeleteRecipe(pendingDelete.recipeId);
+    if (didDelete) setPendingDelete(null);
   }
 
   if (status === "loading") return <RecipesWorkspaceSkeleton />;
@@ -583,13 +627,13 @@ export function RecipesWorkspaceBoard({
               Recipe Mapping
             </h2>
             <p className="mt-1 text-sm text-neutral-500">
-              Read-only ingredient usage by menu item. Recipe create, edit, and
-              delete are not wired in V3 yet.
+              Ingredient usage by menu item. Create, edit, and remove actions
+              are limited to ingredient mappings.
             </p>
           </div>
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-neutral-200 px-4 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400"
-            disabled={savingRecipeKey !== null}
+            disabled={activeRecipeAction !== null}
             onClick={() => openCreateForm()}
             type="button"
           >
@@ -635,7 +679,7 @@ export function RecipesWorkspaceBoard({
         <RecipesWorkspaceForm
           error={formError}
           inventoryOptions={inventoryOptions}
-          isSaving={savingRecipeKey !== null}
+          isSaving={activeRecipeAction !== null}
           menuOptions={menuOptions}
           mode={formMode}
           onCancel={closeForm}
@@ -649,15 +693,58 @@ export function RecipesWorkspaceBoard({
         />
       ) : null}
 
+      {pendingDelete ? (
+        <section className="rounded-2xl border border-red-100 bg-red-50 p-4 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-red-900">
+                Remove Ingredient
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-red-800">
+                {pendingDelete.ingredientName} from {pendingDelete.menuItemName}
+              </p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-red-700">
+                This removes the ingredient from future stock deduction for this
+                menu item. Past stock movements stay unchanged. Do not remove
+                this while related active orders are still in progress.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-red-200 bg-white px-4 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+                disabled={activeRecipeAction !== null}
+                onClick={() => setPendingDelete(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+                disabled={activeRecipeAction !== null}
+                onClick={confirmDelete}
+                type="button"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                {activeRecipeAction?.key === pendingDelete.recipeId &&
+                activeRecipeAction.type === "delete"
+                  ? "Removing..."
+                  : "Remove Ingredient"}
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {filteredItems.length > 0 ? (
         <div className="grid gap-4 xl:grid-cols-2">
           {filteredItems.map((item) => (
             <RecipeItemCard
+              activeRecipeAction={activeRecipeAction}
               item={item}
               key={item.id}
               onCreateForMenuItem={openCreateForm}
               onEditIngredient={openEditForm}
-              savingRecipeKey={savingRecipeKey}
+              onRequestDeleteIngredient={openDeleteConfirmation}
             />
           ))}
         </div>

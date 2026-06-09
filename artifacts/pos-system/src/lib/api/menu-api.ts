@@ -246,6 +246,21 @@ export const menuApi = {
     return apiClient.delete<ApiEnvelope>(`/api/recipes/${id}`);
   },
 
+  async deleteRecipeWithResult<T = ApiRecord>(
+    id: string,
+  ): Promise<MenuApiResult<T>> {
+    const response = await apiFetch(`/api/recipes/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: await readApiEnvelope<T>(response),
+    };
+  },
+
   uploadImage(file: File) {
     const formData = new FormData();
     formData.append("image", file);

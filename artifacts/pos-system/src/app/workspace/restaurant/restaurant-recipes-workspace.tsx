@@ -2,7 +2,10 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { RecipesWorkspaceBoard } from "@/app/workspace/restaurant/menu/recipes-workspace-board";
-import type { RecipesWorkspaceFormValues } from "@/app/workspace/restaurant/menu/recipes-workspace-board";
+import type {
+  RecipesWorkspaceActionState,
+  RecipesWorkspaceFormValues,
+} from "@/app/workspace/restaurant/menu/recipes-workspace-board";
 import { useRecipesWorkspaceCatalog } from "@/app/workspace/restaurant/menu/use-recipes-workspace-catalog";
 import { WorkspaceShell } from "@/app/workspace/workspace-shell";
 import { ROUTES } from "@/constants/routes";
@@ -15,8 +18,9 @@ import {
 
 export default function RestaurantRecipesWorkspace() {
   const catalog = useRecipesWorkspaceCatalog();
-  const [savingRecipeKey, setSavingRecipeKey] = useState<string | null>(null);
-  const savingRecipeKeyRef = useRef<string | null>(null);
+  const [activeRecipeAction, setActiveRecipeAction] =
+    useState<RecipesWorkspaceActionState>(null);
+  const activeRecipeActionRef = useRef<RecipesWorkspaceActionState>(null);
 
   function buildCreateRecipePayload(
     values: RecipesWorkspaceFormValues,
@@ -37,30 +41,35 @@ export default function RestaurantRecipesWorkspace() {
     };
   }
 
-  function startSaving(recipeKey: string) {
-    if (savingRecipeKeyRef.current !== null) {
+  function startRecipeAction(
+    recipeKey: string,
+    type: NonNullable<RecipesWorkspaceActionState>["type"],
+  ) {
+    if (activeRecipeActionRef.current !== null) {
       if (import.meta.env.DEV) {
-        console.debug("[recipes-v3] duplicate recipe save blocked", {
-          activeRecipeKey: savingRecipeKeyRef.current,
+        console.debug("[recipes-v3] duplicate recipe action blocked", {
+          activeRecipeAction: activeRecipeActionRef.current,
           recipeKey,
+          type,
         });
       }
 
       return false;
     }
 
-    savingRecipeKeyRef.current = recipeKey;
-    setSavingRecipeKey(recipeKey);
+    const nextAction = { key: recipeKey, type };
+    activeRecipeActionRef.current = nextAction;
+    setActiveRecipeAction(nextAction);
     return true;
   }
 
-  function stopSaving() {
-    savingRecipeKeyRef.current = null;
-    setSavingRecipeKey(null);
+  function stopRecipeAction() {
+    activeRecipeActionRef.current = null;
+    setActiveRecipeAction(null);
   }
 
   async function handleCreateRecipe(values: RecipesWorkspaceFormValues) {
-    if (!startSaving("create")) return false;
+    if (!startRecipeAction("create", "save")) return false;
 
     try {
       const result = await menuApi.createRecipeWithResult(
@@ -81,7 +90,7 @@ export default function RestaurantRecipesWorkspace() {
       toast.error(getApiErrorMessage(error, "Failed to create recipe"));
       return false;
     } finally {
-      stopSaving();
+      stopRecipeAction();
     }
   }
 
@@ -89,7 +98,7 @@ export default function RestaurantRecipesWorkspace() {
     recipeId: string,
     values: RecipesWorkspaceFormValues,
   ) {
-    if (!startSaving(recipeId)) return false;
+    if (!startRecipeAction(recipeId, "save")) return false;
 
     try {
       const result = await menuApi.updateRecipeWithResult(
@@ -111,7 +120,31 @@ export default function RestaurantRecipesWorkspace() {
       toast.error(getApiErrorMessage(error, "Failed to update recipe"));
       return false;
     } finally {
-      stopSaving();
+      stopRecipeAction();
+    }
+  }
+
+  async function handleDeleteRecipe(recipeId: string) {
+    if (!startRecipeAction(recipeId, "delete")) return false;
+
+    try {
+      const result = await menuApi.deleteRecipeWithResult(recipeId);
+
+      if (!result.ok || !result.body.success) {
+        toast.error(
+          result.body.message || `Failed to remove ingredient (${result.status})`,
+        );
+        return false;
+      }
+
+      await catalog.reload();
+      toast.success("Recipe ingredient removed.");
+      return true;
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to remove ingredient"));
+      return false;
+    } finally {
+      stopRecipeAction();
     }
   }
 
@@ -123,13 +156,14 @@ export default function RestaurantRecipesWorkspace() {
       currentRoutePath={ROUTES.RECIPES}
     >
       <RecipesWorkspaceBoard
+        activeRecipeAction={activeRecipeAction}
         errorMessage={catalog.errorMessage}
         inventoryOptions={catalog.inventoryOptions}
         items={catalog.items}
         menuOptions={catalog.menuOptions}
         onCreateRecipe={handleCreateRecipe}
+        onDeleteRecipe={handleDeleteRecipe}
         onUpdateRecipe={handleUpdateRecipe}
-        savingRecipeKey={savingRecipeKey}
         status={catalog.status}
       />
     </WorkspaceShell>

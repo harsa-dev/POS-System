@@ -1,9 +1,15 @@
 import { Router } from "express";
+import { OrderStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireRole, getCurrentUser, getRestaurantForUser } from "../lib/auth.js";
 import { MANAGEMENT_ROLES, OWNER_ONLY, ERR } from "../lib/constants.js";
 
 const router = Router();
+
+const TERMINAL_ORDER_STATUSES: OrderStatus[] = [
+  OrderStatus.COMPLETED,
+  OrderStatus.CANCELLED,
+];
 
 function cleanOptionalString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -191,8 +197,28 @@ router.delete("/recipes/:id", async (req, res) => {
     const { id } = req.params;
     const recipe = await prisma.recipe.findFirst({
       where: { id, menuItem: { restaurantId: restaurant.id } },
+      include: { menuItem: true },
     });
     if (!recipe) return void res.status(404).json({ success: false, message: "Recipe not found" });
+    const activeOrderItem = await prisma.orderItem.findFirst({
+      where: {
+        menuItemId: recipe.menuItemId,
+        order: {
+          restaurantId: restaurant.id,
+          status: { notIn: TERMINAL_ORDER_STATUSES },
+        },
+      },
+      select: {
+        id: true,
+        order: { select: { orderNumber: true, status: true } },
+      },
+    });
+    if (activeOrderItem)
+      return void res.status(400).json({
+        success: false,
+        message:
+          "This ingredient cannot be removed while active orders for this menu item exist.",
+      });
     await prisma.recipe.delete({ where: { id } });
     res.json({ success: true, message: "Recipe deleted" });
   } catch {
