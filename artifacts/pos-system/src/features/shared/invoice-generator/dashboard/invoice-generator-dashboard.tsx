@@ -13,25 +13,37 @@ import { InvoiceForm } from "../components/invoice-form";
 import { InvoicePreview } from "../components/invoice-preview";
 import { InvoiceStatus } from "../components/invoice-status";
 import { createInitialInvoice } from "../data/invoice-mock";
+import {
+  clearInvoiceDraft,
+  loadInvoiceDraft,
+  saveInvoiceDraft,
+} from "../services/invoice-draft-storage";
 import { calculateInvoiceTotals } from "../services/invoice-calculations";
 import { downloadInvoicePdf } from "../services/invoice-pdf";
 import { validateInvoiceDraft } from "../services/invoice-validation";
 import type { InvoiceDraft } from "@/features/shared/types";
 
 export function InvoiceGeneratorDashboard() {
-  const [invoice, setInvoice] = useState<InvoiceDraft>(() => createInitialInvoice());
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [storedInvoice] = useState(() => loadInvoiceDraft());
+  const [invoice, setInvoice] = useState<InvoiceDraft>(
+    () => storedInvoice?.draft ?? createInitialInvoice(),
+  );
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(
+    () => storedInvoice?.savedAt ?? null,
+  );
 
   const totals = useMemo(() => calculateInvoiceTotals(invoice), [invoice]);
   const validationIssues = useMemo(() => validateInvoiceDraft(invoice), [invoice]);
 
   function handleReset() {
+    clearInvoiceDraft();
     setInvoice(createInitialInvoice());
     setLastSavedAt(null);
   }
 
   function handleSave() {
-    setLastSavedAt(new Date().toLocaleString("id-ID"));
+    const savedDraft = saveInvoiceDraft(invoice);
+    setLastSavedAt(savedDraft?.savedAt ?? null);
   }
 
   return (
@@ -46,7 +58,7 @@ export function InvoiceGeneratorDashboard() {
               <InvoiceStatus status={invoice.paymentStatus} />
               {lastSavedAt && (
                 <span className="text-sm text-neutral-500">
-                  Local draft saved: {lastSavedAt}
+                  Last saved locally at: {new Date(lastSavedAt).toLocaleString("id-ID")}
                 </span>
               )}
             </div>
