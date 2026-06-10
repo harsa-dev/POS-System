@@ -65,6 +65,7 @@ model Restaurant {
   categories        Category[]
   tables            DiningTable[]
   orders            Order[]
+  invoices          Invoice[]
   menuItems         MenuItem[]
   inventoryItems    InventoryItem[]
   shifts            Shift[]
@@ -221,6 +222,61 @@ model Payment {
   @@index([status])
   @@index([method])
   @@index([provider])
+}
+
+model Invoice {
+  id String @id @default(cuid())
+
+  restaurantId String
+
+  invoiceNumber String
+  invoiceDate   DateTime
+  dueDate       DateTime?
+  status        InvoiceStatus @default(DRAFT)
+
+  businessName    String
+  businessEmail   String?
+  businessPhone   String?
+  businessAddress String?
+
+  customerName    String
+  customerPhone   String?
+  customerAddress String?
+
+  notes String?
+
+  discountType   InvoiceDiscountType @default(PERCENTAGE)
+  discountValue  Float               @default(0)
+  subtotal       Int                 @default(0)
+  discountAmount Int                 @default(0)
+  grandTotal     Int                 @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  cancelledAt DateTime?
+
+  restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items      InvoiceItem[]
+
+  @@unique([restaurantId, invoiceNumber])
+  @@index([restaurantId])
+  @@index([status])
+  @@index([invoiceDate])
+  @@index([createdAt])
+}
+
+model InvoiceItem {
+  id        String @id @default(cuid())
+  invoiceId String
+
+  description String
+  quantity    Float
+  unitPrice   Int
+  lineTotal   Int
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
 }
 
 model OrderItem {
@@ -410,6 +466,18 @@ enum PaymentStatus {
   PAID
   FAILED
   EXPIRED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+}
+
+enum InvoiceDiscountType {
+  PERCENTAGE
+  FIXED
 }
 
 enum OrderStatus {

@@ -35,3 +35,11 @@ export {
 export { tablesApi } from "@/lib/api/tables-api";
 export { settingsApi } from "@/lib/api/settings-api";
 export { paymentsApi } from "@/lib/api/payments-api";
+export {
+  invoiceApi,
+  type InvoiceApiResult,
+  type InvoiceBackendStatus,
+  type InvoiceDiscountType,
+  type InvoicePayload,
+  type InvoiceRecord,
+} from "@/lib/api/invoice-api";
