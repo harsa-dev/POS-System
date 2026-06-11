@@ -7,6 +7,7 @@ import {
   verifyPassword,
   getCurrentUser,
 } from "../lib/auth.js";
+import { createBusinessTenantForRestaurant } from "../lib/business-context/create-business-tenant-for-restaurant.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { successResponse } from "../lib/responses/success-response.js";
@@ -150,8 +151,16 @@ router.post("/auth/register", async (req, res) => {
         },
       });
 
+      const restaurantName = `${name}'s Restaurant`;
+
       const restaurant = await tx.restaurant.create({
-        data: { name: `${name}'s Restaurant`, ownerId: newUser.id },
+        data: { name: restaurantName, ownerId: newUser.id },
+      });
+
+      await createBusinessTenantForRestaurant(tx, {
+        restaurantId: restaurant.id,
+        restaurantName,
+        ownerId: newUser.id,
       });
 
       await tx.user.update({
