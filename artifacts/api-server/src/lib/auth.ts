@@ -1,11 +1,16 @@
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response } from "express";
 import type { Role } from "@prisma/client";
+
 import { prisma } from "./prisma.js";
-import { isOwnerRole } from "../services/permissions/index.js";
+import {
+  getRestaurantForUser,
+  type RestaurantScopedUser,
+} from "./business-context/get-restaurant-for-user.js";
 
 export type { Role };
+export { getRestaurantForUser, type RestaurantScopedUser };
 
 const getSecret = () => {
   const secretKey = process.env.JWT_SECRET;
@@ -67,17 +72,4 @@ export async function requireRole(
     return null;
   }
   return user;
-}
-
-export async function getRestaurantForUser(user: {
-  id: string;
-  role: Role;
-  restaurantId: string | null;
-}) {
-  return prisma.restaurant.findFirst({
-    where:
-      isOwnerRole(user.role)
-        ? { ownerId: user.id }
-        : { id: user.restaurantId ?? "" },
-  });
 }
