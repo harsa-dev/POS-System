@@ -8,11 +8,16 @@ import { errorCodes } from "./errors/error-codes.js";
 import { errorResponse } from "./responses/error-response.js";
 import {
   getRestaurantForUser,
+  requireRestaurantForUser,
   type RestaurantScopedUser,
 } from "./business-context/get-restaurant-for-user.js";
 
 export type { Role };
-export { getRestaurantForUser, type RestaurantScopedUser };
+export {
+  getRestaurantForUser,
+  requireRestaurantForUser,
+  type RestaurantScopedUser,
+};
 
 const getSecret = () => {
   const secretKey = process.env.JWT_SECRET;
