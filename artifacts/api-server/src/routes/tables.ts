@@ -1,9 +1,15 @@
 import { Router } from "express";
+
+import { requireRole } from "../lib/auth.js";
+import { createRestaurantScopeWhere, requireBusinessContextForUser } from "../lib/business-context/index.js";
+import { MANAGEMENT_AND_SERVER_ROLES, MANAGEMENT_ROLES, OPS_ROLES } from "../lib/constants.js";
+import { errorCodes } from "../lib/errors/error-codes.js";
+import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { prisma } from "../lib/prisma.js";
-import { requireRole, getRestaurantForUser } from "../lib/auth.js";
-import { OPS_ROLES, MANAGEMENT_ROLES, MANAGEMENT_AND_SERVER_ROLES, ERR } from "../lib/constants.js";
 import { realtime } from "../lib/realtime.js";
 import { REALTIME_EVENTS } from "../lib/realtime-events.js";
+import { errorResponse } from "../lib/responses/error-response.js";
+import { successResponse } from "../lib/responses/success-response.js";
 
 const router = Router();
 
@@ -11,15 +17,17 @@ router.get("/tables", async (req, res) => {
   try {
     const user = await requireRole(req, res, OPS_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
+
+    const businessContext = await requireBusinessContextForUser(user);
+
     const tables = await prisma.diningTable.findMany({
-      where: { restaurantId: restaurant.id },
+      where: createRestaurantScopeWhere(businessContext),
       orderBy: { createdAt: "desc" },
     });
-    res.json({ success: true, data: tables });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch tables" });
+
+    return successResponse(res, { data: tables });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -27,18 +35,39 @@ router.post("/tables", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
+
+    const businessContext = await requireBusinessContextForUser(user);
     const name = String(req.body?.name ?? "").trim();
     const capacity = Number(req.body?.capacity ?? 2);
-    if (!name) return void res.status(400).json({ success: false, message: "Table name is required" });
-    if (capacity <= 0) return void res.status(400).json({ success: false, message: "Capacity must be > 0" });
+
+    if (!name) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Table name is required.",
+      });
+    }
+
+    if (capacity <= 0) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Capacity must be greater than 0.",
+      });
+    }
+
     const table = await prisma.diningTable.create({
-      data: { name, capacity, status: "AVAILABLE", restaurantId: restaurant.id },
+      data: {
+        name,
+        capacity,
+        status: "AVAILABLE",
+        restaurantId: businessContext.businessId,
+      },
     });
-    res.status(201).json({ success: true, data: table });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to create table" });
+
+    return successResponse(res, { data: table, status: 201 });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -46,11 +75,25 @@ router.patch("/tables/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
+
+    const businessContext = await requireBusinessContextForUser(user);
     const { id } = req.params;
-    const existing = await prisma.diningTable.findFirst({ where: { id, restaurantId: restaurant.id } });
-    if (!existing) return void res.status(404).json({ success: false, message: "Table not found" });
+
+    const existing = await prisma.diningTable.findFirst({
+      where: {
+        id,
+        ...createRestaurantScopeWhere(businessContext),
+      },
+    });
+
+    if (!existing) {
+      return errorResponse(res, {
+        status: 404,
+        code: errorCodes.notFound,
+        message: "Table not found.",
+      });
+    }
+
     const { name, capacity, status, isActive } = req.body ?? {};
     const table = await prisma.diningTable.update({
       where: { id },
@@ -61,9 +104,10 @@ router.patch("/tables/:id", async (req, res) => {
         ...(typeof isActive === "boolean" ? { isActive } : {}),
       },
     });
-    res.json({ success: true, data: table });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to update table" });
+
+    return successResponse(res, { data: table });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -71,18 +115,36 @@ router.delete("/tables/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
+
+    const businessContext = await requireBusinessContextForUser(user);
     const { id } = req.params;
-    const existing = await prisma.diningTable.findFirst({ where: { id, restaurantId: restaurant.id } });
-    if (!existing) return void res.status(404).json({ success: false, message: "Table not found" });
+
+    const existing = await prisma.diningTable.findFirst({
+      where: {
+        id,
+        ...createRestaurantScopeWhere(businessContext),
+      },
+    });
+
+    if (!existing) {
+      return errorResponse(res, {
+        status: 404,
+        code: errorCodes.notFound,
+        message: "Table not found.",
+      });
+    }
+
     const table = await prisma.diningTable.update({
       where: { id },
       data: { isActive: false, status: "INACTIVE" },
     });
-    res.json({ success: true, message: "Table deactivated", data: table });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to deactivate table" });
+
+    return successResponse(res, {
+      data: table,
+      message: "Table deactivated.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -90,21 +152,46 @@ router.patch("/tables/:id/mark-clean", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_AND_SERVER_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    const { id } = req.params;
-    const table = await prisma.diningTable.findFirst({ where: { id, restaurantId: restaurant.id } });
-    if (!table) return void res.status(404).json({ success: false, message: "Table not found" });
-    if (table.status !== "CLEANING") return void res.status(400).json({ success: false, message: "Table is not cleaning" });
-    const updated = await prisma.diningTable.update({ where: { id }, data: { status: "AVAILABLE" } });
-    res.json({ success: true, data: updated });
 
-    realtime.broadcast(restaurant.id, REALTIME_EVENTS.TABLE_UPDATED, {
+    const businessContext = await requireBusinessContextForUser(user);
+    const { id } = req.params;
+
+    const table = await prisma.diningTable.findFirst({
+      where: {
+        id,
+        ...createRestaurantScopeWhere(businessContext),
+      },
+    });
+
+    if (!table) {
+      return errorResponse(res, {
+        status: 404,
+        code: errorCodes.notFound,
+        message: "Table not found.",
+      });
+    }
+
+    if (table.status !== "CLEANING") {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.badRequest,
+        message: "Table is not cleaning.",
+      });
+    }
+
+    const updated = await prisma.diningTable.update({
+      where: { id },
+      data: { status: "AVAILABLE" },
+    });
+
+    realtime.broadcast(businessContext.businessId, REALTIME_EVENTS.TABLE_UPDATED, {
       id,
       status: "AVAILABLE",
     });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to clean table" });
+
+    return successResponse(res, { data: updated });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
