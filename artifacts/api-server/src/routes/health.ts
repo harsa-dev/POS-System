@@ -1,7 +1,11 @@
 import { Router, type IRouter } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
+
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
+import { errorCodes } from "../lib/errors/error-codes.js";
+import { successResponse } from "../lib/responses/success-response.js";
+import { errorResponse } from "../lib/responses/error-response.js";
 
 const router: IRouter = Router();
 
@@ -17,23 +21,30 @@ router.get("/health", async (_req, res) => {
 
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.json({
-      success: true,
-      status: "healthy",
-      uptime,
-      database: "connected",
-      environment,
-      timestamp,
+
+    return successResponse(res, {
+      data: {
+        status: "healthy",
+        uptime,
+        database: "connected",
+        environment,
+        timestamp,
+      },
     });
   } catch (err) {
     logger.error({ err }, "GET /health database check failed");
-    res.status(503).json({
-      success: false,
-      status: "unhealthy",
-      uptime,
-      database: "unreachable",
-      environment,
-      timestamp,
+
+    return errorResponse(res, {
+      status: 503,
+      code: errorCodes.serviceUnavailable,
+      message: "Service unavailable.",
+      details: {
+        status: "unhealthy",
+        uptime,
+        database: "unreachable",
+        environment,
+        timestamp,
+      },
     });
   }
 });
