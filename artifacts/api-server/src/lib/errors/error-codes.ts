@@ -20,6 +20,11 @@ export const errorCodes = {
   invalidStateTransition: "INVALID_STATE_TRANSITION",
   insufficientStock: "INSUFFICIENT_STOCK",
 
+  paymentProviderNotConfigured: "PAYMENT_PROVIDER_NOT_CONFIGURED",
+  paymentProviderError: "PAYMENT_PROVIDER_ERROR",
+  paymentWebhookPayloadInvalid: "PAYMENT_WEBHOOK_PAYLOAD_INVALID",
+  paymentWebhookSignatureInvalid: "PAYMENT_WEBHOOK_SIGNATURE_INVALID",
+
   inventoryItemNotFound: "INVENTORY_ITEM_NOT_FOUND",
   invalidStockQuantity: "INVALID_STOCK_QUANTITY",
   invalidStockMovementType: "INVALID_STOCK_MOVEMENT_TYPE",
