@@ -1,4 +1,5 @@
 import { Router } from "express";
+
 import { prisma } from "../lib/prisma.js";
 import {
   createSessionToken,
@@ -6,7 +7,10 @@ import {
   verifyPassword,
   getCurrentUser,
 } from "../lib/auth.js";
-import { logger } from "../lib/logger.js";
+import { errorCodes } from "../lib/errors/error-codes.js";
+import { handleApiError } from "../lib/errors/handle-api-error.js";
+import { successResponse } from "../lib/responses/success-response.js";
+import { errorResponse } from "../lib/responses/error-response.js";
 
 const router = Router();
 const sessionCookieMaxAgeMs = 60 * 60 * 24 * 7 * 1000;
@@ -25,86 +29,115 @@ function getSessionCookieOptions() {
 router.post("/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body ?? {};
+
     if (!email || !password) {
-      return void res
-        .status(400)
-        .json({ success: false, message: "Email dan password wajib diisi." });
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Email dan password wajib diisi.",
+      });
     }
+
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      return void res
-        .status(401)
-        .json({ success: false, message: "Email tidak ditemukan." });
+    const isValidPassword = user
+      ? await verifyPassword(password, user.passwordHash)
+      : false;
+
+    if (!user || !isValidPassword) {
+      return errorResponse(res, {
+        status: 401,
+        code: errorCodes.invalidCredentials,
+        message: "Email atau password salah.",
+      });
     }
+
     if (!user.isActive) {
-      return void res
-        .status(403)
-        .json({ success: false, message: "Akun ini sudah dinonaktifkan." });
+      return errorResponse(res, {
+        status: 403,
+        code: errorCodes.userInactive,
+        message: "Akun ini sudah dinonaktifkan.",
+      });
     }
-    const valid = await verifyPassword(password, user.passwordHash);
-    if (!valid) {
-      return void res
-        .status(401)
-        .json({ success: false, message: "Password salah." });
-    }
+
     const token = await createSessionToken(user.id);
+
     res.cookie("session", token, {
       ...getSessionCookieOptions(),
       maxAge: sessionCookieMaxAgeMs,
     });
-    res.json({ success: true, message: "Login berhasil." });
+
+    return successResponse(res, {
+      message: "Login berhasil.",
+      data: null,
+    });
   } catch (error) {
-    logger.error({ err: error }, "POST /auth/login failed");
-    res.status(500).json({ success: false, message: "Internal server error." });
+    return handleApiError(res, error);
   }
 });
 
 router.post("/auth/logout", (_req, res) => {
   res.clearCookie("session", getSessionCookieOptions());
-  res.json({ success: true, message: "Logout berhasil." });
+
+  return successResponse(res, {
+    message: "Logout berhasil.",
+    data: null,
+  });
 });
 
 router.get("/auth/me", async (req, res) => {
   try {
     const user = await getCurrentUser(req);
-    if (!user) {
-      return void res
-        .status(401)
-        .json({ success: false, message: "Unauthorized" });
-    }
-    const { passwordHash, ...safeUser } = user;
-    res.json({ success: true, data: safeUser });
-  } catch (error) {
-    console.error("[AUTH_ME_ERROR]", error);
 
-    res.status(500).json({
-      success: false,
-      message: "Internal server error.",
+    if (!user) {
+      return errorResponse(res, {
+        status: 401,
+        code: errorCodes.unauthorized,
+        message: "Unauthorized.",
+      });
+    }
+
+    const { passwordHash, ...safeUser } = user;
+
+    return successResponse(res, {
+      data: safeUser,
     });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
 router.post("/auth/register", async (req, res) => {
   try {
     const { name, email, password } = req.body ?? {};
+
     if (!name || !email || !password) {
-      return void res
-        .status(400)
-        .json({ success: false, message: "Invalid input" });
-    }
-    if (password.length < 8) {
-      return void res.status(400).json({
-        success: false,
-        message: "Password must be at least 8 characters",
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Invalid input.",
       });
     }
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return void res
-        .status(409)
-        .json({ success: false, message: "Email already registered" });
+
+    if (password.length < 8) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.passwordTooWeak,
+        message: "Password must be at least 8 characters.",
+      });
     }
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+
+    if (existing) {
+      return errorResponse(res, {
+        status: 409,
+        code: errorCodes.emailAlreadyExists,
+        message: "Email already registered.",
+      });
+    }
+
     const passwordHash = await hashPassword(password);
+
     const user = await prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
         data: { name, email, passwordHash, role: "OWNER" },
@@ -116,27 +149,26 @@ router.post("/auth/register", async (req, res) => {
           createdAt: true,
         },
       });
+
       const restaurant = await tx.restaurant.create({
         data: { name: `${name}'s Restaurant`, ownerId: newUser.id },
       });
+
       await tx.user.update({
         where: { id: newUser.id },
         data: { restaurantId: restaurant.id },
       });
+
       return newUser;
     });
-    res.status(201).json({
-      success: true,
-      message: "User registered successfully",
+
+    return successResponse(res, {
+      status: 201,
+      message: "User registered successfully.",
       data: user,
     });
   } catch (error) {
-    console.error("[REGISTER_ERROR]", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+    return handleApiError(res, error);
   }
 });
 
