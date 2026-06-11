@@ -5,6 +5,7 @@ import { AppError } from "../errors/app-error.js";
 import { errorCodes } from "../errors/error-codes.js";
 import { prisma } from "../prisma.js";
 import type { BusinessContext } from "./business-context.types.js";
+import { resolveBusinessIdFromRestaurant } from "./resolve-business-id.js";
 
 export type RestaurantScopedUser = {
   id: string;
@@ -21,8 +22,10 @@ export type RestaurantBusinessContext = BusinessContext<Restaurant> & {
 export function createRestaurantBusinessContext(
   restaurant: Restaurant,
 ): RestaurantBusinessContext {
+  const businessId = resolveBusinessIdFromRestaurant(restaurant);
+
   return {
-    businessId: restaurant.id,
+    businessId,
     businessType: "restaurant",
     businessMode: "restaurant",
     businessName: restaurant.name,
