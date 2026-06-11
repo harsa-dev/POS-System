@@ -19,3 +19,5 @@ export {
   createRestaurantScopeWhere,
   getLegacyRestaurantIdFromBusiness,
 } from "./business-scope.js";
+
+export { resolveBusinessIdFromRestaurant } from "./resolve-business-id.js";
