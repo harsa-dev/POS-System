@@ -8,6 +8,11 @@ export const errorCodes = {
   internalServerError: "INTERNAL_SERVER_ERROR",
   serviceUnavailable: "SERVICE_UNAVAILABLE",
 
+  invalidCredentials: "INVALID_CREDENTIALS",
+  userInactive: "USER_INACTIVE",
+  emailAlreadyExists: "EMAIL_ALREADY_EXISTS",
+  passwordTooWeak: "PASSWORD_TOO_WEAK",
+
   businessNotFound: "BUSINESS_NOT_FOUND",
   restaurantNotFound: "RESTAURANT_NOT_FOUND",
   orderNotFound: "ORDER_NOT_FOUND",
