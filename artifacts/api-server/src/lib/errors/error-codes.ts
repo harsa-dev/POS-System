@@ -19,6 +19,12 @@ export const errorCodes = {
   duplicatePayment: "DUPLICATE_PAYMENT",
   invalidStateTransition: "INVALID_STATE_TRANSITION",
   insufficientStock: "INSUFFICIENT_STOCK",
+
+  inventoryItemNotFound: "INVENTORY_ITEM_NOT_FOUND",
+  invalidStockQuantity: "INVALID_STOCK_QUANTITY",
+  invalidStockMovementType: "INVALID_STOCK_MOVEMENT_TYPE",
+  negativeStockNotAllowed: "NEGATIVE_STOCK_NOT_ALLOWED",
+
   rateLimited: "RATE_LIMITED",
 } as const;
 
