@@ -1,7 +1,13 @@
 import { Router } from "express";
+
+import { requireRole } from "../lib/auth.js";
+import { createRestaurantScopeWhere, requireBusinessContextForUser } from "../lib/business-context/index.js";
+import { POS_ROLES } from "../lib/constants.js";
+import { errorCodes } from "../lib/errors/error-codes.js";
+import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { prisma } from "../lib/prisma.js";
-import { requireRole, getRestaurantForUser } from "../lib/auth.js";
-import { POS_ROLES, ERR } from "../lib/constants.js";
+import { errorResponse } from "../lib/responses/error-response.js";
+import { successResponse } from "../lib/responses/success-response.js";
 
 const router = Router();
 
@@ -9,19 +15,21 @@ router.get("/shifts", async (req, res) => {
   try {
     const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
+
+    const businessContext = await requireBusinessContextForUser(user);
+
     const shifts = await prisma.shift.findMany({
-      where: { restaurantId: restaurant.id },
+      where: createRestaurantScopeWhere(businessContext),
       include: {
         user: { select: { name: true, email: true } },
         orders: { select: { id: true, total: true, paymentMethod: true, status: true } },
       },
       orderBy: { openedAt: "desc" },
     });
-    res.json({ success: true, data: shifts });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch shifts" });
+
+    return successResponse(res, { data: shifts });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -29,26 +37,47 @@ router.post("/shifts/open", async (req, res) => {
   try {
     const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
+
+    const businessContext = await requireBusinessContextForUser(user);
     const openingCash = Number(req.body?.openingCash ?? 0);
-    if (openingCash < 0) return void res.status(400).json({ success: false, message: "Opening cash cannot be negative" });
+
+    if (openingCash < 0) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Opening cash cannot be negative.",
+      });
+    }
+
     const existing = await prisma.shift.findFirst({
-      where: { userId: user.id, restaurantId: restaurant.id, status: "OPEN" },
+      where: {
+        userId: user.id,
+        status: "OPEN",
+        ...createRestaurantScopeWhere(businessContext),
+      },
     });
-    if (existing) return void res.status(400).json({ success: false, message: "You already have an open shift" });
+
+    if (existing) {
+      return errorResponse(res, {
+        status: 409,
+        code: errorCodes.conflict,
+        message: "You already have an open shift.",
+      });
+    }
+
     const shift = await prisma.shift.create({
       data: {
         userId: user.id,
-        restaurantId: restaurant.id,
+        restaurantId: businessContext.businessId,
         openingCash,
         expectedCash: openingCash,
         status: "OPEN",
       },
     });
-    res.status(201).json({ success: true, data: shift });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to open shift" });
+
+    return successResponse(res, { data: shift, status: 201 });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -56,16 +85,22 @@ router.get("/shifts/current", async (req, res) => {
   try {
     const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
+
+    const businessContext = await requireBusinessContextForUser(user);
+
     const shift = await prisma.shift.findFirst({
-      where: { userId: user.id, restaurantId: restaurant.id, status: "OPEN" },
+      where: {
+        userId: user.id,
+        status: "OPEN",
+        ...createRestaurantScopeWhere(businessContext),
+      },
       include: { orders: true },
       orderBy: { openedAt: "desc" },
     });
-    res.json({ success: true, data: shift });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch current shift" });
+
+    return successResponse(res, { data: shift });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -73,36 +108,83 @@ router.patch("/shifts/:id/close", async (req, res) => {
   try {
     const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
+
+    const businessContext = await requireBusinessContextForUser(user);
     const { id } = req.params;
+
     const shift = await prisma.shift.findFirst({
-      where: { id, restaurantId: restaurant.id },
-      include: { orders: { select: { id: true, total: true, paymentMethod: true, status: true } } },
-    });
-    if (!shift) return void res.status(404).json({ success: false, message: "Shift not found" });
-    if (shift.status === "CLOSED") return void res.status(400).json({ success: false, message: "Shift already closed" });
-    const closingCash = Number(req.body?.closingCash ?? 0);
-    if (closingCash < 0) return void res.status(400).json({ success: false, message: "Closing cash cannot be negative" });
-    const cashOrders = shift.orders.filter(
-      (o) => o.paymentMethod === "CASH" && o.status !== "CANCELLED" && o.status !== "PENDING_PAYMENT"
-    );
-    const cashSales = cashOrders.reduce((a, o) => a + o.total, 0);
-    const expectedCash = shift.openingCash + cashSales;
-    const cashDifference = closingCash - expectedCash;
-    const updatedShift = await prisma.shift.update({
-      where: { id },
-      data: { status: "CLOSED", closingCash, expectedCash, cashDifference, closedAt: new Date() },
-    });
-    res.json({
-      success: true,
-      data: {
-        shift: updatedShift,
-        summary: { openingCash: shift.openingCash, cashSales, expectedCash, closingCash, cashDifference, orderCount: cashOrders.length },
+      where: {
+        id,
+        ...createRestaurantScopeWhere(businessContext),
+      },
+      include: {
+        orders: { select: { id: true, total: true, paymentMethod: true, status: true } },
       },
     });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to close shift" });
+
+    if (!shift) {
+      return errorResponse(res, {
+        status: 404,
+        code: errorCodes.notFound,
+        message: "Shift not found.",
+      });
+    }
+
+    if (shift.status === "CLOSED") {
+      return errorResponse(res, {
+        status: 409,
+        code: errorCodes.conflict,
+        message: "Shift already closed.",
+      });
+    }
+
+    const closingCash = Number(req.body?.closingCash ?? 0);
+
+    if (closingCash < 0) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Closing cash cannot be negative.",
+      });
+    }
+
+    const cashOrders = shift.orders.filter(
+      (order) =>
+        order.paymentMethod === "CASH" &&
+        order.status !== "CANCELLED" &&
+        order.status !== "PENDING_PAYMENT"
+    );
+
+    const cashSales = cashOrders.reduce((total, order) => total + order.total, 0);
+    const expectedCash = shift.openingCash + cashSales;
+    const cashDifference = closingCash - expectedCash;
+
+    const updatedShift = await prisma.shift.update({
+      where: { id },
+      data: {
+        status: "CLOSED",
+        closingCash,
+        expectedCash,
+        cashDifference,
+        closedAt: new Date(),
+      },
+    });
+
+    return successResponse(res, {
+      data: {
+        shift: updatedShift,
+        summary: {
+          openingCash: shift.openingCash,
+          cashSales,
+          expectedCash,
+          closingCash,
+          cashDifference,
+          orderCount: cashOrders.length,
+        },
+      },
+    });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
