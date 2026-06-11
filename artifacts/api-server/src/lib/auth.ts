@@ -4,6 +4,8 @@ import type { Request, Response } from "express";
 import type { Role } from "@prisma/client";
 
 import { prisma } from "./prisma.js";
+import { errorCodes } from "./errors/error-codes.js";
+import { errorResponse } from "./responses/error-response.js";
 import {
   getRestaurantForUser,
   type RestaurantScopedUser,
@@ -63,13 +65,24 @@ export async function requireRole(
   allowedRoles: Role[]
 ) {
   const user = await getCurrentUser(req);
+
   if (!user) {
-    res.status(401).json({ success: false, message: "Unauthorized" });
+    errorResponse(res, {
+      status: 401,
+      code: errorCodes.unauthorized,
+      message: "Unauthorized.",
+    });
     return null;
   }
+
   if (!allowedRoles.includes(user.role)) {
-    res.status(403).json({ success: false, message: "Forbidden" });
+    errorResponse(res, {
+      status: 403,
+      code: errorCodes.forbidden,
+      message: "Forbidden.",
+    });
     return null;
   }
+
   return user;
 }
