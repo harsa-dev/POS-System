@@ -19,6 +19,7 @@ model User {
 
   auditLogs        AuditLog[]
   ownedRestaurants Restaurant[] @relation("RestaurantOwner")
+  ownedBusinesses  Business[]   @relation("BusinessOwner")
   sessions         Session[]
   shifts           Shift[]
   attendances      Attendance[]
@@ -36,8 +37,31 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Business {
+  id   String       @id @default(cuid())
+  name String
+  type BusinessType @default(RESTAURANT)
+  mode BusinessMode @default(RESTAURANT)
+
+  ownerId  String
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner      User        @relation("BusinessOwner", fields: [ownerId], references: [id])
+  restaurant Restaurant?
+
+  @@index([ownerId])
+  @@index([type])
+  @@index([mode])
+  @@index([isActive])
+}
+
 model Restaurant {
-  id          String   @id @default(cuid())
+  id         String  @id @default(cuid())
+  businessId String? @unique
+
   name        String
   address     String?
   phone       String?
@@ -73,7 +97,8 @@ model Restaurant {
   attendances       Attendance[]
   attendanceSetting AttendanceSetting?
 
-  owner User @relation("RestaurantOwner", fields: [ownerId], references: [id])
+  owner    User      @relation("RestaurantOwner", fields: [ownerId], references: [id])
+  business Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
 }
 
 model Category {
@@ -135,7 +160,6 @@ model InventoryItem {
   recipes   Recipe[]
 
   @@unique([restaurantId, name])
-
   @@index([restaurantId])
   @@index([currentStock])
   @@index([minimumStock])
@@ -529,4 +553,18 @@ enum StockMovementReason {
   MANUAL_ADJUSTMENT
   DAMAGED
   RETURN
+}
+
+enum BusinessType {
+  RESTAURANT
+  RETAIL
+  SERVICE
+  LIVESTOCK
+}
+
+enum BusinessMode {
+  RESTAURANT
+  RETAIL
+  SERVICE
+  LIVESTOCK
 }
