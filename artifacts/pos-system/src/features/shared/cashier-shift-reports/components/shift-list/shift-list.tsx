@@ -1,4 +1,4 @@
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, RefreshCw } from "lucide-react";
 
 import { StatusPill } from "@/features/shared/cards";
 import {
@@ -20,7 +20,7 @@ type ShiftListProps = {
   selectedIds: string[];
   onEditChange: (isEditing: boolean) => void;
   onSelectionChange: (ids: string[]) => void;
-  onDeleteSelected: () => void;
+  onSyncSelected: () => void;
   onOpenDetail: (shift: CashierShift) => void;
 };
 
@@ -50,7 +50,7 @@ export function ShiftList({
   selectedIds,
   onEditChange,
   onSelectionChange,
-  onDeleteSelected,
+  onSyncSelected,
   onOpenDetail,
 }: ShiftListProps) {
   const columns: DataTableColumn<CashierShift>[] = [
@@ -147,13 +147,13 @@ export function ShiftList({
             >
               Select All
             </DashboardActionButton>
-            <DashboardActionButton icon={Trash2} onClick={onDeleteSelected}>
-              Delete
+            <DashboardActionButton icon={RefreshCw} variant="primary" onClick={onSyncSelected}>
+              Sync Selected
             </DashboardActionButton>
           </DashboardActions>
         ) : (
           <DashboardActionButton icon={Edit} onClick={() => onEditChange(true)}>
-            Edit
+            Select Shifts
           </DashboardActionButton>
         )
       }
