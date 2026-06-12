@@ -2,7 +2,9 @@ import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
 import {
   salesAnalyticsBases,
+  salesAnalyticsExportFormats,
   type SalesAnalyticsBasis,
+  type SalesAnalyticsExportFormat,
   type SalesAnalyticsQuery,
 } from "./sales-analytics.types.js";
 
@@ -122,6 +124,26 @@ function assertDateRange(from: Date, to: Date) {
       message: `Sales analytics range cannot exceed ${MAX_ANALYTICS_RANGE_DAYS} days.`,
     });
   }
+}
+
+export function parseSalesAnalyticsExportFormat(
+  value: unknown,
+): SalesAnalyticsExportFormat {
+  if (value === undefined || value === null || value === "") return "json";
+
+  if (
+    typeof value === "string" &&
+    salesAnalyticsExportFormats.includes(value as SalesAnalyticsExportFormat)
+  ) {
+    return value as SalesAnalyticsExportFormat;
+  }
+
+  throw new AppError({
+    statusCode: 400,
+    code: errorCodes.validationError,
+    message: "Invalid sales analytics export format.",
+    details: { allowedValues: salesAnalyticsExportFormats },
+  });
 }
 
 export function parseSalesAnalyticsQuery(rawQuery: Record<string, unknown>): SalesAnalyticsQuery {
