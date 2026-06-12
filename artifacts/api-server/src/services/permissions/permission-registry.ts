@@ -34,6 +34,13 @@ export const permissionKeys = {
       view: "shared.inventory.view",
       adjust: "shared.inventory.adjust",
     },
+    cashflow: {
+      view: "shared.cashflow.view",
+      create: "shared.cashflow.create",
+      sync: "shared.cashflow.sync",
+      void: "shared.cashflow.void",
+      export: "shared.cashflow.export",
+    },
     reports: {
       view: "shared.reports.view",
       export: "shared.reports.export",
@@ -76,6 +83,12 @@ export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
     permissionKeys.shared.inventory.view,
     permissionKeys.shared.inventory.adjust,
 
+    permissionKeys.shared.cashflow.view,
+    permissionKeys.shared.cashflow.create,
+    permissionKeys.shared.cashflow.sync,
+    permissionKeys.shared.cashflow.void,
+    permissionKeys.shared.cashflow.export,
+
     permissionKeys.shared.reports.view,
     permissionKeys.shared.reports.export,
 
@@ -105,6 +118,12 @@ export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
     permissionKeys.shared.inventory.view,
     permissionKeys.shared.inventory.adjust,
 
+    permissionKeys.shared.cashflow.view,
+    permissionKeys.shared.cashflow.create,
+    permissionKeys.shared.cashflow.sync,
+    permissionKeys.shared.cashflow.void,
+    permissionKeys.shared.cashflow.export,
+
     permissionKeys.shared.reports.view,
     permissionKeys.shared.reports.export,
 
@@ -119,6 +138,9 @@ export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
 
     permissionKeys.restaurant.payments.view,
     permissionKeys.restaurant.payments.create,
+
+    permissionKeys.shared.cashflow.view,
+    permissionKeys.shared.cashflow.sync,
   ],
 
   KITCHEN: [
