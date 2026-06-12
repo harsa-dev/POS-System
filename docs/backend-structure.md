@@ -134,13 +134,17 @@ Current active service folders:
 
 `services/inventory/` is allowed because inventory now owns real workflow logic:
 
+- constants for supported inventory enums and query limits
+- payload validation helpers
+- permission helpers
+- inventory item DTO mapping
+- dashboard summary DTO mapping
 - inventory item creation
 - opening stock movement
 - metadata update
 - stock adjustment
 - stock movement transaction
 - deletion safety checks
-- inventory dashboard DTO
 - audit logs
 
 A future restaurant-specific split may look like this only after more workflow services exist:
@@ -236,34 +240,5 @@ A file should not be split when the only reason is:
 1. Keep current route order stable.
 2. Remove the legacy `PATCH /orders/:id/status` block from `routes/orders.ts` after typecheck/build is green.
 3. Extract create-order workflow from `routes/orders.ts` into `services/orders/create-order.service.ts` or `services/restaurant/orders/create-order.service.ts`.
-4. Make inventory dashboard API-backed before adding more dashboards.
+4. Wire frontend Inventory dashboard to `GET /api/inventory-dashboard`.
 5. Wire menu creation to recipe setup instead of leaving recipe mapping hidden in a separate workflow.
-6. Only introduce `services/restaurant/` once more restaurant workflows are extracted.
-7. Only introduce `routes/retail/` and `services/retail/` when real retail endpoints exist.
-
-## Smoke Test Checklist
-
-After structure changes, run:
-
-```powershell
-pnpm --filter @workspace/api-server run typecheck
-pnpm --filter @workspace/api-server run build
-```
-
-Then manually check:
-
-```txt
-GET /api/health
-login/register
-GET /api/menu-items
-GET /api/inventory-dashboard
-GET /api/inventory-items
-POST /api/inventory-items
-POST /api/inventory
-GET /api/recipes
-POST /api/orders
-PATCH /api/orders/:id/status
-GET /api/events
-```
-
-If order status update fails, first check route mount order before changing business logic.
