@@ -8,6 +8,7 @@ import inventoryRouter from "./inventory.js";
 import shiftsRouter from "./shifts.js";
 import paymentsRouter from "./payments.js";
 import invoicesRouter from "./invoices.js";
+import miscBusinessRouter from "./misc-business.js";
 import miscRouter from "./misc.js";
 import eventsRouter from "./events.js";
 
@@ -22,6 +23,7 @@ router.use(inventoryRouter);
 router.use(shiftsRouter);
 router.use(paymentsRouter);
 router.use(invoicesRouter);
+router.use(miscBusinessRouter);
 router.use(miscRouter);
 router.use(eventsRouter);
 
