@@ -11,6 +11,7 @@ import {
   parseFinancialReportRequest,
 } from "../services/financial-reports/index.js";
 import { exportFinancialReportFile, type ReportExportFormat } from "../services/financial-reports/report-export.js";
+import { getFinancialReportReconciliation } from "../services/financial-reports/reconciliation.js";
 
 const router = Router();
 
@@ -62,6 +63,27 @@ router.get("/financial-reports/export", async (req, res) => {
     });
 
     return successResponse(res, { data, message: "Financial report export prepared." });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/financial-reports/reconciliation", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+    const data = await getFinancialReportReconciliation({
+      actor: getActor(user),
+      businessContext,
+      query: getQuery(req.query),
+    });
+
+    return successResponse(res, {
+      data,
+      message: "Financial report reconciliation retrieved.",
+    });
   } catch (error) {
     return handleApiError(res, error);
   }
