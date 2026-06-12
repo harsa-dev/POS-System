@@ -45,6 +45,10 @@ export const permissionKeys = {
       view: "shared.reports.view",
       export: "shared.reports.export",
     },
+    financialReports: {
+      view: "shared.financialReports.view",
+      export: "shared.financialReports.export",
+    },
     settings: {
       view: "shared.settings.view",
       update: "shared.settings.update",
@@ -92,6 +96,9 @@ export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
     permissionKeys.shared.reports.view,
     permissionKeys.shared.reports.export,
 
+    permissionKeys.shared.financialReports.view,
+    permissionKeys.shared.financialReports.export,
+
     permissionKeys.shared.settings.view,
     permissionKeys.shared.settings.update,
   ],
@@ -126,6 +133,9 @@ export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
 
     permissionKeys.shared.reports.view,
     permissionKeys.shared.reports.export,
+
+    permissionKeys.shared.financialReports.view,
+    permissionKeys.shared.financialReports.export,
 
     permissionKeys.shared.settings.view,
   ],
@@ -162,7 +172,9 @@ export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
 };
 
 export function hasPermission(role: Role, permission: PermissionKey) {
-  return (rolePermissionMap[role] as readonly PermissionKey[]).includes(permission);
+  return (rolePermissionMap[role] as readonly PermissionKey[]).includes(
+    permission,
+  );
 }
 
 export function requirePermission(role: Role, permission: PermissionKey) {
