@@ -1,3 +1,4 @@
+import type { Role } from "@prisma/client";
 import { Router } from "express";
 
 import { requireRole } from "../lib/auth.js";
@@ -13,11 +14,11 @@ import {
   listInventoryItems,
   listStockMovements,
   updateInventoryItem,
-} from "../services/inventory/inventory.service.js";
+} from "../services/inventory/index.js";
 
 const router = Router();
 
-function getActor(user: { id: string; role: Parameters<typeof listInventoryItems>[0]["actor"]["role"] }) {
+function getActor(user: { id: string; role: Role }) {
   return {
     id: user.id,
     role: user.role,
