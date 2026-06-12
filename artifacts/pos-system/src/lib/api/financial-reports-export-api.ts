@@ -1,5 +1,8 @@
 import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
-import type { FinancialReportDto, FinancialReportQuery } from "./financial-reports-api";
+import type {
+  FinancialReportDto,
+  FinancialReportQuery,
+} from "@/lib/api/financial-reports-api";
 
 export type FinancialReportExportFormat = "json" | "csv";
 
@@ -14,21 +17,28 @@ export type FinancialReportExportFileDto = {
 
 type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 
-function buildQuery(params: FinancialReportQuery & { format: FinancialReportExportFormat }) {
+function buildExportQuery(
+  params?: FinancialReportQuery & { format?: FinancialReportExportFormat },
+) {
+  if (!params) return "";
+
   const searchParams = new URLSearchParams();
 
   if (params.from) searchParams.set("from", params.from);
   if (params.to) searchParams.set("to", params.to);
   if (params.basis) searchParams.set("basis", params.basis);
-  searchParams.set("format", params.format);
+  if (params.format) searchParams.set("format", params.format);
 
-  return `?${searchParams.toString()}`;
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
 }
 
 export const financialReportExportApi = {
-  exportReport(params: FinancialReportQuery & { format: FinancialReportExportFormat }) {
+  exportReport(
+    params?: FinancialReportQuery & { format?: FinancialReportExportFormat },
+  ) {
     return apiClient.get<ApiDataEnvelope<FinancialReportExportFileDto>>(
-      `/api/financial-reports/export${buildQuery(params)}`,
+      `/api/financial-reports/export${buildExportQuery(params)}`,
     );
   },
 };
