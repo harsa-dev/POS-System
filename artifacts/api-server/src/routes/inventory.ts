@@ -57,7 +57,7 @@ router.post("/inventory-items", async (req, res) => {
         currentStock: Number(currentStock ?? 0),
         minimumStock: Number(minimumStock ?? 0),
         costPerUnit: Number(costPerUnit ?? 0),
-        restaurantId: businessContext.businessId,
+        restaurantId: businessContext.restaurantId,
       },
     });
 
