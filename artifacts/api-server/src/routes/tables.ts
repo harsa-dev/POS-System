@@ -61,7 +61,7 @@ router.post("/tables", async (req, res) => {
         name,
         capacity,
         status: "AVAILABLE",
-        restaurantId: businessContext.businessId,
+        restaurantId: businessContext.restaurantId,
       },
     });
 
