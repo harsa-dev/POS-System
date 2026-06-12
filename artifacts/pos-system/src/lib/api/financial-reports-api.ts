@@ -115,32 +115,14 @@ export type FinancialReportQueryExtra = Record<
 
 type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 
-export function isFinancialReportBasis(
-  value: unknown,
-): value is FinancialReportBasis {
-  return (
-    typeof value === "string" &&
-    financialReportBases.includes(value as FinancialReportBasis)
-  );
-}
+function buildFinancialReportQuery(params?: FinancialReportQuery) {
+  if (!params) return "";
 
-export function buildFinancialReportQueryString(
-  params?: FinancialReportQuery,
-  extra?: FinancialReportQueryExtra,
-) {
   const searchParams = new URLSearchParams();
 
-  if (params?.from) searchParams.set("from", params.from);
-  if (params?.to) searchParams.set("to", params.to);
-  if (params?.basis) searchParams.set("basis", params.basis);
-
-  if (extra) {
-    for (const [key, value] of Object.entries(extra)) {
-      if (value === null || value === undefined || value === "") continue;
-
-      searchParams.set(key, String(value));
-    }
-  }
+  if (params.from) searchParams.set("from", params.from);
+  if (params.to) searchParams.set("to", params.to);
+  if (params.basis) searchParams.set("basis", params.basis);
 
   const query = searchParams.toString();
 
