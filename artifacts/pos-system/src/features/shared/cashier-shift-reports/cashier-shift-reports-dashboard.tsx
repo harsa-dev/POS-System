@@ -1,21 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, RefreshCw } from "lucide-react";
 
 import { DashboardActionButton, DashboardActions, DashboardFilters, DashboardPanel, DashboardShell } from "@/features/shared/dashboard";
 import { exportCsv } from "@/features/shared/export";
 import { DateRangeFilter, SelectFilter, StatusFilter } from "@/features/shared/filters";
-import { cashierShiftRows } from "./data/shift-mock";
 import { ShiftKpis } from "./components/shift-analysis/shift-kpis";
 import { ShiftList } from "./components/shift-list/shift-list";
 import { ShiftDetailDrawer } from "./components/shift-detail-drawer";
-import { getReadyToSyncShifts, markShiftsAsSynced } from "./services/shift-sync";
 import type { CashierShift, ShiftFilters } from "@/features/shared/types";
+import { cashflowApi } from "@/lib/api/cashflow-api";
+import { getApiErrorMessage } from "@/lib/api/api-client";
+import { shiftsApi, type ApiShiftDto } from "@/lib/api/shifts-api";
 
 const statusOptions = ["All", "Active", "Completed"];
-const cashierOptions = ["All", "Cashier A", "Cashier B", "Cashier C"];
-const warehouseOptions = ["All", "Warehouse 1", "Warehouse 2", "Warehouse 3"];
 
 function countActiveFilters(filters: ShiftFilters) {
   return [
@@ -26,19 +25,130 @@ function countActiveFilters(filters: ShiftFilters) {
   ].filter(Boolean).length;
 }
 
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatTime(value?: string | null) {
+  if (!value) return undefined;
+  return new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function getCashStatus(cashDifference: number) {
+  if (cashDifference === 0) return "Cash Balanced";
+  if (cashDifference > 0) return "Cash Over";
+  return "Cash Short";
+}
+
+function isOrderCountedInShiftSales(order: ApiShiftDto["orders"][number]) {
+  return order.status !== "CANCELLED" && order.status !== "PENDING_PAYMENT";
+}
+
+function mapApiShiftToCashierShift(shift: ApiShiftDto, failedSyncIds: Set<string>): CashierShift {
+  const orders = shift.orders ?? [];
+  const countedOrders = orders.filter(isOrderCountedInShiftSales);
+  const totalSales = countedOrders.reduce((total, order) => total + order.total, 0);
+  const cashDifference = shift.cashDifference ?? 0;
+  const isClosed = shift.status === "CLOSED";
+
+  return {
+    id: shift.id,
+    cashierName: shift.user?.name ?? shift.user?.email ?? "Unknown Cashier",
+    status: isClosed ? "Completed" : "Active",
+    warehouse: "Current Business",
+    date: formatDate(shift.openedAt),
+    startTime: formatTime(shift.openedAt) ?? "-",
+    endTime: formatTime(shift.closedAt),
+    totalSales,
+    transactionCount: countedOrders.length,
+    cashOut: Math.max(0, -cashDifference),
+    startingCash: shift.openingCash,
+    endingCash: shift.closingCash ?? shift.expectedCash,
+    cashDifference,
+    cashStatus: getCashStatus(cashDifference),
+    syncStatus: failedSyncIds.has(shift.id)
+      ? "Sync Failed"
+      : shift.cashflowSynced
+        ? "Synced"
+        : "Not Synced",
+  };
+}
+
+function isInDateRange(shift: CashierShift, dateRange: ShiftFilters["dateRange"]) {
+  if (dateRange === "Custom Range") return true;
+
+  const date = new Date(shift.date);
+  const now = new Date();
+
+  if (dateRange === "Today") {
+    return date.toDateString() === now.toDateString();
+  }
+
+  if (dateRange === "This Week") {
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay());
+    start.setHours(0, 0, 0, 0);
+    return date >= start;
+  }
+
+  return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+}
+
 export function CashierShiftReportsDashboard() {
-  const [shifts, setShifts] = useState<CashierShift[]>(cashierShiftRows);
+  const [shifts, setShifts] = useState<CashierShift[]>([]);
+  const [failedSyncIds, setFailedSyncIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<ShiftFilters>({
     status: "All",
     cashier: "All",
     dateRange: "This Month",
-    warehouse: "Warehouse 1",
+    warehouse: "All",
   });
   const [isEditing, setIsEditing] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeShift, setActiveShift] = useState<CashierShift | null>(null);
+  const [isFetching, setIsFetching] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const readyToSyncShifts = useMemo(() => getReadyToSyncShifts(shifts), [shifts]);
+  const loadShifts = useCallback(async () => {
+    setIsFetching(true);
+    setMessage(null);
+
+    try {
+      const response = await shiftsApi.listShifts();
+      setShifts(response.data.map((shift) => mapApiShiftToCashierShift(shift, failedSyncIds)));
+    } catch (error) {
+      setMessage(getApiErrorMessage(error, "Failed to load cashier shifts."));
+    } finally {
+      setIsFetching(false);
+    }
+  }, [failedSyncIds]);
+
+  useEffect(() => {
+    void loadShifts();
+  }, [loadShifts]);
+
+  const readyToSyncShifts = useMemo(
+    () => shifts.filter((shift) => shift.status === "Completed" && shift.syncStatus !== "Synced"),
+    [shifts],
+  );
+
+  const cashierOptions = useMemo(
+    () => ["All", ...Array.from(new Set(shifts.map((shift) => shift.cashierName)))],
+    [shifts],
+  );
+
+  const warehouseOptions = useMemo(
+    () => ["All", ...Array.from(new Set(shifts.map((shift) => shift.warehouse)))],
+    [shifts],
+  );
 
   const filteredShifts = useMemo(() => {
     return shifts.filter((shift) => {
@@ -47,23 +157,46 @@ export function CashierShiftReportsDashboard() {
         filters.cashier === "All" || shift.cashierName === filters.cashier;
       const warehouseMatches =
         filters.warehouse === "All" || shift.warehouse === filters.warehouse;
+      const dateMatches = isInDateRange(shift, filters.dateRange);
 
-      return statusMatches && cashierMatches && warehouseMatches;
+      return statusMatches && cashierMatches && warehouseMatches && dateMatches;
     });
   }, [filters, shifts]);
 
-  function handleSyncToCashflow() {
-    const readyIds = readyToSyncShifts.map((shift) => shift.id);
-    setShifts((currentShifts) => markShiftsAsSynced(currentShifts, readyIds));
-    setSelectedIds([]);
-  }
-
-  function handleDeleteSelected() {
-    setShifts((currentShifts) =>
-      currentShifts.filter((shift) => !selectedIds.includes(shift.id)),
+  async function handleSyncToCashflow(ids?: string[]) {
+    const targetIds = ids?.length ? ids : readyToSyncShifts.map((shift) => shift.id);
+    const eligibleIds = targetIds.filter((id) =>
+      readyToSyncShifts.some((shift) => shift.id === id),
     );
+
+    if (eligibleIds.length === 0) {
+      setMessage("No completed unsynced shifts are ready for cashflow sync.");
+      return;
+    }
+
+    setIsSyncing(true);
+    setMessage(null);
+
+    const failedIds: string[] = [];
+
+    for (const shiftId of eligibleIds) {
+      try {
+        await cashflowApi.syncShift(shiftId);
+      } catch {
+        failedIds.push(shiftId);
+      }
+    }
+
+    setFailedSyncIds(new Set(failedIds));
     setSelectedIds([]);
     setIsEditing(false);
+    setMessage(
+      failedIds.length > 0
+        ? `${eligibleIds.length - failedIds.length} shift(s) synced, ${failedIds.length} failed.`
+        : `${eligibleIds.length} shift(s) synced to cashflow.`,
+    );
+    setIsSyncing(false);
+    await loadShifts();
   }
 
   return (
@@ -78,19 +211,25 @@ export function CashierShiftReportsDashboard() {
               {countActiveFilters(filters)} Active Filters
             </span>
             <span className="rounded-full bg-neutral-100 px-3 py-1">
-              {filters.warehouse === "All" ? "All Warehouses" : filters.warehouse}
+              {filters.warehouse === "All" ? "All Business Scopes" : filters.warehouse}
             </span>
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
               {readyToSyncShifts.length} Shifts Ready To Sync
             </span>
+            {message && (
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">
+                {message}
+              </span>
+            )}
           </div>
           <DashboardActions>
             <DashboardActionButton
               icon={RefreshCw}
               variant="primary"
-              onClick={handleSyncToCashflow}
+              disabled={isFetching || isSyncing || readyToSyncShifts.length === 0}
+              onClick={() => void handleSyncToCashflow()}
             >
-              Sync To Cashflow
+              {isSyncing ? "Syncing..." : "Sync To Cashflow"}
             </DashboardActionButton>
             <DashboardActionButton
               icon={Download}
@@ -101,7 +240,7 @@ export function CashierShiftReportsDashboard() {
                   columns: [
                     { key: "cashier", header: "Cashier", value: (shift) => shift.cashierName },
                     { key: "status", header: "Status", value: (shift) => shift.status },
-                    { key: "warehouse", header: "Warehouse", value: (shift) => shift.warehouse },
+                    { key: "warehouse", header: "Business Scope", value: (shift) => shift.warehouse },
                     { key: "date", header: "Date", value: (shift) => shift.date },
                     { key: "sales", header: "Total Sales", value: (shift) => shift.totalSales },
                     { key: "cashDifference", header: "Cash Difference", value: (shift) => shift.cashDifference },
@@ -138,7 +277,7 @@ export function CashierShiftReportsDashboard() {
               onChange={(cashier) =>
                 setFilters((current) => ({
                   ...current,
-                  cashier: cashier as ShiftFilters["cashier"],
+                  cashier,
                 }))
               }
             />
@@ -149,13 +288,13 @@ export function CashierShiftReportsDashboard() {
               }
             />
             <SelectFilter
-              label="Warehouse"
+              label="Business Scope"
               value={filters.warehouse}
               options={warehouseOptions}
               onChange={(warehouse) =>
                 setFilters((current) => ({
                   ...current,
-                  warehouse: warehouse as ShiftFilters["warehouse"],
+                  warehouse,
                 }))
               }
             />
@@ -169,7 +308,7 @@ export function CashierShiftReportsDashboard() {
         selectedIds={selectedIds}
         onEditChange={setIsEditing}
         onSelectionChange={setSelectedIds}
-        onDeleteSelected={handleDeleteSelected}
+        onSyncSelected={() => void handleSyncToCashflow(selectedIds)}
         onOpenDetail={setActiveShift}
       />
 
