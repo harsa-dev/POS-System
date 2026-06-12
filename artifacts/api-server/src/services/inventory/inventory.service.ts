@@ -315,14 +315,15 @@ export async function updateInventoryItem(params: {
 
     const changes: Prisma.InputJsonObject = {
       metadata: data as Prisma.InputJsonObject,
+      ...(hasStockAdjustment && targetStock !== undefined
+        ? {
+            stockAdjustment: {
+              from: existing.currentStock,
+              to: targetStock,
+            },
+          }
+        : {}),
     };
-
-    if (hasStockAdjustment && targetStock !== undefined) {
-      changes.stockAdjustment = {
-        from: existing.currentStock,
-        to: targetStock,
-      };
-    }
 
     await tx.auditLog.create({
       data: {
