@@ -28,10 +28,10 @@ export function DashboardActionButton({
       disabled={disabled}
       title={title}
       className={cn(
-        "inline-flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
         variant === "primary"
-          ? "bg-neutral-950 text-white hover:bg-neutral-800"
-          : "border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50",
+          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+          : "border border-border bg-card text-card-foreground hover:bg-muted",
       )}
     >
       <Icon className="h-4 w-4" aria-hidden="true" />
