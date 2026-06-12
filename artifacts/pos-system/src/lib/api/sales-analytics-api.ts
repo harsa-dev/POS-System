@@ -103,6 +103,43 @@ export type SalesAnalyticsExportFileDto = {
   content?: string;
 };
 
+export type SalesAnalyticsReconciliationIssueSeverity =
+  | "info"
+  | "warning"
+  | "critical";
+
+export type SalesAnalyticsReconciliationIssueDto = {
+  key: string;
+  title: string;
+  description: string;
+  severity: SalesAnalyticsReconciliationIssueSeverity;
+  count: number;
+};
+
+export type SalesAnalyticsReconciliationDetailRowDto = {
+  id: string;
+  date: string;
+  sourceType: string;
+  reference: string;
+  description: string;
+  amount: number;
+  status: string;
+};
+
+export type SalesAnalyticsReconciliationDto = {
+  generatedAt: string;
+  period: {
+    from: string;
+    to: string;
+  };
+  issues: SalesAnalyticsReconciliationIssueDto[];
+  ordersWithoutPaidPayment: SalesAnalyticsReconciliationDetailRowDto[];
+  paymentTotalMismatches: SalesAnalyticsReconciliationDetailRowDto[];
+  missingCostSnapshots: SalesAnalyticsReconciliationDetailRowDto[];
+  zeroRevenueRows: SalesAnalyticsReconciliationDetailRowDto[];
+  cancelledOrdersInPeriod: SalesAnalyticsReconciliationDetailRowDto[];
+};
+
 type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 
 export function isSalesAnalyticsBasis(value: unknown): value is SalesAnalyticsBasis {
@@ -141,6 +178,12 @@ export const salesAnalyticsApi = {
   getReport(params?: SalesAnalyticsQuery) {
     return apiClient.get<ApiDataEnvelope<SalesAnalyticsDto>>(
       `/api/sales-analytics${buildSalesAnalyticsQueryString(params)}`,
+    );
+  },
+
+  getReconciliation(params?: SalesAnalyticsQuery) {
+    return apiClient.get<ApiDataEnvelope<SalesAnalyticsReconciliationDto>>(
+      `/api/sales-analytics/reconciliation${buildSalesAnalyticsQueryString(params)}`,
     );
   },
 

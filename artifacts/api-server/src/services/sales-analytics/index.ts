@@ -6,6 +6,10 @@ export type {
   SalesAnalyticsExportFileDto,
   SalesAnalyticsExportFormat,
   SalesAnalyticsQuery,
+  SalesAnalyticsReconciliationDetailRowDto,
+  SalesAnalyticsReconciliationDto,
+  SalesAnalyticsReconciliationIssueDto,
+  SalesAnalyticsReconciliationIssueSeverity,
   SalesAnalyticsSourceHealthDto,
   SalesAnalyticsSummaryDto,
   SalesTransactionDto,
@@ -22,3 +26,5 @@ export {
   parseSalesAnalyticsExportRequest,
   parseSalesAnalyticsRequest,
 } from "./sales-analytics.service.js";
+
+export { getSalesAnalyticsReconciliation } from "./reconciliation.js";

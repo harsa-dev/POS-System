@@ -37,6 +37,9 @@ import {
   type SalesAnalyticsDto,
   type SalesAnalyticsExportFileDto,
   type SalesAnalyticsQuery,
+  type SalesAnalyticsReconciliationDetailRowDto,
+  type SalesAnalyticsReconciliationDto,
+  type SalesAnalyticsReconciliationIssueSeverity,
   type SalesTransactionDto,
 } from "@/lib/api/sales-analytics-api";
 
@@ -170,6 +173,127 @@ function SimpleBarChart({
   );
 }
 
+function getIssueTone(severity: SalesAnalyticsReconciliationIssueSeverity): DashboardTone {
+  if (severity === "critical") return "rose";
+  if (severity === "warning") return "amber";
+
+  return "slate";
+}
+
+const reconciliationDetailColumns: DataTableColumn<SalesAnalyticsReconciliationDetailRowDto>[] = [
+  { key: "date", header: "Date", cell: (row) => formatDate(row.date) },
+  { key: "sourceType", header: "Source", cell: (row) => formatStatusLabel(row.sourceType) },
+  {
+    key: "reference",
+    header: "Reference",
+    cell: (row) => <span className="font-medium text-foreground">{row.reference}</span>,
+  },
+  { key: "description", header: "Description", cell: (row) => row.description },
+  { key: "amount", header: "Amount", cell: (row) => formatCurrency(row.amount) },
+  {
+    key: "status",
+    header: "Status",
+    cell: (row) => <StatusPill tone={getStatusTone(row.status)}>{formatStatusLabel(row.status)}</StatusPill>,
+  },
+];
+
+function ReconciliationDetailTable({
+  title,
+  description,
+  rows,
+}: {
+  title: string;
+  description: string;
+  rows: SalesAnalyticsReconciliationDetailRowDto[];
+}) {
+  if (rows.length === 0) return null;
+
+  return (
+    <DashboardPanel title={title} description={description}>
+      <DataTable
+        columns={reconciliationDetailColumns}
+        data={rows}
+        getRowKey={(row) => row.id}
+        minWidth={1080}
+        pagination={{ pageSize: 5 }}
+      />
+    </DashboardPanel>
+  );
+}
+
+function SalesReconciliationPanel({
+  reconciliation,
+}: {
+  reconciliation: SalesAnalyticsReconciliationDto;
+}) {
+  const hasIssues = reconciliation.issues.length > 0;
+
+  return (
+    <div className="grid gap-4">
+      <DashboardPanel
+        title="Sales Reconciliation"
+        description="Backend integrity checks for the selected sales analytics period."
+      >
+        {hasIssues ? (
+          <div className="grid gap-3 p-4 lg:grid-cols-2">
+            {reconciliation.issues.map((issue) => (
+              <div
+                key={issue.key}
+                className="rounded-lg border border-border bg-card p-4 text-card-foreground"
+              >
+                <div className="mb-2 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-foreground">{issue.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {issue.description}
+                    </p>
+                  </div>
+                  <StatusPill tone={getIssueTone(issue.severity)}>
+                    {formatStatusLabel(issue.severity)}
+                  </StatusPill>
+                </div>
+                <p className="text-2xl font-semibold text-foreground">
+                  {formatNumber(issue.count)}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="p-4 text-sm text-muted-foreground">
+            No sales analytics reconciliation issues were found for this period.
+          </p>
+        )}
+      </DashboardPanel>
+
+      <ReconciliationDetailTable
+        title="Orders Without Paid Payment"
+        description="Orders included in paid analytics without a PAID payment record."
+        rows={reconciliation.ordersWithoutPaidPayment}
+      />
+      <ReconciliationDetailTable
+        title="Payment Total Mismatches"
+        description="Paid orders whose amountPaid value does not match the order total."
+        rows={reconciliation.paymentTotalMismatches}
+      />
+      <ReconciliationDetailTable
+        title="Missing Cost Snapshots"
+        description="Recipe usage stock movements without unitCostSnapshot."
+        rows={reconciliation.missingCostSnapshots}
+      />
+      <ReconciliationDetailTable
+        title="Invalid Order Item Values"
+        description="Included order items with zero or negative price, quantity, or subtotal."
+        rows={reconciliation.zeroRevenueRows}
+      />
+      <ReconciliationDetailTable
+        title="Cancelled Orders In Period"
+        description="Cancelled orders excluded from paid sales analytics totals."
+        rows={reconciliation.cancelledOrdersInPeriod}
+      />
+    </div>
+  );
+}
+
 function SalesSourceHealthPanel({ report }: { report: SalesAnalyticsDto }) {
   const items = [
     ["Paid Orders", report.sourceHealth.paidOrders],
@@ -239,6 +363,8 @@ export function SalesAnalyticsDashboard() {
   const [productSearch, setProductSearch] = useState("");
   const [dateRange, setDateRange] = useState<DateRangeOption>("This Month");
   const [report, setReport] = useState<SalesAnalyticsDto | null>(null);
+  const [reconciliation, setReconciliation] =
+    useState<SalesAnalyticsReconciliationDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -267,8 +393,13 @@ export function SalesAnalyticsDashboard() {
     setExportErrorMessage(null);
 
     try {
-      const response = await salesAnalyticsApi.getReport(query);
-      setReport(response.data);
+      const [reportResponse, reconciliationResponse] = await Promise.all([
+        salesAnalyticsApi.getReport(query),
+        salesAnalyticsApi.getReconciliation(query),
+      ]);
+
+      setReport(reportResponse.data);
+      setReconciliation(reconciliationResponse.data);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -563,6 +694,7 @@ export function SalesAnalyticsDashboard() {
       )}
 
       {report && <SalesSourceHealthPanel report={report} />}
+      {reconciliation && <SalesReconciliationPanel reconciliation={reconciliation} />}
 
       {exportErrorMessage && (
         <DashboardPanel

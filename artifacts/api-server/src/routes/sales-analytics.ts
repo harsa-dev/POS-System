@@ -9,6 +9,7 @@ import { successResponse } from "../lib/responses/success-response.js";
 import {
   exportSalesAnalytics,
   getSalesAnalytics,
+  getSalesAnalyticsReconciliation,
   parseSalesAnalyticsExportRequest,
   parseSalesAnalyticsRequest,
 } from "../services/sales-analytics/index.js";
@@ -44,6 +45,28 @@ router.get("/sales-analytics", async (req, res) => {
 
     res.setHeader("Cache-Control", "no-store");
     return successResponse(res, { data, message: "Sales analytics retrieved." });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/sales-analytics/reconciliation", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+    const data = await getSalesAnalyticsReconciliation({
+      actor: getActor(user),
+      businessContext,
+      query: getQuery(req.query),
+    });
+
+    res.setHeader("Cache-Control", "no-store");
+    return successResponse(res, {
+      data,
+      message: "Sales analytics reconciliation retrieved.",
+    });
   } catch (error) {
     return handleApiError(res, error);
   }
