@@ -11,6 +11,7 @@ export type FinancialReportExportFileDto = {
   format: FinancialReportExportFormat;
   filename: string;
   contentType: string;
+  auditLogged: boolean;
   report?: FinancialReportDto;
   content?: string;
 };
