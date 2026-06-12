@@ -9,7 +9,7 @@ export type PermissionKey =
   | "manageTables"
   | "managePayments";
 
-const permissionRules: Record<PermissionKey, Role[]> = {
+const permissionRules: Record<PermissionKey, readonly Role[]> = {
   viewFinancialReports: ["OWNER", "MANAGER"],
   manageMenu: ["OWNER", "MANAGER"],
   accessKitchen: ["OWNER", "MANAGER", "KITCHEN"],
@@ -19,7 +19,7 @@ const permissionRules: Record<PermissionKey, Role[]> = {
   managePayments: ["OWNER", "MANAGER"],
 };
 
-const orderStatusPermissions: Record<Role, OrderStatus[]> = {
+const orderStatusPermissions: Record<Role, readonly OrderStatus[]> = {
   OWNER: [
     "PENDING_PAYMENT",
     "PAID",

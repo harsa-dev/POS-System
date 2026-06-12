@@ -27,7 +27,10 @@ export const legacyOrderStatusPermissions: Record<OrderStatus, PermissionKey> = 
 };
 
 export type OrderStatusDecision =
-  | { allowed: true; requiredPermission: PermissionKey }
+  | {
+      allowed: true;
+      requiredPermission: PermissionKey;
+    }
   | {
       allowed: false;
       reason: "INVALID_TRANSITION" | "FORBIDDEN";
@@ -41,6 +44,7 @@ export function checkOrderStatusTransition(params: {
   nextStatus: OrderStatus;
 }): OrderStatusDecision {
   const { role, currentStatus, nextStatus } = params;
+
   const allowedNextStatuses = legacyOrderStatusTransitions[currentStatus];
 
   if (!allowedNextStatuses.includes(nextStatus)) {
@@ -61,5 +65,8 @@ export function checkOrderStatusTransition(params: {
     };
   }
 
-  return { allowed: true, requiredPermission };
+  return {
+    allowed: true,
+    requiredPermission,
+  };
 }

@@ -60,65 +60,87 @@ export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
     permissionKeys.restaurant.orders.approve,
     permissionKeys.restaurant.orders.cancel,
     permissionKeys.restaurant.orders.updateStatus,
+
     permissionKeys.restaurant.payments.view,
     permissionKeys.restaurant.payments.create,
+
     permissionKeys.restaurant.kitchen.view,
     permissionKeys.restaurant.kitchen.update,
+
     permissionKeys.restaurant.serving.view,
     permissionKeys.restaurant.serving.update,
+
     permissionKeys.restaurant.tables.view,
     permissionKeys.restaurant.tables.update,
+
     permissionKeys.shared.inventory.view,
     permissionKeys.shared.inventory.adjust,
+
     permissionKeys.shared.reports.view,
     permissionKeys.shared.reports.export,
+
     permissionKeys.shared.settings.view,
     permissionKeys.shared.settings.update,
   ],
+
   MANAGER: [
     permissionKeys.restaurant.orders.view,
     permissionKeys.restaurant.orders.create,
     permissionKeys.restaurant.orders.approve,
     permissionKeys.restaurant.orders.cancel,
     permissionKeys.restaurant.orders.updateStatus,
+
     permissionKeys.restaurant.payments.view,
     permissionKeys.restaurant.payments.create,
+
     permissionKeys.restaurant.kitchen.view,
     permissionKeys.restaurant.kitchen.update,
+
     permissionKeys.restaurant.serving.view,
     permissionKeys.restaurant.serving.update,
+
     permissionKeys.restaurant.tables.view,
     permissionKeys.restaurant.tables.update,
+
     permissionKeys.shared.inventory.view,
     permissionKeys.shared.inventory.adjust,
+
     permissionKeys.shared.reports.view,
     permissionKeys.shared.reports.export,
+
     permissionKeys.shared.settings.view,
   ],
+
   CASHIER: [
     permissionKeys.restaurant.orders.view,
     permissionKeys.restaurant.orders.create,
     permissionKeys.restaurant.orders.approve,
     permissionKeys.restaurant.orders.cancel,
+
     permissionKeys.restaurant.payments.view,
     permissionKeys.restaurant.payments.create,
   ],
+
   KITCHEN: [
     permissionKeys.restaurant.orders.view,
+
     permissionKeys.restaurant.kitchen.view,
     permissionKeys.restaurant.kitchen.update,
   ],
+
   SERVER: [
     permissionKeys.restaurant.orders.view,
+
     permissionKeys.restaurant.serving.view,
     permissionKeys.restaurant.serving.update,
+
     permissionKeys.restaurant.tables.view,
     permissionKeys.restaurant.tables.update,
   ],
 };
 
 export function hasPermission(role: Role, permission: PermissionKey) {
-  return rolePermissionMap[role].includes(permission);
+  return (rolePermissionMap[role] as readonly PermissionKey[]).includes(permission);
 }
 
 export function requirePermission(role: Role, permission: PermissionKey) {
