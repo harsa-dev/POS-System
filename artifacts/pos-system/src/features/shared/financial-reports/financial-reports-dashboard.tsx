@@ -480,6 +480,16 @@ function ReconciliationPanel({
               emptyMessage="No voided cashflow entries in this period."
             />
           </DashboardPanel>
+
+          <DashboardPanel title="Open Invoice Receivables">
+            <DataTable
+              columns={detailColumns}
+              data={reconciliation.openReceivables}
+              getRowKey={(row) => row.id}
+              minWidth={860}
+              emptyMessage="No open invoice receivables in this period."
+            />
+          </DashboardPanel>
         </div>
       )}
     </DashboardPanel>
@@ -488,24 +498,19 @@ function ReconciliationPanel({
 
 export function FinancialReportsDashboard() {
   const periodOptions = useMemo(() => getPeriodOptions(), []);
-  const [selectedPeriod, setSelectedPeriod] = useState(
-    periodOptions[0]?.label ?? "This Month",
-  );
+  const [selectedPeriod, setSelectedPeriod] = useState(periodOptions[0]?.label ?? "This Month");
   const [basis, setBasis] = useState<FinancialReportBasis>("hybrid");
   const [report, setReport] = useState<FinancialReportDto | null>(null);
   const [reconciliation, setReconciliation] =
     useState<FinancialReconciliationDto | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isReconciliationLoading, setIsReconciliationLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const activePeriod = useMemo<PeriodOption>(
-    () =>
-      periodOptions.find((item) => item.label === selectedPeriod) ??
-      (periodOptions[0] as PeriodOption),
-    [periodOptions, selectedPeriod],
-  );
+  const activePeriod =
+    periodOptions.find((item) => item.label === selectedPeriod) ??
+    periodOptions[0];
 
   const query = useMemo<FinancialReportQuery>(
     () => ({
@@ -513,7 +518,7 @@ export function FinancialReportsDashboard() {
       to: activePeriod.to,
       basis,
     }),
-    [activePeriod, basis],
+    [activePeriod.from, activePeriod.to, basis],
   );
 
   const loadReport = useCallback(async () => {
@@ -577,26 +582,29 @@ export function FinancialReportsDashboard() {
 
   const cashColumns: DataTableColumn<FinancialCashflowRowDto>[] = [
     { key: "date", header: "Date", cell: (row) => formatDate(row.date) },
-    {
-      key: "sourceAccount",
-      header: "Account",
-      cell: (row) => row.sourceAccount,
-    },
-    { key: "type", header: "Type", cell: (row) => row.type },
     { key: "category", header: "Category", cell: (row) => row.category },
     { key: "sourceName", header: "Source", cell: (row) => row.sourceName },
-    {
-      key: "description",
-      header: "Description",
-      cell: (row) => row.description,
-    },
     {
       key: "amount",
       header: "Amount",
       className: "text-right",
-      cell: (row) => (
-        <span className="font-semibold">{formatCurrency(row.amount)}</span>
-      ),
+      cell: (row) => formatCurrency(row.amount),
+    },
+  ];
+
+  const productColumns: DataTableColumn<FinancialBestSellerDto>[] = [
+    { key: "label", header: "Product", cell: (row) => row.label },
+    {
+      key: "quantity",
+      header: "Qty",
+      className: "text-right",
+      cell: (row) => formatNumber(row.quantity),
+    },
+    {
+      key: "revenue",
+      header: "Revenue",
+      className: "text-right",
+      cell: (row) => formatCurrency(row.revenue),
     },
   ];
 
@@ -609,16 +617,6 @@ export function FinancialReportsDashboard() {
       cell: (row) => row.invoiceNumber,
     },
     {
-      key: "invoiceDate",
-      header: "Invoice Date",
-      cell: (row) => formatDate(row.invoiceDate),
-    },
-    {
-      key: "dueDate",
-      header: "Due Date",
-      cell: (row) => formatDate(row.dueDate),
-    },
-    {
       key: "customerName",
       header: "Customer",
       cell: (row) => row.customerName,
@@ -628,15 +626,53 @@ export function FinancialReportsDashboard() {
       key: "amount",
       header: "Amount",
       className: "text-right",
-      cell: (row) => (
-        <span className="font-semibold">{formatCurrency(row.amount)}</span>
-      ),
+      cell: (row) => formatCurrency(row.amount),
     },
   ];
 
-  const exportReportFile = async (format: "json" | "csv") => {
+  const trendColumns: DataTableColumn<FinancialTrendPointDto>[] = [
+    { key: "label", header: "Period", cell: (row) => row.label },
+    {
+      key: "revenue",
+      header: "Revenue",
+      className: "text-right",
+      cell: (row) => formatCurrency(row.revenue),
+    },
+    {
+      key: "netProfit",
+      header: "Net Profit",
+      className: "text-right",
+      cell: (row) => formatCurrency(row.netProfit),
+    },
+  ];
+
+  const exportCurrentViewCsv = () => {
     if (!report) return;
 
+    exportCsv({
+      filename: `financial-report-current-view-${report.period.from}-${report.period.to}.csv`,
+      columns: [
+        {
+          key: "label",
+          header: "Line Item",
+          value: (row: FinancialProfitLossLineDto) => row.label,
+        },
+        {
+          key: "amount",
+          header: "Amount",
+          value: (row: FinancialProfitLossLineDto) => row.amount,
+        },
+        {
+          key: "tone",
+          header: "Tone",
+          value: (row: FinancialProfitLossLineDto) => row.tone,
+        },
+      ],
+      rows: report.profitLoss,
+    });
+  };
+
+  const exportReportFile = async (format: "csv" | "json") => {
     setIsExporting(true);
     setErrorMessage(null);
 
@@ -646,128 +682,63 @@ export function FinancialReportsDashboard() {
         format,
       });
 
-      const payload = response.data;
+      if (format === "csv") {
+        if (!response.data.content) {
+          throw new Error("Export response is missing CSV content.");
+        }
 
-      if (payload.content) {
         downloadTextFile(
-          payload.filename,
-          payload.content,
-          payload.contentType,
+          response.data.filename,
+          response.data.content,
+          response.data.contentType,
         );
 
         return;
       }
 
-      if (payload.report) {
-        downloadTextFile(
-          payload.filename,
-          JSON.stringify(payload.report, null, 2),
-          payload.contentType,
-        );
+      const content = JSON.stringify(response.data.report ?? response.data, null, 2);
 
-        return;
-      }
-
-      throw new Error("Financial report export returned no content.");
-    } catch (error) {
-      setErrorMessage(
-        getApiErrorMessage(error, "Failed to export financial report."),
+      downloadTextFile(
+        response.data.filename,
+        content,
+        response.data.contentType,
       );
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "Failed to export report."));
     } finally {
       setIsExporting(false);
     }
   };
 
-  const exportCashRows = (type: "cash-in" | "cash-out") => {
-    if (!report) return;
-
-    const rows = type === "cash-in" ? report.cashIn : report.cashOut;
-
-    exportCsv({
-      filename: `${type}-${report.period.from}-${report.period.to}.csv`,
-      rows,
-      columns: [
-        {
-          key: "date",
-          header: "Date",
-          value: (row) => row.date,
-        },
-        {
-          key: "sourceAccount",
-          header: "Account",
-          value: (row) => row.sourceAccount,
-        },
-        {
-          key: "type",
-          header: "Type",
-          value: (row) => row.type,
-        },
-        {
-          key: "category",
-          header: "Category",
-          value: (row) => row.category,
-        },
-        {
-          key: "sourceName",
-          header: "Source",
-          value: (row) => row.sourceName,
-        },
-        {
-          key: "description",
-          header: "Description",
-          value: (row) => row.description,
-        },
-        {
-          key: "amount",
-          header: "Amount",
-          value: (row) => row.amount,
-        },
-        {
-          key: "status",
-          header: "Status",
-          value: (row) => row.status,
-        },
-        {
-          key: "sourceType",
-          header: "Source Type",
-          value: (row) => row.sourceType,
-        },
-      ],
-    });
-  };
-
-  const description = report
-    ? `Date Summary: ${formatDate(report.period.from)} - ${formatDate(
-        report.period.to,
-      )}. Basis: ${report.basis}.`
-    : "Backend-backed financial report from orders, cashflow, invoices, and stock movements.";
-
   return (
-    <DashboardShell title="Financial Reports" description={description}>
+    <DashboardShell
+      title="Financial Reports"
+      description="Backend-backed financial report, reconciliation, export, and source health dashboard."
+      icon={BarChart3}
+    >
       <DashboardPanel>
         <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700 ring-1 ring-blue-100">
-              <CalendarDays className="h-5 w-5" aria-hidden="true" />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-neutral-950">
-                {report
-                  ? `${formatDate(report.period.from)} - ${formatDate(
-                      report.period.to,
-                    )}`
-                  : "Loading report period"}
-              </p>
-              <p className="text-xs text-neutral-500">
-                {report
-                  ? `Generated ${formatDate(report.generatedAt)}`
-                  : "Waiting for backend report"}
-              </p>
-            </div>
+          <div>
+            <p className="text-sm font-medium text-neutral-500">
+              {report?.period.label ?? activePeriod.label}
+            </p>
+            <h2 className="text-xl font-semibold text-neutral-950">
+              Financial Performance
+            </h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              Generated from backend report sources. Basis: {basis}.
+            </p>
           </div>
 
           <DashboardActions>
+            <DashboardActionButton
+              icon={Download}
+              onClick={exportCurrentViewCsv}
+              disabled={!report}
+            >
+              Export Current View
+            </DashboardActionButton>
+
             <DashboardActionButton
               icon={Download}
               onClick={() => void exportReportFile("csv")}
@@ -907,27 +878,24 @@ export function FinancialReportsDashboard() {
             <StatCard
               label="Gross Profit"
               value={formatCurrency(report.summary.grossProfit)}
-              note={`${formatNumber(report.summary.grossMargin)}% gross margin`}
-              icon={BarChart3}
+              note={`Margin ${report.summary.grossMargin.toFixed(1)}%`}
+              icon={WalletCards}
               tone="blue"
             />
             <StatCard
               label="Net Profit"
               value={formatCurrency(report.summary.netProfit)}
-              note={`${formatNumber(report.summary.netMargin)}% net margin`}
-              icon={WalletCards}
-              tone="slate"
+              note={`Margin ${report.summary.netMargin.toFixed(1)}%`}
+              icon={ArrowUpRight}
+              tone="green"
             />
             <StatCard
               label="Receivables"
               value={formatCurrency(report.summary.receivables)}
-              note="Outstanding invoice value"
+              note="Open invoices"
               icon={FileText}
               tone="amber"
             />
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-3">
             <StatCard
               label="Cash In"
               value={formatCurrency(report.summary.cashIn)}
@@ -940,7 +908,7 @@ export function FinancialReportsDashboard() {
               value={formatCurrency(report.summary.cashOut)}
               note="Posted expense ledger"
               icon={ArrowDownRight}
-              tone="rose"
+              tone="red"
             />
             <StatCard
               label="Net Cashflow"
@@ -949,12 +917,19 @@ export function FinancialReportsDashboard() {
               icon={WalletCards}
               tone="blue"
             />
+            <StatCard
+              label="Average Order Value"
+              value={formatCurrency(report.summary.averageOrderValue)}
+              note={`${formatNumber(report.summary.orderCount)} paid orders`}
+              icon={CalendarDays}
+              tone="neutral"
+            />
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
             <DashboardPanel
-              title="Trend"
-              description="Revenue, net profit, and cashflow projection"
+              title="6 Month Trend"
+              description="Revenue, cashflow, and profitability trend from backend aggregates."
             >
               <TrendChart data={report.trend} />
             </DashboardPanel>
@@ -964,60 +939,34 @@ export function FinancialReportsDashboard() {
             </DashboardPanel>
           </div>
 
-          <DashboardPanel title="Profit & Loss Section">
+          <DashboardPanel title="Profit & Loss Table">
             <DataTable
               columns={plColumns}
               data={report.profitLoss}
               getRowKey={(row) => row.key}
-              minWidth={620}
+              minWidth={640}
               emptyMessage="No profit and loss rows for this period."
             />
           </DashboardPanel>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <DashboardPanel title="Cash In Data">
-              <TableToolbar
-                actions={
-                  <DashboardActions>
-                    <DashboardActionButton
-                      icon={Download}
-                      onClick={() => exportCashRows("cash-in")}
-                      disabled={report.cashIn.length === 0}
-                    >
-                      Export Cash In
-                    </DashboardActionButton>
-                  </DashboardActions>
-                }
-              />
+            <DashboardPanel title="Cash In Table">
               <DataTable
                 columns={cashColumns}
                 data={report.cashIn}
                 getRowKey={(row) => row.id}
-                minWidth={860}
-                emptyMessage="No cash-in ledger rows for this period."
+                minWidth={720}
+                emptyMessage="No cash in ledger rows for this period."
               />
             </DashboardPanel>
 
-            <DashboardPanel title="Cash Out Data">
-              <TableToolbar
-                actions={
-                  <DashboardActions>
-                    <DashboardActionButton
-                      icon={Download}
-                      onClick={() => exportCashRows("cash-out")}
-                      disabled={report.cashOut.length === 0}
-                    >
-                      Export Cash Out
-                    </DashboardActionButton>
-                  </DashboardActions>
-                }
-              />
+            <DashboardPanel title="Cash Out Table">
               <DataTable
                 columns={cashColumns}
                 data={report.cashOut}
                 getRowKey={(row) => row.id}
-                minWidth={860}
-                emptyMessage="No cash-out ledger rows for this period."
+                minWidth={720}
+                emptyMessage="No cash out ledger rows for this period."
               />
             </DashboardPanel>
           </div>
@@ -1027,8 +976,28 @@ export function FinancialReportsDashboard() {
               columns={receivableColumns}
               data={report.receivables}
               getRowKey={(row) => row.id}
-              minWidth={840}
+              minWidth={760}
               emptyMessage="No receivables for this period."
+            />
+          </DashboardPanel>
+
+          <DashboardPanel title="Trend Table">
+            <DataTable
+              columns={trendColumns}
+              data={report.trend}
+              getRowKey={(row) => row.periodStart}
+              minWidth={720}
+              emptyMessage="No trend data for this period."
+            />
+          </DashboardPanel>
+
+          <DashboardPanel title="Best Selling Products Table">
+            <DataTable
+              columns={productColumns}
+              data={report.bestSellingProducts}
+              getRowKey={(row) => row.menuItemId}
+              minWidth={720}
+              emptyMessage="No best selling products for this period."
             />
           </DashboardPanel>
         </>
