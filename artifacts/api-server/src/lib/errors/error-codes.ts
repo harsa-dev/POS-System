@@ -30,6 +30,12 @@ export const errorCodes = {
   invalidStockMovementType: "INVALID_STOCK_MOVEMENT_TYPE",
   negativeStockNotAllowed: "NEGATIVE_STOCK_NOT_ALLOWED",
 
+  cashflowEntryNotFound: "CASHFLOW_ENTRY_NOT_FOUND",
+  duplicateCashflowEntry: "DUPLICATE_CASHFLOW_ENTRY",
+  invalidCashflowAmount: "INVALID_CASHFLOW_AMOUNT",
+  invalidCashflowStatus: "INVALID_CASHFLOW_STATUS",
+  cashflowSourceNotReady: "CASHFLOW_SOURCE_NOT_READY",
+
   rateLimited: "RATE_LIMITED",
 } as const;
 
