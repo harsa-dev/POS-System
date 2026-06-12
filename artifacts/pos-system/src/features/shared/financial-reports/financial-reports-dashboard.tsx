@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
@@ -20,137 +21,139 @@ import {
   DashboardPanel,
   DashboardShell,
 } from "@/features/shared/dashboard";
-import { exportPdf } from "@/features/shared/export";
+import { exportCsv, exportPdf } from "@/features/shared/export";
 import { SelectFilter } from "@/features/shared/filters";
 import { formatCurrency, formatNumber } from "@/features/shared/format";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/features/shared/table";
-import type {
-  AnalyticsDataPoint,
-  CashflowTransaction,
-  FinancialDataSource,
-  FinancialSourceInput,
-  FinancialTrendPoint,
-  ProfitLossLine,
-} from "@/features/shared/types";
+import {
+  financialReportsApi,
+  type FinancialBestSellerDto,
+  type FinancialCashflowRowDto,
+  type FinancialProfitLossLineDto,
+  type FinancialReportBasis,
+  type FinancialReportDto,
+  type FinancialReportQuery,
+  type FinancialTrendPointDto,
+} from "@/lib/api/financial-reports-api";
+import { getApiErrorMessage } from "@/lib/api/api-client";
 
-const dataSources: { name: FinancialDataSource; description: string }[] = [
+type PeriodOption = {
+  label: string;
+  from: string;
+  to: string;
+};
+
+type DataSourceOption = {
+  basis: FinancialReportBasis;
+  name: string;
+  description: string;
+};
+
+const dataSources: DataSourceOption[] = [
   {
+    basis: "hybrid",
     name: "Recap + Cashflow",
-    description:
-      "Revenue and COGS from Sales Recap, Operational Cost from Cashflow",
+    description: "Revenue from orders, expenses from ledger, COGS from stock movements.",
   },
   {
+    basis: "cashflow",
     name: "Cashflow Only",
-    description: "All data comes from business cashflow",
+    description: "Report strictly follows posted cashflow ledger entries.",
   },
   {
+    basis: "orders",
     name: "Recap Only",
-    description: "Only sales recap data",
+    description: "Sales report from paid/completed order recap and stock movement COGS.",
   },
 ];
 
-const sourceInputs: FinancialSourceInput[] = [
-  { label: "Recap Source", value: "Sales Recap - May 2026" },
-  { label: "Cashflow Source", value: "Cashflow - Main Branch" },
-  { label: "Warehouse Source", value: "Warehouse COGS - May 2026" },
-];
+function toDateInputValue(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
 
-const sixMonthTrend: FinancialTrendPoint[] = [
-  { label: "Dec", revenue: 92_000_000, netProfit: 18_500_000 },
-  { label: "Jan", revenue: 96_000_000, netProfit: 21_200_000 },
-  { label: "Feb", revenue: 88_500_000, netProfit: 17_400_000 },
-  { label: "Mar", revenue: 102_300_000, netProfit: 24_900_000 },
-  { label: "Apr", revenue: 108_700_000, netProfit: 27_300_000 },
-  { label: "May", revenue: 116_400_000, netProfit: 31_800_000 },
-];
+function getPeriodOptions(now = new Date()): PeriodOption[] {
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const quarterStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const yearStart = new Date(now.getFullYear(), 0, 1);
 
-const bestSellingProducts: AnalyticsDataPoint[] = [
-  { label: "Chicken Rice Bowl", value: 148 },
-  { label: "Iced Latte", value: 132 },
-  { label: "Lemon Tea", value: 98 },
-  { label: "Matcha Dessert", value: 74 },
-];
+  return [
+    {
+      label: "This Month",
+      from: toDateInputValue(thisMonthStart),
+      to: toDateInputValue(now),
+    },
+    {
+      label: "Last Month",
+      from: toDateInputValue(lastMonthStart),
+      to: toDateInputValue(lastMonthEnd),
+    },
+    {
+      label: "Last 3 Months",
+      from: toDateInputValue(quarterStart),
+      to: toDateInputValue(now),
+    },
+    {
+      label: "Year To Date",
+      from: toDateInputValue(yearStart),
+      to: toDateInputValue(now),
+    },
+  ];
+}
 
-const profitLossRows: ProfitLossLine[] = [
-  { label: "Sales Revenue", amount: 116_400_000, tone: "positive" },
-  { label: "Cost of Goods Sold", amount: -44_200_000, tone: "negative" },
-  { label: "Gross Profit", amount: 72_200_000, tone: "total" },
-  { label: "Expenses", amount: -21_800_000, tone: "negative" },
-  { label: "Discounts", amount: -6_400_000, tone: "negative" },
-  { label: "Marketplace Fees", amount: -3_900_000, tone: "negative" },
-  { label: "Total Expenses", amount: -32_100_000, tone: "total" },
-  { label: "Net Profit", amount: 40_100_000, tone: "positive" },
-];
+function downloadJson(filename: string, value: unknown) {
+  const blob = new Blob([JSON.stringify(value, null, 2)], {
+    type: "application/json;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
 
-const cashInRows: CashflowTransaction[] = [
-  {
-    id: "IN-001",
-    date: "2026-05-04",
-    sourceAccount: "Cash",
-    type: "Income",
-    category: "Product Sales",
-    sourceName: "Main Branch",
-    description: "Cashier close",
-    amount: 18_400_000,
-    status: "Completed",
-  },
-  {
-    id: "IN-002",
-    date: "2026-05-11",
-    sourceAccount: "QRIS",
-    type: "Income",
-    category: "Marketplace",
-    sourceName: "Marketplace",
-    description: "Settlement",
-    amount: 12_800_000,
-    status: "Completed",
-  },
-];
+  link.href = url;
+  link.download = filename.endsWith(".json") ? filename : `${filename}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
-const cashOutRows: CashflowTransaction[] = [
-  {
-    id: "OUT-001",
-    date: "2026-05-08",
-    sourceAccount: "Bank",
-    type: "Expense",
-    category: "Raw Materials",
-    sourceName: "Fresh Farm Supplier",
-    description: "Ingredient purchase",
-    amount: 9_600_000,
-    status: "Completed",
-  },
-  {
-    id: "OUT-002",
-    date: "2026-05-19",
-    sourceAccount: "Bank",
-    type: "Expense",
-    category: "Operational Costs",
-    sourceName: "Utilities",
-    description: "Monthly bills",
-    amount: 4_300_000,
-    status: "Completed",
-  },
-];
+function formatDate(value: string | null) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
 
-function TrendChart({ data }: { data: FinancialTrendPoint[] }) {
-  const maxValue = Math.max(...data.map((item) => item.revenue));
+function getProfitLossClass(tone: FinancialProfitLossLineDto["tone"]) {
+  if (tone === "positive") return "font-semibold text-emerald-700";
+  if (tone === "negative") return "font-semibold text-rose-700";
+  if (tone === "total") return "font-bold text-neutral-950";
+
+  return "text-neutral-700";
+}
+
+function TrendChart({ data }: { data: FinancialTrendPointDto[] }) {
+  const maxValue = Math.max(
+    ...data.map((item) => Math.max(item.revenue, item.netProfit, item.cashIn, 0)),
+    1,
+  );
 
   return (
     <div className="space-y-4 p-4">
       {data.map((item) => (
-        <div key={item.label} className="grid grid-cols-[48px_1fr_110px] items-center gap-3">
+        <div key={item.periodStart} className="grid grid-cols-[72px_1fr_120px] items-center gap-3">
           <span className="text-sm font-medium text-neutral-500">{item.label}</span>
           <div className="space-y-1">
-            <div className="h-2 rounded-full bg-neutral-100">
+            <div className="h-2 rounded-full bg-neutral-100" title="Revenue">
               <div
                 className="h-full rounded-full bg-blue-600"
-                style={{ width: `${Math.max((item.revenue / maxValue) * 100, 8)}%` }}
+                style={{ width: `${Math.max((item.revenue / maxValue) * 100, 4)}%` }}
               />
             </div>
-            <div className="h-2 rounded-full bg-neutral-100">
+            <div className="h-2 rounded-full bg-neutral-100" title="Net Profit">
               <div
                 className="h-full rounded-full bg-emerald-600"
-                style={{ width: `${Math.max((item.netProfit / maxValue) * 100, 8)}%` }}
+                style={{ width: `${Math.max((Math.max(item.netProfit, 0) / maxValue) * 100, 4)}%` }}
               />
             </div>
           </div>
@@ -159,83 +162,159 @@ function TrendChart({ data }: { data: FinancialTrendPoint[] }) {
           </span>
         </div>
       ))}
+      {data.length === 0 && (
+        <p className="py-8 text-center text-sm text-neutral-500">
+          No trend data for this period yet.
+        </p>
+      )}
     </div>
   );
 }
 
-function SimpleRanking({ data }: { data: AnalyticsDataPoint[] }) {
-  const maxValue = Math.max(...data.map((item) => item.value));
+function SimpleRanking({ data }: { data: FinancialBestSellerDto[] }) {
+  const maxValue = Math.max(...data.map((item) => item.quantity), 1);
 
   return (
     <div className="space-y-4 p-4">
       {data.map((item) => (
-        <div key={item.label} className="space-y-2">
+        <div key={item.menuItemId} className="space-y-2">
           <div className="flex items-center justify-between gap-3 text-sm">
             <span className="font-medium text-neutral-700">{item.label}</span>
-            <span className="text-neutral-500">{formatNumber(item.value)}</span>
+            <span className="text-neutral-500">
+              {formatNumber(item.quantity)} sold · {formatCurrency(item.revenue)}
+            </span>
           </div>
           <div className="h-2 rounded-full bg-neutral-100">
             <div
               className="h-full rounded-full bg-amber-500"
-              style={{ width: `${Math.max((item.value / maxValue) * 100, 8)}%` }}
+              style={{ width: `${Math.max((item.quantity / maxValue) * 100, 4)}%` }}
             />
           </div>
         </div>
       ))}
+      {data.length === 0 && (
+        <p className="py-8 text-center text-sm text-neutral-500">
+          No product sales data for this period yet.
+        </p>
+      )}
     </div>
   );
 }
 
-function CompactCalendar() {
+function CompactCalendar({ from, to }: { from: string; to: string }) {
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+  const totalDays = Math.max(
+    Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+    1,
+  );
+  const shownDays = Math.min(totalDays, 31);
+
   return (
-    <div className="grid grid-cols-7 gap-1 rounded-lg border border-neutral-200 bg-white p-3 text-center text-xs">
-      {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
-        <div key={`${day}-${index}`} className="py-1 font-semibold text-neutral-400">
-          {day}
+    <div className="rounded-lg border border-neutral-200 bg-white p-3 text-xs">
+      <div className="mb-3 grid grid-cols-2 gap-2 text-neutral-500">
+        <div>
+          <p className="font-semibold text-neutral-950">From</p>
+          <p>{formatDate(from)}</p>
         </div>
-      ))}
-      {Array.from({ length: 31 }).map((_, index) => {
-        const day = index + 1;
-        const isSelected = day === 1 || day === 31;
-
-        return (
+        <div>
+          <p className="font-semibold text-neutral-950">To</p>
+          <p>{formatDate(to)}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center">
+        {Array.from({ length: shownDays }).map((_, index) => (
           <div
-            key={day}
-            className={`rounded-md py-1.5 ${
-              isSelected
-                ? "bg-neutral-950 font-semibold text-white"
-                : "text-neutral-600"
-            }`}
+            key={`${from}-${index}`}
+            className="rounded-md bg-neutral-950 py-1.5 font-semibold text-white"
           >
-            {day}
+            {index + 1}
           </div>
-        );
-      })}
+        ))}
+      </div>
+      {totalDays > shownDays && (
+        <p className="mt-3 text-center text-neutral-500">
+          +{formatNumber(totalDays - shownDays)} more day(s) in selected range
+        </p>
+      )}
     </div>
   );
 }
 
-function getProfitLossClass(tone: ProfitLossLine["tone"]) {
-  if (tone === "positive") return "font-semibold text-emerald-700";
-  if (tone === "negative") return "font-semibold text-rose-700";
-  if (tone === "total") return "font-bold text-neutral-950";
+function SourceHealthPanel({ report }: { report: FinancialReportDto }) {
+  const items = [
+    ["Paid Orders", report.sourceHealth.paidOrders],
+    ["Cashflow Entries", report.sourceHealth.cashflowEntries],
+    ["Invoices", report.sourceHealth.invoices],
+    ["Stock Movements", report.sourceHealth.stockMovements],
+  ] as const;
 
-  return "text-neutral-700";
+  return (
+    <DashboardPanel title="Source Health" description="Backend source records used by this report.">
+      <div className="grid gap-3 p-4 md:grid-cols-4">
+        {items.map(([label, value]) => (
+          <div key={label} className="rounded-lg border border-neutral-200 bg-white p-3">
+            <p className="text-xs font-medium text-neutral-500">{label}</p>
+            <p className="mt-1 text-xl font-semibold text-neutral-950">{formatNumber(value)}</p>
+          </div>
+        ))}
+      </div>
+      {report.sourceHealth.warnings.length > 0 && (
+        <div className="border-t border-amber-100 bg-amber-50 p-4 text-sm text-amber-800">
+          <div className="mb-2 flex items-center gap-2 font-semibold">
+            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+            Reconciliation warnings
+          </div>
+          <ul className="list-inside list-disc space-y-1">
+            {report.sourceHealth.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </DashboardPanel>
+  );
 }
 
 export function FinancialReportsDashboard() {
-  const [selectedSource, setSelectedSource] =
-    useState<FinancialDataSource>("Recap + Cashflow");
-  const [period, setPeriod] = useState("May 2026");
+  const periodOptions = useMemo(() => getPeriodOptions(), []);
+  const [selectedPeriod, setSelectedPeriod] = useState(periodOptions[0]?.label ?? "This Month");
+  const [basis, setBasis] = useState<FinancialReportBasis>("hybrid");
+  const [report, setReport] = useState<FinancialReportDto | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const totalRevenue = 116_400_000;
-  const grossProfit = 72_200_000;
-  const netProfit = 40_100_000;
-  const receivables = 8_750_000;
-  const cashIn = cashInRows.reduce((total, row) => total + row.amount, 0);
-  const cashOut = cashOutRows.reduce((total, row) => total + row.amount, 0);
+  const activePeriod = useMemo(
+    () => periodOptions.find((item) => item.label === selectedPeriod) ?? periodOptions[0],
+    [periodOptions, selectedPeriod],
+  );
 
-  const plColumns: DataTableColumn<ProfitLossLine>[] = [
+  const query = useMemo<FinancialReportQuery>(() => ({
+    from: activePeriod?.from,
+    to: activePeriod?.to,
+    basis,
+  }), [activePeriod, basis]);
+
+  const loadReport = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await financialReportsApi.getReport(query);
+      setReport(response.data);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "Failed to load financial report."));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [query]);
+
+  useEffect(() => {
+    void loadReport();
+  }, [loadReport]);
+
+  const plColumns: DataTableColumn<FinancialProfitLossLineDto>[] = [
     { key: "label", header: "Line Item", cell: (row) => row.label },
     {
       key: "amount",
@@ -249,24 +328,76 @@ export function FinancialReportsDashboard() {
     },
   ];
 
-  const cashColumns: DataTableColumn<CashflowTransaction>[] = [
-    { key: "date", header: "Date", cell: (row) => row.date },
-    { key: "sourceAccount", header: "Source Account", cell: (row) => row.sourceAccount },
+  const cashColumns: DataTableColumn<FinancialCashflowRowDto>[] = [
+    { key: "date", header: "Date", cell: (row) => formatDate(row.date) },
+    { key: "sourceAccount", header: "Account", cell: (row) => row.sourceAccount },
+    { key: "type", header: "Type", cell: (row) => row.type },
     { key: "category", header: "Category", cell: (row) => row.category },
     { key: "sourceName", header: "Source", cell: (row) => row.sourceName },
     { key: "description", header: "Description", cell: (row) => row.description },
     {
       key: "amount",
       header: "Amount",
+      className: "text-right",
       cell: (row) => <span className="font-semibold">{formatCurrency(row.amount)}</span>,
     },
   ];
 
+  const receivableColumns: DataTableColumn<FinancialReportDto["receivables"][number]>[] = [
+    { key: "invoiceNumber", header: "Invoice", cell: (row) => row.invoiceNumber },
+    { key: "invoiceDate", header: "Invoice Date", cell: (row) => formatDate(row.invoiceDate) },
+    { key: "dueDate", header: "Due Date", cell: (row) => formatDate(row.dueDate) },
+    { key: "customerName", header: "Customer", cell: (row) => row.customerName },
+    { key: "status", header: "Status", cell: (row) => row.status },
+    {
+      key: "amount",
+      header: "Amount",
+      className: "text-right",
+      cell: (row) => <span className="font-semibold">{formatCurrency(row.amount)}</span>,
+    },
+  ];
+
+  const exportReportJson = async () => {
+    setIsExporting(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await financialReportsApi.exportReport(query);
+      downloadJson(`financial-report-${response.data.report.period.from}-${response.data.report.period.to}`, response.data);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "Failed to export financial report."));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportCashRows = (type: "cash-in" | "cash-out") => {
+    if (!report) return;
+    const rows = type === "cash-in" ? report.cashIn : report.cashOut;
+
+    exportCsv({
+      filename: `${type}-${report.period.from}-${report.period.to}.csv`,
+      rows,
+      columns: [
+        { header: "Date", value: (row) => row.date },
+        { header: "Account", value: (row) => row.sourceAccount },
+        { header: "Type", value: (row) => row.type },
+        { header: "Category", value: (row) => row.category },
+        { header: "Source", value: (row) => row.sourceName },
+        { header: "Description", value: (row) => row.description },
+        { header: "Amount", value: (row) => row.amount },
+        { header: "Status", value: (row) => row.status },
+        { header: "Source Type", value: (row) => row.sourceType },
+      ],
+    });
+  };
+
+  const description = report
+    ? `Date Summary: ${formatDate(report.period.from)} - ${formatDate(report.period.to)}. Basis: ${report.basis}.`
+    : "Backend-backed financial report from orders, cashflow, invoices, and stock movements.";
+
   return (
-    <DashboardShell
-      title="Financial Reports"
-      description={`Date Summary: 1 May - 31 May 2026. Active period: ${period}.`}
-    >
+    <DashboardShell title="Financial Reports" description={description}>
       <DashboardPanel>
         <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
@@ -274,147 +405,193 @@ export function FinancialReportsDashboard() {
               <CalendarDays className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-neutral-950">1 May - 31 May 2026</p>
-              <p className="text-xs text-neutral-500">Monthly financial report</p>
+              <p className="text-sm font-semibold text-neutral-950">
+                {report ? `${formatDate(report.period.from)} - ${formatDate(report.period.to)}` : "Loading report period"}
+              </p>
+              <p className="text-xs text-neutral-500">
+                {report ? `Generated ${formatDate(report.generatedAt)}` : "Waiting for backend report"}
+              </p>
             </div>
           </div>
           <DashboardActions>
             <DashboardActionButton
               icon={Download}
-              onClick={exportPdf}
+              onClick={exportReportJson}
+              disabled={!report || isExporting}
             >
-              Export PDF
+              Export JSON
             </DashboardActionButton>
-            <DashboardActionButton icon={RefreshCw}>Refresh</DashboardActionButton>
+            <DashboardActionButton icon={Download} onClick={exportPdf} disabled={!report}>
+              Print / PDF
+            </DashboardActionButton>
+            <DashboardActionButton icon={RefreshCw} onClick={loadReport} disabled={isLoading}>
+              Refresh
+            </DashboardActionButton>
           </DashboardActions>
         </div>
       </DashboardPanel>
 
+      {errorMessage && (
+        <DashboardPanel>
+          <div className="flex items-start gap-3 border-l-4 border-rose-500 bg-rose-50 p-4 text-sm text-rose-700">
+            <AlertTriangle className="mt-0.5 h-4 w-4" aria-hidden="true" />
+            <div>
+              <p className="font-semibold">Financial report failed to load</p>
+              <p>{errorMessage}</p>
+            </div>
+          </div>
+        </DashboardPanel>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-        <DashboardPanel title="Period Section" description="Monthly Period Selector">
+        <DashboardPanel title="Period Section" description="Backend query date range">
           <div className="p-4">
-            <DashboardFilters className="md:grid-cols-1">
+            <DashboardFilters className="md:grid-cols-2">
               <SelectFilter
                 label="Monthly Period Selector"
-                value={period}
-                options={["March 2026", "April 2026", "May 2026"]}
-                onChange={setPeriod}
+                value={selectedPeriod}
+                options={periodOptions.map((item) => item.label)}
+                onChange={setSelectedPeriod}
+              />
+              <SelectFilter
+                label="Report Basis"
+                value={basis}
+                options={["hybrid", "cashflow", "orders"]}
+                onChange={(value) => setBasis(value as FinancialReportBasis)}
               />
             </DashboardFilters>
           </div>
         </DashboardPanel>
-        <DashboardPanel title="Compact Calendar">
+        <DashboardPanel title="Selected Range">
           <div className="p-4">
-            <CompactCalendar />
+            <CompactCalendar from={activePeriod.from} to={activePeriod.to} />
           </div>
         </DashboardPanel>
       </div>
 
       <DashboardPanel title="Data Sources Section">
-        <div className="grid gap-4 p-4 xl:grid-cols-[1fr_360px]">
-          <div className="grid gap-3 md:grid-cols-3">
-            {dataSources.map((source) => {
-              const isActive = source.name === selectedSource;
+        <div className="grid gap-4 p-4 xl:grid-cols-3">
+          {dataSources.map((source) => {
+            const isActive = source.basis === basis;
 
-              return (
-                <button
-                  key={source.name}
-                  type="button"
-                  onClick={() => setSelectedSource(source.name)}
-                  className={`rounded-lg border p-4 text-left transition ${
-                    isActive
-                      ? "border-blue-300 bg-blue-50"
-                      : "border-neutral-200 bg-white hover:bg-neutral-50"
-                  }`}
-                >
-                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-white text-neutral-700 ring-1 ring-neutral-200">
-                    <FileText className="h-5 w-5" aria-hidden="true" />
-                  </div>
-                  <h3 className="font-semibold text-neutral-950">{source.name}</h3>
-                  <p className="mt-2 text-sm leading-6 text-neutral-500">
-                    {source.description}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-          <div className="grid gap-3">
-            {sourceInputs.map((input) => (
-              <SelectFilter
-                key={input.label}
-                label={input.label}
-                value={input.value}
-                options={[input.value, "Manual Upload", "Latest Synced Data"]}
-                onChange={() => undefined}
-              />
-            ))}
-          </div>
+            return (
+              <button
+                key={source.basis}
+                type="button"
+                onClick={() => setBasis(source.basis)}
+                className={`rounded-lg border p-4 text-left transition ${
+                  isActive
+                    ? "border-blue-300 bg-blue-50"
+                    : "border-neutral-200 bg-white hover:bg-neutral-50"
+                }`}
+              >
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-white text-neutral-700 ring-1 ring-neutral-200">
+                  <FileText className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <h3 className="font-semibold text-neutral-950">{source.name}</h3>
+                <p className="mt-2 text-sm leading-6 text-neutral-500">
+                  {source.description}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </DashboardPanel>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Revenue" value={formatCurrency(totalRevenue)} note={selectedSource} icon={ArrowUpRight} tone="green" />
-        <StatCard label="Gross Profit" value={formatCurrency(grossProfit)} note="Revenue minus COGS" icon={BarChart3} tone="blue" />
-        <StatCard label="Net Profit" value={formatCurrency(netProfit)} note="After expenses and fees" icon={WalletCards} tone="slate" />
-        <StatCard label="Receivables" value={formatCurrency(receivables)} note="Outstanding payment" icon={FileText} tone="amber" />
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <DashboardPanel title="6 Month Trend" description="Revenue and net profit">
-          <TrendChart data={sixMonthTrend} />
+      {isLoading && (
+        <DashboardPanel>
+          <div className="p-8 text-center text-sm text-neutral-500">
+            Loading financial report from backend sources...
+          </div>
         </DashboardPanel>
-        <DashboardPanel title="Best Selling Products">
-          <SimpleRanking data={bestSellingProducts} />
-        </DashboardPanel>
-      </div>
+      )}
 
-      <DashboardPanel title="Profit & Loss Section">
-        <DataTable
-          columns={plColumns}
-          data={profitLossRows}
-          getRowKey={(row) => row.label}
-          minWidth={620}
-        />
-      </DashboardPanel>
+      {report && !isLoading && (
+        <>
+          <SourceHealthPanel report={report} />
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <StatCard label="Cash In" value={formatCurrency(cashIn)} note="Income data" icon={ArrowUpRight} tone="green" />
-        <StatCard label="Cash Out" value={formatCurrency(cashOut)} note="Expense data" icon={ArrowDownRight} tone="rose" />
-        <StatCard label="Net Cashflow" value={formatCurrency(cashIn - cashOut)} note="Cash in minus cash out" icon={WalletCards} tone="blue" />
-      </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="Total Revenue" value={formatCurrency(report.summary.totalRevenue)} note={`Basis: ${report.basis}`} icon={ArrowUpRight} tone="green" />
+            <StatCard label="Gross Profit" value={formatCurrency(report.summary.grossProfit)} note={`${formatNumber(report.summary.grossMargin)}% gross margin`} icon={BarChart3} tone="blue" />
+            <StatCard label="Net Profit" value={formatCurrency(report.summary.netProfit)} note={`${formatNumber(report.summary.netMargin)}% net margin`} icon={WalletCards} tone="slate" />
+            <StatCard label="Receivables" value={formatCurrency(report.summary.receivables)} note="Outstanding invoice value" icon={FileText} tone="amber" />
+          </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <DashboardPanel title="Cash In Data">
-          <TableToolbar
-            actions={
-              <DashboardActions>
-                <DashboardActionButton icon={Download}>Export Cash In</DashboardActionButton>
-              </DashboardActions>
-            }
-          />
-          <DataTable
-            columns={cashColumns}
-            data={cashInRows}
-            getRowKey={(row) => row.id}
-            minWidth={820}
-          />
-        </DashboardPanel>
-        <DashboardPanel title="Cash Out Data">
-          <TableToolbar
-            actions={
-              <DashboardActions>
-                <DashboardActionButton icon={Download}>Export Cash Out</DashboardActionButton>
-              </DashboardActions>
-            }
-          />
-          <DataTable
-            columns={cashColumns}
-            data={cashOutRows}
-            getRowKey={(row) => row.id}
-            minWidth={820}
-          />
-        </DashboardPanel>
-      </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <StatCard label="Cash In" value={formatCurrency(report.summary.cashIn)} note="Posted income ledger" icon={ArrowUpRight} tone="green" />
+            <StatCard label="Cash Out" value={formatCurrency(report.summary.cashOut)} note="Posted expense ledger" icon={ArrowDownRight} tone="rose" />
+            <StatCard label="Net Cashflow" value={formatCurrency(report.summary.netCashflow)} note="Cash in minus cash out" icon={WalletCards} tone="blue" />
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <DashboardPanel title="Trend" description="Revenue, net profit, and cashflow projection">
+              <TrendChart data={report.trend} />
+            </DashboardPanel>
+            <DashboardPanel title="Best Selling Products">
+              <SimpleRanking data={report.bestSellingProducts} />
+            </DashboardPanel>
+          </div>
+
+          <DashboardPanel title="Profit & Loss Section">
+            <DataTable
+              columns={plColumns}
+              data={report.profitLoss}
+              getRowKey={(row) => row.key}
+              minWidth={620}
+              emptyMessage="No profit and loss rows for this period."
+            />
+          </DashboardPanel>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <DashboardPanel title="Cash In Data">
+              <TableToolbar
+                actions={
+                  <DashboardActions>
+                    <DashboardActionButton icon={Download} onClick={() => exportCashRows("cash-in")} disabled={report.cashIn.length === 0}>
+                      Export Cash In
+                    </DashboardActionButton>
+                  </DashboardActions>
+                }
+              />
+              <DataTable
+                columns={cashColumns}
+                data={report.cashIn}
+                getRowKey={(row) => row.id}
+                minWidth={860}
+                emptyMessage="No cash-in ledger rows for this period."
+              />
+            </DashboardPanel>
+            <DashboardPanel title="Cash Out Data">
+              <TableToolbar
+                actions={
+                  <DashboardActions>
+                    <DashboardActionButton icon={Download} onClick={() => exportCashRows("cash-out")} disabled={report.cashOut.length === 0}>
+                      Export Cash Out
+                    </DashboardActionButton>
+                  </DashboardActions>
+                }
+              />
+              <DataTable
+                columns={cashColumns}
+                data={report.cashOut}
+                getRowKey={(row) => row.id}
+                minWidth={860}
+                emptyMessage="No cash-out ledger rows for this period."
+              />
+            </DashboardPanel>
+          </div>
+
+          <DashboardPanel title="Receivables">
+            <DataTable
+              columns={receivableColumns}
+              data={report.receivables}
+              getRowKey={(row) => row.id}
+              minWidth={840}
+              emptyMessage="No receivables for this period."
+            />
+          </DashboardPanel>
+        </>
+      )}
     </DashboardShell>
   );
 }
