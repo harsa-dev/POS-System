@@ -6,5 +6,13 @@ export {
   canTransitionOrderStatus,
   canViewFinancialReports,
   isOwnerRole,
-  type PermissionKey,
+  type PermissionKey as LegacyPermissionKey,
 } from "./permissions.js";
+
+export {
+  hasPermission,
+  permissionKeys,
+  requirePermission,
+  rolePermissionMap,
+  type PermissionKey,
+} from "./permission-registry.js";
