@@ -6,7 +6,7 @@ import {
   type PermissionKey,
 } from "../permissions/index.js";
 
-export const legacyOrderStatusTransitions = {
+export const legacyOrderStatusTransitions: Record<OrderStatus, readonly OrderStatus[]> = {
   PENDING_PAYMENT: ["PAID", "CANCELLED"],
   PAID: ["PREPARING", "CANCELLED"],
   PREPARING: ["READY", "CANCELLED"],
@@ -14,9 +14,9 @@ export const legacyOrderStatusTransitions = {
   SERVED: ["COMPLETED"],
   COMPLETED: [],
   CANCELLED: [],
-} satisfies Record<OrderStatus, readonly OrderStatus[]>;
+};
 
-export const legacyOrderStatusPermissions = {
+export const legacyOrderStatusPermissions: Record<OrderStatus, PermissionKey> = {
   PENDING_PAYMENT: permissionKeys.restaurant.orders.approve,
   PAID: permissionKeys.restaurant.payments.create,
   PREPARING: permissionKeys.restaurant.kitchen.update,
@@ -24,7 +24,7 @@ export const legacyOrderStatusPermissions = {
   SERVED: permissionKeys.restaurant.serving.update,
   COMPLETED: permissionKeys.restaurant.serving.update,
   CANCELLED: permissionKeys.restaurant.orders.cancel,
-} satisfies Record<OrderStatus, PermissionKey>;
+};
 
 export type OrderStatusDecision =
   | { allowed: true; requiredPermission: PermissionKey }
