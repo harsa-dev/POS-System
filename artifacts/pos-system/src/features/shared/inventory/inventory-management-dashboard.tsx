@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import {
   Activity,
   BarChart3,
@@ -47,6 +54,9 @@ const ALL_STATUS = "All Status";
 const LOW_STOCK = "Low Stock";
 const OUT_OF_STOCK = "Out of Stock";
 const IN_STOCK = "In Stock";
+const DEFAULT_TYPE: InventoryType = "INGREDIENT";
+const DEFAULT_UNIT: InventoryUnit = "PCS";
+const DEFAULT_REASON: StockMovementReason = "PURCHASE";
 
 const statusOptions = [ALL_STATUS, LOW_STOCK, OUT_OF_STOCK, IN_STOCK];
 const sortOptions = ["Highest Stock Value", "Lowest Stock", "Item Name", "Newest"];
@@ -111,8 +121,8 @@ function createDefaultItemForm(capabilities: InventoryCapabilitiesDto | null): C
   return {
     name: "",
     sku: "",
-    type: policy?.allowedTypes[0] ?? fallbackTypes[0],
-    unit: policy?.allowedUnits[0] ?? fallbackUnits[0],
+    type: policy?.allowedTypes[0] ?? DEFAULT_TYPE,
+    unit: policy?.allowedUnits[0] ?? DEFAULT_UNIT,
     openingStock: "0",
     minimumStock: "0",
     costPerUnit: "0",
@@ -123,7 +133,7 @@ function createDefaultMovementForm(
   capabilities: InventoryCapabilitiesDto | null,
   item?: InventoryItemDto,
 ): StockMovementFormState {
-  const reason = capabilities?.policy.allowedMovementReasons[0] ?? fallbackReasons[0];
+  const reason = capabilities?.policy.allowedMovementReasons[0] ?? DEFAULT_REASON;
 
   return {
     inventoryItemId: item?.id ?? "",
@@ -142,7 +152,7 @@ function InventoryDialog({
 }: {
   title: string;
   description: string;
-  children: React.ReactNode;
+  children: ReactNode;
   onClose: () => void;
 }) {
   return (
@@ -168,7 +178,7 @@ function InventoryDialog({
   );
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
+function FieldLabel({ children }: { children: ReactNode }) {
   return <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{children}</span>;
 }
 
@@ -266,6 +276,10 @@ export function InventoryManagementDashboard() {
         inventoryApi.getInventoryDashboard(),
       ]);
 
+      const firstAllowedType = capabilityResponse.data.policy.allowedTypes[0] ?? DEFAULT_TYPE;
+      const firstAllowedUnit = capabilityResponse.data.policy.allowedUnits[0] ?? DEFAULT_UNIT;
+      const firstAllowedReason = capabilityResponse.data.policy.allowedMovementReasons[0] ?? DEFAULT_REASON;
+
       setCapabilities(capabilityResponse.data);
       setItems(dashboardResponse.data.items);
       setRecentMovements(dashboardResponse.data.recentMovements);
@@ -275,16 +289,16 @@ export function InventoryManagementDashboard() {
         ...current,
         type: capabilityResponse.data.policy.allowedTypes.includes(current.type)
           ? current.type
-          : capabilityResponse.data.policy.allowedTypes[0],
+          : firstAllowedType,
         unit: capabilityResponse.data.policy.allowedUnits.includes(current.unit)
           ? current.unit
-          : capabilityResponse.data.policy.allowedUnits[0],
+          : firstAllowedUnit,
       }));
       setMovementForm((current) => ({
         ...current,
         reason: capabilityResponse.data.policy.allowedMovementReasons.includes(current.reason)
           ? current.reason
-          : capabilityResponse.data.policy.allowedMovementReasons[0],
+          : firstAllowedReason,
       }));
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error, "Failed to load inventory dashboard."));
@@ -365,7 +379,7 @@ export function InventoryManagementDashboard() {
     setDialog("movement");
   };
 
-  async function handleCreateItem(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCreateItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
     setFormError(null);
@@ -390,7 +404,7 @@ export function InventoryManagementDashboard() {
     }
   }
 
-  async function handleCreateMovement(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCreateMovement(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
     setFormError(null);
