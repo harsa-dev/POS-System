@@ -273,7 +273,10 @@ export async function getCashflowCategorySummary(
     limit: 1,
     status: "POSTED",
   });
-  const types = direction === "income" ? ["INCOME", "TRANSFER_IN"] : ["EXPENSE", "TRANSFER_OUT"];
+  const typeFilter =
+    direction === "income"
+      ? Prisma.sql`AND "type" IN ('INCOME', 'TRANSFER_IN')`
+      : Prisma.sql`AND "type" IN ('EXPENSE', 'TRANSFER_OUT')`;
 
   return db.$queryRaw<CategorySummaryRow[]>`
     SELECT
@@ -282,7 +285,7 @@ export async function getCashflowCategorySummary(
       COUNT(*)::int AS "count"
     FROM "CashflowEntry"
     ${whereSql}
-    AND "type" IN (${Prisma.join(types)})
+    ${typeFilter}
     GROUP BY "category"
     ORDER BY "amount" DESC
     LIMIT 10;
