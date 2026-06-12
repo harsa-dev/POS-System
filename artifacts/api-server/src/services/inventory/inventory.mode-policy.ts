@@ -1,21 +1,22 @@
-import type {
-  InventoryType,
-  InventoryUnit,
-  StockMovementReason,
-} from "@prisma/client";
+import type { InventoryType, InventoryUnit, StockMovementReason } from "@prisma/client";
 
 import type { BusinessContext } from "../../lib/business-context/business-context.types.js";
 import {
-  INVENTORY_TYPES,
-  INVENTORY_UNITS,
-  STOCK_MOVEMENT_REASONS,
+  LIVESTOCK_INVENTORY_TYPES,
+  LIVESTOCK_INVENTORY_UNITS,
+  LIVESTOCK_STOCK_MOVEMENT_REASONS,
+  RESTAURANT_INVENTORY_TYPES,
+  RESTAURANT_INVENTORY_UNITS,
+  RESTAURANT_STOCK_MOVEMENT_REASONS,
+  RETAIL_INVENTORY_TYPES,
+  RETAIL_INVENTORY_UNITS,
+  RETAIL_STOCK_MOVEMENT_REASONS,
+  SERVICE_INVENTORY_TYPES,
+  SERVICE_INVENTORY_UNITS,
+  SERVICE_STOCK_MOVEMENT_REASONS,
 } from "./inventory.constants.js";
 
-export type SharedInventoryBusinessMode =
-  | "restaurant"
-  | "retail"
-  | "service"
-  | "livestock";
+export type SharedInventoryBusinessMode = "restaurant" | "retail" | "service" | "livestock";
 
 export type InventoryModePolicy = {
   mode: SharedInventoryBusinessMode;
@@ -30,18 +31,14 @@ export type InventoryModePolicy = {
   supportsSkuStock: boolean;
 };
 
-const baseAllowedTypes = INVENTORY_TYPES;
-const baseAllowedUnits = INVENTORY_UNITS;
-const baseMovementReasons = STOCK_MOVEMENT_REASONS;
-
 export const inventoryModePolicies: Record<SharedInventoryBusinessMode, InventoryModePolicy> = {
   restaurant: {
     mode: "restaurant",
     label: "Restaurant / F&B",
-    description: "Ingredient, packaging, and equipment inventory for recipe-backed menu operations.",
-    allowedTypes: baseAllowedTypes,
-    allowedUnits: baseAllowedUnits,
-    allowedMovementReasons: baseMovementReasons,
+    description: "Inventory policy for restaurant operations.",
+    allowedTypes: RESTAURANT_INVENTORY_TYPES,
+    allowedUnits: RESTAURANT_INVENTORY_UNITS,
+    allowedMovementReasons: RESTAURANT_STOCK_MOVEMENT_REASONS,
     dashboardBuckets: ["ingredients", "packaging", "equipment", "low-stock", "recent-movements"],
     recipeBacked: true,
     supportsConsumableUsage: true,
@@ -50,11 +47,11 @@ export const inventoryModePolicies: Record<SharedInventoryBusinessMode, Inventor
   retail: {
     mode: "retail",
     label: "Retail",
-    description: "Shared stock foundation for SKU-oriented products. Product/SKU schema extensions are still future work.",
-    allowedTypes: baseAllowedTypes,
-    allowedUnits: baseAllowedUnits,
-    allowedMovementReasons: baseMovementReasons,
-    dashboardBuckets: ["sellable-stock", "packaging", "equipment", "low-stock", "recent-movements"],
+    description: "Inventory policy for retail stock.",
+    allowedTypes: RETAIL_INVENTORY_TYPES,
+    allowedUnits: RETAIL_INVENTORY_UNITS,
+    allowedMovementReasons: RETAIL_STOCK_MOVEMENT_REASONS,
+    dashboardBuckets: ["sellable-stock", "raw-materials", "finished-goods", "packaging", "low-stock", "recent-movements"],
     recipeBacked: false,
     supportsConsumableUsage: false,
     supportsSkuStock: true,
@@ -62,11 +59,11 @@ export const inventoryModePolicies: Record<SharedInventoryBusinessMode, Inventor
   service: {
     mode: "service",
     label: "Service Business",
-    description: "Shared stock foundation for supplies, tools, and consumables used by service jobs.",
-    allowedTypes: baseAllowedTypes,
-    allowedUnits: baseAllowedUnits,
-    allowedMovementReasons: baseMovementReasons,
-    dashboardBuckets: ["supplies", "tools", "consumables", "low-stock", "recent-movements"],
+    description: "Inventory policy for service stock.",
+    allowedTypes: SERVICE_INVENTORY_TYPES,
+    allowedUnits: SERVICE_INVENTORY_UNITS,
+    allowedMovementReasons: SERVICE_STOCK_MOVEMENT_REASONS,
+    dashboardBuckets: ["supplies", "tools", "spare-parts", "low-stock", "recent-movements"],
     recipeBacked: false,
     supportsConsumableUsage: true,
     supportsSkuStock: false,
@@ -74,11 +71,11 @@ export const inventoryModePolicies: Record<SharedInventoryBusinessMode, Inventor
   livestock: {
     mode: "livestock",
     label: "Livestock",
-    description: "Shared stock foundation for feed, medicine, tools, and barn supplies.",
-    allowedTypes: baseAllowedTypes,
-    allowedUnits: baseAllowedUnits,
-    allowedMovementReasons: baseMovementReasons,
-    dashboardBuckets: ["feed", "medicine", "tools", "low-stock", "recent-movements"],
+    description: "Inventory policy for livestock stock.",
+    allowedTypes: LIVESTOCK_INVENTORY_TYPES,
+    allowedUnits: LIVESTOCK_INVENTORY_UNITS,
+    allowedMovementReasons: LIVESTOCK_STOCK_MOVEMENT_REASONS,
+    dashboardBuckets: ["feed", "medicine", "tools", "equipment", "low-stock", "recent-movements"],
     recipeBacked: false,
     supportsConsumableUsage: true,
     supportsSkuStock: false,
@@ -86,9 +83,11 @@ export const inventoryModePolicies: Record<SharedInventoryBusinessMode, Inventor
 };
 
 export function normalizeInventoryBusinessMode(mode: string): SharedInventoryBusinessMode {
-  if (mode === "retail") return "retail";
-  if (mode === "service") return "service";
-  if (mode === "livestock") return "livestock";
+  const normalized = mode.toLowerCase();
+
+  if (normalized === "retail") return "retail";
+  if (normalized === "service") return "service";
+  if (normalized === "livestock") return "livestock";
   return "restaurant";
 }
 
