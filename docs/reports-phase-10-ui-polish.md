@@ -21,6 +21,7 @@ The goal is visual consistency without changing financial logic. Financial numbe
 - `DashboardTabs` uses semantic muted/card/foreground tokens.
 - `SelectFilter` uses semantic card/border/focus tokens.
 - `DataTable` uses semantic muted/border/foreground tokens and row hover state.
+- `DataTable` now supports default client-side pagination for long loaded table data.
 - `financial-reports-dashboard.tsx` has been migrated away from raw palette classes for its local charts, rankings, calendar, source health, reconciliation states, data source cards, loading state, and error state.
 - Financial Reports basis selector now uses the shared `financialReportBases` contract instead of an inline hardcoded basis list.
 - Financial Reports basis changes are guarded with `isFinancialReportBasis()` before updating state.
@@ -54,6 +55,28 @@ Error alert
 Data source selector cards
 Loading state
 Average order value card tone
+```
+
+## Table Pagination
+
+`DataTable` now paginates long loaded table data by default.
+
+Rules:
+
+```txt
+Default page size: 10 rows
+Pagination appears only when data length exceeds page size
+Empty state remains visible when there are no rows
+Previous/Next buttons use semantic tokens
+Pagination is client-side over the rows already returned by the backend
+```
+
+Important limitation:
+
+```txt
+This is UI pagination, not backend cursor/offset pagination.
+Financial report/reconciliation APIs must still avoid unlimited backend reads.
+If the report grows beyond backend limits, add server-side pagination at the API/repository layer.
 ```
 
 ## Design Token Direction
@@ -103,6 +126,7 @@ bg-rose-*
 - Export and report API behavior remains backend-owned.
 - Reconciliation warnings remain backend-owned.
 - Rate limiting remains a backend responsibility.
+- Client-side table pagination must not be treated as a replacement for backend query limits.
 
 ## Caching and Rate Limiting Rules
 
@@ -123,6 +147,7 @@ bg-rose-*
 - No stale file overwrite that removes previous phase work.
 - No raw color utility spread in the polished financial report areas.
 - No hardcoded report basis option list when the API contract already exports the allowed bases.
+- No assumption that UI pagination protects the database from heavy queries.
 
 ## Manual Verification
 
@@ -143,6 +168,9 @@ CASHIER/KITCHEN/SERVER still cannot view reports.
 Loading state is visible.
 Error state is visible.
 Empty tables are visible.
+Long tables show pagination controls.
+Pagination Previous/Next buttons work.
+Pagination resets when table data changes.
 Export buttons remain disabled while no report is loaded.
 Export CSV/JSON still uses backend export.
 Reconciliation panel still shows source issues from backend.
@@ -158,4 +186,5 @@ No raw neutral/blue/emerald/amber/rose palette classes are visible in financial-
 - Central visual spec/design.md.
 - Visual regression tests.
 - Storybook or screenshot baseline tests.
+- Server-side pagination for large report/reconciliation tables.
 - Dedicated shadcn/ui migration if the project later standardizes the shared component folder around shadcn primitives.
