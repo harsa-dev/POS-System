@@ -4,14 +4,15 @@ import type { RestaurantBusinessContext } from "./get-restaurant-for-user.js";
  * Temporary bridge while the database schema still stores tenant ownership in
  * restaurantId columns.
  *
- * New backend code should pass around businessId from BusinessContext.
- * Database queries can translate that businessId to the legacy restaurantId
- * shape through this helper until a real schema migration is planned.
+ * BusinessContext.businessId may point to the new Business.id once the tenant
+ * bridge has been backfilled. Legacy operational tables still store the
+ * Restaurant.id in restaurantId columns, so database queries must use the
+ * backward-compatible restaurantId alias until those tables are migrated.
  */
 export function getLegacyRestaurantIdFromBusiness(
   businessContext: RestaurantBusinessContext,
 ) {
-  return businessContext.businessId;
+  return businessContext.restaurantId;
 }
 
 export function createRestaurantScopeWhere(
