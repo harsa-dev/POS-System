@@ -7,10 +7,10 @@ import { ALL_ROLES } from "../lib/constants.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import {
-  exportFinancialReport,
   getFinancialReport,
   parseFinancialReportRequest,
 } from "../services/financial-reports/index.js";
+import { exportFinancialReportFile, type ReportExportFormat } from "../services/financial-reports/report-export.js";
 
 const router = Router();
 
@@ -23,6 +23,11 @@ function getActor(user: { id: string; role: Role }) {
 
 function getQuery(query: unknown) {
   return parseFinancialReportRequest(query as Record<string, unknown>);
+}
+
+function getExportFormat(query: unknown): ReportExportFormat {
+  const value = (query as Record<string, unknown>).format;
+  return value === "csv" ? "csv" : "json";
 }
 
 router.get("/financial-reports", async (req, res) => {
@@ -49,10 +54,11 @@ router.get("/financial-reports/export", async (req, res) => {
     if (!user) return;
 
     const businessContext = await requireBusinessContextForUser(user);
-    const data = await exportFinancialReport({
+    const data = await exportFinancialReportFile({
       actor: getActor(user),
       businessContext,
       query: getQuery(req.query),
+      format: getExportFormat(req.query),
     });
 
     return successResponse(res, { data, message: "Financial report export prepared." });
