@@ -22,6 +22,7 @@ export type ApiShiftDto = {
   cashDifference: number | null;
   openedAt: string;
   closedAt: string | null;
+  cashflowSynced?: boolean;
   user?: {
     name: string;
     email: string;
