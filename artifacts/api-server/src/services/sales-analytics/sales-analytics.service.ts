@@ -31,6 +31,10 @@ export function parseSalesAnalyticsRequest(rawQuery: Record<string, unknown>) {
   return parseSalesAnalyticsQuery(rawQuery);
 }
 
+function hasProductScopedFilter(query: SalesAnalyticsQuery) {
+  return Boolean(query.productId || query.q);
+}
+
 export async function getSalesAnalytics(params: {
   actor: SalesAnalyticsActor;
   businessContext: BusinessContext;
@@ -62,6 +66,14 @@ export async function getSalesAnalytics(params: {
   const cogsByOrder = buildCogsByOrderMap(
     await getCogsByOrderIds(prisma, restaurantId, orderIds),
   );
+  const productScopedFilter = hasProductScopedFilter(params.query);
+  const sourceHealthDto = toSalesAnalyticsSourceHealthDto(sourceHealth);
+
+  if (productScopedFilter) {
+    sourceHealthDto.warnings.push(
+      "COGS is hidden for product-filtered analytics until product-level cost allocation is implemented.",
+    );
+  }
 
   return {
     period: toSalesAnalyticsPeriodDto(params.query.from, params.query.to),
@@ -69,13 +81,13 @@ export async function getSalesAnalytics(params: {
     generatedAt: new Date().toISOString(),
     summary: toSalesAnalyticsSummaryDto({
       revenue,
-      cogs: Number(cogs?.cogs ?? 0),
+      cogs: productScopedFilter ? 0 : Number(cogs?.cogs ?? 0),
     }),
     rows: rows.map((row) => toSalesTransactionDto(row, cogsByOrder.get(row.orderId) ?? 0)),
     dailyTrend: dailyTrend.map(toSalesAnalyticsDataPoint),
     busyHours: busyHours.map(toSalesAnalyticsDataPoint),
     bestSellingProducts: bestSellingProducts.map(toBestSellerPoint),
-    sourceHealth: toSalesAnalyticsSourceHealthDto(sourceHealth),
+    sourceHealth: sourceHealthDto,
   };
 }
 
