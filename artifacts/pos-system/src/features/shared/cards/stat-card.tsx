@@ -8,6 +8,7 @@ export const toneClasses: Record<DashboardTone, string> = {
   green: "bg-chart-2/15 text-primary ring-chart-2/20",
   amber: "bg-chart-3/15 text-foreground ring-chart-3/20",
   rose: "bg-destructive/10 text-destructive ring-destructive/20",
+  red: "bg-destructive/10 text-destructive ring-destructive/20",
   slate: "bg-muted text-muted-foreground ring-border",
 };
 
