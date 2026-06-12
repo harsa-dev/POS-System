@@ -4,11 +4,12 @@ import { cn } from "@/lib/utils";
 import type { DashboardTone } from "@/features/shared/types";
 
 export const toneClasses: Record<DashboardTone, string> = {
-  blue: "bg-blue-50 text-blue-700 ring-blue-100",
-  green: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-  amber: "bg-amber-50 text-amber-700 ring-amber-100",
-  rose: "bg-rose-50 text-rose-700 ring-rose-100",
-  slate: "bg-slate-100 text-slate-700 ring-slate-200",
+  blue: "bg-primary/10 text-primary ring-primary/15",
+  green: "bg-chart-2/15 text-primary ring-chart-2/20",
+  amber: "bg-chart-3/15 text-foreground ring-chart-3/20",
+  rose: "bg-destructive/10 text-destructive ring-destructive/20",
+  red: "bg-destructive/10 text-destructive ring-destructive/20",
+  slate: "bg-muted text-muted-foreground ring-border",
 };
 
 export function StatCard({
@@ -25,11 +26,13 @@ export function StatCard({
   tone?: DashboardTone;
 }) {
   return (
-    <article className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
+    <article className="rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-neutral-500">{label}</p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-neutral-950">
+          <p className="truncate text-sm font-medium text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-2 text-2xl font-bold tracking-tight text-card-foreground">
             {value}
           </p>
         </div>
@@ -42,7 +45,7 @@ export function StatCard({
           <Icon className="h-5 w-5" aria-hidden="true" />
         </div>
       </div>
-      {note && <p className="mt-3 text-xs text-neutral-500">{note}</p>}
+      {note && <p className="mt-3 text-xs text-muted-foreground">{note}</p>}
     </article>
   );
 }
@@ -57,7 +60,7 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1",
         toneClasses[tone],
       )}
     >

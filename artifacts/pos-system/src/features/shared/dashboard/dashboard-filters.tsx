@@ -24,7 +24,7 @@ export function DashboardTabs({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="inline-flex rounded-lg border border-neutral-200 bg-neutral-50 p-1">
+    <div className="inline-flex rounded-lg border border-border bg-muted p-1">
       {options.map((option) => {
         const isActive = value === option;
 
@@ -34,10 +34,10 @@ export function DashboardTabs({
             type="button"
             onClick={() => onChange(option)}
             className={cn(
-              "h-8 rounded-md px-3 text-sm font-medium transition",
+              "h-8 rounded-md px-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               isActive
-                ? "bg-white text-neutral-950 shadow-sm"
-                : "text-neutral-500 hover:text-neutral-950",
+                ? "bg-card text-card-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {option}

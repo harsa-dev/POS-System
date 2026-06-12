@@ -1,6 +1,6 @@
 import type { ElementType } from "react";
 
-export type DashboardTone = "blue" | "green" | "amber" | "rose" | "slate";
+export type DashboardTone = "blue" | "green" | "amber" | "rose" | "red" | "slate";
 
 export type StatMetric = {
   label: string;

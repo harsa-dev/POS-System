@@ -32,7 +32,9 @@ import {
 import { getApiErrorMessage } from "@/lib/api/api-client";
 import { financialReportExportApi } from "@/lib/api/financial-reports-export-api";
 import {
+  financialReportBases,
   financialReportsApi,
+  isFinancialReportBasis,
   type FinancialBestSellerDto,
   type FinancialCashflowRowDto,
   type FinancialProfitLossLineDto,
@@ -146,23 +148,23 @@ function formatDate(value: string | null) {
 }
 
 function getProfitLossClass(tone: FinancialProfitLossLineDto["tone"]) {
-  if (tone === "positive") return "font-semibold text-emerald-700";
-  if (tone === "negative") return "font-semibold text-rose-700";
-  if (tone === "total") return "font-bold text-neutral-950";
+  if (tone === "positive") return "font-semibold text-primary";
+  if (tone === "negative") return "font-semibold text-destructive";
+  if (tone === "total") return "font-bold text-foreground";
 
-  return "text-neutral-700";
+  return "text-muted-foreground";
 }
 
 function getIssueClass(issue: FinancialReconciliationIssueDto) {
   if (issue.severity === "critical") {
-    return "border-rose-200 bg-rose-50 text-rose-800";
+    return "border-destructive/30 bg-destructive/10 text-destructive";
   }
 
   if (issue.severity === "warning") {
-    return "border-amber-200 bg-amber-50 text-amber-800";
+    return "border-accent bg-accent text-accent-foreground";
   }
 
-  return "border-blue-200 bg-blue-50 text-blue-800";
+  return "border-primary/30 bg-primary/10 text-primary";
 }
 
 function TrendChart({ data }: { data: FinancialTrendPointDto[] }) {
@@ -180,23 +182,23 @@ function TrendChart({ data }: { data: FinancialTrendPointDto[] }) {
           key={item.periodStart}
           className="grid grid-cols-[72px_1fr_120px] items-center gap-3"
         >
-          <span className="text-sm font-medium text-neutral-500">
+          <span className="text-sm font-medium text-muted-foreground">
             {item.label}
           </span>
 
           <div className="space-y-1">
-            <div className="h-2 rounded-full bg-neutral-100" title="Revenue">
+            <div className="h-2 rounded-full bg-muted" title="Revenue">
               <div
-                className="h-full rounded-full bg-blue-600"
+                className="h-full rounded-full bg-primary"
                 style={{
                   width: `${Math.max((item.revenue / maxValue) * 100, 4)}%`,
                 }}
               />
             </div>
 
-            <div className="h-2 rounded-full bg-neutral-100" title="Net Profit">
+            <div className="h-2 rounded-full bg-muted" title="Net Profit">
               <div
-                className="h-full rounded-full bg-emerald-600"
+                className="h-full rounded-full bg-chart-2"
                 style={{
                   width: `${Math.max(
                     (Math.max(item.netProfit, 0) / maxValue) * 100,
@@ -207,14 +209,14 @@ function TrendChart({ data }: { data: FinancialTrendPointDto[] }) {
             </div>
           </div>
 
-          <span className="text-right text-xs text-neutral-500">
+          <span className="text-right text-xs text-muted-foreground">
             {formatCurrency(item.netProfit)}
           </span>
         </div>
       ))}
 
       {data.length === 0 && (
-        <p className="py-8 text-center text-sm text-neutral-500">
+        <p className="py-8 text-center text-sm text-muted-foreground">
           No trend data for this period yet.
         </p>
       )}
@@ -230,16 +232,16 @@ function SimpleRanking({ data }: { data: FinancialBestSellerDto[] }) {
       {data.map((item) => (
         <div key={item.menuItemId} className="space-y-2">
           <div className="flex items-center justify-between gap-3 text-sm">
-            <span className="font-medium text-neutral-700">{item.label}</span>
-            <span className="text-neutral-500">
+            <span className="font-medium text-foreground">{item.label}</span>
+            <span className="text-muted-foreground">
               {formatNumber(item.quantity)} sold ·{" "}
               {formatCurrency(item.revenue)}
             </span>
           </div>
 
-          <div className="h-2 rounded-full bg-neutral-100">
+          <div className="h-2 rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-amber-500"
+              className="h-full rounded-full bg-chart-3"
               style={{
                 width: `${Math.max((item.quantity / maxValue) * 100, 4)}%`,
               }}
@@ -249,7 +251,7 @@ function SimpleRanking({ data }: { data: FinancialBestSellerDto[] }) {
       ))}
 
       {data.length === 0 && (
-        <p className="py-8 text-center text-sm text-neutral-500">
+        <p className="py-8 text-center text-sm text-muted-foreground">
           No product sales data for this period yet.
         </p>
       )}
@@ -268,15 +270,15 @@ function CompactCalendar({ from, to }: { from: string; to: string }) {
   const shownDays = Math.min(totalDays, 31);
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-3 text-xs">
-      <div className="mb-3 grid grid-cols-2 gap-2 text-neutral-500">
+    <div className="rounded-lg border border-border bg-card p-3 text-xs text-card-foreground">
+      <div className="mb-3 grid grid-cols-2 gap-2 text-muted-foreground">
         <div>
-          <p className="font-semibold text-neutral-950">From</p>
+          <p className="font-semibold text-foreground">From</p>
           <p>{formatDate(from)}</p>
         </div>
 
         <div>
-          <p className="font-semibold text-neutral-950">To</p>
+          <p className="font-semibold text-foreground">To</p>
           <p>{formatDate(to)}</p>
         </div>
       </div>
@@ -285,7 +287,7 @@ function CompactCalendar({ from, to }: { from: string; to: string }) {
         {Array.from({ length: shownDays }).map((_, index) => (
           <div
             key={`${from}-${index}`}
-            className="rounded-md bg-neutral-950 py-1.5 font-semibold text-white"
+            className="rounded-md bg-primary py-1.5 font-semibold text-primary-foreground"
           >
             {index + 1}
           </div>
@@ -293,7 +295,7 @@ function CompactCalendar({ from, to }: { from: string; to: string }) {
       </div>
 
       {totalDays > shownDays && (
-        <p className="mt-3 text-center text-neutral-500">
+        <p className="mt-3 text-center text-muted-foreground">
           +{formatNumber(totalDays - shownDays)} more day(s) in selected range
         </p>
       )}
@@ -318,10 +320,10 @@ function SourceHealthPanel({ report }: { report: FinancialReportDto }) {
         {items.map(([label, value]) => (
           <div
             key={label}
-            className="rounded-lg border border-neutral-200 bg-white p-3"
+            className="rounded-lg border border-border bg-card p-3 text-card-foreground"
           >
-            <p className="text-xs font-medium text-neutral-500">{label}</p>
-            <p className="mt-1 text-xl font-semibold text-neutral-950">
+            <p className="text-xs font-medium text-muted-foreground">{label}</p>
+            <p className="mt-1 text-xl font-semibold text-foreground">
               {formatNumber(value)}
             </p>
           </div>
@@ -329,7 +331,7 @@ function SourceHealthPanel({ report }: { report: FinancialReportDto }) {
       </div>
 
       {report.sourceHealth.warnings.length > 0 && (
-        <div className="border-t border-amber-100 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="border-t border-accent bg-accent p-4 text-sm text-accent-foreground">
           <div className="mb-2 flex items-center gap-2 font-semibold">
             <AlertTriangle className="h-4 w-4" aria-hidden="true" />
             Reconciliation warnings
@@ -400,7 +402,7 @@ function ReconciliationPanel({
       />
 
       {!reconciliation && (
-        <div className="p-6 text-sm text-neutral-500">
+        <div className="p-6 text-sm text-muted-foreground">
           {isLoading
             ? "Loading reconciliation details..."
             : "Reconciliation details are not loaded yet."}
@@ -408,13 +410,13 @@ function ReconciliationPanel({
       )}
 
       {reconciliation && reconciliation.issues.length === 0 && (
-        <div className="border-t border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700">
+        <div className="border-t border-primary/20 bg-primary/10 p-4 text-sm text-primary">
           No reconciliation issues detected for this period.
         </div>
       )}
 
       {reconciliation && reconciliation.issues.length > 0 && (
-        <div className="grid gap-3 border-t border-neutral-100 p-4 lg:grid-cols-2">
+        <div className="grid gap-3 border-t border-border p-4 lg:grid-cols-2">
           {reconciliation.issues.map((issue) => (
             <div
               key={issue.key}
@@ -426,7 +428,7 @@ function ReconciliationPanel({
                   <p className="mt-1 text-xs leading-5">{issue.description}</p>
                 </div>
 
-                <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold">
+                <span className="rounded-full bg-background/80 text-foreground px-3 py-1 text-xs font-bold">
                   {formatNumber(issue.count)}
                 </span>
               </div>
@@ -440,7 +442,7 @@ function ReconciliationPanel({
       )}
 
       {reconciliation && (
-        <div className="grid gap-4 border-t border-neutral-100 p-4 xl:grid-cols-2">
+        <div className="grid gap-4 border-t border-border p-4 xl:grid-cols-2">
           <DashboardPanel title="Unsynced Paid Orders">
             <DataTable
               columns={detailColumns}
@@ -521,6 +523,12 @@ export function FinancialReportsDashboard() {
     [activePeriod.from, activePeriod.to, basis],
   );
 
+  const handleBasisChange = useCallback((value: string) => {
+    if (isFinancialReportBasis(value)) {
+      setBasis(value);
+    }
+  }, []);
+
   const loadReport = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage(null);
@@ -530,8 +538,9 @@ export function FinancialReportsDashboard() {
       setReport(response.data);
     } catch (error) {
       setErrorMessage(
-        getApiErrorMessage(error, "Failed to load financial report."),
+        getApiErrorMessage(error, "Unable to load financial report."),
       );
+      setReport(null);
     } finally {
       setIsLoading(false);
     }
@@ -543,31 +552,33 @@ export function FinancialReportsDashboard() {
     try {
       const response =
         await financialReportsReconciliationApi.getReconciliation(query);
-
       setReconciliation(response.data);
     } catch (error) {
       setErrorMessage(
-        getApiErrorMessage(
-          error,
-          "Failed to load financial reconciliation details.",
-        ),
+        getApiErrorMessage(error, "Unable to load reconciliation details."),
       );
+      setReconciliation(null);
     } finally {
       setIsReconciliationLoading(false);
     }
   }, [query]);
 
-  const refreshDashboard = useCallback(() => {
+  useEffect(() => {
     void loadReport();
     void loadReconciliation();
   }, [loadReport, loadReconciliation]);
 
-  useEffect(() => {
-    refreshDashboard();
-  }, [refreshDashboard]);
+  const refreshDashboard = () => {
+    void loadReport();
+    void loadReconciliation();
+  };
 
   const plColumns: DataTableColumn<FinancialProfitLossLineDto>[] = [
-    { key: "label", header: "Line Item", cell: (row) => row.label },
+    {
+      key: "label",
+      header: "Line",
+      cell: (row) => <span>{row.label}</span>,
+    },
     {
       key: "amount",
       header: "Amount",
@@ -583,28 +594,24 @@ export function FinancialReportsDashboard() {
   const cashColumns: DataTableColumn<FinancialCashflowRowDto>[] = [
     { key: "date", header: "Date", cell: (row) => formatDate(row.date) },
     { key: "category", header: "Category", cell: (row) => row.category },
-    { key: "sourceName", header: "Source", cell: (row) => row.sourceName },
+    {
+      key: "sourceName",
+      header: "Source",
+      cell: (row) => row.sourceName,
+    },
+    {
+      key: "description",
+      header: "Description",
+      cell: (row) => row.description,
+    },
+    { key: "status", header: "Status", cell: (row) => row.status },
     {
       key: "amount",
       header: "Amount",
       className: "text-right",
-      cell: (row) => formatCurrency(row.amount),
-    },
-  ];
-
-  const productColumns: DataTableColumn<FinancialBestSellerDto>[] = [
-    { key: "label", header: "Product", cell: (row) => row.label },
-    {
-      key: "quantity",
-      header: "Qty",
-      className: "text-right",
-      cell: (row) => formatNumber(row.quantity),
-    },
-    {
-      key: "revenue",
-      header: "Revenue",
-      className: "text-right",
-      cell: (row) => formatCurrency(row.revenue),
+      cell: (row) => (
+        <span className="font-semibold">{formatCurrency(row.amount)}</span>
+      ),
     },
   ];
 
@@ -621,58 +628,56 @@ export function FinancialReportsDashboard() {
       header: "Customer",
       cell: (row) => row.customerName,
     },
+    {
+      key: "invoiceDate",
+      header: "Invoice Date",
+      cell: (row) => formatDate(row.invoiceDate),
+    },
+    {
+      key: "dueDate",
+      header: "Due Date",
+      cell: (row) => formatDate(row.dueDate),
+    },
     { key: "status", header: "Status", cell: (row) => row.status },
     {
       key: "amount",
       header: "Amount",
       className: "text-right",
-      cell: (row) => formatCurrency(row.amount),
+      cell: (row) => (
+        <span className="font-semibold">{formatCurrency(row.amount)}</span>
+      ),
     },
   ];
 
-  const trendColumns: DataTableColumn<FinancialTrendPointDto>[] = [
-    { key: "label", header: "Period", cell: (row) => row.label },
-    {
-      key: "revenue",
-      header: "Revenue",
-      className: "text-right",
-      cell: (row) => formatCurrency(row.revenue),
-    },
-    {
-      key: "netProfit",
-      header: "Net Profit",
-      className: "text-right",
-      cell: (row) => formatCurrency(row.netProfit),
-    },
-  ];
+  const exportRows = report
+    ? [
+        ["Metric", "Value"],
+        ["Period", report.period.label],
+        ["Basis", report.basis],
+        ["Total Revenue", report.summary.totalRevenue],
+        ["COGS", report.summary.cogs],
+        ["Gross Profit", report.summary.grossProfit],
+        ["Total Expenses", report.summary.totalExpenses],
+        ["Net Profit", report.summary.netProfit],
+        ["Receivables", report.summary.receivables],
+        ["Cash In", report.summary.cashIn],
+        ["Cash Out", report.summary.cashOut],
+        ["Net Cashflow", report.summary.netCashflow],
+      ]
+    : [];
 
   const exportCurrentViewCsv = () => {
     if (!report) return;
 
-    exportCsv({
-      filename: `financial-report-current-view-${report.period.from}-${report.period.to}.csv`,
-      columns: [
-        {
-          key: "label",
-          header: "Line Item",
-          value: (row: FinancialProfitLossLineDto) => row.label,
-        },
-        {
-          key: "amount",
-          header: "Amount",
-          value: (row: FinancialProfitLossLineDto) => row.amount,
-        },
-        {
-          key: "tone",
-          header: "Tone",
-          value: (row: FinancialProfitLossLineDto) => row.tone,
-        },
-      ],
-      rows: report.profitLoss,
-    });
+    exportCsv(
+      `financial-report-${report.period.from}-${report.period.to}.csv`,
+      exportRows,
+    );
   };
 
   const exportReportFile = async (format: "csv" | "json") => {
+    if (!report) return;
+
     setIsExporting(true);
     setErrorMessage(null);
 
@@ -681,33 +686,52 @@ export function FinancialReportsDashboard() {
         ...query,
         format,
       });
+      const file = response.data;
 
-      if (format === "csv") {
-        if (!response.data.content) {
-          throw new Error("Export response is missing CSV content.");
-        }
-
-        downloadTextFile(
-          response.data.filename,
-          response.data.content,
-          response.data.contentType,
-        );
-
+      if (format === "csv" && file.content) {
+        downloadTextFile(file.filename, file.content, file.contentType);
         return;
       }
 
-      const content = JSON.stringify(response.data.report ?? response.data, null, 2);
-
-      downloadTextFile(
-        response.data.filename,
-        content,
-        response.data.contentType,
-      );
+      if (format === "json" && file.report) {
+        downloadTextFile(
+          file.filename,
+          JSON.stringify(file.report, null, 2),
+          file.contentType,
+        );
+      }
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, "Failed to export report."));
+      setErrorMessage(
+        getApiErrorMessage(error, "Unable to export financial report."),
+      );
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const exportPdf = () => {
+    if (!report) return;
+
+    exportPdfWindow(report);
+  };
+
+  const exportPdfWindow = (data: FinancialReportDto) => {
+    exportPdf(
+      `financial-report-${data.period.from}-${data.period.to}.pdf`,
+      "Financial Report",
+      [
+        ["Period", data.period.label],
+        ["Basis", data.basis],
+        ["Revenue", formatCurrency(data.summary.totalRevenue)],
+        ["COGS", formatCurrency(data.summary.cogs)],
+        ["Gross Profit", formatCurrency(data.summary.grossProfit)],
+        ["Net Profit", formatCurrency(data.summary.netProfit)],
+        ["Receivables", formatCurrency(data.summary.receivables)],
+        ["Cash In", formatCurrency(data.summary.cashIn)],
+        ["Cash Out", formatCurrency(data.summary.cashOut)],
+        ["Net Cashflow", formatCurrency(data.summary.netCashflow)],
+      ],
+    );
   };
 
   return (
@@ -719,13 +743,13 @@ export function FinancialReportsDashboard() {
       <DashboardPanel>
         <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-sm font-medium text-neutral-500">
+            <p className="text-sm font-medium text-muted-foreground">
               {report?.period.label ?? activePeriod.label}
             </p>
-            <h2 className="text-xl font-semibold text-neutral-950">
+            <h2 className="text-xl font-semibold text-foreground">
               Financial Performance
             </h2>
-            <p className="mt-1 text-sm text-neutral-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Generated from backend report sources. Basis: {basis}.
             </p>
           </div>
@@ -776,7 +800,7 @@ export function FinancialReportsDashboard() {
 
       {errorMessage && (
         <DashboardPanel>
-          <div className="flex items-start gap-3 border-l-4 border-rose-500 bg-rose-50 p-4 text-sm text-rose-700">
+          <div className="flex items-start gap-3 border-l-4 border-destructive bg-destructive/10 p-4 text-sm text-destructive">
             <AlertTriangle className="mt-0.5 h-4 w-4" aria-hidden="true" />
             <div>
               <p className="font-semibold">Financial report issue</p>
@@ -803,8 +827,8 @@ export function FinancialReportsDashboard() {
               <SelectFilter
                 label="Report Basis"
                 value={basis}
-                options={["hybrid", "cashflow", "orders"]}
-                onChange={(value) => setBasis(value as FinancialReportBasis)}
+                options={[...financialReportBases]}
+                onChange={handleBasisChange}
               />
             </DashboardFilters>
           </div>
@@ -829,18 +853,18 @@ export function FinancialReportsDashboard() {
                 onClick={() => setBasis(source.basis)}
                 className={`rounded-lg border p-4 text-left transition ${
                   isActive
-                    ? "border-blue-300 bg-blue-50"
-                    : "border-neutral-200 bg-white hover:bg-neutral-50"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-card text-card-foreground hover:bg-muted"
                 }`}
               >
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-white text-neutral-700 ring-1 ring-neutral-200">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-background text-muted-foreground ring-1 ring-border">
                   <FileText className="h-5 w-5" aria-hidden="true" />
                 </div>
 
-                <h3 className="font-semibold text-neutral-950">
+                <h3 className="font-semibold text-foreground">
                   {source.name}
                 </h3>
-                <p className="mt-2 text-sm leading-6 text-neutral-500">
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   {source.description}
                 </p>
               </button>
@@ -851,7 +875,7 @@ export function FinancialReportsDashboard() {
 
       {isLoading && (
         <DashboardPanel>
-          <div className="p-8 text-center text-sm text-neutral-500">
+          <div className="p-8 text-center text-sm text-muted-foreground">
             Loading financial report from backend sources...
           </div>
         </DashboardPanel>
@@ -922,7 +946,7 @@ export function FinancialReportsDashboard() {
               value={formatCurrency(report.summary.averageOrderValue)}
               note={`${formatNumber(report.summary.orderCount)} paid orders`}
               icon={CalendarDays}
-              tone="neutral"
+              tone="slate"
             />
           </div>
 
@@ -955,8 +979,8 @@ export function FinancialReportsDashboard() {
                 columns={cashColumns}
                 data={report.cashIn}
                 getRowKey={(row) => row.id}
-                minWidth={720}
-                emptyMessage="No cash in ledger rows for this period."
+                minWidth={860}
+                emptyMessage="No cash-in rows for this period."
               />
             </DashboardPanel>
 
@@ -965,39 +989,19 @@ export function FinancialReportsDashboard() {
                 columns={cashColumns}
                 data={report.cashOut}
                 getRowKey={(row) => row.id}
-                minWidth={720}
-                emptyMessage="No cash out ledger rows for this period."
+                minWidth={860}
+                emptyMessage="No cash-out rows for this period."
               />
             </DashboardPanel>
           </div>
 
-          <DashboardPanel title="Receivables">
+          <DashboardPanel title="Receivables Table">
             <DataTable
               columns={receivableColumns}
               data={report.receivables}
               getRowKey={(row) => row.id}
               minWidth={760}
               emptyMessage="No receivables for this period."
-            />
-          </DashboardPanel>
-
-          <DashboardPanel title="Trend Table">
-            <DataTable
-              columns={trendColumns}
-              data={report.trend}
-              getRowKey={(row) => row.periodStart}
-              minWidth={720}
-              emptyMessage="No trend data for this period."
-            />
-          </DashboardPanel>
-
-          <DashboardPanel title="Best Selling Products Table">
-            <DataTable
-              columns={productColumns}
-              data={report.bestSellingProducts}
-              getRowKey={(row) => row.menuItemId}
-              minWidth={720}
-              emptyMessage="No best selling products for this period."
             />
           </DashboardPanel>
         </>

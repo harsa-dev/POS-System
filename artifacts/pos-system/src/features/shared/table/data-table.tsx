@@ -25,7 +25,7 @@ export function DataTable<TData>({
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm" style={{ minWidth }}>
-        <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-500">
+        <thead className="border-b border-border bg-muted text-muted-foreground">
           <tr>
             {columns.map((column) => (
               <th
@@ -40,7 +40,10 @@ export function DataTable<TData>({
         </thead>
         <tbody>
           {data.map((row) => (
-            <tr key={getRowKey(row)} className="border-b border-neutral-100">
+            <tr
+              key={getRowKey(row)}
+              className="border-b border-border transition-colors hover:bg-muted/50"
+            >
               {columns.map((column) => (
                 <td key={column.key} className={cn("px-4 py-4", column.className)}>
                   {column.cell(row)}
@@ -52,7 +55,7 @@ export function DataTable<TData>({
             <tr>
               <td
                 colSpan={columns.length}
-                className="px-4 py-10 text-center text-sm text-neutral-500"
+                className="px-4 py-10 text-center text-sm text-muted-foreground"
               >
                 {emptyMessage}
               </td>
