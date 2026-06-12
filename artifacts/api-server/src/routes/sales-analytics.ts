@@ -9,6 +9,7 @@ import { successResponse } from "../lib/responses/success-response.js";
 import {
   exportSalesAnalytics,
   getSalesAnalytics,
+  parseSalesAnalyticsExportRequest,
   parseSalesAnalyticsRequest,
 } from "../services/sales-analytics/index.js";
 
@@ -25,6 +26,10 @@ function getQuery(query: unknown) {
   return parseSalesAnalyticsRequest(query as Record<string, unknown>);
 }
 
+function getExportRequest(query: unknown) {
+  return parseSalesAnalyticsExportRequest(query as Record<string, unknown>);
+}
+
 router.get("/sales-analytics", async (req, res) => {
   try {
     const user = await requireRole(req, res, ALL_ROLES);
@@ -37,6 +42,7 @@ router.get("/sales-analytics", async (req, res) => {
       query: getQuery(req.query),
     });
 
+    res.setHeader("Cache-Control", "no-store");
     return successResponse(res, { data, message: "Sales analytics retrieved." });
   } catch (error) {
     return handleApiError(res, error);
@@ -49,12 +55,15 @@ router.get("/sales-analytics/export", async (req, res) => {
     if (!user) return;
 
     const businessContext = await requireBusinessContextForUser(user);
+    const exportRequest = getExportRequest(req.query);
     const data = await exportSalesAnalytics({
       actor: getActor(user),
       businessContext,
-      query: getQuery(req.query),
+      query: exportRequest.query,
+      format: exportRequest.format,
     });
 
+    res.setHeader("Cache-Control", "no-store");
     return successResponse(res, { data, message: "Sales analytics export prepared." });
   } catch (error) {
     return handleApiError(res, error);

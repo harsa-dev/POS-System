@@ -27,7 +27,6 @@ import {
   DashboardShell,
   DashboardTabs,
 } from "@/features/shared/dashboard";
-import { exportExcel } from "@/features/shared/export";
 import { DateRangeFilter, SearchFilter, SelectFilter } from "@/features/shared/filters";
 import { formatCurrency, formatNumber } from "@/features/shared/format";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/features/shared/table";
@@ -36,6 +35,7 @@ import {
   salesAnalyticsApi,
   type SalesAnalyticsDataPointDto,
   type SalesAnalyticsDto,
+  type SalesAnalyticsExportFileDto,
   type SalesAnalyticsQuery,
   type SalesTransactionDto,
 } from "@/lib/api/sales-analytics-api";
@@ -214,6 +214,25 @@ function SalesSourceHealthPanel({ report }: { report: SalesAnalyticsDto }) {
   );
 }
 
+function downloadSalesAnalyticsExport(file: SalesAnalyticsExportFileDto) {
+  const content = file.content ?? JSON.stringify(file.report, null, 2);
+
+  if (!content) {
+    throw new Error("Sales analytics export did not include downloadable content.");
+  }
+
+  const blob = new Blob([content], { type: file.contentType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = file.filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function SalesAnalyticsDashboard() {
   const [mode, setMode] = useState("Sales Table");
   const [productFilter, setProductFilter] = useState(ALL_PRODUCTS);
@@ -221,7 +240,9 @@ export function SalesAnalyticsDashboard() {
   const [dateRange, setDateRange] = useState<DateRangeOption>("This Month");
   const [report, setReport] = useState<SalesAnalyticsDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
   const productQuery = useMemo(() => {
@@ -243,6 +264,7 @@ export function SalesAnalyticsDashboard() {
   const loadReport = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage(null);
+    setExportErrorMessage(null);
 
     try {
       const response = await salesAnalyticsApi.getReport(query);
@@ -291,26 +313,29 @@ export function SalesAnalyticsDashboard() {
     setRefreshToken((value) => value + 1);
   }, []);
 
-  const handleExport = useCallback(() => {
-    if (!report || rows.length === 0) return;
+  const handleExport = useCallback(async () => {
+    if (!report) return;
 
-    exportExcel({
-      filename: "sales-analytics",
-      rows,
-      columns: [
-        { key: "orderNumber", header: "Order Number", value: (row) => row.orderNumber },
-        { key: "date", header: "Date", value: (row) => row.date },
-        { key: "productName", header: "Product", value: (row) => row.productName },
-        { key: "categoryName", header: "Category", value: (row) => row.categoryName },
-        { key: "quantity", header: "Quantity", value: (row) => row.quantity },
-        { key: "totalRevenue", header: "Total Revenue", value: (row) => row.totalRevenue },
-        { key: "cogs", header: "COGS", value: (row) => row.cogs },
-        { key: "grossProfit", header: "Gross Profit", value: (row) => row.grossProfit },
-        { key: "margin", header: "Margin", value: (row) => row.margin },
-        { key: "paymentStatus", header: "Payment Status", value: (row) => row.paymentStatus },
-      ],
-    });
-  }, [report, rows]);
+    setIsExporting(true);
+    setExportErrorMessage(null);
+
+    try {
+      const response = await salesAnalyticsApi.exportReport({
+        ...query,
+        format: "csv",
+      });
+
+      downloadSalesAnalyticsExport(response.data);
+    } catch (error) {
+      setExportErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to export sales analytics.",
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }, [query, report]);
 
   const salesColumns: DataTableColumn<SalesTransactionDto>[] = [
     {
@@ -503,9 +528,9 @@ export function SalesAnalyticsDashboard() {
               <DashboardActionButton
                 icon={Download}
                 onClick={handleExport}
-                disabled={!report || rows.length === 0}
+                disabled={!report || isLoading || isExporting}
               >
-                Export Excel
+                {isExporting ? "Exporting..." : "Export CSV"}
               </DashboardActionButton>
               <DashboardActionButton
                 icon={Columns3}
@@ -538,6 +563,17 @@ export function SalesAnalyticsDashboard() {
       )}
 
       {report && <SalesSourceHealthPanel report={report} />}
+
+      {exportErrorMessage && (
+        <DashboardPanel
+          title="Export failed"
+          description="Backend sales analytics export could not be prepared."
+        >
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+            {exportErrorMessage}
+          </div>
+        </DashboardPanel>
+      )}
 
       {mode === "Marketing Insight" ? (
         <div className="grid gap-4 xl:grid-cols-[360px_1fr]">

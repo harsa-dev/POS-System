@@ -2,7 +2,12 @@ import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
 
 export const salesAnalyticsBases = ["paid"] as const;
 
+export const salesAnalyticsExportFormats = ["json", "csv"] as const;
+
 export type SalesAnalyticsBasis = (typeof salesAnalyticsBases)[number];
+
+export type SalesAnalyticsExportFormat =
+  (typeof salesAnalyticsExportFormats)[number];
 
 export type SalesAnalyticsQuery = {
   from?: string;
@@ -11,6 +16,10 @@ export type SalesAnalyticsQuery = {
   productId?: string;
   q?: string;
   limit?: number;
+};
+
+export type SalesAnalyticsExportQuery = SalesAnalyticsQuery & {
+  format?: SalesAnalyticsExportFormat;
 };
 
 export type SalesAnalyticsPeriodDto = {
@@ -84,6 +93,16 @@ export type SalesAnalyticsDto = {
   sourceHealth: SalesAnalyticsSourceHealthDto;
 };
 
+export type SalesAnalyticsExportFileDto = {
+  exportedAt: string;
+  format: SalesAnalyticsExportFormat;
+  filename: string;
+  contentType: string;
+  auditLogged: boolean;
+  report?: SalesAnalyticsDto;
+  content?: string;
+};
+
 type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 
 export function isSalesAnalyticsBasis(value: unknown): value is SalesAnalyticsBasis {
@@ -93,7 +112,16 @@ export function isSalesAnalyticsBasis(value: unknown): value is SalesAnalyticsBa
   );
 }
 
-export function buildSalesAnalyticsQueryString(params?: SalesAnalyticsQuery) {
+export function isSalesAnalyticsExportFormat(
+  value: unknown,
+): value is SalesAnalyticsExportFormat {
+  return (
+    typeof value === "string" &&
+    salesAnalyticsExportFormats.includes(value as SalesAnalyticsExportFormat)
+  );
+}
+
+export function buildSalesAnalyticsQueryString(params?: SalesAnalyticsExportQuery) {
   const searchParams = new URLSearchParams();
 
   if (params?.from) searchParams.set("from", params.from);
@@ -101,6 +129,7 @@ export function buildSalesAnalyticsQueryString(params?: SalesAnalyticsQuery) {
   if (params?.basis) searchParams.set("basis", params.basis);
   if (params?.productId) searchParams.set("productId", params.productId);
   if (params?.q) searchParams.set("q", params.q);
+  if (params?.format) searchParams.set("format", params.format);
   if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
 
   const query = searchParams.toString();
@@ -112,6 +141,12 @@ export const salesAnalyticsApi = {
   getReport(params?: SalesAnalyticsQuery) {
     return apiClient.get<ApiDataEnvelope<SalesAnalyticsDto>>(
       `/api/sales-analytics${buildSalesAnalyticsQueryString(params)}`,
+    );
+  },
+
+  exportReport(params?: SalesAnalyticsExportQuery) {
+    return apiClient.get<ApiDataEnvelope<SalesAnalyticsExportFileDto>>(
+      `/api/sales-analytics/export${buildSalesAnalyticsQueryString(params)}`,
     );
   },
 };
