@@ -2,7 +2,12 @@ import type { Role } from "@prisma/client";
 
 export const salesAnalyticsBases = ["paid"] as const;
 
+export const salesAnalyticsExportFormats = ["json", "csv"] as const;
+
 export type SalesAnalyticsBasis = (typeof salesAnalyticsBases)[number];
+
+export type SalesAnalyticsExportFormat =
+  (typeof salesAnalyticsExportFormats)[number];
 
 export type SalesAnalyticsActor = {
   id: string;
@@ -87,4 +92,14 @@ export type SalesAnalyticsDto = {
   busyHours: SalesAnalyticsDataPointDto[];
   bestSellingProducts: SalesAnalyticsDataPointDto[];
   sourceHealth: SalesAnalyticsSourceHealthDto;
+};
+
+export type SalesAnalyticsExportFileDto = {
+  exportedAt: string;
+  format: SalesAnalyticsExportFormat;
+  filename: string;
+  contentType: string;
+  auditLogged: boolean;
+  report?: SalesAnalyticsDto;
+  content?: string;
 };
