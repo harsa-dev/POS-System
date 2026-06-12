@@ -1,7 +1,5 @@
 import { randomUUID } from "node:crypto";
 
-import { Prisma } from "@prisma/client";
-
 import type { BusinessContext } from "../../lib/business-context/business-context.types.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
@@ -54,25 +52,6 @@ function getSignedAmount(type: CashflowEntryType, amount: number) {
   return amount;
 }
 
-async function createAuditLog(params: {
-  restaurantId: string;
-  userId: string;
-  action: "CREATE" | "UPDATE" | "DELETE";
-  entityId: string;
-  changes: Prisma.InputJsonObject;
-}) {
-  await prisma.auditLog.create({
-    data: {
-      restaurantId: params.restaurantId,
-      userId: params.userId,
-      action: params.action,
-      entityType: "CashflowEntry",
-      entityId: params.entityId,
-      changes: params.changes,
-    },
-  });
-}
-
 export function parseCashflowListQuery(rawQuery: Record<string, unknown>) {
   return parseCashflowQuery(rawQuery);
 }
@@ -84,18 +63,21 @@ export async function listCashflowEntries(params: {
 }) {
   requireCashflowView(params.actor.role);
 
-  const [entries, total] = await Promise.all([
+  const [entries, totalItems] = await Promise.all([
     listCashflowEntryRecords(prisma, params.businessContext.restaurantId, params.query),
     countCashflowEntryRecords(prisma, params.businessContext.restaurantId, params.query),
   ]);
+  const totalPages = Math.max(1, Math.ceil(totalItems / params.query.limit));
 
   return {
     entries: toCashflowEntryDtos(entries),
     pagination: {
       page: params.query.page,
       limit: params.query.limit,
-      total,
-      totalPages: Math.max(1, Math.ceil(total / params.query.limit)),
+      totalItems,
+      totalPages,
+      hasNextPage: params.query.page < totalPages,
+      hasPreviousPage: params.query.page > 1,
     },
   };
 }
