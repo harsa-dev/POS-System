@@ -66,13 +66,17 @@ function mergeTrendRows(query: FinancialReportQuery, revenueRows: TrendRow[], co
     });
 }
 
-function buildWarnings(health: Omit<FinancialSourceHealthDto, "warnings">) {
+function buildWarnings(
+  health: Omit<FinancialSourceHealthDto, "warnings">,
+  receivables: number,
+) {
   const warnings: string[] = [];
   if (health.paidOrders > 0 && health.cashflowEntries === 0) warnings.push("Paid orders exist without ledger entries.");
   if (health.ordersWithoutCashflow > 0) warnings.push("Some paid orders are not synced into cashflow.");
   if (health.stockMovementsMissingCostSnapshot > 0) warnings.push("Some COGS movements are missing cost snapshots.");
   if (health.pendingCashflowEntries > 0) warnings.push("Pending cashflow entries are excluded from posted totals.");
   if (health.voidedCashflowEntries > 0) warnings.push("Voided cashflow entries exist in this period.");
+  if (receivables > 0) warnings.push("Open invoice receivables exist in this period.");
   return warnings;
 }
 
@@ -103,7 +107,10 @@ export async function getFinancialReport(params: { actor: FinancialReportActor; 
   const cashIn = params.query.basis === "orders" ? 0 : flow.cashIn;
   const cashOut = params.query.basis === "orders" ? 0 : flow.cashOut;
   const summary = buildFinancialSummary({ totalRevenue, cogs: reportCogs, totalExpenses, receivables: receivable.receivables, cashIn, cashOut, orderCount: revenue.orderCount });
-  const sourceHealth = { ...healthBase, warnings: buildWarnings(healthBase) };
+  const sourceHealth = {
+    ...healthBase,
+    warnings: buildWarnings(healthBase, receivable.receivables),
+  };
   return {
     period: toPeriodDto(params.query.from, params.query.to),
     basis: params.query.basis,
