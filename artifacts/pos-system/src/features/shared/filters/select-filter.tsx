@@ -10,7 +10,7 @@ export function SelectFilter({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="flex h-10 min-w-0 items-center rounded-lg border border-neutral-200 bg-white px-3">
+    <label className="flex h-10 min-w-0 items-center rounded-lg border border-border bg-card px-3 text-card-foreground focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
       <span className="sr-only">{label}</span>
       <select
         value={value}
