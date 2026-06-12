@@ -24,6 +24,7 @@ model User {
   shifts           Shift[]
   attendances      Attendance[]
   stockMovements   StockMovement[] @relation("StockMovementActor")
+  cashflowEntries  CashflowEntry[] @relation("CashflowEntryCreator")
 
   restaurant Restaurant? @relation(fields: [restaurantId], references: [id])
 }
@@ -50,10 +51,11 @@ model Business {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  owner          User            @relation("BusinessOwner", fields: [ownerId], references: [id])
-  restaurant     Restaurant?
-  inventoryItems InventoryItem[] @relation("BusinessInventoryItems")
-  stockMovements StockMovement[] @relation("BusinessStockMovements")
+  owner           User            @relation("BusinessOwner", fields: [ownerId], references: [id])
+  restaurant      Restaurant?
+  inventoryItems  InventoryItem[] @relation("BusinessInventoryItems")
+  stockMovements  StockMovement[] @relation("BusinessStockMovements")
+  cashflowEntries CashflowEntry[] @relation("BusinessCashflowEntries")
 
   @@index([ownerId])
   @@index([type])
@@ -96,6 +98,7 @@ model Restaurant {
   menuItems         MenuItem[]
   inventoryItems    InventoryItem[]
   stockMovements    StockMovement[]    @relation("RestaurantStockMovements")
+  cashflowEntries   CashflowEntry[]    @relation("RestaurantCashflowEntries")
   shifts            Shift[]
   employees         User[]
   attendances       Attendance[]
@@ -377,6 +380,58 @@ model StockMovement {
   @@index([type])
 }
 
+model CashflowEntry {
+  id String @id @default(cuid())
+
+  /// Future shared-business scope. Optional during Restaurant bridge phase.
+  businessId String?
+
+  /// Legacy required Restaurant scope. Keep this required until all finance flows migrate to Business scope.
+  restaurantId String
+
+  sourceType CashflowSourceType
+  sourceId   String?
+
+  /// Prevent duplicate sync from the same source, for example ORDER_PAYMENT:{orderId}.
+  idempotencyKey String?
+
+  account CashflowAccount
+  type    CashflowEntryType
+  status  CashflowEntryStatus @default(POSTED)
+
+  category         String
+  counterpartyName String?
+  description      String?
+
+  /// Money is stored as integer minor/whole currency unit, never Float.
+  amount Int
+
+  occurredAt DateTime
+  postedAt   DateTime?
+  voidedAt   DateTime?
+
+  createdById String?
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business   Business?  @relation("BusinessCashflowEntries", fields: [businessId], references: [id], onDelete: SetNull)
+  restaurant Restaurant @relation("RestaurantCashflowEntries", fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdBy  User?      @relation("CashflowEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([restaurantId, idempotencyKey])
+  @@index([businessId])
+  @@index([restaurantId])
+  @@index([restaurantId, occurredAt])
+  @@index([restaurantId, type])
+  @@index([restaurantId, status])
+  @@index([restaurantId, sourceType])
+  @@index([restaurantId, account])
+  @@index([sourceType, sourceId])
+  @@index([createdById])
+}
+
 model DiningTable {
   id           String      @id @default(cuid())
   name         String
@@ -642,6 +697,40 @@ enum StockMovementSource {
   TRANSFER
   STOCK_COUNT
   IMPORT
+  SYSTEM
+}
+
+enum CashflowEntryType {
+  INCOME
+  EXPENSE
+  TRANSFER_IN
+  TRANSFER_OUT
+  ADJUSTMENT
+}
+
+enum CashflowEntryStatus {
+  PENDING
+  POSTED
+  VOIDED
+}
+
+enum CashflowAccount {
+  CASH
+  BANK
+  QRIS
+  CARD
+  TRANSFER
+  OTHER
+}
+
+enum CashflowSourceType {
+  ORDER_PAYMENT
+  PAYMENT_WEBHOOK
+  SHIFT_CLOSE
+  INVOICE
+  MANUAL
+  INVENTORY_PURCHASE
+  REFUND
   SYSTEM
 }
 
