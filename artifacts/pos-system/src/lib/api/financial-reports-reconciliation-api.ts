@@ -38,6 +38,7 @@ export type FinancialReconciliationDto = {
   missingCostSnapshots: FinancialReconciliationDetailRowDto[];
   pendingCashflowEntries: FinancialReconciliationDetailRowDto[];
   voidedCashflowEntries: FinancialReconciliationDetailRowDto[];
+  openReceivables: FinancialReconciliationDetailRowDto[];
 };
 
 type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
