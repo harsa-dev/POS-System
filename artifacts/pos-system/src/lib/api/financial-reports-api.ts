@@ -1,6 +1,8 @@
 import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
 
-export type FinancialReportBasis = "cashflow" | "orders" | "hybrid";
+export const financialReportBases = ["cashflow", "orders", "hybrid"] as const;
+
+export type FinancialReportBasis = (typeof financialReportBases)[number];
 
 export type FinancialReportPeriodDto = {
   from: string;
@@ -100,43 +102,55 @@ export type FinancialReportDto = {
   sourceHealth: FinancialSourceHealthDto;
 };
 
-export type FinancialReportExportDto = {
-  exportedAt: string;
-  format: "json";
-  report: FinancialReportDto;
-};
-
 export type FinancialReportQuery = {
   from?: string;
   to?: string;
   basis?: FinancialReportBasis;
 };
 
+export type FinancialReportQueryExtra = Record<
+  string,
+  string | number | boolean | null | undefined
+>;
+
 type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 
-function buildFinancialReportQuery(params?: FinancialReportQuery) {
-  if (!params) return "";
+export function isFinancialReportBasis(
+  value: unknown,
+): value is FinancialReportBasis {
+  return (
+    typeof value === "string" &&
+    financialReportBases.includes(value as FinancialReportBasis)
+  );
+}
 
+export function buildFinancialReportQueryString(
+  params?: FinancialReportQuery,
+  extra?: FinancialReportQueryExtra,
+) {
   const searchParams = new URLSearchParams();
 
-  if (params.from) searchParams.set("from", params.from);
-  if (params.to) searchParams.set("to", params.to);
-  if (params.basis) searchParams.set("basis", params.basis);
+  if (params?.from) searchParams.set("from", params.from);
+  if (params?.to) searchParams.set("to", params.to);
+  if (params?.basis) searchParams.set("basis", params.basis);
+
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) {
+      if (value === null || value === undefined || value === "") continue;
+
+      searchParams.set(key, String(value));
+    }
+  }
 
   const query = searchParams.toString();
+
   return query ? `?${query}` : "";
 }
 
 export const financialReportsApi = {
   getReport(params?: FinancialReportQuery) {
     return apiClient.get<ApiDataEnvelope<FinancialReportDto>>(
-      `/api/financial-reports${buildFinancialReportQuery(params)}`,
-    );
-  },
-
-  exportReport(params?: FinancialReportQuery) {
-    return apiClient.get<ApiDataEnvelope<FinancialReportExportDto>>(
-      `/api/financial-reports/export${buildFinancialReportQuery(params)}`,
+      `/api/financial-reports${buildFinancialReportQueryString(params)}`,
     );
   },
 };

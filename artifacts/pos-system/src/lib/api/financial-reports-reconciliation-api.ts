@@ -1,7 +1,7 @@
 import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
-import type {
-  FinancialReportBasis,
-  FinancialReportQuery,
+import {
+  buildFinancialReportQueryString,
+  type FinancialReportQuery,
 } from "@/lib/api/financial-reports-api";
 
 export type FinancialReconciliationIssueSeverity =
@@ -42,23 +42,12 @@ export type FinancialReconciliationDto = {
 
 type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 
-function buildQuery(params?: FinancialReportQuery & { basis?: FinancialReportBasis }) {
-  if (!params) return "";
-
-  const searchParams = new URLSearchParams();
-
-  if (params.from) searchParams.set("from", params.from);
-  if (params.to) searchParams.set("to", params.to);
-  if (params.basis) searchParams.set("basis", params.basis);
-
-  const query = searchParams.toString();
-  return query ? `?${query}` : "";
-}
-
 export const financialReportsReconciliationApi = {
   getReconciliation(params?: FinancialReportQuery) {
     return apiClient.get<ApiDataEnvelope<FinancialReconciliationDto>>(
-      `/api/financial-reports/reconciliation${buildQuery(params)}`,
+      `/api/financial-reports/reconciliation${buildFinancialReportQueryString(
+        params,
+      )}`,
     );
   },
 };
