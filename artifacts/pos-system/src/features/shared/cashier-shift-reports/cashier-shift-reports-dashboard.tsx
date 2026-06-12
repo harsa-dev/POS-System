@@ -12,7 +12,7 @@ import { ShiftDetailDrawer } from "./components/shift-detail-drawer";
 import type { CashierShift, ShiftFilters } from "@/features/shared/types";
 import { cashflowApi } from "@/lib/api/cashflow-api";
 import { getApiErrorMessage } from "@/lib/api/api-client";
-import { shiftsApi, type ApiShiftDto } from "@/lib/api/shifts-api";
+import { shiftsApi, type ApiShiftDto, type ApiShiftOrderDto } from "@/lib/api/shifts-api";
 
 const statusOptions = ["All", "Active", "Completed"];
 
@@ -47,7 +47,7 @@ function getCashStatus(cashDifference: number) {
   return "Cash Short";
 }
 
-function isOrderCountedInShiftSales(order: ApiShiftDto["orders"][number]) {
+function isOrderCountedInShiftSales(order: ApiShiftOrderDto) {
   return order.status !== "CANCELLED" && order.status !== "PENDING_PAYMENT";
 }
 
