@@ -45,6 +45,7 @@ export type FinancialReconciliationDto = {
   missingCostSnapshots: FinancialReconciliationDetailRowDto[];
   pendingCashflowEntries: FinancialReconciliationDetailRowDto[];
   voidedCashflowEntries: FinancialReconciliationDetailRowDto[];
+  openReceivables: FinancialReconciliationDetailRowDto[];
 };
 
 type CountRow = {
@@ -150,6 +151,46 @@ async function countCashflowByStatus(
   return rows[0]?.count ?? 0;
 }
 
+async function countOpenReceivables(
+  db: Db,
+  restaurantId: string,
+  query: FinancialReportQuery,
+) {
+  const rows = await db.$queryRaw<CountRow[]>`
+    SELECT COUNT(*)::int AS "count"
+    FROM "Invoice"
+    WHERE "restaurantId" = ${restaurantId}
+      AND "invoiceDate" >= ${query.from}
+      AND "invoiceDate" <= ${query.to}
+      AND "status"::text IN ('DRAFT', 'SENT')
+      AND "grandTotal" > 0;
+  `;
+
+  return rows[0]?.count ?? 0;
+}
+
+async function countOverdueReceivables(
+  db: Db,
+  restaurantId: string,
+  query: FinancialReportQuery,
+) {
+  const now = new Date();
+
+  const rows = await db.$queryRaw<CountRow[]>`
+    SELECT COUNT(*)::int AS "count"
+    FROM "Invoice"
+    WHERE "restaurantId" = ${restaurantId}
+      AND "invoiceDate" >= ${query.from}
+      AND "invoiceDate" <= ${query.to}
+      AND "status"::text IN ('DRAFT', 'SENT')
+      AND "grandTotal" > 0
+      AND "dueDate" IS NOT NULL
+      AND "dueDate" < ${now};
+  `;
+
+  return rows[0]?.count ?? 0;
+}
+
 async function listUnsyncedOrders(
   db: Db,
   restaurantId: string,
@@ -244,11 +285,46 @@ async function listCashflowByStatus(
   return rows.map(toDetailRow);
 }
 
+async function listOpenReceivables(
+  db: Db,
+  restaurantId: string,
+  query: FinancialReportQuery,
+) {
+  const now = new Date();
+
+  const rows = await db.$queryRaw<DetailRow[]>`
+    SELECT
+      "id" AS "id",
+      "invoiceDate" AS "date",
+      'INVOICE' AS "sourceType",
+      "invoiceNumber" AS "reference",
+      CASE
+        WHEN "dueDate" IS NOT NULL AND "dueDate" < ${now}
+          THEN 'Open invoice receivable is overdue'
+        ELSE 'Open invoice receivable is not paid yet'
+      END AS "description",
+      "grandTotal"::bigint AS "amount",
+      "status"::text AS "status"
+    FROM "Invoice"
+    WHERE "restaurantId" = ${restaurantId}
+      AND "invoiceDate" >= ${query.from}
+      AND "invoiceDate" <= ${query.to}
+      AND "status"::text IN ('DRAFT', 'SENT')
+      AND "grandTotal" > 0
+    ORDER BY "dueDate" ASC NULLS LAST, "invoiceDate" DESC
+    LIMIT 50;
+  `;
+
+  return rows.map(toDetailRow);
+}
+
 function buildIssues(input: {
   unsyncedOrderCount: number;
   missingCostSnapshotCount: number;
   pendingCashflowCount: number;
   voidedCashflowCount: number;
+  openReceivableCount: number;
+  overdueReceivableCount: number;
 }): FinancialReconciliationIssueDto[] {
   const issues: FinancialReconciliationIssueDto[] = [];
 
@@ -296,6 +372,28 @@ function buildIssues(input: {
     });
   }
 
+  if (input.openReceivableCount > 0) {
+    issues.push({
+      key: "open_receivables",
+      title: "Open invoice receivables found",
+      description:
+        "Draft or sent invoices still have unpaid receivable value in this period.",
+      severity: "warning",
+      count: input.openReceivableCount,
+    });
+  }
+
+  if (input.overdueReceivableCount > 0) {
+    issues.push({
+      key: "overdue_receivables",
+      title: "Overdue invoice receivables found",
+      description:
+        "Some open invoice receivables are past their due date and need follow-up.",
+      severity: "critical",
+      count: input.overdueReceivableCount,
+    });
+  }
+
   return issues;
 }
 
@@ -313,19 +411,25 @@ export async function getFinancialReportReconciliation(params: {
     missingCostSnapshotCount,
     pendingCashflowCount,
     voidedCashflowCount,
+    openReceivableCount,
+    overdueReceivableCount,
     unsyncedOrders,
     missingCostSnapshots,
     pendingCashflowEntries,
     voidedCashflowEntries,
+    openReceivables,
   ] = await Promise.all([
     countUnsyncedOrders(prisma, restaurantId, params.query),
     countMissingCostSnapshots(prisma, restaurantId, params.query),
     countCashflowByStatus(prisma, restaurantId, params.query, "PENDING"),
     countCashflowByStatus(prisma, restaurantId, params.query, "VOIDED"),
+    countOpenReceivables(prisma, restaurantId, params.query),
+    countOverdueReceivables(prisma, restaurantId, params.query),
     listUnsyncedOrders(prisma, restaurantId, params.query),
     listMissingCostSnapshots(prisma, restaurantId, params.query),
     listCashflowByStatus(prisma, restaurantId, params.query, "PENDING"),
     listCashflowByStatus(prisma, restaurantId, params.query, "VOIDED"),
+    listOpenReceivables(prisma, restaurantId, params.query),
   ]);
 
   return {
@@ -339,10 +443,13 @@ export async function getFinancialReportReconciliation(params: {
       missingCostSnapshotCount,
       pendingCashflowCount,
       voidedCashflowCount,
+      openReceivableCount,
+      overdueReceivableCount,
     }),
     unsyncedOrders,
     missingCostSnapshots,
     pendingCashflowEntries,
     voidedCashflowEntries,
+    openReceivables,
   };
 }
