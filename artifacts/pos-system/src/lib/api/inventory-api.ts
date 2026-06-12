@@ -166,6 +166,23 @@ export type StockMovementPayload = {
   sourceId?: string | null;
 };
 
+export type StockMovementQuery = {
+  inventoryItemId?: string;
+  limit?: number;
+};
+
+function buildStockMovementQuery(params?: StockMovementQuery) {
+  if (!params) return "";
+
+  const searchParams = new URLSearchParams();
+
+  if (params.inventoryItemId) searchParams.set("inventoryItemId", params.inventoryItemId);
+  if (params.limit) searchParams.set("limit", String(params.limit));
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
 export const inventoryApi = {
   getInventoryCapabilities() {
     return apiClient.get<ApiDataEnvelope<InventoryCapabilitiesDto>>("/api/inventory-capabilities");
@@ -195,8 +212,10 @@ export const inventoryApi = {
     return apiClient.delete<ApiEnvelope>(`/api/inventory-items/${id}`);
   },
 
-  listStockMovements() {
-    return apiClient.get<ApiDataEnvelope<StockMovementDto[]>>("/api/inventory");
+  listStockMovements(params?: StockMovementQuery) {
+    return apiClient.get<ApiDataEnvelope<StockMovementDto[]>>(
+      `/api/inventory${buildStockMovementQuery(params)}`,
+    );
   },
 
   createStockMovement(payload: StockMovementPayload) {
