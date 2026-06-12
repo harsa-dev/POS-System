@@ -6,6 +6,10 @@ This note tracks backend refactor work done after the Business tenant bridge pha
 
 The active target is still Restaurant / F&B mode. The backend is being cleaned toward a modular monolith structure, not split into microservices.
 
+For the current backend folder structure source of truth, see:
+
+- `docs/backend-structure.md`
+
 ## Docs checked
 
 Relevant docs reviewed before implementation:
