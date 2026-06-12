@@ -95,7 +95,7 @@ model Restaurant {
   invoices          Invoice[]
   menuItems         MenuItem[]
   inventoryItems    InventoryItem[]
-  stockMovements    StockMovement[] @relation("RestaurantStockMovements")
+  stockMovements    StockMovement[]    @relation("RestaurantStockMovements")
   shifts            Shift[]
   employees         User[]
   attendances       Attendance[]
