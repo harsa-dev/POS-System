@@ -1,4 +1,8 @@
-import type { InventoryItem, Prisma } from "@prisma/client";
+import type {
+  InventoryItem,
+  Prisma,
+  StockMovement,
+} from "@prisma/client";
 
 import type { BusinessContext } from "../../lib/business-context/business-context.types.js";
 import { AppError } from "../../lib/errors/app-error.js";
@@ -9,6 +13,7 @@ import {
   INVENTORY_TYPES,
   INVENTORY_UNITS,
   STOCK_MOVEMENT_REASONS,
+  STOCK_MOVEMENT_SOURCES,
   STOCK_MOVEMENT_TYPES,
 } from "./inventory.constants.js";
 import {
@@ -20,7 +25,6 @@ import {
   requireInventoryView,
 } from "./inventory.permissions.js";
 import type {
-  CreateStockMovementInput,
   InventoryActor,
   InventoryDashboardDto,
 } from "./inventory.types.js";
@@ -33,8 +37,24 @@ import {
   parseStockMovementLimit,
 } from "./inventory.validation.js";
 
+type ParsedCreateStockMovementInput = {
+  inventoryItemId: string;
+  type: StockMovement["type"];
+  quantity: number;
+  reason?: StockMovement["reason"];
+  note: string | null;
+  sourceType?: NonNullable<StockMovement["sourceType"]>;
+  sourceId: string | null;
+};
+
 function restaurantScope(businessContext: BusinessContext) {
   return { restaurantId: businessContext.restaurantId };
+}
+
+function writableBusinessId(businessContext: BusinessContext) {
+  return businessContext.businessId === businessContext.restaurantId
+    ? null
+    : businessContext.businessId;
 }
 
 async function loadInventoryItemOrThrow(businessContext: BusinessContext, id: string) {
@@ -172,6 +192,7 @@ export async function createInventoryItem(params: {
   );
   const minimumStock = parseNonNegativeNumber(input.minimumStock, "minimumStock", 0);
   const costPerUnit = Math.round(parseNonNegativeNumber(input.costPerUnit, "costPerUnit", 0));
+  const businessId = writableBusinessId(businessContext);
 
   await assertInventoryNameAvailable({ businessContext, name });
 
@@ -185,6 +206,7 @@ export async function createInventoryItem(params: {
         currentStock: 0,
         minimumStock,
         costPerUnit,
+        businessId,
         restaurantId: businessContext.restaurantId,
       },
     });
@@ -194,10 +216,18 @@ export async function createInventoryItem(params: {
     if (openingStock > 0) {
       await tx.stockMovement.create({
         data: {
+          businessId,
+          restaurantId: businessContext.restaurantId,
+          actorId: actor.id,
           inventoryItemId: item.id,
           type: "IN",
           quantity: openingStock,
-          reason: "PURCHASE",
+          previousStock: 0,
+          newStock: openingStock,
+          unitCostSnapshot: costPerUnit,
+          sourceType: "MANUAL",
+          sourceId: null,
+          reason: "OPENING_STOCK",
           note: "Opening stock",
         },
       });
@@ -216,6 +246,7 @@ export async function createInventoryItem(params: {
         entityType: "InventoryItem",
         entityId: item.id,
         changes: {
+          businessId,
           name,
           sku,
           type,
@@ -296,12 +327,20 @@ export async function updateInventoryItem(params: {
       });
     }
 
-    if (hasStockAdjustment) {
+    if (hasStockAdjustment && targetStock !== undefined) {
       await tx.stockMovement.create({
         data: {
+          businessId: existing.businessId ?? writableBusinessId(businessContext),
+          restaurantId: businessContext.restaurantId,
+          actorId: actor.id,
           inventoryItemId: existing.id,
           type: "ADJUSTMENT",
           quantity: targetStock,
+          previousStock: existing.currentStock,
+          newStock: targetStock,
+          unitCostSnapshot: item.costPerUnit,
+          sourceType: "MANUAL",
+          sourceId: null,
           reason: "MANUAL_ADJUSTMENT",
           note: "Manual stock adjustment from inventory item update",
         },
@@ -315,14 +354,15 @@ export async function updateInventoryItem(params: {
 
     const changes: Prisma.InputJsonObject = {
       metadata: data as Prisma.InputJsonObject,
+      ...(hasStockAdjustment && targetStock !== undefined
+        ? {
+            stockAdjustment: {
+              from: existing.currentStock,
+              to: targetStock,
+            },
+          }
+        : {}),
     };
-
-    if (hasStockAdjustment && targetStock !== undefined) {
-      changes.stockAdjustment = {
-        from: existing.currentStock,
-        to: targetStock,
-      };
-    }
 
     await tx.auditLog.create({
       data: {
@@ -385,6 +425,7 @@ export async function deleteInventoryItem(params: {
         entityType: "InventoryItem",
         entityId: existing.id,
         changes: {
+          businessId: existing.businessId,
           name: existing.name,
           sku: existing.sku,
           type: existing.type,
@@ -424,7 +465,7 @@ export async function listStockMovements(params: {
   });
 }
 
-function parseCreateStockMovementInput(input: Record<string, unknown>): CreateStockMovementInput {
+function parseCreateStockMovementInput(input: Record<string, unknown>): ParsedCreateStockMovementInput {
   const inventoryItemId = assertRequiredString(input.inventoryItemId, "inventoryItemId");
   const type = assertEnum(input.type, STOCK_MOVEMENT_TYPES, "type");
   const quantity = type === "ADJUSTMENT"
@@ -433,6 +474,10 @@ function parseCreateStockMovementInput(input: Record<string, unknown>): CreateSt
   const reason = input.reason
     ? assertEnum(input.reason, STOCK_MOVEMENT_REASONS, "reason")
     : undefined;
+  const sourceType = input.sourceType
+    ? assertEnum(input.sourceType, STOCK_MOVEMENT_SOURCES, "sourceType")
+    : undefined;
+  const sourceId = parseOptionalString(input.sourceId);
   const note = parseOptionalString(input.note);
 
   return {
@@ -440,6 +485,8 @@ function parseCreateStockMovementInput(input: Record<string, unknown>): CreateSt
     type,
     quantity,
     reason,
+    sourceType,
+    sourceId,
     note,
   };
 }
@@ -517,12 +564,22 @@ export async function createStockMovement(params: {
 
     const effectiveReason = parsed.reason
       ?? (parsed.type === "ADJUSTMENT" ? "MANUAL_ADJUSTMENT" : undefined);
+    const movementBusinessId = existing.businessId ?? writableBusinessId(businessContext);
+    const movementSourceType = parsed.sourceType ?? "MANUAL";
 
     const movement = await tx.stockMovement.create({
       data: {
+        businessId: movementBusinessId,
+        restaurantId: businessContext.restaurantId,
+        actorId: actor.id,
         inventoryItemId: parsed.inventoryItemId,
         type: parsed.type,
         quantity: parsed.quantity,
+        previousStock: existing.currentStock,
+        newStock: updatedItem.currentStock,
+        unitCostSnapshot: existing.costPerUnit,
+        sourceType: movementSourceType,
+        sourceId: parsed.sourceId,
         note: parsed.note,
         reason: effectiveReason,
       },
@@ -537,10 +594,13 @@ export async function createStockMovement(params: {
         entityType: "StockMovement",
         entityId: movement.id,
         changes: {
+          businessId: movementBusinessId,
           inventoryItemId: parsed.inventoryItemId,
           type: parsed.type,
           quantity: parsed.quantity,
           reason: effectiveReason ?? null,
+          sourceType: movementSourceType,
+          sourceId: parsed.sourceId,
           previousStock: existing.currentStock,
           newStock: updatedItem.currentStock,
         },
