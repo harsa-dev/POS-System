@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { Router } from "express";
 
 import { requireRole } from "../lib/auth.js";
@@ -27,7 +28,25 @@ router.get("/shifts", async (req, res) => {
       orderBy: { openedAt: "desc" },
     });
 
-    return successResponse(res, { data: shifts });
+    const shiftIds = shifts.map((shift) => shift.id);
+    const syncedRows = shiftIds.length
+      ? await prisma.$queryRaw<Array<{ sourceId: string }>>`
+          SELECT "sourceId"
+          FROM "CashflowEntry"
+          WHERE "restaurantId" = ${businessContext.restaurantId}
+            AND "sourceType" = CAST('SHIFT_CLOSE' AS "CashflowSourceType")
+            AND "status" != CAST('VOIDED' AS "CashflowEntryStatus")
+            AND "sourceId" IN (${Prisma.join(shiftIds)})
+        `
+      : [];
+    const syncedShiftIds = new Set(syncedRows.map((row) => row.sourceId));
+
+    return successResponse(res, {
+      data: shifts.map((shift) => ({
+        ...shift,
+        cashflowSynced: syncedShiftIds.has(shift.id),
+      })),
+    });
   } catch (error) {
     return handleApiError(res, error);
   }
