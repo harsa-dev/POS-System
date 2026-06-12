@@ -285,14 +285,14 @@ export function FinancialReportsDashboard() {
   const [isExporting, setIsExporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const activePeriod = useMemo(
-    () => periodOptions.find((item) => item.label === selectedPeriod) ?? periodOptions[0],
+  const activePeriod = useMemo<PeriodOption>(
+    () => periodOptions.find((item) => item.label === selectedPeriod) ?? (periodOptions[0] as PeriodOption),
     [periodOptions, selectedPeriod],
   );
 
   const query = useMemo<FinancialReportQuery>(() => ({
-    from: activePeriod?.from,
-    to: activePeriod?.to,
+    from: activePeriod.from,
+    to: activePeriod.to,
     basis,
   }), [activePeriod, basis]);
 
