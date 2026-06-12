@@ -51,8 +51,14 @@ export function isOwnerRole(role: Role) {
   return role === "OWNER";
 }
 
-export function canTransitionOrderStatus(role: Role, status: OrderStatus) {
-  return orderStatusPermissions[role].includes(status);
+export function canTransitionOrderStatus(
+  role: Role,
+  statusOrCurrentStatus: OrderStatus,
+  nextStatus?: OrderStatus,
+) {
+  const targetStatus = nextStatus ?? statusOrCurrentStatus;
+
+  return orderStatusPermissions[role].includes(targetStatus);
 }
 
 export const canViewFinancialReports = (role: Role) => can(role, "viewFinancialReports");
