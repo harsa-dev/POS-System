@@ -25,7 +25,7 @@ function getActor(user: { id: string; role: Role }) {
   };
 }
 
-function getQuery(query: typeof import("express").request.query) {
+function getQuery(query: unknown) {
   return parseCashflowListQuery(query as Record<string, unknown>);
 }
 
