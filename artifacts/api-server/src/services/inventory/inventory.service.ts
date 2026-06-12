@@ -1,4 +1,4 @@
-import type { InventoryItem } from "@prisma/client";
+import type { InventoryItem, Prisma } from "@prisma/client";
 
 import type { BusinessContext } from "../../lib/business-context/business-context.types.js";
 import { AppError } from "../../lib/errors/app-error.js";
@@ -313,11 +313,11 @@ export async function updateInventoryItem(params: {
       });
     }
 
-    const changes: Record<string, unknown> = {
-      metadata: data,
+    const changes: Prisma.InputJsonObject = {
+      metadata: data as Prisma.InputJsonObject,
     };
 
-    if (hasStockAdjustment) {
+    if (hasStockAdjustment && targetStock !== undefined) {
       changes.stockAdjustment = {
         from: existing.currentStock,
         to: targetStock,
