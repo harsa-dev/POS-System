@@ -30,6 +30,10 @@ export const permissionKeys = {
     },
   },
   shared: {
+    analytics: {
+      view: "shared.analytics.view",
+      export: "shared.analytics.export",
+    },
     inventory: {
       view: "shared.inventory.view",
       adjust: "shared.inventory.adjust",
@@ -84,6 +88,9 @@ export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
     permissionKeys.restaurant.tables.view,
     permissionKeys.restaurant.tables.update,
 
+    permissionKeys.shared.analytics.view,
+    permissionKeys.shared.analytics.export,
+
     permissionKeys.shared.inventory.view,
     permissionKeys.shared.inventory.adjust,
 
@@ -121,6 +128,9 @@ export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
 
     permissionKeys.restaurant.tables.view,
     permissionKeys.restaurant.tables.update,
+
+    permissionKeys.shared.analytics.view,
+    permissionKeys.shared.analytics.export,
 
     permissionKeys.shared.inventory.view,
     permissionKeys.shared.inventory.adjust,
