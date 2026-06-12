@@ -68,7 +68,7 @@ router.post("/shifts/open", async (req, res) => {
     const shift = await prisma.shift.create({
       data: {
         userId: user.id,
-        restaurantId: businessContext.businessId,
+        restaurantId: businessContext.restaurantId,
         openingCash,
         expectedCash: openingCash,
         status: "OPEN",
