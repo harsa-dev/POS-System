@@ -23,6 +23,12 @@ export {
 } from "./inventory.dto.js";
 
 export {
+  getInventoryModePolicy,
+  inventoryModePolicies,
+  normalizeInventoryBusinessMode,
+} from "./inventory.mode-policy.js";
+
+export {
   requireInventoryAdjust,
   requireInventoryView,
 } from "./inventory.permissions.js";
@@ -39,3 +45,8 @@ export type {
   StockMovementWithItem,
   UpdateInventoryItemInput,
 } from "./inventory.types.js";
+
+export type {
+  InventoryModePolicy,
+  SharedInventoryBusinessMode,
+} from "./inventory.mode-policy.js";
