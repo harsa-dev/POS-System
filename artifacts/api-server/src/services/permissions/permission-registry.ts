@@ -53,7 +53,7 @@ type LeafValues<T> = T extends string
 
 export type PermissionKey = LeafValues<typeof permissionKeys>;
 
-export const rolePermissionMap = {
+export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
   OWNER: [
     permissionKeys.restaurant.orders.view,
     permissionKeys.restaurant.orders.create,
@@ -115,7 +115,7 @@ export const rolePermissionMap = {
     permissionKeys.restaurant.tables.view,
     permissionKeys.restaurant.tables.update,
   ],
-} satisfies Record<Role, readonly PermissionKey[]>;
+};
 
 export function hasPermission(role: Role, permission: PermissionKey) {
   return rolePermissionMap[role].includes(permission);
