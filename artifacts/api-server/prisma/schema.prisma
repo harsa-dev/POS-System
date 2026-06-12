@@ -18,11 +18,12 @@ model User {
   isActive     Boolean  @default(true)
 
   auditLogs        AuditLog[]
-  ownedRestaurants Restaurant[] @relation("RestaurantOwner")
-  ownedBusinesses  Business[]   @relation("BusinessOwner")
+  ownedRestaurants Restaurant[]    @relation("RestaurantOwner")
+  ownedBusinesses  Business[]      @relation("BusinessOwner")
   sessions         Session[]
   shifts           Shift[]
   attendances      Attendance[]
+  stockMovements   StockMovement[] @relation("StockMovementActor")
 
   restaurant Restaurant? @relation(fields: [restaurantId], references: [id])
 }
@@ -49,8 +50,10 @@ model Business {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  owner      User        @relation("BusinessOwner", fields: [ownerId], references: [id])
-  restaurant Restaurant?
+  owner          User            @relation("BusinessOwner", fields: [ownerId], references: [id])
+  restaurant     Restaurant?
+  inventoryItems InventoryItem[] @relation("BusinessInventoryItems")
+  stockMovements StockMovement[] @relation("BusinessStockMovements")
 
   @@index([ownerId])
   @@index([type])
@@ -92,6 +95,7 @@ model Restaurant {
   invoices          Invoice[]
   menuItems         MenuItem[]
   inventoryItems    InventoryItem[]
+  stockMovements    StockMovement[] @relation("RestaurantStockMovements")
   shifts            Shift[]
   employees         User[]
   attendances       Attendance[]
@@ -149,18 +153,27 @@ model InventoryItem {
 
   costPerUnit Int @default(0)
 
+  /// New shared-business scope. Optional during the Restaurant bridge phase.
+  businessId String?
+
+  /// Legacy Restaurant scope. Keep this required until menu/recipe/order flows are migrated.
   restaurantId String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  business   Business?  @relation("BusinessInventoryItems", fields: [businessId], references: [id], onDelete: SetNull)
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   movements StockMovement[]
   recipes   Recipe[]
 
   @@unique([restaurantId, name])
+  @@unique([businessId, name])
+  @@index([businessId])
   @@index([restaurantId])
+  @@index([sku])
+  @@index([type])
   @@index([currentStock])
   @@index([minimumStock])
 }
@@ -323,16 +336,42 @@ model StockMovement {
   id              String @id @default(cuid())
   inventoryItemId String
 
+  /// New shared-business scope. Optional until backfill is complete.
+  businessId String?
+
+  /// Legacy Restaurant scope copied onto movement for faster filtering and reporting.
+  restaurantId String?
+
+  /// User who caused the movement. Optional while old rows/backfills exist.
+  actorId String?
+
   type     StockMovementType
   quantity Float
-  note     String?
-  reason   StockMovementReason?
+
+  previousStock Float?
+  newStock      Float?
+
+  unitCostSnapshot Int?
+
+  sourceType StockMovementSource?
+  sourceId   String?
+
+  note   String?
+  reason StockMovementReason?
 
   createdAt DateTime @default(now())
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  business      Business?     @relation("BusinessStockMovements", fields: [businessId], references: [id], onDelete: SetNull)
+  restaurant    Restaurant?   @relation("RestaurantStockMovements", fields: [restaurantId], references: [id], onDelete: SetNull)
+  actor         User?         @relation("StockMovementActor", fields: [actorId], references: [id], onDelete: SetNull)
 
+  @@index([businessId])
+  @@index([restaurantId])
   @@index([inventoryItemId])
+  @@index([actorId])
+  @@index([sourceType])
+  @@index([sourceId])
   @@index([reason])
   @@index([createdAt])
   @@index([type])
@@ -467,6 +506,20 @@ enum InventoryType {
   INGREDIENT
   PACKAGING
   EQUIPMENT
+
+  // Shared / Retail-ready
+  PRODUCT
+  RAW_MATERIAL
+  FINISHED_GOOD
+
+  // Service-ready
+  SUPPLY
+  TOOL
+  SPARE_PART
+
+  // Livestock-ready
+  FEED
+  MEDICINE
 }
 
 enum InventoryUnit {
@@ -477,6 +530,19 @@ enum InventoryUnit {
   ML
   PACK
   BOTTLE
+
+  // Shared / retail / livestock-ready
+  BOX
+  CARTON
+  SACK
+  ROLL
+  SET
+  PAIR
+  DOSE
+  TABLET
+  CAPSULE
+  VIAL
+  CAN
 }
 
 enum StockMovementType {
@@ -553,6 +619,30 @@ enum StockMovementReason {
   MANUAL_ADJUSTMENT
   DAMAGED
   RETURN
+
+  // Shared / future-ready reasons
+  OPENING_STOCK
+  STOCK_COUNT
+  CORRECTION
+  TRANSFER_IN
+  TRANSFER_OUT
+  PRODUCTION_USAGE
+  SERVICE_USAGE
+  LIVESTOCK_USAGE
+  IMPORT
+}
+
+enum StockMovementSource {
+  MANUAL
+  ORDER
+  RECIPE
+  PURCHASE
+  WASTE
+  RETURN
+  TRANSFER
+  STOCK_COUNT
+  IMPORT
+  SYSTEM
 }
 
 enum BusinessType {
