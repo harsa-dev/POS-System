@@ -2,6 +2,7 @@ import { requireFinancialReportExport } from "./financial-reports.permissions.js
 import type { FinancialReportActor, FinancialReportDto, FinancialReportQuery } from "./financial-reports.types.js";
 import type { BusinessContext } from "../../lib/business-context/business-context.types.js";
 import { getFinancialReport } from "./report-service.js";
+import { logFinancialReportExport } from "./report-audit.js";
 
 export type ReportExportFormat = "json" | "csv";
 
@@ -10,6 +11,7 @@ export type ReportExportFileDto = {
   format: ReportExportFormat;
   filename: string;
   contentType: string;
+  auditLogged: boolean;
   report?: FinancialReportDto;
   content?: string;
 };
@@ -25,7 +27,7 @@ function toCsv(rows: Array<Array<string | number | null | undefined>>) {
 }
 
 function buildReportCsv(report: FinancialReportDto) {
-  const rows: Array<Array<string | number | null | undefined>> = [
+  return toCsv([
     ["Section", "Metric", "Value"],
     ["Summary", "Total Revenue", report.summary.totalRevenue],
     ["Summary", "COGS", report.summary.cogs],
@@ -40,21 +42,20 @@ function buildReportCsv(report: FinancialReportDto) {
     ["Profit And Loss", "Line", "Amount"],
     ...report.profitLoss.map((line) => ["Profit And Loss", line.label, line.amount]),
     [],
-    ["Source Health", "Metric", "Value"],
-    ["Source Health", "Paid Orders", report.sourceHealth.paidOrders],
-    ["Source Health", "Ledger Entries", report.sourceHealth.cashflowEntries],
-    ["Source Health", "Invoices", report.sourceHealth.invoices],
-    ["Source Health", "Stock Movements", report.sourceHealth.stockMovements],
-    ["Source Health", "Unsynced Orders", report.sourceHealth.ordersWithoutCashflow],
-    ["Source Health", "Missing Cost Snapshots", report.sourceHealth.stockMovementsMissingCostSnapshot],
-    ["Source Health", "Pending Ledger Entries", report.sourceHealth.pendingCashflowEntries],
-    ["Source Health", "Voided Ledger Entries", report.sourceHealth.voidedCashflowEntries],
-    [],
     ["Warnings", "Message", ""],
     ...report.sourceHealth.warnings.map((warning) => ["Warnings", warning, ""]),
-  ];
+  ]);
+}
 
-  return toCsv(rows);
+async function auditExport(params: {
+  actor: FinancialReportActor;
+  businessContext: BusinessContext;
+  query: FinancialReportQuery;
+  format: ReportExportFormat;
+  filename: string;
+  contentType: string;
+}) {
+  await logFinancialReportExport(params);
 }
 
 export async function exportFinancialReportFile(params: {
@@ -64,24 +65,38 @@ export async function exportFinancialReportFile(params: {
   format: ReportExportFormat;
 }): Promise<ReportExportFileDto> {
   requireFinancialReportExport(params.actor.role);
+
   const report = await getFinancialReport(params);
+  const exportedAt = new Date().toISOString();
   const filenameBase = `financial-report-${report.period.from}-${report.period.to}-${report.basis}`;
 
   if (params.format === "csv") {
+    const filename = `${filenameBase}.csv`;
+    const contentType = "text/csv;charset=utf-8";
+
+    await auditExport({ ...params, filename, contentType });
+
     return {
-      exportedAt: new Date().toISOString(),
+      exportedAt,
       format: "csv",
-      filename: `${filenameBase}.csv`,
-      contentType: "text/csv;charset=utf-8",
+      filename,
+      contentType,
+      auditLogged: true,
       content: buildReportCsv(report),
     };
   }
 
+  const filename = `${filenameBase}.json`;
+  const contentType = "application/json;charset=utf-8";
+
+  await auditExport({ ...params, filename, contentType });
+
   return {
-    exportedAt: new Date().toISOString(),
+    exportedAt,
     format: "json",
-    filename: `${filenameBase}.json`,
-    contentType: "application/json;charset=utf-8",
+    filename,
+    contentType,
+    auditLogged: true,
     report,
   };
 }
