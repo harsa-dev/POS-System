@@ -261,9 +261,8 @@ function CompactCalendar({ from, to }: { from: string; to: string }) {
   const fromDate = new Date(from);
   const toDate = new Date(to);
   const totalDays = Math.max(
-    Math.ceil(
-      (toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24),
-    ) + 1,
+    Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) +
+      1,
     1,
   );
   const shownDays = Math.min(totalDays, 31);
@@ -356,25 +355,30 @@ function ReconciliationPanel({
   isLoading: boolean;
   onRefresh: () => void;
 }) {
-  const detailColumns: DataTableColumn<FinancialReconciliationDetailRowDto>[] = [
-    { key: "date", header: "Date", cell: (row) => formatDate(row.date) },
-    { key: "sourceType", header: "Source Type", cell: (row) => row.sourceType },
-    { key: "reference", header: "Reference", cell: (row) => row.reference },
-    {
-      key: "description",
-      header: "Description",
-      cell: (row) => row.description,
-    },
-    { key: "status", header: "Status", cell: (row) => row.status },
-    {
-      key: "amount",
-      header: "Amount",
-      className: "text-right",
-      cell: (row) => (
-        <span className="font-semibold">{formatCurrency(row.amount)}</span>
-      ),
-    },
-  ];
+  const detailColumns: DataTableColumn<FinancialReconciliationDetailRowDto>[] =
+    [
+      { key: "date", header: "Date", cell: (row) => formatDate(row.date) },
+      {
+        key: "sourceType",
+        header: "Source Type",
+        cell: (row) => row.sourceType,
+      },
+      { key: "reference", header: "Reference", cell: (row) => row.reference },
+      {
+        key: "description",
+        header: "Description",
+        cell: (row) => row.description,
+      },
+      { key: "status", header: "Status", cell: (row) => row.status },
+      {
+        key: "amount",
+        header: "Amount",
+        className: "text-right",
+        cell: (row) => (
+          <span className="font-semibold">{formatCurrency(row.amount)}</span>
+        ),
+      },
+    ];
 
   return (
     <DashboardPanel
@@ -573,11 +577,19 @@ export function FinancialReportsDashboard() {
 
   const cashColumns: DataTableColumn<FinancialCashflowRowDto>[] = [
     { key: "date", header: "Date", cell: (row) => formatDate(row.date) },
-    { key: "sourceAccount", header: "Account", cell: (row) => row.sourceAccount },
+    {
+      key: "sourceAccount",
+      header: "Account",
+      cell: (row) => row.sourceAccount,
+    },
     { key: "type", header: "Type", cell: (row) => row.type },
     { key: "category", header: "Category", cell: (row) => row.category },
     { key: "sourceName", header: "Source", cell: (row) => row.sourceName },
-    { key: "description", header: "Description", cell: (row) => row.description },
+    {
+      key: "description",
+      header: "Description",
+      cell: (row) => row.description,
+    },
     {
       key: "amount",
       header: "Amount",
@@ -591,14 +603,26 @@ export function FinancialReportsDashboard() {
   const receivableColumns: DataTableColumn<
     FinancialReportDto["receivables"][number]
   >[] = [
-    { key: "invoiceNumber", header: "Invoice", cell: (row) => row.invoiceNumber },
+    {
+      key: "invoiceNumber",
+      header: "Invoice",
+      cell: (row) => row.invoiceNumber,
+    },
     {
       key: "invoiceDate",
       header: "Invoice Date",
       cell: (row) => formatDate(row.invoiceDate),
     },
-    { key: "dueDate", header: "Due Date", cell: (row) => formatDate(row.dueDate) },
-    { key: "customerName", header: "Customer", cell: (row) => row.customerName },
+    {
+      key: "dueDate",
+      header: "Due Date",
+      cell: (row) => formatDate(row.dueDate),
+    },
+    {
+      key: "customerName",
+      header: "Customer",
+      cell: (row) => row.customerName,
+    },
     { key: "status", header: "Status", cell: (row) => row.status },
     {
       key: "amount",
@@ -663,15 +687,51 @@ export function FinancialReportsDashboard() {
       filename: `${type}-${report.period.from}-${report.period.to}.csv`,
       rows,
       columns: [
-        { header: "Date", value: (row) => row.date },
-        { header: "Account", value: (row) => row.sourceAccount },
-        { header: "Type", value: (row) => row.type },
-        { header: "Category", value: (row) => row.category },
-        { header: "Source", value: (row) => row.sourceName },
-        { header: "Description", value: (row) => row.description },
-        { header: "Amount", value: (row) => row.amount },
-        { header: "Status", value: (row) => row.status },
-        { header: "Source Type", value: (row) => row.sourceType },
+        {
+          key: "date",
+          header: "Date",
+          value: (row) => row.date,
+        },
+        {
+          key: "sourceAccount",
+          header: "Account",
+          value: (row) => row.sourceAccount,
+        },
+        {
+          key: "type",
+          header: "Type",
+          value: (row) => row.type,
+        },
+        {
+          key: "category",
+          header: "Category",
+          value: (row) => row.category,
+        },
+        {
+          key: "sourceName",
+          header: "Source",
+          value: (row) => row.sourceName,
+        },
+        {
+          key: "description",
+          header: "Description",
+          value: (row) => row.description,
+        },
+        {
+          key: "amount",
+          header: "Amount",
+          value: (row) => row.amount,
+        },
+        {
+          key: "status",
+          header: "Status",
+          value: (row) => row.status,
+        },
+        {
+          key: "sourceType",
+          header: "Source Type",
+          value: (row) => row.sourceType,
+        },
       ],
     });
   };
@@ -756,7 +816,10 @@ export function FinancialReportsDashboard() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-        <DashboardPanel title="Period Section" description="Backend query date range">
+        <DashboardPanel
+          title="Period Section"
+          description="Backend query date range"
+        >
           <div className="p-4">
             <DashboardFilters className="md:grid-cols-2">
               <SelectFilter
@@ -803,7 +866,9 @@ export function FinancialReportsDashboard() {
                   <FileText className="h-5 w-5" aria-hidden="true" />
                 </div>
 
-                <h3 className="font-semibold text-neutral-950">{source.name}</h3>
+                <h3 className="font-semibold text-neutral-950">
+                  {source.name}
+                </h3>
                 <p className="mt-2 text-sm leading-6 text-neutral-500">
                   {source.description}
                 </p>
