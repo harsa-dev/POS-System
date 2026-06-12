@@ -9,7 +9,8 @@
     "build": "pnpm run generate && node ./build.mjs",
     "start": "node --env-file-if-exists=.env --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "backfill:businesses": "node --env-file-if-exists=.env --import tsx ./scripts/backfill-business-tenant-bridge.ts"
+    "backfill:businesses": "node --env-file-if-exists=.env --import tsx ./scripts/backfill-business-tenant-bridge.ts",
+    "backfill:inventory-business-scope": "node --env-file-if-exists=.env --import tsx ./scripts/backfill-inventory-business-scope.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
