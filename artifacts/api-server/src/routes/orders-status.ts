@@ -8,7 +8,7 @@ import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
-import { transitionOrderStatus } from "../services/orders/transition-order-status.service.js";
+import { transitionOrderStatus } from "../services/orders/index.js";
 
 const router = Router();
 
