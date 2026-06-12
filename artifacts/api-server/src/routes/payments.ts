@@ -8,8 +8,16 @@ import { requireBusinessContextForUser } from "../lib/business-context/index.js"
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
+import { createCashflowEntryRecord } from "../services/cashflow/cashflow.repository.js";
+import { mapPaymentMethodToAccount } from "../services/cashflow/cashflow.validation.js";
 
 const router = Router();
+
+function writableBusinessId(params: { businessId?: string | null; restaurantId: string }) {
+  return params.businessId && params.businessId !== params.restaurantId
+    ? params.businessId
+    : null;
+}
 
 // POST /api/payments/create-transaction
 // Creates a Midtrans Snap transaction for non-cash orders.
@@ -44,7 +52,7 @@ router.post("/payments/create-transaction", async (req, res) => {
     }
 
     const order = await prisma.order.findFirst({
-      where: { id: String(orderId), restaurantId: businessContext.businessId },
+      where: { id: String(orderId), restaurantId: businessContext.restaurantId },
     });
 
     if (!order) {
@@ -119,15 +127,6 @@ router.post("/payments/create-transaction", async (req, res) => {
 // POST /api/payments/midtrans-webhook
 // Receives Midtrans payment status notifications, verifies the signature,
 // and updates the order + payment record accordingly.
-//
-// Bug #6 — Webhook AuditLog gap (documented, not yet fixed):
-// When Midtrans settles or expires a payment the order status is updated here
-// without writing an AuditLog entry. The AuditLog schema requires a non-null
-// userId, and webhooks have no authenticated actor. Resolution options:
-//   (a) Create a dedicated system/bot User row and use its ID for webhook logs.
-//   (b) Make AuditLog.userId nullable in the schema (requires a migration).
-// Until one of those is chosen, payment webhook status changes are NOT audited.
-// All other status transitions (via PATCH /orders/:id/status) are audited.
 router.post("/payments/midtrans-webhook", async (req, res) => {
   try {
     const body = req.body ?? {};
@@ -183,6 +182,15 @@ router.post("/payments/midtrans-webhook", async (req, res) => {
       });
     }
 
+    const grossAmount = Number(gross_amount);
+    if (!Number.isFinite(grossAmount) || Math.round(grossAmount) !== order.total) {
+      return void errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Webhook amount does not match the order total.",
+      });
+    }
+
     let paymentStatus: PaymentStatus = "PENDING";
     let orderStatus: OrderStatus | null = null;
 
@@ -209,29 +217,68 @@ router.post("/payments/midtrans-webhook", async (req, res) => {
       paymentStatus = "PENDING";
     }
 
-    await prisma.payment.upsert({
-      where: { orderId: order.id },
-      create: {
-        orderId: order.id,
-        provider: "MIDTRANS",
-        method: order.paymentMethod,
-        status: paymentStatus,
-        externalId: body.transaction_id ?? null,
-        paidAt: isSettled ? new Date() : null,
-      },
-      update: {
-        status: paymentStatus,
-        externalId: body.transaction_id ?? undefined,
-        paidAt: isSettled ? new Date() : undefined,
-      },
-    });
+    const paidAt = isSettled ? new Date() : null;
 
-    if (orderStatus && order.status !== orderStatus) {
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { status: orderStatus },
+    await prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.upsert({
+        where: { orderId: order.id },
+        create: {
+          orderId: order.id,
+          provider: "MIDTRANS",
+          method: order.paymentMethod,
+          status: paymentStatus,
+          externalId: body.transaction_id ?? null,
+          paidAt,
+        },
+        update: {
+          status: paymentStatus,
+          externalId: body.transaction_id ?? undefined,
+          paidAt: paidAt ?? undefined,
+        },
       });
-    }
+
+      if (orderStatus && order.status !== orderStatus) {
+        await tx.order.update({
+          where: { id: order.id },
+          data: { status: orderStatus },
+        });
+      }
+
+      if (isSettled) {
+        await createCashflowEntryRecord(tx, {
+          id: crypto.randomUUID(),
+          businessId: writableBusinessId({
+            businessId: order.restaurant.businessId,
+            restaurantId: order.restaurantId,
+          }),
+          restaurantId: order.restaurantId,
+          sourceType: "PAYMENT_WEBHOOK",
+          sourceId: order.id,
+          idempotencyKey: `ORDER_PAYMENT:${order.id}`,
+          account: mapPaymentMethodToAccount(order.paymentMethod),
+          type: "INCOME",
+          status: "POSTED",
+          category: "Sales",
+          counterpartyName: `Order #${order.orderNumber}`,
+          description: `Midtrans settlement for order #${order.orderNumber}`,
+          amount: order.total,
+          occurredAt: paidAt ?? new Date(),
+          postedAt: paidAt ?? new Date(),
+          createdById: null,
+          metadata: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            paymentId: payment.id,
+            paymentStatus,
+            paymentMethod: order.paymentMethod,
+            transactionStatus: transaction_status,
+            fraudStatus: fraud_status ?? null,
+            externalId: body.transaction_id ?? null,
+            syncedBy: "midtrans-webhook",
+          },
+        });
+      }
+    });
 
     return void res.json({ success: true });
   } catch (err: unknown) {
