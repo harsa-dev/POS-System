@@ -9,10 +9,7 @@ export type ApiEnvelope<T = unknown> = {
   data?: T;
 };
 
-export type ApiErrorKind =
-  | "network"
-  | "invalid_json"
-  | "http";
+export type ApiErrorKind = "network" | "invalid_json" | "http";
 
 export class ApiError extends Error {
   readonly kind: ApiErrorKind;
@@ -21,6 +18,7 @@ export class ApiError extends Error {
   readonly url: string;
   readonly body?: unknown;
   readonly rawText?: string;
+  readonly contentType?: string | null;
 
   constructor({
     kind,
@@ -30,6 +28,7 @@ export class ApiError extends Error {
     status,
     body,
     rawText,
+    contentType,
   }: {
     kind: ApiErrorKind;
     message: string;
@@ -38,6 +37,7 @@ export class ApiError extends Error {
     status?: number;
     body?: unknown;
     rawText?: string;
+    contentType?: string | null;
   }) {
     super(message);
     this.name = "ApiError";
@@ -47,6 +47,7 @@ export class ApiError extends Error {
     this.url = url;
     this.body = body;
     this.rawText = rawText;
+    this.contentType = contentType;
   }
 }
 
@@ -64,6 +65,32 @@ function extractBackendMessage(body: unknown) {
 
   const message = body.message ?? body.error;
   return typeof message === "string" && message.trim() ? message : null;
+}
+
+function getTextPreview(rawText: string) {
+  return rawText.replace(/\s+/g, " ").trim().slice(0, 120);
+}
+
+function getInvalidJsonMessage({
+  status,
+  url,
+  contentType,
+  rawText,
+}: {
+  status: number;
+  url: string;
+  contentType?: string | null;
+  rawText: string;
+}) {
+  const preview = getTextPreview(rawText);
+  const likelyHtml = /<!doctype html|<html[\s>]/i.test(rawText);
+  const details = [`status ${status}`];
+
+  if (contentType) details.push(`content-type ${contentType}`);
+  if (likelyHtml) details.push("received HTML instead of JSON");
+  if (preview) details.push(`preview: ${preview}`);
+
+  return `Invalid JSON response from ${url} (${details.join("; ")}). Check that the API server is running and VITE_API_URL or the dev proxy points to the backend, not the frontend.`;
 }
 
 function debugRequest(method: string, endpoint: string, url: string) {
@@ -114,13 +141,21 @@ async function parseJsonResponse<T>(
   try {
     return JSON.parse(rawText) as T;
   } catch (error) {
+    const contentType = response.headers.get("content-type");
+
     throw new ApiError({
       kind: "invalid_json",
-      message: "Invalid server response",
+      message: getInvalidJsonMessage({
+        status: response.status,
+        url,
+        contentType,
+        rawText,
+      }),
       endpoint,
       url,
       status: response.status,
       rawText,
+      contentType,
       body: error,
     });
   }
@@ -130,20 +165,13 @@ export async function apiRequest<T>(
   endpoint: string,
   options: ApiRequestOptions = {},
 ) {
-  const {
-    json,
-    body: requestBody,
-    ...fetchOptions
-  } = options;
+  const { json, body: requestBody, ...fetchOptions } = options;
   const url = resolveApiUrl(endpoint);
   const method = fetchOptions.method ?? "GET";
   const headers = new Headers(fetchOptions.headers);
   const body = json === undefined ? requestBody : JSON.stringify(json);
 
-  if (
-    json !== undefined &&
-    !headers.has("Content-Type")
-  ) {
+  if (json !== undefined && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -191,10 +219,7 @@ export async function apiRequest<T>(
   }
 }
 
-export async function apiFetch(
-  endpoint: string,
-  options?: RequestInit,
-) {
+export async function apiFetch(endpoint: string, options?: RequestInit) {
   const url = resolveApiUrl(endpoint);
   const method = options?.method ?? "GET";
   const headers = new Headers(options?.headers);
@@ -227,10 +252,7 @@ export async function apiFetch(
   }
 }
 
-export async function apiJson<T>(
-  endpoint: string,
-  options?: RequestInit,
-) {
+export async function apiJson<T>(endpoint: string, options?: RequestInit) {
   const response = await apiFetch(endpoint, options);
   return (await response.json()) as T;
 }
