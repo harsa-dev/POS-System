@@ -1,6 +1,6 @@
 # Reports Phase 10 UI Polish
 
-Phase 10 focuses on UI polish and standardization for the shared dashboard layer used by Financial Reports.
+Phase 10 focuses on UI polish and standardization for the shared dashboard layer and the Financial Reports feature dashboard.
 
 The goal is visual consistency without changing financial logic. Financial numbers, source health, reconciliation, permissions, exports, and tenant scope must continue to come from backend/database sources.
 
@@ -21,6 +21,40 @@ The goal is visual consistency without changing financial logic. Financial numbe
 - `DashboardTabs` uses semantic muted/card/foreground tokens.
 - `SelectFilter` uses semantic card/border/focus tokens.
 - `DataTable` uses semantic muted/border/foreground tokens and row hover state.
+- `financial-reports-dashboard.tsx` has been migrated away from raw palette classes for its local charts, rankings, calendar, source health, reconciliation states, data source cards, loading state, and error state.
+- Financial Reports basis selector now uses the shared `financialReportBases` contract instead of an inline hardcoded basis list.
+- Financial Reports basis changes are guarded with `isFinancialReportBasis()` before updating state.
+- `tone="neutral"` was replaced with `tone="slate"`.
+
+## Financial Reports Dashboard Polish
+
+The feature-level dashboard polish keeps the existing backend-backed data flow intact:
+
+```txt
+financialReportsApi.getReport()
+financialReportsReconciliationApi.getReconciliation()
+financialReportExportApi.exportReport()
+```
+
+No data source was replaced with mock data.
+
+Migrated dashboard areas:
+
+```txt
+Profit and loss row tone classes
+Reconciliation issue severity cards
+Trend mini chart bars
+Best-selling product ranking bars
+Compact selected-range calendar
+Source health metric cards
+Source health warning panel
+Reconciliation empty/loading states
+Header text hierarchy
+Error alert
+Data source selector cards
+Loading state
+Average order value card tone
+```
 
 ## Design Token Direction
 
@@ -39,10 +73,15 @@ text-primary
 text-primary-foreground
 text-destructive
 bg-destructive/10
+bg-accent
+text-accent-foreground
+bg-chart-2
+bg-chart-3
 ring-ring
+ring-border
 ```
 
-Avoid spreading raw palette classes in shared primitives:
+Avoid spreading raw palette classes in shared primitives and financial report dashboard code:
 
 ```txt
 bg-white
@@ -56,31 +95,22 @@ bg-amber-*
 bg-rose-*
 ```
 
-Raw palette classes may still exist in feature-level dashboards until those screens are migrated. Do not overwrite stale feature files because that can remove backend/data changes from earlier phases.
-
-## Financial Reports Dashboard Remaining Work
-
-`financial-reports-dashboard.tsx` still needs a feature-level polish pass.
-
-Target cleanup:
-
-- Replace raw palette classes with semantic tokens or local variant maps.
-- Replace `tone="neutral"` with `tone="slate"` if still present.
-- Standardize issue severity styling.
-- Standardize source health warning styling.
-- Standardize chart bar colors using theme/chart tokens.
-- Standardize data source card selected and hover states.
-- Keep all report data backend-backed.
-- Keep loading, error, and empty states visible.
-- Do not remove Phase 8 reconciliation tables such as `openReceivables`.
-
 ## Backend and Database Rules
 
 - No backend behavior is changed by Phase 10 UI polish.
 - No schema or migration is required.
 - No frontend cache is added for private financial report data.
 - Export and report API behavior remains backend-owned.
+- Reconciliation warnings remain backend-owned.
 - Rate limiting remains a backend responsibility.
+
+## Caching and Rate Limiting Rules
+
+- Do not add client-side persistence for private financial report data.
+- Do not cache financial report payloads in localStorage/sessionStorage.
+- Do not make UI refresh loops that spam report/reconciliation/export endpoints.
+- Keep export buttons disabled while a report is missing or export is in progress.
+- If backend returns 429 later, UI should show a clear error message rather than fake data.
 
 ## Anti-Pattern Checklist
 
@@ -91,6 +121,8 @@ Target cleanup:
 - No tenant scope from frontend input.
 - No UI polish that hides backend errors.
 - No stale file overwrite that removes previous phase work.
+- No raw color utility spread in the polished financial report areas.
+- No hardcoded report basis option list when the API contract already exports the allowed bases.
 
 ## Manual Verification
 
@@ -114,11 +146,16 @@ Empty tables are visible.
 Export buttons remain disabled while no report is loaded.
 Export CSV/JSON still uses backend export.
 Reconciliation panel still shows source issues from backend.
+Open invoice receivables table still exists.
+Data source selector still changes report basis.
+Period selector still changes backend query period.
+Trend and ranking bars still render.
+No raw neutral/blue/emerald/amber/rose palette classes are visible in financial-reports-dashboard.tsx.
 ```
 
 ## Deferred
 
-- Full feature-level `financial-reports-dashboard.tsx` semantic-token migration.
 - Central visual spec/design.md.
 - Visual regression tests.
 - Storybook or screenshot baseline tests.
+- Dedicated shadcn/ui migration if the project later standardizes the shared component folder around shadcn primitives.
