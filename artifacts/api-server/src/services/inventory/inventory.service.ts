@@ -1,159 +1,37 @@
-import type {
-  InventoryItem,
-  InventoryType,
-  InventoryUnit,
-  Role,
-  StockMovementReason,
-  StockMovementType,
-} from "@prisma/client";
+import type { InventoryItem } from "@prisma/client";
 
 import type { BusinessContext } from "../../lib/business-context/business-context.types.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
 import { prisma } from "../../lib/prisma.js";
 import {
-  permissionKeys,
-  requirePermission,
-} from "../permissions/index.js";
-
-const INVENTORY_TYPES: readonly InventoryType[] = ["INGREDIENT", "PACKAGING", "EQUIPMENT"];
-
-const INVENTORY_UNITS: readonly InventoryUnit[] = [
-  "PCS",
-  "GRAM",
-  "KILOGRAM",
-  "LITER",
-  "ML",
-  "PACK",
-  "BOTTLE",
-];
-
-const STOCK_MOVEMENT_TYPES: readonly StockMovementType[] = ["IN", "OUT", "ADJUSTMENT"];
-
-const STOCK_MOVEMENT_REASONS: readonly StockMovementReason[] = [
-  "PURCHASE",
-  "RECIPE_USAGE",
-  "WASTE",
-  "EXPIRED",
-  "MANUAL_ADJUSTMENT",
-  "DAMAGED",
-  "RETURN",
-];
-
-export type InventoryActor = {
-  id: string;
-  role: Role;
-};
-
-export type InventoryItemDto = InventoryItem & {
-  recipeCount: number;
-  movementCount: number;
-  stockStatus: "OUT_OF_STOCK" | "LOW_STOCK" | "IN_STOCK";
-  isLowStock: boolean;
-  isOutOfStock: boolean;
-  stockValue: number;
-};
-
-export type InventoryDashboardDto = {
-  summary: {
-    totalItems: number;
-    lowStockItems: number;
-    outOfStockItems: number;
-    totalStockValue: number;
-    ingredientItems: number;
-    packagingItems: number;
-    equipmentItems: number;
-  };
-  items: InventoryItemDto[];
-  lowStockItems: InventoryItemDto[];
-  recentMovements: Awaited<ReturnType<typeof listStockMovements>>;
-};
-
-function assertString(value: unknown, field: string) {
-  if (typeof value === "string" && value.trim()) return value.trim();
-
-  throw new AppError({
-    statusCode: 400,
-    code: errorCodes.validationError,
-    message: `${field} is required.`,
-  });
-}
-
-function parseOptionalString(value: unknown) {
-  if (value === undefined || value === null || value === "") return null;
-  if (typeof value === "string") return value.trim() || null;
-  return String(value).trim() || null;
-}
-
-function assertEnum<T extends string>(value: unknown, allowed: readonly T[], field: string) {
-  if (typeof value === "string" && (allowed as readonly string[]).includes(value)) {
-    return value as T;
-  }
-
-  throw new AppError({
-    statusCode: 400,
-    code: errorCodes.validationError,
-    message: `Invalid ${field}.`,
-    details: { field, allowed },
-  });
-}
-
-function parseNonNegativeNumber(value: unknown, field: string, defaultValue?: number) {
-  if (value === undefined || value === null || value === "") {
-    if (defaultValue !== undefined) return defaultValue;
-
-    throw new AppError({
-      statusCode: 400,
-      code: errorCodes.validationError,
-      message: `${field} is required.`,
-    });
-  }
-
-  const numberValue = Number(value);
-
-  if (!Number.isFinite(numberValue) || numberValue < 0) {
-    throw new AppError({
-      statusCode: 400,
-      code: errorCodes.invalidStockQuantity,
-      message: `${field} must be a non-negative number.`,
-    });
-  }
-
-  return numberValue;
-}
-
-function parsePositiveNumber(value: unknown, field: string) {
-  const numberValue = parseNonNegativeNumber(value, field);
-
-  if (numberValue <= 0) {
-    throw new AppError({
-      statusCode: 400,
-      code: errorCodes.invalidStockQuantity,
-      message: `${field} must be greater than zero.`,
-    });
-  }
-
-  return numberValue;
-}
-
-function toInventoryItemDto(
-  item: InventoryItem & {
-    _count?: { recipes?: number; movements?: number };
-  }
-): InventoryItemDto {
-  const isOutOfStock = item.currentStock <= 0;
-  const isLowStock = !isOutOfStock && item.currentStock <= item.minimumStock;
-
-  return {
-    ...item,
-    recipeCount: item._count?.recipes ?? 0,
-    movementCount: item._count?.movements ?? 0,
-    stockStatus: isOutOfStock ? "OUT_OF_STOCK" : isLowStock ? "LOW_STOCK" : "IN_STOCK",
-    isLowStock,
-    isOutOfStock,
-    stockValue: Math.round(item.currentStock * item.costPerUnit),
-  };
-}
+  INVENTORY_DASHBOARD_RECENT_MOVEMENT_LIMIT,
+  INVENTORY_TYPES,
+  INVENTORY_UNITS,
+  STOCK_MOVEMENT_REASONS,
+  STOCK_MOVEMENT_TYPES,
+} from "./inventory.constants.js";
+import {
+  toInventoryDashboardDto,
+  toInventoryItemDto,
+} from "./inventory.dto.js";
+import {
+  requireInventoryAdjust,
+  requireInventoryView,
+} from "./inventory.permissions.js";
+import type {
+  CreateStockMovementInput,
+  InventoryActor,
+  InventoryDashboardDto,
+} from "./inventory.types.js";
+import {
+  assertEnum,
+  assertRequiredString,
+  parseNonNegativeNumber,
+  parseOptionalString,
+  parsePositiveNumber,
+  parseStockMovementLimit,
+} from "./inventory.validation.js";
 
 function restaurantScope(businessContext: BusinessContext) {
   return { restaurantId: businessContext.restaurantId };
@@ -178,12 +56,60 @@ async function loadInventoryItemOrThrow(businessContext: BusinessContext, id: st
   return item;
 }
 
-function requireInventoryView(actor: InventoryActor) {
-  requirePermission(actor.role, permissionKeys.shared.inventory.view);
+async function loadInventoryItemWithCountsOrThrow(
+  businessContext: BusinessContext,
+  id: string
+) {
+  const item = await prisma.inventoryItem.findFirst({
+    where: {
+      id,
+      ...restaurantScope(businessContext),
+    },
+    include: {
+      _count: {
+        select: {
+          recipes: true,
+          movements: true,
+        },
+      },
+    },
+  });
+
+  if (!item) {
+    throw new AppError({
+      statusCode: 404,
+      code: errorCodes.inventoryItemNotFound,
+      message: "Inventory item not found.",
+    });
+  }
+
+  return item;
 }
 
-function requireInventoryAdjust(actor: InventoryActor) {
-  requirePermission(actor.role, permissionKeys.shared.inventory.adjust);
+async function assertInventoryNameAvailable(params: {
+  businessContext: BusinessContext;
+  name: string;
+  excludeId?: string;
+}) {
+  const { businessContext, name, excludeId } = params;
+
+  const duplicate = await prisma.inventoryItem.findFirst({
+    where: {
+      ...restaurantScope(businessContext),
+      name,
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: { id: true },
+  });
+
+  if (!duplicate) return;
+
+  throw new AppError({
+    statusCode: 409,
+    code: errorCodes.conflict,
+    message: "Inventory item name already exists.",
+    details: { name },
+  });
 }
 
 export async function listInventoryItems(params: {
@@ -217,22 +143,13 @@ export async function getInventoryDashboard(params: {
   const { actor, businessContext } = params;
 
   const items = await listInventoryItems({ actor, businessContext });
-  const recentMovements = await listStockMovements({ actor, businessContext, limit: 10 });
+  const recentMovements = await listStockMovements({
+    actor,
+    businessContext,
+    limit: INVENTORY_DASHBOARD_RECENT_MOVEMENT_LIMIT,
+  });
 
-  return {
-    summary: {
-      totalItems: items.length,
-      lowStockItems: items.filter((item) => item.isLowStock).length,
-      outOfStockItems: items.filter((item) => item.isOutOfStock).length,
-      totalStockValue: items.reduce((total, item) => total + item.stockValue, 0),
-      ingredientItems: items.filter((item) => item.type === "INGREDIENT").length,
-      packagingItems: items.filter((item) => item.type === "PACKAGING").length,
-      equipmentItems: items.filter((item) => item.type === "EQUIPMENT").length,
-    },
-    items,
-    lowStockItems: items.filter((item) => item.isLowStock || item.isOutOfStock),
-    recentMovements,
-  };
+  return toInventoryDashboardDto({ items, recentMovements });
 }
 
 export async function createInventoryItem(params: {
@@ -244,7 +161,7 @@ export async function createInventoryItem(params: {
 
   requireInventoryAdjust(actor);
 
-  const name = assertString(input.name, "name");
+  const name = assertRequiredString(input.name, "name");
   const sku = parseOptionalString(input.sku);
   const type = assertEnum(input.type, INVENTORY_TYPES, "type");
   const unit = assertEnum(input.unit, INVENTORY_UNITS, "unit");
@@ -255,6 +172,8 @@ export async function createInventoryItem(params: {
   );
   const minimumStock = parseNonNegativeNumber(input.minimumStock, "minimumStock", 0);
   const costPerUnit = Math.round(parseNonNegativeNumber(input.costPerUnit, "costPerUnit", 0));
+
+  await assertInventoryNameAvailable({ businessContext, name });
 
   return prisma.$transaction(async (tx) => {
     const item = await tx.inventoryItem.create({
@@ -332,7 +251,20 @@ export async function updateInventoryItem(params: {
 
   const data: Partial<Pick<InventoryItem, "name" | "sku" | "type" | "unit" | "minimumStock" | "costPerUnit">> = {};
 
-  if (input.name !== undefined) data.name = assertString(input.name, "name");
+  if (input.name !== undefined) {
+    const nextName = assertRequiredString(input.name, "name");
+
+    if (nextName !== existing.name) {
+      await assertInventoryNameAvailable({
+        businessContext,
+        name: nextName,
+        excludeId: existing.id,
+      });
+    }
+
+    data.name = nextName;
+  }
+
   if (input.sku !== undefined) data.sku = parseOptionalString(input.sku);
   if (input.type !== undefined) data.type = assertEnum(input.type, INVENTORY_TYPES, "type");
   if (input.unit !== undefined) data.unit = assertEnum(input.unit, INVENTORY_UNITS, "unit");
@@ -343,18 +275,28 @@ export async function updateInventoryItem(params: {
     data.costPerUnit = Math.round(parseNonNegativeNumber(input.costPerUnit, "costPerUnit"));
   }
 
-  const hasStockPatch = input.currentStock !== undefined;
-  const targetStock = hasStockPatch
+  const targetStock = input.currentStock !== undefined
     ? parseNonNegativeNumber(input.currentStock, "currentStock")
     : undefined;
 
-  return prisma.$transaction(async (tx) => {
-    let item = await tx.inventoryItem.update({
-      where: { id: existing.id },
-      data,
-    });
+  const hasMetadataUpdate = Object.keys(data).length > 0;
+  const hasStockAdjustment = targetStock !== undefined && targetStock !== existing.currentStock;
 
-    if (targetStock !== undefined && targetStock !== existing.currentStock) {
+  if (!hasMetadataUpdate && !hasStockAdjustment) {
+    return toInventoryItemDto(await loadInventoryItemWithCountsOrThrow(businessContext, existing.id));
+  }
+
+  return prisma.$transaction(async (tx) => {
+    let item = existing;
+
+    if (hasMetadataUpdate) {
+      item = await tx.inventoryItem.update({
+        where: { id: existing.id },
+        data,
+      });
+    }
+
+    if (hasStockAdjustment) {
       await tx.stockMovement.create({
         data: {
           inventoryItemId: existing.id,
@@ -371,6 +313,17 @@ export async function updateInventoryItem(params: {
       });
     }
 
+    const changes: Record<string, unknown> = {
+      metadata: data,
+    };
+
+    if (hasStockAdjustment) {
+      changes.stockAdjustment = {
+        from: existing.currentStock,
+        to: targetStock,
+      };
+    }
+
     await tx.auditLog.create({
       data: {
         restaurantId: businessContext.restaurantId,
@@ -378,21 +331,12 @@ export async function updateInventoryItem(params: {
         action: "UPDATE",
         entityType: "InventoryItem",
         entityId: existing.id,
-        changes: {
-          metadata: data,
-          stockAdjustment:
-            targetStock !== undefined
-              ? {
-                  from: existing.currentStock,
-                  to: targetStock,
-                }
-              : undefined,
-        },
+        changes,
       },
     });
 
     const withCounts = await tx.inventoryItem.findUniqueOrThrow({
-      where: { id: existing.id },
+      where: { id: item.id },
       include: {
         _count: {
           select: {
@@ -416,28 +360,7 @@ export async function deleteInventoryItem(params: {
 
   requireInventoryAdjust(actor);
 
-  const existing = await prisma.inventoryItem.findFirst({
-    where: {
-      id,
-      ...restaurantScope(businessContext),
-    },
-    include: {
-      _count: {
-        select: {
-          recipes: true,
-          movements: true,
-        },
-      },
-    },
-  });
-
-  if (!existing) {
-    throw new AppError({
-      statusCode: 404,
-      code: errorCodes.inventoryItemNotFound,
-      message: "Inventory item not found.",
-    });
-  }
+  const existing = await loadInventoryItemWithCountsOrThrow(businessContext, id);
 
   if (existing._count.recipes > 0 || existing._count.movements > 0) {
     throw new AppError({
@@ -480,7 +403,7 @@ export async function listStockMovements(params: {
   inventoryItemId?: string;
   limit?: number;
 }) {
-  const { actor, businessContext, inventoryItemId, limit = 50 } = params;
+  const { actor, businessContext, inventoryItemId, limit } = params;
 
   requireInventoryView(actor);
 
@@ -488,7 +411,7 @@ export async function listStockMovements(params: {
     await loadInventoryItemOrThrow(businessContext, inventoryItemId);
   }
 
-  const take = Math.min(Math.max(Number(limit) || 50, 1), 100);
+  const take = parseStockMovementLimit(limit);
 
   return prisma.stockMovement.findMany({
     where: {
@@ -501,6 +424,26 @@ export async function listStockMovements(params: {
   });
 }
 
+function parseCreateStockMovementInput(input: Record<string, unknown>): CreateStockMovementInput {
+  const inventoryItemId = assertRequiredString(input.inventoryItemId, "inventoryItemId");
+  const type = assertEnum(input.type, STOCK_MOVEMENT_TYPES, "type");
+  const quantity = type === "ADJUSTMENT"
+    ? parseNonNegativeNumber(input.quantity, "quantity")
+    : parsePositiveNumber(input.quantity, "quantity");
+  const reason = input.reason
+    ? assertEnum(input.reason, STOCK_MOVEMENT_REASONS, "reason")
+    : undefined;
+  const note = parseOptionalString(input.note);
+
+  return {
+    inventoryItemId,
+    type,
+    quantity,
+    reason,
+    note,
+  };
+}
+
 export async function createStockMovement(params: {
   actor: InventoryActor;
   businessContext: BusinessContext;
@@ -510,52 +453,80 @@ export async function createStockMovement(params: {
 
   requireInventoryAdjust(actor);
 
-  const inventoryItemId = assertString(input.inventoryItemId, "inventoryItemId");
-  const type = assertEnum(input.type, STOCK_MOVEMENT_TYPES, "type");
-  const reason = input.reason
-    ? assertEnum(input.reason, STOCK_MOVEMENT_REASONS, "reason")
-    : undefined;
-  const note = parseOptionalString(input.note);
-
-  const existing = await loadInventoryItemOrThrow(businessContext, inventoryItemId);
-  const quantity = type === "ADJUSTMENT"
-    ? parseNonNegativeNumber(input.quantity, "quantity")
-    : parsePositiveNumber(input.quantity, "quantity");
-
-  let newStock = existing.currentStock;
-
-  if (type === "IN") newStock += quantity;
-  if (type === "OUT") newStock -= quantity;
-  if (type === "ADJUSTMENT") newStock = quantity;
-
-  if (newStock < 0) {
-    throw new AppError({
-      statusCode: 409,
-      code: errorCodes.negativeStockNotAllowed,
-      message: "Stock cannot be negative.",
-      details: {
-        inventoryItemId,
-        currentStock: existing.currentStock,
-        requestedQuantity: quantity,
-      },
-    });
-  }
+  const parsed = parseCreateStockMovementInput(input);
 
   return prisma.$transaction(async (tx) => {
-    const movement = await tx.stockMovement.create({
-      data: {
-        inventoryItemId,
-        type,
-        quantity,
-        note,
-        reason: reason ?? (type === "ADJUSTMENT" ? "MANUAL_ADJUSTMENT" : undefined),
+    const existing = await tx.inventoryItem.findFirst({
+      where: {
+        id: parsed.inventoryItemId,
+        ...restaurantScope(businessContext),
       },
-      include: { inventoryItem: true },
     });
 
-    await tx.inventoryItem.update({
-      where: { id: inventoryItemId },
-      data: { currentStock: newStock },
+    if (!existing) {
+      throw new AppError({
+        statusCode: 404,
+        code: errorCodes.inventoryItemNotFound,
+        message: "Inventory item not found.",
+      });
+    }
+
+    let updatedItem = existing;
+
+    if (parsed.type === "IN") {
+      updatedItem = await tx.inventoryItem.update({
+        where: { id: parsed.inventoryItemId },
+        data: { currentStock: { increment: parsed.quantity } },
+      });
+    }
+
+    if (parsed.type === "OUT") {
+      const result = await tx.inventoryItem.updateMany({
+        where: {
+          id: parsed.inventoryItemId,
+          ...restaurantScope(businessContext),
+          currentStock: { gte: parsed.quantity },
+        },
+        data: { currentStock: { decrement: parsed.quantity } },
+      });
+
+      if (result.count === 0) {
+        throw new AppError({
+          statusCode: 409,
+          code: errorCodes.negativeStockNotAllowed,
+          message: "Stock cannot be negative.",
+          details: {
+            inventoryItemId: parsed.inventoryItemId,
+            currentStock: existing.currentStock,
+            requestedQuantity: parsed.quantity,
+          },
+        });
+      }
+
+      updatedItem = await tx.inventoryItem.findUniqueOrThrow({
+        where: { id: parsed.inventoryItemId },
+      });
+    }
+
+    if (parsed.type === "ADJUSTMENT") {
+      updatedItem = await tx.inventoryItem.update({
+        where: { id: parsed.inventoryItemId },
+        data: { currentStock: parsed.quantity },
+      });
+    }
+
+    const effectiveReason = parsed.reason
+      ?? (parsed.type === "ADJUSTMENT" ? "MANUAL_ADJUSTMENT" : undefined);
+
+    const movement = await tx.stockMovement.create({
+      data: {
+        inventoryItemId: parsed.inventoryItemId,
+        type: parsed.type,
+        quantity: parsed.quantity,
+        note: parsed.note,
+        reason: effectiveReason,
+      },
+      include: { inventoryItem: true },
     });
 
     await tx.auditLog.create({
@@ -566,12 +537,12 @@ export async function createStockMovement(params: {
         entityType: "StockMovement",
         entityId: movement.id,
         changes: {
-          inventoryItemId,
-          type,
-          quantity,
-          reason: reason ?? null,
+          inventoryItemId: parsed.inventoryItemId,
+          type: parsed.type,
+          quantity: parsed.quantity,
+          reason: effectiveReason ?? null,
           previousStock: existing.currentStock,
-          newStock,
+          newStock: updatedItem.currentStock,
         },
       },
     });
