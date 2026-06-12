@@ -6,6 +6,7 @@ import { ALL_ROLES } from "../lib/constants.js";
 import { requireBusinessContextForUser } from "../lib/business-context/index.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { successResponse } from "../lib/responses/success-response.js";
+import { getInventoryModePolicy } from "../services/inventory/inventory.mode-policy.js";
 import {
   createInventoryItem,
   createStockMovement,
@@ -102,6 +103,25 @@ router.delete("/inventory-items/:id", async (req, res) => {
       data,
       message: "Inventory item deleted.",
     });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/inventory-capabilities", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+    const data = {
+      businessId: businessContext.businessId,
+      restaurantId: businessContext.restaurantId,
+      businessMode: businessContext.businessMode,
+      policy: getInventoryModePolicy(businessContext),
+    };
+
+    return successResponse(res, { data });
   } catch (error) {
     return handleApiError(res, error);
   }
