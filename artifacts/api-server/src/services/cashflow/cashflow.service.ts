@@ -323,6 +323,7 @@ export async function syncShiftCloseToCashflow(params: {
     });
   }
 
+  const closedAt = shift.closedAt;
   const amount = shift.cashDifference ?? 0;
   const idempotencyKey = `SHIFT_CLOSE:${shift.id}`;
 
@@ -341,8 +342,8 @@ export async function syncShiftCloseToCashflow(params: {
       counterpartyName: null,
       description: `Shift close reconciliation for ${shift.id}`,
       amount,
-      occurredAt: shift.closedAt,
-      postedAt: shift.closedAt,
+      occurredAt: closedAt,
+      postedAt: closedAt,
       createdById: params.actor.id,
       metadata: {
         shiftId: shift.id,
