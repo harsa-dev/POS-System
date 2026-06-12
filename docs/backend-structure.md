@@ -36,7 +36,8 @@ artifacts/api-server/src/
 ├── services/
 │   ├── permissions/
 │   ├── realtime/
-│   └── orders/
+│   ├── orders/
+│   └── inventory/
 ├── middleware/
 ├── utils/
 └── prisma/
@@ -55,7 +56,7 @@ artifacts/api-server/src/
 - shared error objects
 - shared response helpers
 
-Files in `lib/` should not contain feature-specific workflows such as order creation, stock deduction, payment settlement, or menu recipe orchestration.
+Files in `lib/` should not contain feature-specific workflows such as order creation, stock deduction, payment settlement, menu recipe orchestration, or inventory adjustment workflows.
 
 ### `routes/`
 
@@ -96,6 +97,14 @@ Do not delete this file just because `orders.ts` also still exists.
 
 The next safe cleanup is to extract create-order logic into a service instead of moving the whole file at once.
 
+### `routes/inventory.ts`
+
+`inventory.ts` is the API surface for inventory items, stock movement, and the inventory dashboard.
+
+It should stay thin and delegate workflow logic to `services/inventory/`.
+
+It must not directly mutate stock. Stock mutations must go through service logic that creates stock movement records and audit logs in the same transaction.
+
 ### `routes/misc-business.ts`
 
 `misc-business.ts` contains business-scoped replacements for some legacy misc endpoints.
@@ -119,8 +128,20 @@ Current active service folders:
 - `services/permissions/`
 - `services/realtime/`
 - `services/orders/`
+- `services/inventory/`
 
 `services/orders/` is allowed for now because it contains real active workflow code. Do not move it to `services/restaurant/orders/` just for aesthetics.
+
+`services/inventory/` is allowed because inventory now owns real workflow logic:
+
+- inventory item creation
+- opening stock movement
+- metadata update
+- stock adjustment
+- stock movement transaction
+- deletion safety checks
+- inventory dashboard DTO
+- audit logs
 
 A future restaurant-specific split may look like this only after more workflow services exist:
 
@@ -173,6 +194,26 @@ businessContext.businessId
 
 Use `businessId` for generic tenant concepts and realtime business channels. Use `restaurantId` for current Prisma models that still store `restaurantId`.
 
+## Inventory Workflow Rule
+
+Inventory stock is business-critical.
+
+Every stock quantity change must go through stock movement workflow:
+
+```txt
+validate actor permission
+resolve business context
+load inventory item with restaurant scope
+validate movement type and quantity
+calculate new stock
+create stock movement
+update inventory quantity
+create audit log
+return standard API response
+```
+
+Do not silently update `InventoryItem.currentStock` from a route handler.
+
 ## Cleanup Rules
 
 A file may be split when at least one of these is true:
@@ -197,7 +238,7 @@ A file should not be split when the only reason is:
 3. Extract create-order workflow from `routes/orders.ts` into `services/orders/create-order.service.ts` or `services/restaurant/orders/create-order.service.ts`.
 4. Make inventory dashboard API-backed before adding more dashboards.
 5. Wire menu creation to recipe setup instead of leaving recipe mapping hidden in a separate workflow.
-6. Only introduce `services/restaurant/` once at least two restaurant workflows are extracted.
+6. Only introduce `services/restaurant/` once more restaurant workflows are extracted.
 7. Only introduce `routes/retail/` and `services/retail/` when real retail endpoints exist.
 
 ## Smoke Test Checklist
@@ -215,7 +256,10 @@ Then manually check:
 GET /api/health
 login/register
 GET /api/menu-items
+GET /api/inventory-dashboard
 GET /api/inventory-items
+POST /api/inventory-items
+POST /api/inventory
 GET /api/recipes
 POST /api/orders
 PATCH /api/orders/:id/status
