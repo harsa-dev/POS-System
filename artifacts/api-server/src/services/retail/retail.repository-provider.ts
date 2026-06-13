@@ -1,6 +1,6 @@
-import { retailMockRepository } from "./retail.mock-repository.js";
+import { retailPrismaRepository } from "./retail.prisma-repository.js";
 import type { RetailRepository } from "./retail.repository.js";
 
-// Keep this indirection while Prisma retail models are still being prepared.
-// The Prisma agent can replace this value with a real repository without changing route handlers.
-export const retailRepository: RetailRepository = retailMockRepository;
+// Retail is now wired to Prisma through raw-query repository methods.
+// The mock repository is still available for tests/local fallback, but runtime uses database persistence.
+export const retailRepository: RetailRepository = retailPrismaRepository;
