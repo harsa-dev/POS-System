@@ -164,6 +164,39 @@ Expected:
 4. Close detail panel.
 5. Confirm list still remains visible.
 
+## Preview modal checks
+
+### New request preview
+
+1. Click `Request preview`.
+2. Confirm modal opens.
+3. Edit customer, segment, category, title, priority, and summary fields.
+4. Confirm payload preview updates locally.
+5. Confirm submit button is disabled.
+6. Close the modal.
+
+Expected:
+
+- no API call runs
+- no job is added to the list
+- no data persists after closing
+
+### Draft quotation preview
+
+1. Select a job.
+2. Click `Quote preview`.
+3. Confirm modal opens with selected job context.
+4. Edit discount, tax rate, and target margin fields.
+5. Confirm payload preview updates locally.
+6. Confirm submit button is disabled.
+7. Close the modal.
+
+Expected:
+
+- no API call runs
+- selected job data is not mutated
+- no quotation is created
+
 ## Action rail checks
 
 For a selected job:
