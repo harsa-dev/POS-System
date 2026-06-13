@@ -10,6 +10,31 @@ import {
   normalizeRawMaterialBatchUpdatePayload,
 } from "./raw-material-batch.validation";
 
+type RawMaterialBatchRouteActor = Readonly<{
+  id: string;
+  role: Role;
+}>;
+
+type RawMaterialBatchRouteParams = Readonly<{
+  actor: RawMaterialBatchRouteActor;
+  businessContext: { businessId: string };
+}>;
+
+type RawMaterialBatchListParams = RawMaterialBatchRouteParams & RawMaterialBatchQuery;
+
+type RawMaterialBatchCreateParams = RawMaterialBatchRouteParams & Readonly<{
+  input: RawMaterialBatchPayload;
+}>;
+
+type RawMaterialBatchUpdateParams = RawMaterialBatchRouteParams & Readonly<{
+  id: string;
+  input: RawMaterialBatchPayload;
+}>;
+
+type RawMaterialBatchDeleteParams = RawMaterialBatchRouteParams & Readonly<{
+  id: string;
+}>;
+
 const viewRoles = new Set<Role>([
   Role.OWNER,
   Role.MANAGER,
@@ -25,6 +50,14 @@ const manageRoles = new Set<Role>([
   Role.ADMIN,
   Role.OPERATOR,
 ]);
+
+function toAuthenticatedUser(params: RawMaterialBatchRouteParams): AuthenticatedUser {
+  return {
+    id: params.actor.id,
+    role: params.actor.role,
+    businessId: params.businessContext.businessId,
+  };
+}
 
 function assertBusinessAccess(user: AuthenticatedUser): string {
   if (!user.businessId) {
@@ -159,22 +192,63 @@ async function assertBatchQuantityWithinIntake(
   return intake;
 }
 
-export async function listRawMaterialBatches(user: AuthenticatedUser, query: RawMaterialBatchQuery = {}) {
-  assertCanView(user);
-  const businessId = assertBusinessAccess(user);
+function resolveListParams(
+  userOrParams: AuthenticatedUser | RawMaterialBatchListParams,
+  query: RawMaterialBatchQuery = {},
+) {
+  if ("actor" in userOrParams) {
+    return {
+      user: toAuthenticatedUser(userOrParams),
+      query: {
+        intakeId: userOrParams.intakeId,
+        storageLocationId: userOrParams.storageLocationId,
+        qualityStatus: userOrParams.qualityStatus,
+        isActive: userOrParams.isActive,
+        search: userOrParams.search,
+      } satisfies RawMaterialBatchQuery,
+    };
+  }
+
+  return { user: userOrParams, query };
+}
+
+function resolveMutationParams(
+  userOrParams: AuthenticatedUser | RawMaterialBatchCreateParams,
+  payload?: RawMaterialBatchPayload,
+) {
+  if ("actor" in userOrParams) {
+    return {
+      user: toAuthenticatedUser(userOrParams),
+      payload: userOrParams.input,
+    };
+  }
+
+  return {
+    user: userOrParams,
+    payload: payload ?? {},
+  };
+}
+
+export async function listRawMaterialBatches(
+  userOrParams: AuthenticatedUser | RawMaterialBatchListParams,
+  query: RawMaterialBatchQuery = {},
+) {
+  const resolved = resolveListParams(userOrParams, query);
+  assertCanView(resolved.user);
+  const businessId = assertBusinessAccess(resolved.user);
 
   const where: Prisma.RawMaterialBatchWhereInput = {
     businessId,
-    ...(query.intakeId ? { intakeId: query.intakeId } : {}),
-    ...(query.storageLocationId ? { storageLocationId: query.storageLocationId } : {}),
-    ...(query.qualityStatus ? { qualityStatus: query.qualityStatus } : {}),
-    ...(typeof query.isActive === "boolean" ? { isActive: query.isActive } : {}),
-    ...(query.search
+    ...(resolved.query.intakeId ? { intakeId: resolved.query.intakeId } : {}),
+    ...(resolved.query.storageLocationId ? { storageLocationId: resolved.query.storageLocationId } : {}),
+    ...(resolved.query.qualityStatus ? { qualityStatus: resolved.query.qualityStatus } : {}),
+    ...(typeof resolved.query.isActive === "boolean" ? { isActive: resolved.query.isActive } : {}),
+    ...(resolved.query.search
       ? {
           OR: [
-            { lotCode: { contains: query.search, mode: "insensitive" } },
-            { materialName: { contains: query.search, mode: "insensitive" } },
-            { notes: { contains: query.search, mode: "insensitive" } },
+            { lotCode: { contains: resolved.query.search, mode: "insensitive" } },
+            { materialName: { contains: resolved.query.search, mode: "insensitive" } },
+            { notes: { contains: resolved.query.search, mode: "insensitive" } },
           ],
         }
       : {}),
@@ -193,10 +267,14 @@ export async function listRawMaterialBatches(user: AuthenticatedUser, query: Raw
   return batches.map(toRawMaterialBatchDto);
 }
 
-export async function createRawMaterialBatch(user: AuthenticatedUser, payload: RawMaterialBatchPayload) {
-  assertCanManage(user);
-  const businessId = assertBusinessAccess(user);
-  const normalized = normalizeRawMaterialBatchPayload(payload);
+export async function createRawMaterialBatch(
+  userOrParams: AuthenticatedUser | RawMaterialBatchCreateParams,
+  payload?: RawMaterialBatchPayload,
+) {
+  const resolved = resolveMutationParams(userOrParams, payload);
+  assertCanManage(resolved.user);
+  const businessId = assertBusinessAccess(resolved.user);
+  const normalized = normalizeRawMaterialBatchPayload(resolved.payload);
 
   await assertUniqueLotCode(businessId, normalized.lotCode);
   await assertValidStorageLocation(businessId, normalized.storageLocationId);
@@ -232,15 +310,31 @@ export async function createRawMaterialBatch(user: AuthenticatedUser, payload: R
 }
 
 export async function updateRawMaterialBatch(
-  user: AuthenticatedUser,
-  batchId: string,
-  payload: RawMaterialBatchPayload,
+  userOrParams: AuthenticatedUser | RawMaterialBatchUpdateParams,
+  batchId?: string,
+  payload?: RawMaterialBatchPayload,
 ) {
-  assertCanManage(user);
-  const businessId = assertBusinessAccess(user);
+  const resolved = "actor" in userOrParams
+    ? {
+        user: toAuthenticatedUser(userOrParams),
+        batchId: userOrParams.id,
+        payload: userOrParams.input,
+      }
+    : {
+        user: userOrParams,
+        batchId,
+        payload: payload ?? {},
+      };
+
+  if (!resolved.batchId) {
+    throw new Error("Batch id is required");
+  }
+
+  assertCanManage(resolved.user);
+  const businessId = assertBusinessAccess(resolved.user);
   const existing = await prisma.rawMaterialBatch.findFirst({
     where: {
-      id: batchId,
+      id: resolved.batchId,
       businessId,
     },
     include: getBatchInclude(),
@@ -250,7 +344,7 @@ export async function updateRawMaterialBatch(
     throw new Error("Raw material batch was not found");
   }
 
-  const normalized = normalizeRawMaterialBatchUpdatePayload(payload);
+  const normalized = normalizeRawMaterialBatchUpdatePayload(resolved.payload);
   const nextLotCode = normalized.lotCode ?? existing.lotCode;
   const nextIntakeId = normalized.intakeId ?? existing.intakeId;
   const nextStorageLocationId = normalized.storageLocationId ?? existing.storageLocationId;
@@ -258,13 +352,13 @@ export async function updateRawMaterialBatch(
   const nextRemainingQuantity = normalized.remainingQuantity ?? existing.remainingQuantity;
   const nextUnit = normalized.unit ?? existing.unit;
 
-  await assertUniqueLotCode(businessId, nextLotCode, batchId);
+  await assertUniqueLotCode(businessId, nextLotCode, resolved.batchId);
   await assertValidStorageLocation(businessId, nextStorageLocationId);
   const intake = await assertBatchQuantityWithinIntake(
     businessId,
     nextIntakeId,
     nextQuantity,
-    batchId,
+    resolved.batchId,
   );
 
   if (nextUnit !== intake.unit) {
@@ -294,12 +388,29 @@ export async function updateRawMaterialBatch(
   return toRawMaterialBatchDto(updated);
 }
 
-export async function deactivateRawMaterialBatch(user: AuthenticatedUser, batchId: string) {
-  assertCanManage(user);
-  const businessId = assertBusinessAccess(user);
+export async function deactivateRawMaterialBatch(
+  userOrParams: AuthenticatedUser | RawMaterialBatchDeleteParams,
+  batchId?: string,
+) {
+  const resolved = "actor" in userOrParams
+    ? {
+        user: toAuthenticatedUser(userOrParams),
+        batchId: userOrParams.id,
+      }
+    : {
+        user: userOrParams,
+        batchId,
+      };
+
+  if (!resolved.batchId) {
+    throw new Error("Batch id is required");
+  }
+
+  assertCanManage(resolved.user);
+  const businessId = assertBusinessAccess(resolved.user);
   const existing = await prisma.rawMaterialBatch.findFirst({
     where: {
-      id: batchId,
+      id: resolved.batchId,
       businessId,
     },
     select: { id: true },
