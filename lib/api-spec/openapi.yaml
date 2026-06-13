@@ -104,6 +104,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RetailReceivingQueueResponse"
+  /retail/receiving/{id}/status:
+    patch:
+      operationId: retailUpdateReceivingStatus
+      tags: [retail]
+      summary: Update Retail receiving status with guarded workflow transition
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetailReceivingStatusUpdateInput"
+      responses:
+        "200":
+          description: Retail receiving status updated or already set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailReceivingStatusUpdateResponse"
+        "409":
+          description: Retail receiving status transition rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailReceivingStatusUpdateResponse"
   /retail/shared-dashboard/{dashboardId}:
     get:
       operationId: retailGetSharedDashboard
@@ -177,6 +206,9 @@ components:
     RetailPaymentMethod:
       type: string
       enum: [cash, qris, card, transfer]
+    RetailReceivingStatus:
+      type: string
+      enum: [draft, ordered, partial, received]
     RetailSharedDashboardId:
       type: string
       enum: [overview, sales, customers, inventory, cashflow, financial-reports, invoice-generator, shift-reports, team-management, employee-performance, approvals, audit-controls, roster-overview, employee-attendance, employee-contracts, payroll]
@@ -210,6 +242,12 @@ components:
           items:
             $ref: "#/components/schemas/RetailLineInput"
       required: [paymentMethod, lines]
+    RetailReceivingStatusUpdateInput:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/RetailReceivingStatus"
+      required: [status]
     RetailObject:
       type: object
       additionalProperties: true
@@ -273,6 +311,14 @@ components:
         success: { type: boolean }
         data:
           $ref: "#/components/schemas/RetailArray"
+        message: { type: string }
+      required: [success, data]
+    RetailReceivingStatusUpdateResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/RetailObject"
         message: { type: string }
       required: [success, data]
     RetailSharedDashboardResponse:
