@@ -12,7 +12,7 @@ Use this section as the main progress tracker. Keep the wording short so the doc
 Phase 1 - Persistence foundation: implemented
 Phase 2 - Backend route, guard, and workflow preview: implemented
 Phase 3 - Shared dashboard backend summary: implemented
-Phase 4 - Seed retail product/supplier per business: planned
+Phase 4 - Seed retail product/supplier per business: implemented
 Phase 5 - Frontend catalog and cashier API wiring: planned
 Phase 6 - Retail OpenAPI client coverage: planned
 Phase 7 - Prisma schema delegate cleanup: planned
@@ -151,12 +151,31 @@ Retail behavior:
 - fallback to local Retail mock context if API is unavailable
 ```
 
-### Phase 4 - Seed retail product/supplier per business: planned
+### Phase 4 - Seed retail product/supplier per business: implemented
 
-Goal:
+Implemented scope:
 
 ```txt
-Create enough real Retail rows so GET /api/retail/products and checkout flows can be tested without relying on local mock data.
+- Retail seed script exists
+- Retail seed command exists
+- Seed resolves active Business rows where mode = RETAIL
+- Seed upserts RetailSupplier demo rows per Retail business
+- Seed upserts RetailProduct demo rows per Retail business
+- Seed keeps in-stock, low-stock, and out-of-stock examples available for testing
+- Seed is idempotent and safe to run more than once
+```
+
+Primary files:
+
+```txt
+artifacts/api-server/scripts/seed-retail-demo-data.ts
+artifacts/api-server/package.json
+```
+
+Command:
+
+```bash
+pnpm --filter @workspace/api-server run retail:seed
 ```
 
 Seed scope:
@@ -169,23 +188,20 @@ RetailProduct
 Seed rules:
 
 ```txt
-- resolve an existing Business where mode = RETAIL
+- resolve existing active Business rows where mode = RETAIL
 - do not create random duplicate business records
-- upsert suppliers by businessId + name or slug
-- upsert products by businessId + sku/barcode
+- upsert suppliers by businessId + name
+- upsert products by businessId + sku
+- use deterministic scoped IDs so supplier/product references stay stable
 - keep stock values realistic enough to test in-stock, low-stock, and out-of-stock flows
-```
-
-Preferred command name:
-
-```bash
-pnpm --filter @workspace/api-server run retail:seed
 ```
 
 Expected result:
 
 ```txt
 GET /api/retail/products returns seeded rows for the active Retail business.
+GET /api/retail/barcode/8991001000011 can resolve the demo chips product.
+GET /api/retail/shared-dashboard/inventory has inventory context instead of an empty Retail database.
 ```
 
 ### Phase 5 - Frontend catalog and cashier API wiring: planned
@@ -306,6 +322,7 @@ IN SCOPE
 - artifacts/api-server/src/routes/retail.ts
 - artifacts/api-server/src/services/retail/**
 - artifacts/api-server/prisma/migrations/202606140001_add_retail_core/migration.sql
+- artifacts/api-server/scripts/seed-retail-demo-data.ts
 - artifacts/pos-system/src/features/retail/**
 - artifacts/pos-system/src/features/shared/retail-bridge/**
 - Retail-specific OpenAPI paths and schemas
@@ -331,6 +348,7 @@ From the repo root:
 
 ```bash
 pnpm --filter @workspace/api-server run retail:db:apply
+pnpm --filter @workspace/api-server run retail:seed
 pnpm --filter @workspace/api-server run generate
 pnpm --filter @workspace/api-server run typecheck:retail
 pnpm --filter @workspace/api-server run build
@@ -352,13 +370,14 @@ After auth, Retail business context, and Retail tables exist:
 ```txt
 GET  /api/retail/health
 GET  /api/retail/products
+GET  /api/retail/barcode/8991001000011
 GET  /api/retail/dashboard
 GET  /api/retail/shared-dashboard/inventory
 POST /api/retail/sales/preview
 POST /api/retail/sales/checkout
 ```
 
-If `GET /api/retail/products` returns an empty array, the Retail tables exist but no RetailProduct rows have been seeded yet.
+If `GET /api/retail/products` returns an empty array after `retail:seed`, check that at least one active Business row has `mode = RETAIL`.
 
 ## Done Definition For Current Retail Track
 
@@ -382,10 +401,9 @@ Retail track is considered stable when:
 Keep commits small and Retail-only:
 
 ```txt
-1. Retail seed workflow
-2. Retail catalog API wiring with mock fallback
-3. Retail cashier checkout API wiring with mock fallback
-4. Retail OpenAPI path/schema coverage
-5. Retail schema.prisma model sync
-6. Raw repository to typed Prisma delegate migration
+1. Retail catalog API wiring with mock fallback
+2. Retail cashier checkout API wiring with mock fallback
+3. Retail OpenAPI path/schema coverage
+4. Retail schema.prisma model sync
+5. Raw repository to typed Prisma delegate migration
 ```
