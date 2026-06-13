@@ -1,9 +1,11 @@
-export type UserRole = "OWNER" | "MANAGER" | "CASHIER" | "KITCHEN" | "SERVER";
+export type UserRole = "OWNER" | "MANAGER" | "ADMIN" | "OPERATOR" | "STAFF" | "VIEWER";
 
-export type AuthUser = {
+export type AppUser = {
   id: string;
   name: string;
   email: string;
   role: UserRole | string;
-  restaurantId?: string | null;
+  businessId?: string | null;
 };
+
+export type AuthUser = AppUser;
