@@ -9,10 +9,11 @@ import type {
   ListServiceBusinessJobsQuery,
   RecordServiceInvoicePaymentInput,
   ServiceBusinessMutationPreviewResponse,
-  ServiceBusinessWorkspaceResponse,
+  ServiceBusinessTransitionPreviewResponse,
+  ServiceBusinessWorkflowResponse,
   UpdateServiceJobStatusInput,
 } from "./service-business-api-contract-types";
-import type { ServiceBusinessJob } from "./service-business-workspace-types";
+import type { ServiceBusinessJob, ServiceBusinessWorkflowStatus } from "./service-business-workspace-types";
 
 const SERVICE_BUSINESS_API_BASE = "/api/custom-business/service";
 
@@ -56,6 +57,26 @@ export const serviceBusinessApi = {
     );
   },
 
+  getWorkflow(): Promise<ServiceBusinessWorkflowResponse> {
+    return unwrapData(
+      apiClient.get<ServiceBusinessEnvelope<ServiceBusinessWorkflowResponse>>(
+        `${SERVICE_BUSINESS_API_BASE}/workflow/statuses`,
+      ),
+    );
+  },
+
+  getTransitionPreview(
+    jobId: string,
+    nextStatus: ServiceBusinessWorkflowStatus,
+  ): Promise<ServiceBusinessTransitionPreviewResponse> {
+    const params = new URLSearchParams({ nextStatus });
+    return unwrapData(
+      apiClient.get<ServiceBusinessEnvelope<ServiceBusinessTransitionPreviewResponse>>(
+        `${SERVICE_BUSINESS_API_BASE}/jobs/${jobId}/transition-preview?${params.toString()}`,
+      ),
+    );
+  },
+
   createRequest(
     input: CreateServiceRequestInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
@@ -72,7 +93,7 @@ export const serviceBusinessApi = {
   ): Promise<ServiceBusinessMutationPreviewResponse> {
     return unwrapData(
       apiClient.patch<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        `${SERVICE_BUSINESS_API_BASE}/jobs/${input.jobId}/status`,
+        `${SERVICE_BUSINESS_API_BASE}/jobs/${input.jobId}/guarded-status`,
         { json: input },
       ),
     );
