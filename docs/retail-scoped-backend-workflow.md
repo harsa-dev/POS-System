@@ -13,7 +13,13 @@ Phase 3 - Shared dashboard backend summary: implemented
 Phase 4 - Seed retail product/supplier per business: implemented
 Phase 5 - Frontend catalog and cashier API wiring: implemented
 Phase 6 - Retail OpenAPI client coverage: implemented
-Phase 7 - Prisma schema delegate cleanup: implemented
+Phase 7 - Prisma schema delegate cleanup: in progress
+  Phase 7A - Schema model mapping: implemented
+  Phase 7B - Summary read delegate: planned
+  Phase 7C - Workflow read delegate: planned
+  Phase 7D - Checkout preview + cost read delegate: planned
+  Phase 7E - Sale + payment + stock movement write delegate: planned
+  Phase 7F - Guarded workflow status write delegate: planned
 ```
 
 ## Phase 1 - Persistence foundation: implemented
@@ -218,7 +224,11 @@ Current note:
 The React client surface is implemented. Full Orval regeneration should still be run locally with pnpm --filter @workspace/api-spec codegen when the generator environment is stable, because the project keeps generated artifacts in git.
 ```
 
-## Phase 7 - Prisma schema delegate cleanup: implemented
+## Phase 7 - Prisma schema delegate cleanup: in progress
+
+Phase 7 is not one big task. It must be split into delegate migration subphases so Retail can move from raw SQL to Prisma delegates without breaking checkout, stock, or payment workflows in one reckless commit.
+
+### Phase 7A - Schema model mapping: implemented
 
 Implemented scope:
 
@@ -258,10 +268,156 @@ prisma.retailPayment.create
 prisma.retailStockMovement.create
 ```
 
+### Phase 7B - Summary read delegate: planned
+
+Goal:
+
+```txt
+Convert dashboard and summary reads from raw SQL to Prisma delegates.
+```
+
+Target methods:
+
+```txt
+- listProducts summary data
+- getDashboard summary data
+- getCommandCenter summary data
+- getSharedDashboard summary data
+- inventory risk summary reads
+```
+
+Acceptance criteria:
+
+```txt
+- Summary endpoints return the same DTO shapes as before
+- No route changes are required
+- No frontend changes are required
+- Raw SQL fallback can stay temporarily behind the repository seam if needed
+```
+
+### Phase 7C - Workflow read delegate: planned
+
+Goal:
+
+```txt
+Convert operational read workflows from raw SQL to Prisma delegates.
+```
+
+Target methods:
+
+```txt
+- getProductById
+- findProductByBarcodeOrSku
+- listReceiving
+- sale preview product lookup reads
+- return preview sale/product lookup reads
+```
+
+Acceptance criteria:
+
+```txt
+- Barcode lookup still resolves by barcode or SKU
+- Product detail still remains business-scoped
+- Receiving queue still remains business-scoped
+- Sale preview still validates inactive/out-of-stock products correctly
+```
+
+### Phase 7D - Checkout preview + cost read delegate: planned
+
+Goal:
+
+```txt
+Move preview-time product, stock, cost, tax, discount, and gross-profit calculations onto Prisma delegate reads.
+```
+
+Target behavior:
+
+```txt
+- Preview reads products through prisma.retailProduct
+- Preview keeps current DTO contract
+- Preview blocks invalid product IDs
+- Preview blocks inactive products
+- Preview blocks insufficient stock
+- Preview calculates subtotal, discount, tax, total, and gross profit consistently with checkout
+```
+
+Acceptance criteria:
+
+```txt
+- POST /api/retail/sales/preview still returns the same totals and validation reasons
+- POST /api/retail/sales/checkout can reuse preview calculations safely
+```
+
+### Phase 7E - Sale + payment + stock movement write delegate: planned
+
+Goal:
+
+```txt
+Convert real checkout write transaction from raw SQL to Prisma delegate writes.
+```
+
+Target writes:
+
+```txt
+- prisma.retailSale.create
+- prisma.retailSaleItem.createMany
+- prisma.retailPayment.create
+- prisma.retailProduct.update for stock decrement
+- prisma.retailStockMovement.createMany or create
+```
+
+Transaction rule:
+
+```txt
+Checkout must remain atomic. Do not create sale/payment if stock decrement or stock movement fails.
+```
+
+Acceptance criteria:
+
+```txt
+- Checkout persists sale, sale items, payment, and stock movement in one Prisma transaction
+- Stock after checkout matches previous stock minus sold quantity
+- Gross profit remains consistent with preview
+- Existing checkout endpoint contract does not change
+```
+
+### Phase 7F - Guarded workflow status write delegate: planned
+
+Goal:
+
+```txt
+Move status-changing Retail workflows to guarded Prisma delegate writes.
+```
+
+Target workflows:
+
+```txt
+- receiving status updates when receiving workflow is implemented
+- sale status update or cancellation workflow when exposed
+- return workflow status update when persistence is implemented
+```
+
+Guard rules:
+
+```txt
+- Every status update must be business-scoped
+- Every status update must validate allowed transitions
+- Every stock-affecting status update must write RetailStockMovement
+- Every sensitive status update must write AuditLog once audit integration is wired
+```
+
+Acceptance criteria:
+
+```txt
+- No direct route-level status writes
+- Status transition validation lives in service/repository workflow
+- Invalid transition returns a typed error instead of silently mutating data
+```
+
 Repository migration rule:
 
 ```txt
-Do not replace every raw query in one pass. Convert list/read methods first, then checkout write transaction last.
+Do not replace every raw query in one pass. Convert read methods first, then checkout write transaction, then guarded status writes.
 ```
 
 Why the repository still uses raw SQL right now:
@@ -272,7 +428,7 @@ The production-safe path is:
 2. sync schema.prisma locally
 3. generate Prisma client
 4. confirm retail delegates exist
-5. convert repository methods one by one
+5. convert repository methods one by one through Phase 7B-7F
 ```
 
 ## Scope Rule
@@ -373,4 +529,5 @@ Retail track is considered stable when:
 - POST /api/retail/sales/checkout persists sale/payment/stock movement
 - GET /api/retail/shared-dashboard/inventory returns API dashboard context
 - @workspace/api-client-react exports Retail client functions
+- Phase 7B-7F progressively remove raw SQL repository reads/writes without changing route contracts
 ```
