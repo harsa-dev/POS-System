@@ -22,3 +22,7 @@ export * from "./raw-material-processing-run.dto.js";
 export * from "./raw-material-processing-run.service.js";
 export * from "./raw-material-processing-run.types.js";
 export * from "./raw-material-processing-run.validation.js";
+export * from "./raw-material-pen.dto.js";
+export * from "./raw-material-pen.service.js";
+export * from "./raw-material-pen.types.js";
+export * from "./raw-material-pen.validation.js";
