@@ -44,7 +44,7 @@ Each route is protected by `requiredMode="raw-material"`.
 | Batches | Lot code, expiry, remaining quantity, and traceability preview |
 | Storage | Location capacity and usage preview |
 | Processing | Raw-to-output transformation and yield preview |
-| Kandang | Livestock pen, occupancy, feed batch, and health preview |
+| Kandang | Pen occupancy, feed batch, and health preview |
 | Suppliers | Source identity, lead time, category, and reliability preview |
 
 ---
@@ -63,8 +63,23 @@ artifacts/pos-system/src/features/raw-material/core-system/
 Workspace UI:
 
 ```txt
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-placeholder-workspace.tsx
+artifacts/pos-system/src/app/workspace/raw-material/
+├─ raw-material-placeholder-workspace.tsx
+├─ raw-material-workspace.constants.ts
+├─ raw-material-workspace.types.ts
+└─ raw-material-workspace.utils.ts
 ```
+
+Current split boundary:
+
+| File | Responsibility |
+| --- | --- |
+| `raw-material-placeholder-workspace.tsx` | Temporary composition container and interactive local-state workspace |
+| `raw-material-workspace.constants.ts` | Module icons, badge tone maps, filter option constants |
+| `raw-material-workspace.types.ts` | UI-only draft/filter types |
+| `raw-material-workspace.utils.ts` | UI lookup helpers, numeric parser, filter normalizers |
+
+The placeholder workspace is still temporary. It should keep shrinking as sections become stable.
 
 ---
 
@@ -131,7 +146,40 @@ Later, mock service can be replaced by API client with minimum UI changes.
 
 ---
 
-## 7. Database Boundary
+## 7. Workspace Refactor Rule
+
+Do not let `raw-material-placeholder-workspace.tsx` grow forever.
+
+Move code in this order:
+
+```txt
+1. constants
+2. UI-only types
+3. pure helper functions
+4. read-only display sections
+5. local draft forms
+6. preview action panels
+7. final route-specific screens
+```
+
+Do not extract a component if it hides business rules or makes state flow harder to read.
+
+Target future shape:
+
+```txt
+raw-material-placeholder-workspace.tsx
+raw-material-workspace-shell.tsx
+raw-material-draft-forms.tsx
+raw-material-preview-actions.tsx
+raw-material-filtered-tables.tsx
+raw-material-static-snapshots.tsx
+```
+
+The current phase has completed steps 1-3.
+
+---
+
+## 8. Database Boundary
 
 Do not touch these until the mode is reviewed:
 
@@ -154,7 +202,6 @@ storage location
 storage transfer
 processing run
 kandang pen
-livestock event
 quality inspection
 ```
 
@@ -162,7 +209,7 @@ But these are not approved yet.
 
 ---
 
-## 8. Advancement Checklist
+## 9. Advancement Checklist
 
 Before real schema work, complete this checklist:
 
@@ -175,34 +222,36 @@ Before real schema work, complete this checklist:
 6. No Prisma/schema/migration touched.
 7. No backend handler pretending to be production.
 8. No inventory mutation exists yet.
+9. Workspace constants/types/utils are split from temporary composition file.
 ```
 
 ---
 
-## 9. Next Safe Step
+## 10. Next Safe Step
 
 The next safe step is:
 
 ```txt
-Add form-only draft interactions with local component state.
+Extract read-only display sections into small components.
 ```
 
-Example:
+Candidate sections:
 
 ```txt
-Create intake draft
-Create weighing draft
-Filter batches
-Filter suppliers
-Preview storage transfer
-Preview processing yield
+metrics grid
+readiness card
+API contract card
+storage capacity
+processing runs
+kandang snapshot
+supplier filter preview
 ```
 
 Still no database write.
 
 ---
 
-## 10. Hard Rule
+## 11. Hard Rule
 
 If a future task asks to make raw material mode production-ready, do not start from Prisma schema immediately.
 
@@ -217,5 +266,3 @@ tenant scope rules
 audit event design
 then schema
 ```
-
-Skipping this order creates database regret. Database regret is the software equivalent of stepping on Lego and then paying cloud bills.
