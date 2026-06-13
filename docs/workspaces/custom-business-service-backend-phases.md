@@ -91,7 +91,7 @@ Main files:
 
 ## Phase 3 - Service layer split
 
-Status: partially implemented
+Status: implemented
 
 Phase 3A implemented:
 
@@ -102,26 +102,34 @@ Phase 3A implemented:
 - Workflow presenter for response shape.
 - `service-business-workflow.ts` route refactored so it only handles HTTP auth, input, and response orchestration.
 
-New files:
+Phase 3B implemented:
+
+- CRUD and billing read/write logic moved out of `service-business.ts`.
+- Job loading, request creation, cost line creation, quote creation, quotation approval, invoice creation, and invoice payment recording moved into a CRUD repository/service pair.
+- `service-business.ts` now handles HTTP auth, body parsing, business context, and response sending only.
+- Shared validators now cover body parsing, date parsing, numbers, workflow status, priority, and cost category parsing.
+- Shared presenter now owns workspace, job list, mutation, and workflow response shapes.
+- No new migration was added in this phase.
+
+Main files:
 
 - `artifacts/api-server/src/features/service-business/service-business.types.ts`
 - `artifacts/api-server/src/features/service-business/service-business.validators.ts`
 - `artifacts/api-server/src/features/service-business/service-business.repository.ts`
 - `artifacts/api-server/src/features/service-business/service-business.workflow.ts`
 - `artifacts/api-server/src/features/service-business/service-business.presenter.ts`
+- `artifacts/api-server/src/features/service-business/service-business.crud.repository.ts`
+- `artifacts/api-server/src/features/service-business/service-business.crud.service.ts`
+- `artifacts/api-server/src/routes/service-business.ts`
+- `artifacts/api-server/src/routes/service-business-workflow.ts`
 
-Still planned as Phase 3B:
+Target state now reached:
 
-- Split `service-business.ts` CRUD and billing route into repository/service/presenter modules.
-- Move request creation, job listing, cost line creation, quote creation, invoice creation, and payment recording out of the route file.
-- Keep route files responsible for HTTP only.
-
-Target:
-
-- Routes should only parse HTTP input and return responses.
-- Repository should own SQL access.
-- Workflow service should own transition rules and requirements.
-- Presenter should own frontend response shape.
+- Routes parse HTTP input and return responses.
+- Repositories own SQL access.
+- Workflow service owns transition rules and requirements.
+- CRUD service owns request, quote, invoice, and payment orchestration.
+- Presenter owns frontend response shape.
 
 ## Phase 4 - Permission hardening
 
