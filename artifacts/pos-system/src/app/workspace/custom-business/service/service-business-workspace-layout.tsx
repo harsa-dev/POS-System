@@ -1,3 +1,4 @@
+import type { ElementType, ReactNode } from "react";
 import {
   BadgeDollarSign,
   ClipboardCheck,
@@ -68,6 +69,33 @@ const pricingInputs = [
   "Invoice payment term",
 ] as const;
 
+const serviceWorkspaceModules: readonly {
+  icon: ElementType;
+  label: string;
+  description: string;
+}[] = [
+  {
+    icon: ReceiptText,
+    label: "Invoice",
+    description: "Generate invoices from approved quotations.",
+  },
+  {
+    icon: FileText,
+    label: "Reports",
+    description: "Track profitability, service categories, and collection.",
+  },
+  {
+    icon: Gauge,
+    label: "Cashflow",
+    description: "Push payment and expense events into shared finance.",
+  },
+  {
+    icon: Settings2,
+    label: "Configuration",
+    description: "Control service categories, margins, and rules.",
+  },
+];
+
 const readinessChecks = [
   "Create service request and job schema before enabling mutations.",
   "Define service status transition rules before exposing action buttons.",
@@ -81,7 +109,7 @@ function SectionCard({
   title,
   description,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   title: string;
   description: string;
 }) {
@@ -175,23 +203,18 @@ export function ServiceBusinessWorkspaceLayout() {
           description="Service mode should be composed from existing shared systems plus service-specific workflow modules."
         >
           <div className="space-y-3">
-            {[
-              [ReceiptText, "Invoice", "Generate invoices from approved quotations."],
-              [FileText, "Reports", "Track profitability, service categories, and collection."],
-              [Gauge, "Cashflow", "Push payment and expense events into shared finance."],
-              [Settings2, "Configuration", "Control service categories, margins, and rules."],
-            ].map(([Icon, label, description]) => (
+            {serviceWorkspaceModules.map(({ icon: Icon, label, description }) => (
               <div
-                key={label as string}
+                key={label}
                 className="flex gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-neutral-700 shadow-sm">
                   <Icon className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-neutral-950">{label as string}</p>
+                  <p className="text-sm font-bold text-neutral-950">{label}</p>
                   <p className="mt-1 text-xs leading-5 text-neutral-600">
-                    {description as string}
+                    {description}
                   </p>
                 </div>
               </div>
