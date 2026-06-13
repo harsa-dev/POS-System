@@ -1,6 +1,6 @@
 "use client";
 
-import { type ElementType, useMemo } from "react";
+import { type ElementType, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ROUTES } from "@/constants/routes";
 import {
@@ -26,9 +26,10 @@ import { authApi } from "@/lib/api";
 import { getSidebarItemsForRuntimeMode } from "@/app/registry/sidebar-registry";
 import type { V3ModuleId } from "@/app/registry/module-types";
 import {
-  getStoredBusinessMode,
-  type BusinessMode,
-} from "@/components/core/route-guard";
+  getCurrentBusinessMode,
+  subscribeToBusinessModeChanges,
+  type BusinessModeId,
+} from "@/components/core/business-mode";
 
 type SidebarProps = {
   role: string;
@@ -43,7 +44,6 @@ type MenuItem = {
   label: string;
   icon: ElementType;
   roles: string[];
-  modes?: BusinessMode[];
 };
 
 type MenuGroup = {
@@ -51,102 +51,95 @@ type MenuGroup = {
   items: MenuItem[];
 };
 
-function getRegistrySidebarIcon(moduleId: V3ModuleId) {
+const fallbackSidebarIcon = Grid2X2;
+
+function getRegistrySidebarIcon(moduleId: V3ModuleId): ElementType {
   switch (moduleId) {
     case "analytics":
       return BarChart3;
     case "customers":
+    case "employees":
+    case "suppliers":
       return Handshake;
     case "inventory":
+    case "catalog":
+    case "receiving":
+    case "shelf-management":
+    case "intake":
+    case "weighing":
+    case "batches":
+    case "storage":
+    case "kandang":
       return Package;
     case "cashflow":
       return WalletCards;
     case "reports":
       return FileText;
     case "invoice":
+    case "barcode":
       return ReceiptText;
     case "shifts":
+    case "payments":
+    case "cashier":
+    case "promotions":
       return CreditCard;
     case "pos":
       return ShoppingCart;
     case "orders":
+    case "audit":
+    case "attendance":
+    case "stock-opname":
       return ClipboardList;
     case "serving":
+    case "feature-flags":
       return BellRing;
     case "tables":
       return Table2;
-    case "payments":
-      return CreditCard;
     case "menu":
       return UtensilsCrossed;
     case "recipes":
       return BookOpenCheck;
     case "kitchen":
+    case "processing":
       return ChefHat;
+    case "auth":
+    case "permissions":
+    case "settings":
+    case "registry":
+    case "config":
+      return fallbackSidebarIcon;
     default:
-      throw new Error(`Unsupported sidebar module: ${moduleId}`);
+      return fallbackSidebarIcon;
   }
 }
 
-function createRegistryMenuItems(
-  moduleIds: readonly V3ModuleId[],
-  modes?: readonly BusinessMode[],
-): MenuItem[] {
-  const moduleIdSet = new Set(moduleIds);
+function createModeAwareMenuGroups(
+  currentMode: BusinessModeId | null,
+  role: string,
+): MenuGroup[] {
+  if (!currentMode) return [];
 
-  return getSidebarItemsForRuntimeMode("fnb")
-    .filter((item) => moduleIdSet.has(item.moduleId))
-    .map((item) => {
-      const menuItem: MenuItem = {
-        href: item.routePath,
-        label: item.label,
-        icon: getRegistrySidebarIcon(item.moduleId),
-        roles: [...item.requiredRoles],
-      };
+  const groups = new Map<string, MenuItem[]>();
 
-      if (modes) menuItem.modes = [...modes];
+  for (const item of getSidebarItemsForRuntimeMode(currentMode)) {
+    if (!item.requiredRoles.includes(role as never)) continue;
 
-      return menuItem;
+    const groupItems = groups.get(item.group) ?? [];
+
+    groupItems.push({
+      href: item.routePath,
+      label: item.label,
+      icon: getRegistrySidebarIcon(item.moduleId),
+      roles: [...item.requiredRoles],
     });
+
+    groups.set(item.group, groupItems);
+  }
+
+  return Array.from(groups, ([title, items]) => ({ title, items })).filter(
+    (group) => group.items.length > 0,
+  );
 }
-
-const sharedDashboardModuleIds = [
-  "analytics",
-  "customers",
-  "inventory",
-  "cashflow",
-  "reports",
-  "invoice",
-  "shifts",
-] satisfies readonly V3ModuleId[];
-
-const fnbServerModuleIds = [
-  "pos",
-  "orders",
-  "serving",
-  "tables",
-] satisfies readonly V3ModuleId[];
-
-const fnbMenuKitchenModuleIds = [
-  "menu",
-  "recipes",
-  "kitchen",
-] satisfies readonly V3ModuleId[];
-
-const menuGroups: MenuGroup[] = [
-  {
-    title: "Shared Dashboards",
-    items: createRegistryMenuItems(sharedDashboardModuleIds),
-  },
-  {
-    title: "F&B Server",
-    items: createRegistryMenuItems(fnbServerModuleIds, ["fnb"]),
-  },
-  {
-    title: "F&B Menu & Kitchen",
-    items: createRegistryMenuItems(fnbMenuKitchenModuleIds, ["fnb"]),
-  },
-];
 
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "U";
@@ -168,23 +161,20 @@ function SidebarContent({
   showMobileClose?: boolean;
 }) {
   const [pathname, setLocation] = useLocation();
-  const currentMode = getStoredBusinessMode();
+  const [currentMode, setCurrentMode] = useState<BusinessModeId | null>(() =>
+    getCurrentBusinessMode(),
+  );
+
+  useEffect(() => {
+    setCurrentMode(getCurrentBusinessMode());
+
+    return subscribeToBusinessModeChanges((detail) => {
+      setCurrentMode(detail.mode);
+    });
+  }, []);
 
   const visibleGroups = useMemo(
-    () =>
-      menuGroups
-        .map((group) => ({
-          ...group,
-          items: group.items.filter((item) => {
-            const roleAllowed = item.roles.includes(role);
-            const modeAllowed =
-              !item.modes ||
-              (currentMode ? item.modes.includes(currentMode) : false);
-
-            return roleAllowed && modeAllowed;
-          }),
-        }))
-        .filter((group) => group.items.length > 0),
+    () => createModeAwareMenuGroups(currentMode, role),
     [currentMode, role],
   );
 
