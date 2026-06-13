@@ -173,14 +173,31 @@ Main files:
 
 ## Phase 5 - Audit integration
 
-Status: planned
+Status: implemented
 
-Current timeline rows are service-local audit events.
+Implemented:
 
-Next:
+- Added `service-business.audit.ts` as the global AuditLog writer for Service Business.
+- CRUD mutations now mirror successful actions into the global `AuditLog` table.
+- Guarded workflow transitions now mirror previous status, next status, note, request code, and requirement summary into `AuditLog`.
+- No new migration was added because the existing `AuditLog` model already supports `businessId`, `userId`, `action`, `entityType`, `entityId`, and JSON `changes`.
 
-- Mirror important workflow mutations into the global audit log.
-- Include actor id, actor name, business id, entity type, entity id, previous status, next status, and payload summary.
+Audited mutation surfaces:
+
+- `POST /api/custom-business/service/requests` -> `CREATE ServiceJob`.
+- `PATCH /api/custom-business/service/jobs/:id/status` -> `UPDATE ServiceJob`.
+- `POST /api/custom-business/service/jobs/:id/cost-lines` -> `UPDATE ServiceJob` with cost-line count.
+- `POST /api/custom-business/service/quotations` -> `CREATE ServiceQuotation`.
+- `PATCH /api/custom-business/service/quotations/:id/approve` -> `UPDATE ServiceQuotation`.
+- `POST /api/custom-business/service/invoices` -> `CREATE ServiceInvoice`.
+- `PATCH /api/custom-business/service/invoices/:id/payment` -> `UPDATE ServiceInvoice`.
+- `PATCH /api/custom-business/service/jobs/:id/guarded-status` -> `UPDATE ServiceJob` with guarded transition details.
+
+Main files:
+
+- `artifacts/api-server/src/features/service-business/service-business.audit.ts`
+- `artifacts/api-server/src/routes/service-business.ts`
+- `artifacts/api-server/src/routes/service-business-workflow.ts`
 
 ## Phase 6 - Shared dashboard integration from backend
 
@@ -218,5 +235,3 @@ Do not change these unless explicitly planned:
 - Retail workflow.
 - Raw material workflow.
 - Business mode selector activation.
-- Existing shared invoice table behavior.
-- Existing shared cashflow behavior.
