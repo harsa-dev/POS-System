@@ -18,3 +18,7 @@ export * from "./raw-material-batch.dto.js";
 export * from "./raw-material-batch.service.js";
 export * from "./raw-material-batch.types.js";
 export * from "./raw-material-batch.validation.js";
+export * from "./raw-material-processing-run.dto.js";
+export * from "./raw-material-processing-run.service.js";
+export * from "./raw-material-processing-run.types.js";
+export * from "./raw-material-processing-run.validation.js";
