@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { Prisma, Role } from "@prisma/client";
 
 import type { BusinessContext } from "../../lib/business-context/index.js";
@@ -24,11 +26,6 @@ function assertCanView(actor: RawMaterialActor) {
 function assertCanManage(actor: RawMaterialActor) {
   if (manageRoles.has(actor.role)) return;
   appError(403, errorCodes.forbidden, "You do not have permission to manage raw material pens.");
-}
-
-function normalizeHealthStatus(value?: string | RawMaterialPenHealthStatus) {
-  if (!value) return undefined;
-  return value.toUpperCase() as RawMaterialPenHealthStatus;
 }
 
 async function assertCodeAvailable(params: {
@@ -162,7 +159,8 @@ export async function createRawMaterialPen(params: {
   await assertCodeAvailable({ businessContext, code: data.code });
   await assertFeedBatchAllowed(businessContext, data.feedBatchId);
 
-  const rows = await prisma.$queryRaw<RawMaterialPenRow[]>`
+  const id = randomUUID();
+  await prisma.$executeRaw`
     INSERT INTO "RawMaterialKandangPen" (
       "id",
       "businessId",
@@ -176,7 +174,7 @@ export async function createRawMaterialPen(params: {
       "notes",
       "updatedAt"
     ) VALUES (
-      gen_random_uuid()::text,
+      ${id},
       ${businessContext.businessId},
       ${data.code},
       ${data.flockName},
@@ -188,24 +186,9 @@ export async function createRawMaterialPen(params: {
       ${data.notes},
       CURRENT_TIMESTAMP
     )
-    RETURNING
-      "id",
-      "businessId",
-      "code",
-      "flockName",
-      "capacity",
-      "occupancy",
-      "feedBatchId",
-      NULL::text AS "feedBatchLotCode",
-      NULL::text AS "feedBatchMaterialName",
-      "healthStatus"::text AS "healthStatus",
-      "isActive",
-      "notes",
-      "createdAt",
-      "updatedAt"
   `;
 
-  return toRawMaterialPenDto(await loadPenOrThrow(businessContext, rows[0].id));
+  return toRawMaterialPenDto(await loadPenOrThrow(businessContext, id));
 }
 
 export async function updateRawMaterialPen(params: {
