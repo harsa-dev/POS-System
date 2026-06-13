@@ -51,17 +51,17 @@ model Business {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  owner                     User                         @relation("BusinessOwner", fields: [ownerId], references: [id])
-  employees                 User[]                       @relation("BusinessEmployees")
-  restaurant                Restaurant?
-  categories                Category[]
-  menuItems                 MenuItem[]
-  inventoryItems            InventoryItem[]              @relation("BusinessInventoryItems")
-  orders                    Order[]
-  invoices                  Invoice[]
-  stockMovements            StockMovement[]              @relation("BusinessStockMovements")
-  cashflowEntries           CashflowEntry[]              @relation("BusinessCashflowEntries")
-  rawMaterialSuppliers      RawMaterialSupplier[]
+  owner                       User                         @relation("BusinessOwner", fields: [ownerId], references: [id])
+  employees                   User[]                       @relation("BusinessEmployees")
+  restaurant                  Restaurant?
+  categories                  Category[]
+  menuItems                   MenuItem[]
+  inventoryItems              InventoryItem[]              @relation("BusinessInventoryItems")
+  orders                      Order[]
+  invoices                    Invoice[]
+  stockMovements              StockMovement[]              @relation("BusinessStockMovements")
+  cashflowEntries             CashflowEntry[]              @relation("BusinessCashflowEntries")
+  rawMaterialSuppliers        RawMaterialSupplier[]
   rawMaterialStorageLocations RawMaterialStorageLocation[]
   rawMaterialIntakes          RawMaterialIntake[]
   rawMaterialWeighings        RawMaterialWeighing[]
