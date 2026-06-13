@@ -19,6 +19,7 @@ export const ROUTES = {
   SERVING: "/dashboard/fnb/server/serving",
   PAYMENTS: "/dashboard/fnb/server/payments",
 
+  BUSINESS_OVERVIEW: "/dashboard/overview",
   ANALYTICS: "/dashboard/analytics",
   CUSTOMERS: "/dashboard/customers",
   CASHFLOW: "/dashboard/cashflow",
