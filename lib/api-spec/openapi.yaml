@@ -18,7 +18,6 @@ paths:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -26,23 +25,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /retail/dashboard:
+    get:
+      operationId: retailGetDashboard
+      tags: [retail]
+      summary: Get Retail dashboard
+      responses:
+        "200":
+          description: Retail dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailObjectResponse"
   /retail/products:
     get:
       operationId: retailListProducts
       tags: [retail]
-      summary: List retail products
-      description: Returns business-scoped Retail products for catalog and cashier workspaces.
+      summary: List Retail products
       parameters:
         - name: search
           in: query
           required: false
-          schema:
-            type: string
+          schema: { type: string }
         - name: category
           in: query
           required: false
-          schema:
-            type: string
+          schema: { type: string }
         - name: stockStatus
           in: query
           required: false
@@ -55,12 +63,52 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RetailProductListResponse"
+  /retail/barcode/{code}:
+    get:
+      operationId: retailLookupBarcode
+      tags: [retail]
+      summary: Lookup Retail product by barcode or SKU
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Retail barcode lookup
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailObjectResponse"
+  /retail/inventory/risks:
+    get:
+      operationId: retailGetInventoryRisks
+      tags: [retail]
+      summary: Get Retail inventory risks
+      responses:
+        "200":
+          description: Retail inventory risks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailArrayResponse"
+  /retail/receiving:
+    get:
+      operationId: retailGetReceivingQueue
+      tags: [retail]
+      summary: Get Retail receiving queue
+      responses:
+        "200":
+          description: Retail receiving queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailArrayResponse"
   /retail/shared-dashboard/{dashboardId}:
     get:
       operationId: retailGetSharedDashboard
       tags: [retail]
-      summary: Get Retail shared dashboard summary
-      description: Returns Retail-specific summary data for a shared dashboard surface.
+      summary: Get Retail shared dashboard
       parameters:
         - name: dashboardId
           in: path
@@ -69,142 +117,90 @@ paths:
             $ref: "#/components/schemas/RetailSharedDashboardId"
       responses:
         "200":
-          description: Retail shared dashboard summary
+          description: Retail shared dashboard
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RetailSharedDashboardResponse"
-  /retail/sales/checkout:
+                $ref: "#/components/schemas/RetailObjectResponse"
+  /retail/sales/preview:
     post:
-      operationId: retailCheckoutSale
+      operationId: retailPreviewSale
       tags: [retail]
-      summary: Checkout Retail sale
-      description: Persists a Retail sale transaction when preview validation passes.
+      summary: Preview Retail sale
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RetailSaleCheckoutInput"
+              $ref: "#/components/schemas/RetailSaleInput"
+      responses:
+        "200":
+          description: Retail sale preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailObjectResponse"
+  /retail/sales/checkout:
+    post:
+      operationId: retailCheckoutSale
+      tags: [retail]
+      summary: Checkout Retail sale
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetailCheckoutInput"
       responses:
         "201":
           description: Retail sale persisted
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RetailCheckoutResponse"
+                $ref: "#/components/schemas/RetailObjectResponse"
         "409":
-          description: Retail checkout blocked by validation
+          description: Retail sale rejected
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RetailCheckoutResponse"
+                $ref: "#/components/schemas/RetailObjectResponse"
 components:
   schemas:
     HealthStatus:
       type: object
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
+      required: [status]
     RetailStockStatus:
       type: string
-      enum:
-        - in-stock
-        - low-stock
-        - out-of-stock
+      enum: [in-stock, low-stock, out-of-stock]
     RetailPaymentMethod:
       type: string
-      enum:
-        - cash
-        - qris
-        - card
-        - transfer
+      enum: [cash, qris, card, transfer]
     RetailSharedDashboardId:
       type: string
-      enum:
-        - overview
-        - sales
-        - customers
-        - inventory
-        - cashflow
-        - financial-reports
-        - invoice-generator
-        - shift-reports
-        - team-management
-        - employee-performance
-        - approvals
-        - audit-controls
-        - roster-overview
-        - employee-attendance
-        - employee-contracts
-        - payroll
+      enum: [overview, sales, customers, inventory, cashflow, financial-reports, invoice-generator, shift-reports, team-management, employee-performance, approvals, audit-controls, roster-overview, employee-attendance, employee-contracts, payroll]
     RetailProduct:
       type: object
-      properties:
-        id:
-          type: string
-        sku:
-          type: string
-        barcode:
-          type: string
-        name:
-          type: string
-        brand:
-          type: string
-        category:
-          type: string
-        unit:
-          type: string
-        price:
-          type: number
-        cost:
-          type: number
-        taxRatePercent:
-          type: number
-        currentStock:
-          type: number
-        reorderPoint:
-          type: number
-        shelfLocation:
-          type: string
-        supplierId:
-          type:
-            - string
-            - "null"
-        status:
-          $ref: "#/components/schemas/RetailStockStatus"
-      required:
-        - id
-        - sku
-        - barcode
-        - name
-        - brand
-        - category
-        - unit
-        - price
-        - cost
-        - taxRatePercent
-        - currentStock
-        - reorderPoint
-        - shelfLocation
-        - supplierId
-        - status
-    RetailSaleLineInput:
+      additionalProperties: true
+    RetailLineInput:
       type: object
       properties:
-        productId:
-          type: string
-        quantity:
-          type: number
-        discountPercent:
-          type: number
-      required:
-        - productId
-        - quantity
-        - discountPercent
-    RetailSaleCheckoutInput:
+        productId: { type: string }
+        quantity: { type: number }
+        discountPercent: { type: number }
+      required: [productId, quantity]
+    RetailSaleInput:
+      type: object
+      properties:
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetailLineInput"
+        paymentMethod:
+          $ref: "#/components/schemas/RetailPaymentMethod"
+      required: [lines]
+    RetailCheckoutInput:
       type: object
       properties:
         paymentMethod:
@@ -212,137 +208,35 @@ components:
         lines:
           type: array
           items:
-            $ref: "#/components/schemas/RetailSaleLineInput"
-      required:
-        - paymentMethod
-        - lines
-    RetailCheckoutResult:
+            $ref: "#/components/schemas/RetailLineInput"
+      required: [paymentMethod, lines]
+    RetailObjectResponse:
       type: object
       properties:
-        persisted:
-          type: boolean
-        canCheckout:
-          type: boolean
-        receiptNumber:
-          type: string
-        saleId:
-          type: string
-        paymentId:
-          type: string
-        payableTotal:
-          type: number
-        blockedReasons:
-          type: array
-          items:
-            type: string
-      required:
-        - persisted
-        - canCheckout
-        - payableTotal
-        - blockedReasons
-    RetailSharedDashboardMetric:
+        success: { type: boolean }
+        data:
+          type: object
+          additionalProperties: true
+        message: { type: string }
+      required: [success, data]
+    RetailArrayResponse:
       type: object
       properties:
-        label:
-          type: string
-        value:
-          type: string
-        helper:
-          type: string
-      required:
-        - label
-        - value
-    RetailSharedDashboardRow:
-      type: object
-      properties:
-        label:
-          type: string
-        value:
-          type: string
-        tone:
-          type: string
-      required:
-        - label
-        - value
-    RetailSharedDashboard:
-      type: object
-      properties:
-        dashboardId:
-          $ref: "#/components/schemas/RetailSharedDashboardId"
-        title:
-          type: string
-        subtitle:
-          type: string
-        mode:
-          type: string
-          enum:
-            - retail
-        source:
-          type: string
-        status:
-          type: string
-        metrics:
+        success: { type: boolean }
+        data:
           type: array
           items:
-            $ref: "#/components/schemas/RetailSharedDashboardMetric"
-        rows:
-          type: array
-          items:
-            $ref: "#/components/schemas/RetailSharedDashboardRow"
-        actions:
-          type: array
-          items:
-            type: string
-        notes:
-          type: array
-          items:
-            type: string
-      required:
-        - dashboardId
-        - title
-        - subtitle
-        - mode
-        - source
-        - status
-        - metrics
-        - rows
-        - actions
-        - notes
+            type: object
+            additionalProperties: true
+        message: { type: string }
+      required: [success, data]
     RetailProductListResponse:
       type: object
       properties:
-        success:
-          type: boolean
+        success: { type: boolean }
         data:
           type: array
           items:
             $ref: "#/components/schemas/RetailProduct"
-        message:
-          type: string
-      required:
-        - success
-        - data
-    RetailCheckoutResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          $ref: "#/components/schemas/RetailCheckoutResult"
-        message:
-          type: string
-      required:
-        - success
-        - data
-    RetailSharedDashboardResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          $ref: "#/components/schemas/RetailSharedDashboard"
-        message:
-          type: string
-      required:
-        - success
-        - data
+        message: { type: string }
+      required: [success, data]
