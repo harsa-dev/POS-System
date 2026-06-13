@@ -3,11 +3,12 @@ import { Router, type IRouter, type Request, type Response } from "express";
 
 import { requireRole } from "../lib/auth.js";
 import { requireBusinessContextForUser } from "../lib/business-context/index.js";
-import { ALL_ROLES, OPERATIONS_ROLES } from "../lib/constants.js";
+import { ALL_ROLES, MANAGEMENT_ROLES, OPERATIONS_ROLES } from "../lib/constants.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
+import { cancelRetailSaleWithDelegate } from "../services/retail/retail.sale-cancellation-repository.js";
 import { retailService } from "../services/retail/retail.service.js";
 import { updateRetailReceivingStatusWithDelegate } from "../services/retail/retail.workflow-status.repository.js";
 import type {
@@ -15,6 +16,7 @@ import type {
   RetailBusinessScope,
   RetailReceivingQueueDto,
   RetailReturnPreviewInput,
+  RetailSaleCancellationInput,
   RetailSalePreviewInput,
   RetailSharedDashboardId,
 } from "../services/retail/retail.types.js";
@@ -66,6 +68,12 @@ function isSalePreviewInput(value: unknown): value is RetailSalePreviewInput {
   if (!value || typeof value !== "object") return false;
   const candidate = value as { lines?: unknown };
   return Array.isArray(candidate.lines);
+}
+
+function isSaleCancellationInput(value: unknown): value is RetailSaleCancellationInput {
+  if (!value || typeof value !== "object") return true;
+  const candidate = value as { reason?: unknown };
+  return candidate.reason === undefined || typeof candidate.reason === "string";
 }
 
 function isReturnPreviewInput(value: unknown): value is RetailReturnPreviewInput {
@@ -380,6 +388,38 @@ router.post("/retail/sales/checkout", async (req, res) => {
       message: data.persisted
         ? "Retail checkout persisted."
         : "Retail checkout blocked by validation rules.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/retail/sales/:id/cancel", async (req, res) => {
+  try {
+    const context = await getRetailRequestContext(req, res, MANAGEMENT_ROLES);
+    if (!context) return;
+
+    if (!isSaleCancellationInput(req.body)) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Request body can only contain an optional cancellation reason string.",
+      });
+    }
+
+    const data = await cancelRetailSaleWithDelegate({
+      scope: context.scope,
+      actor: context.actor,
+      saleId: req.params.id,
+      reason: req.body?.reason,
+    });
+
+    return successResponse(res, {
+      status: data.cancelled ? 200 : 409,
+      data,
+      message: data.cancelled
+        ? "Retail sale cancelled and reversal workflow posted."
+        : "Retail sale cancellation was blocked by workflow rules.",
     });
   } catch (error) {
     return handleApiError(res, error);
