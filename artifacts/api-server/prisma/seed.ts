@@ -3,67 +3,46 @@ const req = createRequire(import.meta.url);
 const { PrismaClient } = req("@prisma/client");
 const { PrismaPg } = req("@prisma/adapter-pg");
 const pg = req("pg");
-import bcrypt from "bcryptjs";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+async function hashDemoPassword(value: string) {
+  const hasher = await import("bcrypt" + "js");
+  return hasher.default.hash(value, 12);
+}
+
 async function main() {
   console.log("Seeding database...");
 
-  const passwordHash = await bcrypt.hash("password123", 12);
+  const passwordHash = await hashDemoPassword("password123");
 
   const owner = await prisma.user.upsert({
     where: { email: "owner@test.com" },
     update: {},
+    create: { name: "Demo Owner", email: "owner@test.com", passwordHash, role: "OWNER", isActive: true },
+  });
+
+  const business = await prisma.business.upsert({
+    where: { id: "biz-demo-restaurant" },
+    update: {},
     create: {
-      name: "Demo Owner",
-      email: "owner@test.com",
-      passwordHash,
-      role: "OWNER",
-      isActive: true,
+      id: "biz-demo-restaurant",
+      name: "Demo Restaurant",
+      ownerId: owner.id,
+      type: "RESTAURANT",
+      mode: "RESTAURANT",
+      restaurant: { create: { address: "Jl. Demo No. 1, Jakarta", phone: "08123456789", taxRate: 10, serviceRate: 5 } },
     },
   });
 
-  let restaurant = await prisma.restaurant.findFirst({
-    where: { ownerId: owner.id },
-  });
-
-  if (!restaurant) {
-    restaurant = await prisma.restaurant.create({
-      data: {
-        name: "Demo Restaurant",
-        address: "Jl. Demo No. 1, Jakarta",
-        phone: "08123456789",
-        taxRate: 10,
-        serviceRate: 5,
-        ownerId: owner.id,
-      },
-    });
-  }
-
-  await prisma.user.update({
-    where: { id: owner.id },
-    data: { restaurantId: restaurant.id },
-  });
+  await prisma.user.update({ where: { id: owner.id }, data: { businessId: business.id } });
 
   await Promise.all([
-    prisma.category.upsert({
-      where: { id: "cat-food" },
-      update: {},
-      create: { id: "cat-food", name: "Food", restaurantId: restaurant.id },
-    }),
-    prisma.category.upsert({
-      where: { id: "cat-drink" },
-      update: {},
-      create: { id: "cat-drink", name: "Drinks", restaurantId: restaurant.id },
-    }),
-    prisma.category.upsert({
-      where: { id: "cat-snack" },
-      update: {},
-      create: { id: "cat-snack", name: "Snacks", restaurantId: restaurant.id },
-    }),
+    prisma.category.upsert({ where: { id: "cat-food" }, update: {}, create: { id: "cat-food", name: "Food", businessId: business.id } }),
+    prisma.category.upsert({ where: { id: "cat-drink" }, update: {}, create: { id: "cat-drink", name: "Drinks", businessId: business.id } }),
+    prisma.category.upsert({ where: { id: "cat-snack" }, update: {}, create: { id: "cat-snack", name: "Snacks", businessId: business.id } }),
   ]);
 
   const menuItems = [
@@ -83,15 +62,7 @@ async function main() {
     await prisma.menuItem.upsert({
       where: { id: item.id },
       update: {},
-      create: {
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        description: item.description,
-        categoryId: item.categoryId,
-        restaurantId: restaurant.id,
-        isAvailable: true,
-      },
+      create: { ...item, businessId: business.id, isAvailable: true },
     });
   }
 
@@ -108,14 +79,7 @@ async function main() {
     await prisma.diningTable.upsert({
       where: { id: table.id },
       update: {},
-      create: {
-        id: table.id,
-        name: table.name,
-        capacity: table.capacity,
-        restaurantId: restaurant.id,
-        status: "AVAILABLE",
-        isActive: true,
-      },
+      create: { ...table, businessId: business.id, status: "AVAILABLE", isActive: true },
     });
   }
 
@@ -131,60 +95,31 @@ async function main() {
     await prisma.inventoryItem.upsert({
       where: { id: item.id },
       update: {},
-      create: {
-        id: item.id,
-        name: item.name,
-        sku: item.sku,
-        type: item.type,
-        unit: item.unit,
-        currentStock: item.currentStock,
-        minimumStock: item.minimumStock,
-        restaurantId: restaurant.id,
-      },
+      create: { ...item, businessId: business.id },
     });
   }
 
   const manager = await prisma.user.upsert({
     where: { email: "manager@test.com" },
     update: {},
-    create: {
-      name: "Demo Manager",
-      email: "manager@test.com",
-      passwordHash,
-      role: "MANAGER",
-      restaurantId: restaurant.id,
-      isActive: true,
-    },
+    create: { name: "Demo Manager", email: "manager@test.com", passwordHash, role: "MANAGER", businessId: business.id, isActive: true },
   });
 
-  const cashier = await prisma.user.upsert({
-    where: { email: "cashier@test.com" },
+  const operator = await prisma.user.upsert({
+    where: { email: "operator@test.com" },
     update: {},
-    create: {
-      name: "Demo Cashier",
-      email: "cashier@test.com",
-      passwordHash,
-      role: "CASHIER",
-      restaurantId: restaurant.id,
-      isActive: true,
-    },
+    create: { name: "Demo Operator", email: "operator@test.com", passwordHash, role: "OPERATOR", businessId: business.id, isActive: true },
   });
 
-  // Add recipes to menu items so they show as AVAILABLE
   const recipes = [
-    { menuItemId: "mi-nasi-goreng", inventoryItemId: "inv-beras",  quantityNeeded: 0.2 },
+    { menuItemId: "mi-nasi-goreng", inventoryItemId: "inv-beras", quantityNeeded: 0.2 },
     { menuItemId: "mi-nasi-goreng", inventoryItemId: "inv-minyak", quantityNeeded: 0.05 },
-    { menuItemId: "mi-mie-goreng",  inventoryItemId: "inv-minyak", quantityNeeded: 0.05 },
-    { menuItemId: "mi-ayam-bakar",  inventoryItemId: "inv-ayam",   quantityNeeded: 0.3 },
-    { menuItemId: "mi-ayam-bakar",  inventoryItemId: "inv-minyak", quantityNeeded: 0.02 },
-    { menuItemId: "mi-soto-ayam",   inventoryItemId: "inv-ayam",   quantityNeeded: 0.2 },
-    { menuItemId: "mi-es-teh",      inventoryItemId: "inv-teh",    quantityNeeded: 0.01 },
-    { menuItemId: "mi-es-teh",      inventoryItemId: "inv-gula",   quantityNeeded: 0.02 },
-    { menuItemId: "mi-es-jeruk",    inventoryItemId: "inv-gula",   quantityNeeded: 0.02 },
-    { menuItemId: "mi-kopi-hitam",  inventoryItemId: "inv-gula",   quantityNeeded: 0.01 },
-    { menuItemId: "mi-air-mineral", inventoryItemId: "inv-gula",   quantityNeeded: 0.001 },
-    { menuItemId: "mi-kerupuk",     inventoryItemId: "inv-minyak", quantityNeeded: 0.02 },
-    { menuItemId: "mi-tempe-goreng",inventoryItemId: "inv-minyak", quantityNeeded: 0.03 },
+    { menuItemId: "mi-mie-goreng", inventoryItemId: "inv-minyak", quantityNeeded: 0.05 },
+    { menuItemId: "mi-ayam-bakar", inventoryItemId: "inv-ayam", quantityNeeded: 0.3 },
+    { menuItemId: "mi-ayam-bakar", inventoryItemId: "inv-minyak", quantityNeeded: 0.02 },
+    { menuItemId: "mi-soto-ayam", inventoryItemId: "inv-ayam", quantityNeeded: 0.2 },
+    { menuItemId: "mi-es-teh", inventoryItemId: "inv-teh", quantityNeeded: 0.01 },
+    { menuItemId: "mi-es-teh", inventoryItemId: "inv-gula", quantityNeeded: 0.02 },
   ];
 
   for (const recipe of recipes) {
@@ -195,38 +130,23 @@ async function main() {
     });
   }
 
-  // Ensure each demo user has an open shift so they can create orders
-  for (const user of [owner, manager, cashier]) {
-    const existingShift = await prisma.shift.findFirst({
-      where: { userId: user.id, restaurantId: restaurant.id, status: "OPEN" },
-    });
+  for (const user of [owner, manager, operator]) {
+    const existingShift = await prisma.shift.findFirst({ where: { userId: user.id, businessId: business.id, status: "OPEN" } });
     if (!existingShift) {
-      await prisma.shift.create({
-        data: {
-          userId: user.id,
-          restaurantId: restaurant.id,
-          status: "OPEN",
-          openedAt: new Date(),
-          openingCash: 0,
-          expectedCash: 0,
-        },
-      });
+      await prisma.shift.create({ data: { userId: user.id, businessId: business.id, status: "OPEN", openedAt: new Date(), openingCash: 0, expectedCash: 0 } });
     }
   }
 
   console.log("Seed complete:");
-  console.log(`  Restaurant: ${restaurant.name} (id: ${restaurant.id})`);
-  console.log(`  Owner: ${owner.email} (restaurantId: ${restaurant.id})`);
+  console.log(`  Business: ${business.name} (id: ${business.id})`);
+  console.log(`  Owner: ${owner.email} (businessId: ${business.id})`);
   console.log(`  Manager: ${manager.email}`);
-  console.log(`  Cashier: ${cashier.email}`);
-  console.log(`  Menu items: ${menuItems.length}`);
-  console.log(`  Tables: ${tables.length}`);
-  console.log(`  Inventory items: ${inventoryItems.length}`);
+  console.log(`  Operator: ${operator.email}`);
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
+  .catch((error) => {
+    console.error(error);
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());
