@@ -63,7 +63,10 @@ export function ModeSelector() {
     if (!mode.isSelectable) return;
 
     const changed = setCurrentBusinessMode(mode.id, "select-mode");
-    if (!changed) return;
+
+    if (!changed) {
+      setCurrentMode(getCurrentBusinessMode());
+    }
 
     setLocation(mode.route);
   }
