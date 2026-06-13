@@ -57,6 +57,7 @@ model Business {
   rawMaterialIntakes RawMaterialIntake[]
   rawMaterialWeighings RawMaterialWeighing[]
   rawMaterialBatches RawMaterialBatch[]
+  rawMaterialProcessingRuns RawMaterialProcessingRun[]
   tables DiningTable[]
   shifts Shift[]
   attendances Attendance[]
@@ -394,6 +395,7 @@ model RawMaterialBatch {
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   intake RawMaterialIntake @relation(fields: [intakeId], references: [id])
   storageLocation RawMaterialStorageLocation @relation(fields: [storageLocationId], references: [id])
+  processingRuns RawMaterialProcessingRun[]
 
   @@unique([businessId, lotCode])
   @@index([businessId])
@@ -403,6 +405,35 @@ model RawMaterialBatch {
   @@index([expiryDate])
   @@index([isActive])
   @@index([materialName])
+}
+
+model RawMaterialProcessingRun {
+  id String @id @default(cuid())
+  businessId String
+  runNumber String
+  inputBatchId String
+  outputName String
+  inputQuantity Float
+  outputQuantity Float @default(0)
+  byproductQuantity Float @default(0)
+  wasteQuantity Float @default(0)
+  status RawMaterialProcessingStatus @default(PLANNED)
+  startedAt DateTime?
+  completedAt DateTime?
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  inputBatch RawMaterialBatch @relation(fields: [inputBatchId], references: [id])
+
+  @@unique([businessId, runNumber])
+  @@index([businessId])
+  @@index([inputBatchId])
+  @@index([status])
+  @@index([startedAt])
+  @@index([completedAt])
+  @@index([outputName])
 }
 
 model StockMovement {
@@ -559,6 +590,7 @@ enum RawMaterialStorageType { DRY COLD OPEN_YARD KANDANG_SUPPORT }
 enum RawMaterialUnit { KG SACK CRATE HEAD LITER PCS }
 enum RawMaterialIntakeStatus { DRAFT INSPECTION ACCEPTED PARTIALLY_REJECTED REJECTED CANCELLED }
 enum RawMaterialBatchQualityStatus { INSPECTION ACCEPTED REJECTED QUARANTINED }
+enum RawMaterialProcessingStatus { PLANNED RUNNING COMPLETED CANCELLED }
 enum StockMovementType { IN OUT ADJUSTMENT }
 enum PaymentStatus { PENDING PAID FAILED EXPIRED }
 enum InvoiceStatus { DRAFT SENT PAID CANCELLED }
