@@ -14,3 +14,7 @@ export * from "./raw-material-weighing.dto.js";
 export * from "./raw-material-weighing.service.js";
 export * from "./raw-material-weighing.types.js";
 export * from "./raw-material-weighing.validation.js";
+export * from "./raw-material-batch.dto.js";
+export * from "./raw-material-batch.service.js";
+export * from "./raw-material-batch.types.js";
+export * from "./raw-material-batch.validation.js";
