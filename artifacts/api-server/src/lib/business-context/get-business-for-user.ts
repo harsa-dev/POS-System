@@ -34,6 +34,7 @@ const businessTypeMap: Record<PrismaBusinessType, BusinessType> = {
   RETAIL: "retail",
   SERVICE: "service",
   LIVESTOCK: "livestock",
+  RAW_MATERIAL: "raw-material",
 };
 
 const businessModeMap: Record<PrismaBusinessMode, BusinessMode> = {
@@ -41,6 +42,7 @@ const businessModeMap: Record<PrismaBusinessMode, BusinessMode> = {
   RETAIL: "retail",
   SERVICE: "service",
   LIVESTOCK: "livestock",
+  RAW_MATERIAL: "raw-material",
 };
 
 export function createBusinessContext(
