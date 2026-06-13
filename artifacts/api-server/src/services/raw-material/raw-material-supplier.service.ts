@@ -1,10 +1,15 @@
-import type { Prisma } from "@prisma/client";
-
 import type { BusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
-import { prisma } from "../../lib/prisma.js";
 import { toRawMaterialSupplierDto } from "./raw-material-supplier.dto.js";
+import {
+  createRawMaterialSupplierRecord,
+  deactivateRawMaterialSupplierRecord,
+  findRawMaterialSupplierById,
+  findRawMaterialSupplierNameConflict,
+  listRawMaterialSupplierRows,
+  updateRawMaterialSupplierRecord,
+} from "./raw-material-supplier.repository.js";
 import type { RawMaterialActor } from "./raw-material-supplier.types.js";
 import {
   parseIntegerRange,
@@ -36,17 +41,8 @@ function assertCanViewRawMaterialSuppliers(actor: RawMaterialActor) {
   });
 }
 
-function getSupplierWhere(businessContext: BusinessContext, id: string) {
-  return {
-    id,
-    businessId: businessContext.businessId,
-  } satisfies Prisma.RawMaterialSupplierWhereInput;
-}
-
 async function loadSupplierOrThrow(businessContext: BusinessContext, id: string) {
-  const supplier = await prisma.rawMaterialSupplier.findFirst({
-    where: getSupplierWhere(businessContext, id),
-  });
+  const supplier = await findRawMaterialSupplierById(businessContext, id);
 
   if (!supplier) {
     throw new AppError({
@@ -64,14 +60,7 @@ async function assertSupplierNameAvailable(params: {
   name: string;
   excludeId?: string;
 }) {
-  const duplicate = await prisma.rawMaterialSupplier.findFirst({
-    where: {
-      businessId: params.businessContext.businessId,
-      name: params.name,
-      ...(params.excludeId ? { id: { not: params.excludeId } } : {}),
-    },
-    select: { id: true },
-  });
+  const duplicate = await findRawMaterialSupplierNameConflict(params);
 
   if (!duplicate) return;
 
@@ -108,23 +97,10 @@ export async function listRawMaterialSuppliers(params: {
 
   assertCanViewRawMaterialSuppliers(actor);
 
-  const trimmedSearch = search?.trim();
-  const suppliers = await prisma.rawMaterialSupplier.findMany({
-    where: {
-      businessId: businessContext.businessId,
-      ...(includeInactive ? {} : { isActive: true }),
-      ...(trimmedSearch
-        ? {
-            OR: [
-              { name: { contains: trimmedSearch, mode: "insensitive" } },
-              { contactPerson: { contains: trimmedSearch, mode: "insensitive" } },
-              { phone: { contains: trimmedSearch, mode: "insensitive" } },
-              { email: { contains: trimmedSearch, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: [{ isActive: "desc" }, { name: "asc" }],
+  const suppliers = await listRawMaterialSupplierRows({
+    businessContext,
+    includeInactive,
+    search,
   });
 
   return suppliers.map(toRawMaterialSupplierDto);
@@ -142,21 +118,7 @@ export async function createRawMaterialSupplier(params: {
   const payload = parseSupplierPayload(input);
   await assertSupplierNameAvailable({ businessContext, name: payload.name });
 
-  const supplier = await prisma.rawMaterialSupplier.create({
-    data: {
-      businessId: businessContext.businessId,
-      name: payload.name,
-      contactPerson: payload.contactPerson,
-      phone: payload.phone,
-      email: payload.email,
-      address: payload.address,
-      category: payload.category,
-      reliabilityScore: payload.reliabilityScore,
-      leadTimeDays: payload.leadTimeDays,
-      isActive: payload.isActive ?? true,
-      notes: payload.notes,
-    },
-  });
+  const supplier = await createRawMaterialSupplierRecord({ businessContext, payload });
 
   return toRawMaterialSupplierDto(supplier);
 }
@@ -179,21 +141,7 @@ export async function updateRawMaterialSupplier(params: {
     excludeId: id,
   });
 
-  const supplier = await prisma.rawMaterialSupplier.update({
-    where: { id },
-    data: {
-      name: payload.name,
-      contactPerson: payload.contactPerson,
-      phone: payload.phone,
-      email: payload.email,
-      address: payload.address,
-      category: payload.category,
-      reliabilityScore: payload.reliabilityScore,
-      leadTimeDays: payload.leadTimeDays,
-      ...(payload.isActive === undefined ? {} : { isActive: payload.isActive }),
-      notes: payload.notes,
-    },
-  });
+  const supplier = await updateRawMaterialSupplierRecord({ id, payload });
 
   return toRawMaterialSupplierDto(supplier);
 }
@@ -208,10 +156,7 @@ export async function deactivateRawMaterialSupplier(params: {
   assertCanManageRawMaterialSuppliers(actor);
   await loadSupplierOrThrow(businessContext, id);
 
-  const supplier = await prisma.rawMaterialSupplier.update({
-    where: { id },
-    data: { isActive: false },
-  });
+  const supplier = await deactivateRawMaterialSupplierRecord(id);
 
   return toRawMaterialSupplierDto(supplier);
 }
