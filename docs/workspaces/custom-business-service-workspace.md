@@ -19,6 +19,7 @@ artifacts/pos-system/src/app/workspace/custom-business/service/service-business-
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-view-types.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-empty-state.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-placeholder-panel.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-preview-modal.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-view-model.ts
@@ -78,6 +79,8 @@ The workspace now contains hard-coded examples for:
 - service job cards
 - selected service job detail panel
 - disabled status action rail
+- local-only request preview modal
+- local-only quotation preview modal
 - status transition map draft
 - transition requirement preview
 - cost line breakdown
@@ -114,7 +117,8 @@ ServiceBusinessWorkspaceLayout
 │   └── ServiceBusinessActionRail
 ├── ServiceBusinessPlaceholderPanel
 ├── ServiceBusinessPricingModulesPanel
-└── ServiceBusinessConfigReadinessPanel
+├── ServiceBusinessConfigReadinessPanel
+└── ServiceBusinessPreviewModal
 ```
 
 This keeps future API migration focused in `use-service-business-workspace.ts` instead of forcing a rewrite of the whole layout.
@@ -133,8 +137,26 @@ Current mock interactions:
 - close selected job detail panel
 - preview next status actions based on the selected job status
 - preview transition requirements for each next action
-- disabled action buttons for future request and quotation creation
+- open request preview modal
+- open quotation preview modal
+- edit local-only preview fields
 - disabled action rail buttons for future status changes
+- disabled modal submit buttons for future mutations
+
+## Local preview modal
+
+The file below contains local-only preview forms:
+
+```txt
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-preview-modal.tsx
+```
+
+Current previews:
+
+- new request payload preview
+- draft quotation payload preview based on selected job context
+
+These previews do not call API functions, do not mutate mock jobs, and do not persist data after closing.
 
 ## View model adapter
 
@@ -205,6 +227,7 @@ The test plan covers:
 - search and filter behavior
 - tab behavior
 - selected job detail behavior
+- preview modal behavior
 - action rail behavior
 - transition requirement preview
 - API placeholder behavior
