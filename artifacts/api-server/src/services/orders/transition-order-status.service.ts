@@ -1,10 +1,10 @@
 import { Prisma } from "@prisma/client";
 import type { OrderStatus, Role } from "@prisma/client";
 
-import { prisma } from "../../lib/prisma.js";
-import type { RestaurantBusinessContext } from "../../lib/business-context/index.js";
+import type { ResolvedBusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
+import { prisma } from "../../lib/prisma.js";
 import { realtime } from "../../lib/realtime.js";
 import { REALTIME_EVENTS } from "../../lib/realtime-events.js";
 import { PAYMENT_METHODS } from "../../lib/constants.js";
@@ -17,7 +17,7 @@ type OrderStatusActor = {
 
 export type TransitionOrderStatusInput = {
   user: OrderStatusActor;
-  businessContext: RestaurantBusinessContext;
+  businessContext: ResolvedBusinessContext;
   orderId: string;
   nextStatus: OrderStatus;
   cancelReason?: string;
@@ -50,10 +50,6 @@ const transitionOrderInclude = {
 type TransitionOrderRecord = Prisma.OrderGetPayload<{
   include: typeof transitionOrderInclude;
 }>;
-
-function getNoRecipeProcessingMessage(menuItemName: string) {
-  return `Menu item "${menuItemName}" has no recipe configured and cannot be processed. Add at least one ingredient first.`;
-}
 
 function assertTransitionAllowed(params: {
   role: Role;
@@ -102,16 +98,16 @@ function assertCancelReason(nextStatus: OrderStatus, cancelReason: string) {
 async function deductRecipeInventoryForOrder(params: {
   tx: Prisma.TransactionClient;
   order: TransitionOrderRecord;
-  restaurantId: string;
+  businessId: string;
 }) {
-  const { tx, order, restaurantId } = params;
+  const { tx, order, businessId } = params;
 
   for (const item of order.items) {
     if (item.menuItem.recipes.length === 0) {
       throw new AppError({
         statusCode: 400,
         code: errorCodes.validationError,
-        message: getNoRecipeProcessingMessage(item.menuItem.name),
+        message: `Menu item "${item.menuItem.name}" has no recipe configured and cannot be processed.`,
       });
     }
 
@@ -121,7 +117,7 @@ async function deductRecipeInventoryForOrder(params: {
       const inventoryItem = await tx.inventoryItem.findFirst({
         where: {
           id: recipe.inventoryItemId,
-          restaurantId,
+          businessId,
         },
       });
 
@@ -146,8 +142,15 @@ async function deductRecipeInventoryForOrder(params: {
       await tx.stockMovement.create({
         data: {
           inventoryItemId: inventoryItem.id,
+          businessId,
+          actorId: null,
           type: "OUT",
           quantity,
+          previousStock: inventoryItem.currentStock,
+          newStock: inventoryItem.currentStock - quantity,
+          unitCostSnapshot: inventoryItem.costPerUnit,
+          sourceType: "ORDER",
+          sourceId: order.id,
           reason: "RECIPE_USAGE",
           note: `Order #${order.orderNumber}`,
         },
@@ -159,23 +162,39 @@ async function deductRecipeInventoryForOrder(params: {
 async function restoreRecipeInventoryForCancelledOrder(params: {
   tx: Prisma.TransactionClient;
   order: TransitionOrderRecord;
+  businessId: string;
 }) {
-  const { tx, order } = params;
+  const { tx, order, businessId } = params;
 
   for (const item of order.items) {
     for (const recipe of item.menuItem.recipes) {
       const quantity = recipe.quantityNeeded * item.quantity;
+      const inventoryItem = await tx.inventoryItem.findFirst({
+        where: {
+          id: recipe.inventoryItemId,
+          businessId,
+        },
+      });
+
+      if (!inventoryItem) continue;
 
       await tx.inventoryItem.update({
-        where: { id: recipe.inventoryItemId },
+        where: { id: inventoryItem.id },
         data: { currentStock: { increment: quantity } },
       });
 
       await tx.stockMovement.create({
         data: {
-          inventoryItemId: recipe.inventoryItemId,
+          inventoryItemId: inventoryItem.id,
+          businessId,
+          actorId: null,
           type: "IN",
           quantity,
+          previousStock: inventoryItem.currentStock,
+          newStock: inventoryItem.currentStock + quantity,
+          unitCostSnapshot: inventoryItem.costPerUnit,
+          sourceType: "ORDER",
+          sourceId: order.id,
           reason: "RETURN",
           note: `Order #${order.orderNumber} cancelled`,
         },
@@ -209,7 +228,7 @@ export async function transitionOrderStatus({
   nextStatus,
   cancelReason = "",
 }: TransitionOrderStatusInput): Promise<TransitionOrderStatusResult> {
-  const restaurantId = businessContext.restaurantId;
+  const businessId = businessContext.businessId;
   const trimmedCancelReason = cancelReason.trim();
 
   assertCancelReason(nextStatus, trimmedCancelReason);
@@ -218,7 +237,7 @@ export async function transitionOrderStatus({
     const order = await tx.order.findFirst({
       where: {
         id: orderId,
-        restaurantId,
+        businessId,
       },
       include: transitionOrderInclude,
     });
@@ -248,12 +267,16 @@ export async function transitionOrderStatus({
       await deductRecipeInventoryForOrder({
         tx,
         order,
-        restaurantId,
+        businessId,
       });
     }
 
     if (isCancelling && order.inventoryDeducted) {
-      await restoreRecipeInventoryForCancelledOrder({ tx, order });
+      await restoreRecipeInventoryForCancelledOrder({
+        tx,
+        order,
+        businessId,
+      });
     }
 
     if (shouldRestoreCashShift && order.shiftId) {
@@ -285,7 +308,7 @@ export async function transitionOrderStatus({
 
     await tx.auditLog.create({
       data: {
-        restaurantId,
+        businessId,
         userId: user.id,
         action: "UPDATE",
         entityType: "Order",

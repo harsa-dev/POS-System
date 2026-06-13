@@ -3,7 +3,7 @@ import type { OrderStatus } from "@prisma/client";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
 
-export const legacyRestaurantOrderTransitions: Record<OrderStatus, readonly OrderStatus[]> = {
+export const businessOrderTransitions: Record<OrderStatus, readonly OrderStatus[]> = {
   PENDING_PAYMENT: ["PAID", "CANCELLED"],
   PAID: ["PREPARING", "CANCELLED"],
   PREPARING: ["READY", "CANCELLED"],
@@ -14,7 +14,7 @@ export const legacyRestaurantOrderTransitions: Record<OrderStatus, readonly Orde
 };
 
 export function canMoveOrderStatus(currentStatus: OrderStatus, nextStatus: OrderStatus) {
-  return legacyRestaurantOrderTransitions[currentStatus].includes(nextStatus);
+  return businessOrderTransitions[currentStatus].includes(nextStatus);
 }
 
 export function assertCanMoveOrderStatus(currentStatus: OrderStatus, nextStatus: OrderStatus) {
@@ -27,7 +27,9 @@ export function assertCanMoveOrderStatus(currentStatus: OrderStatus, nextStatus:
     details: {
       currentStatus,
       nextStatus,
-      allowedNextStatuses: legacyRestaurantOrderTransitions[currentStatus],
+      allowedNextStatuses: businessOrderTransitions[currentStatus],
     },
   });
 }
+
+export const legacyRestaurantOrderTransitions = businessOrderTransitions;

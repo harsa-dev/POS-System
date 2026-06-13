@@ -6,7 +6,7 @@ import {
   type PermissionKey,
 } from "../permissions/index.js";
 
-export const legacyOrderStatusTransitions: Record<OrderStatus, readonly OrderStatus[]> = {
+export const businessOrderStatusTransitions: Record<OrderStatus, readonly OrderStatus[]> = {
   PENDING_PAYMENT: ["PAID", "CANCELLED"],
   PAID: ["PREPARING", "CANCELLED"],
   PREPARING: ["READY", "CANCELLED"],
@@ -16,14 +16,14 @@ export const legacyOrderStatusTransitions: Record<OrderStatus, readonly OrderSta
   CANCELLED: [],
 };
 
-export const legacyOrderStatusPermissions: Record<OrderStatus, PermissionKey> = {
-  PENDING_PAYMENT: permissionKeys.restaurant.orders.approve,
-  PAID: permissionKeys.restaurant.payments.create,
-  PREPARING: permissionKeys.restaurant.kitchen.update,
-  READY: permissionKeys.restaurant.kitchen.update,
-  SERVED: permissionKeys.restaurant.serving.update,
-  COMPLETED: permissionKeys.restaurant.serving.update,
-  CANCELLED: permissionKeys.restaurant.orders.cancel,
+export const businessOrderStatusPermissions: Record<OrderStatus, PermissionKey> = {
+  PENDING_PAYMENT: permissionKeys.business.orders.approve,
+  PAID: permissionKeys.business.payments.create,
+  PREPARING: permissionKeys.business.operations.update,
+  READY: permissionKeys.business.operations.update,
+  SERVED: permissionKeys.business.operations.update,
+  COMPLETED: permissionKeys.business.operations.update,
+  CANCELLED: permissionKeys.business.orders.cancel,
 };
 
 export type OrderStatusDecision =
@@ -44,8 +44,7 @@ export function checkOrderStatusTransition(params: {
   nextStatus: OrderStatus;
 }): OrderStatusDecision {
   const { role, currentStatus, nextStatus } = params;
-
-  const allowedNextStatuses = legacyOrderStatusTransitions[currentStatus];
+  const allowedNextStatuses = businessOrderStatusTransitions[currentStatus];
 
   if (!allowedNextStatuses.includes(nextStatus)) {
     return {
@@ -55,7 +54,7 @@ export function checkOrderStatusTransition(params: {
     };
   }
 
-  const requiredPermission = legacyOrderStatusPermissions[nextStatus];
+  const requiredPermission = businessOrderStatusPermissions[nextStatus];
 
   if (!hasPermission(role, requiredPermission)) {
     return {
@@ -70,3 +69,6 @@ export function checkOrderStatusTransition(params: {
     requiredPermission,
   };
 }
+
+export const legacyOrderStatusTransitions = businessOrderStatusTransitions;
+export const legacyOrderStatusPermissions = businessOrderStatusPermissions;
