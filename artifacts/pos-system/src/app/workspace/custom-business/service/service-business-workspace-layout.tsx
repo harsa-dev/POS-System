@@ -1,5 +1,6 @@
 import { ServiceBusinessConfigReadinessPanel } from "./service-business-config-readiness-panel";
 import { ServiceBusinessEmptyState } from "./service-business-empty-state";
+import { ServiceBusinessJobDetailPanel } from "./service-business-job-detail-panel";
 import { ServiceBusinessJobList } from "./service-business-job-list";
 import { ServiceBusinessMetricCards } from "./service-business-metric-cards";
 import { ServiceBusinessPlaceholderPanel } from "./service-business-placeholder-panel";
@@ -39,7 +40,17 @@ export function ServiceBusinessWorkspaceLayout() {
 
       {shouldShowJobs ? (
         hasFilteredJobs ? (
-          <ServiceBusinessJobList jobs={workspace.filteredJobs} />
+          <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_460px]">
+            <ServiceBusinessJobList
+              jobs={workspace.filteredJobs}
+              onSelectJob={workspace.setSelectedJobId}
+              selectedJobId={workspace.selectedJobId}
+            />
+            <ServiceBusinessJobDetailPanel
+              job={workspace.selectedJob}
+              onClose={() => workspace.setSelectedJobId(null)}
+            />
+          </div>
         ) : (
           <ServiceBusinessEmptyState onResetFilters={workspace.resetFilters} />
         )
