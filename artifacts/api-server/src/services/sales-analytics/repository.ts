@@ -68,6 +68,10 @@ export type SalesCogsSummaryRow = {
   cogs: number | string | null;
 };
 
+export type SalesTransactionRowCount = {
+  totalRows: number | string | null;
+};
+
 type FilterOptionRow = {
   value: string;
   label: string;
@@ -113,6 +117,36 @@ function orderItemWhere(restaurantId: string, query: SalesAnalyticsQuery) {
   ];
 
   return Prisma.sql`${Prisma.join(filters, " AND ")}`;
+}
+
+function salesTransactionOrderBy(query: SalesAnalyticsQuery) {
+  const direction = query.sortDirection === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+
+  switch (query.sortBy) {
+    case "productName":
+      return Prisma.sql`mi.name ${direction}, o."createdAt" DESC, oi.id ASC`;
+    case "quantity":
+      return Prisma.sql`oi.quantity ${direction}, o."createdAt" DESC, oi.id ASC`;
+    case "totalRevenue":
+      return Prisma.sql`oi.subtotal ${direction}, o."createdAt" DESC, oi.id ASC`;
+    case "grossProfit":
+      return Prisma.sql`(oi.subtotal - COALESCE(oc.cogs, 0) * (oi.subtotal / NULLIF(o.subtotal, 0))) ${direction}, o."createdAt" DESC, oi.id ASC`;
+    case "margin":
+      return Prisma.sql`CASE
+        WHEN oi.subtotal > 0 THEN
+          ((oi.subtotal - COALESCE(oc.cogs, 0) * (oi.subtotal / NULLIF(o.subtotal, 0))) / oi.subtotal)
+        ELSE 0
+      END ${direction}, o."createdAt" DESC, oi.id ASC`;
+    case "paymentStatus":
+      return Prisma.sql`COALESCE(p.status::text, '') ${direction}, o."createdAt" DESC, oi.id ASC`;
+    case "date":
+    default:
+      return Prisma.sql`o."createdAt" ${direction}, oi.id ASC`;
+  }
+}
+
+function paginationOffset(query: SalesAnalyticsQuery) {
+  return (query.page - 1) * query.pageSize;
 }
 
 function stockMovementWhere(restaurantId: string, query: SalesAnalyticsQuery) {
@@ -224,12 +258,39 @@ export async function getSalesBestSellingProducts(
   `;
 }
 
+export async function countSalesTransactionRows(
+  prisma: PrismaClient,
+  restaurantId: string,
+  query: SalesAnalyticsQuery,
+) {
+  const [row] = await prisma.$queryRaw<SalesTransactionRowCount[]>`
+    SELECT COUNT(oi.id)::int AS "totalRows"
+    FROM "OrderItem" oi
+    INNER JOIN "Order" o ON o.id = oi."orderId"
+    INNER JOIN "MenuItem" mi ON mi.id = oi."menuItemId"
+    WHERE ${orderItemWhere(restaurantId, query)}
+  `;
+
+  return row;
+}
+
 export async function listSalesTransactionRows(
   prisma: PrismaClient,
   restaurantId: string,
   query: SalesAnalyticsQuery,
 ) {
   return prisma.$queryRaw<SalesTransactionRow[]>`
+    WITH order_cogs AS (
+      SELECT
+        sm."sourceId" AS "orderId",
+        COALESCE(SUM(ABS(sm.quantity) * sm."unitCostSnapshot"), 0)::double precision AS cogs
+      FROM "StockMovement" sm
+      WHERE sm."restaurantId" = ${restaurantId}
+        AND sm."sourceId" IS NOT NULL
+        AND sm."unitCostSnapshot" IS NOT NULL
+        AND sm.reason = ${StockMovementReason.RECIPE_USAGE}
+      GROUP BY sm."sourceId"
+    )
     SELECT
       oi.id,
       o.id AS "orderId",
@@ -251,9 +312,11 @@ export async function listSalesTransactionRows(
     INNER JOIN "MenuItem" mi ON mi.id = oi."menuItemId"
     LEFT JOIN "Category" c ON c.id = mi."categoryId"
     LEFT JOIN "Payment" p ON p."orderId" = o.id
+    LEFT JOIN order_cogs oc ON oc."orderId" = o.id
     WHERE ${orderItemWhere(restaurantId, query)}
-    ORDER BY o."createdAt" DESC, oi.id ASC
-    LIMIT ${query.limit}
+    ORDER BY ${salesTransactionOrderBy(query)}
+    LIMIT ${query.pageSize}
+    OFFSET ${paginationOffset(query)}
   `;
 }
 
