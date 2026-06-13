@@ -153,17 +153,6 @@ Split large service files into repository/service/presenter/validator boundaries
 Keep route behavior stable.
 ```
 
-Target pattern:
-
-```txt
-raw-material.types.ts
-raw-material.permissions.ts
-raw-material.repository.ts
-raw-material.workflow.ts
-raw-material.presenter.ts
-raw-material.audit.ts
-```
-
 ### Phase 4A - Stock movement repository split
 
 Status: implemented.
@@ -182,28 +171,6 @@ Scope:
 Move stock movement persistence helpers out of the orchestration service.
 Keep stock movement route behavior unchanged.
 Keep schema and migrations untouched.
-```
-
-Repository now owns:
-
-```txt
-load batch with storage for mutation
-load active storage for mutation
-insert stock movement ledger row
-find stock movement row by id
-list stock movement rows
-find duplicate processing consumption movement
-```
-
-Service now owns:
-
-```txt
-role assertion
-input validation
-stock/domain guard application
-transaction orchestration
-not-found/conflict error mapping
-DTO mapping
 ```
 
 ### Phase 4B - Processing run repository/presenter split
@@ -229,55 +196,51 @@ Keep processing run service as the orchestration and guard layer.
 Keep schema, migration, route path, and response contract unchanged.
 ```
 
-Repository now owns:
+### Phase 4C - Intake and batch repository/presenter split
+
+Status: implemented.
+
+Implemented files:
 
 ```txt
-list processing run rows
-find processing run by id
-find run-number conflicts
-load input batch for mutation
-create processing run row
-update processing run row
-cancel processing run row
+artifacts/api-server/src/services/raw-material/raw-material-intake.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-intake.presenter.ts
+artifacts/api-server/src/services/raw-material/raw-material-intake.dto.ts
+artifacts/api-server/src/services/raw-material/raw-material-intake.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-batch.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-batch.presenter.ts
+artifacts/api-server/src/services/raw-material/raw-material-batch.dto.ts
+artifacts/api-server/src/services/raw-material/raw-material-batch.service.ts
+docs/workspaces/raw-material-service-layer-cleanup.md
 ```
 
-Presenter now owns:
+Scope:
 
 ```txt
-RawMaterialProcessingRunWithBatch
-toRawMaterialProcessingRunDto()
+Move intake persistence helpers into a repository.
+Move intake DTO mapping into a presenter.
+Move batch persistence helpers into a repository.
+Move batch DTO mapping into a presenter.
+Keep intake and batch services as orchestration, validation, and guard layers.
+Keep schema, migration, route path, and response contract unchanged.
 ```
 
-Service now owns:
-
-```txt
-role assertion
-input validation
-input batch not-found mapping
-run-number conflict mapping
-processing transition guard orchestration
-processing output/input guard orchestration
-```
-
-### Phase 4C - Intake and batch service split
+### Phase 4D - Supplier, storage, and pen service split
 
 Status: next.
 
 Suggested files:
 
 ```txt
-raw-material-intake.repository.ts
-raw-material-intake.presenter.ts
-raw-material-batch.repository.ts
-raw-material-batch.presenter.ts
-raw-material-intake.service.ts
-raw-material-batch.service.ts
-```
-
-Priority order after 4C:
-
-```txt
-Phase 4D - supplier/storage/pen service split
+raw-material-supplier.repository.ts
+raw-material-supplier.presenter.ts
+raw-material-storage-location.repository.ts
+raw-material-storage-location.presenter.ts
+raw-material-pen.repository.ts
+raw-material-pen.presenter.ts
+raw-material-supplier.service.ts
+raw-material-storage-location.service.ts
+raw-material-pen.service.ts
 ```
 
 ## Phase 5 - Audit integration
@@ -357,17 +320,6 @@ Treat stock movement as a guarded ledger operation.
 Make adjustment, transfer, and processing consumption safe, scoped, and auditable.
 ```
 
-Rules:
-
-```txt
-All stock movement must be business-scoped.
-All movements must record beforeQuantity and afterQuantity.
-All reductions must reject negative afterQuantity.
-All processing consumption must reference a valid processing run and batch.
-Transfers must update source/target storage usage consistently.
-Manual adjustment must require reason/note depending on direction.
-```
-
 ## Phase 9 - Frontend API sync
 
 Status: planned.
@@ -377,25 +329,4 @@ Goal:
 ```txt
 Update frontend raw-material API contract and workspace bridge to match real backend capabilities.
 Keep mock fallback for unauthenticated/dev preview states.
-```
-
-## Non-goals
-
-Do not do these unless a later phase explicitly approves it:
-
-```txt
-Do not redesign raw material schema from scratch.
-Do not remove existing routes.
-Do not delete frontend mock data.
-Do not merge raw material stock with restaurant inventory stock.
-Do not unlock unrelated business modes.
-Do not change restaurant/service-business workflows while doing raw material work.
-```
-
-## Current recommended next action
-
-Continue with Phase 4C:
-
-```txt
-Intake and batch service split.
 ```
