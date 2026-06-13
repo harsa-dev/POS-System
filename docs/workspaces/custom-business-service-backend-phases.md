@@ -223,7 +223,7 @@ Main files:
 
 ## Phase 7 - Prisma delegate cleanup
 
-Status: partially implemented
+Status: implemented
 
 Phase 7A implemented:
 
@@ -232,28 +232,56 @@ Phase 7A implemented:
 - `ServiceTimelineItem` remains related through `ServiceRequest.timeline`; no direct `Business.serviceTimelineItems` relation should be added unless a new migration adds `business_id` to `service_timeline_items`.
 - No new migration was added.
 
-Phase 7B started:
+Phase 7B implemented:
 
-- Added `service-business.delegate.repository.ts` as the first generated-delegate repository.
-- The shared dashboard summary read path now uses `prisma.serviceRequest.findMany(...)` instead of the raw SQL `loadServiceJobs` path.
-- `service-business.summary.ts` now reports `source: api-server-prisma-delegate-summary`.
-- CRUD/write repositories remain raw SQL until transaction boundaries are moved safely.
+- Added `service-business.delegate.repository.ts` as the generated-delegate read repository.
+- The shared dashboard summary read path uses `prisma.serviceRequest.findMany(...)` instead of the raw SQL `loadServiceJobs` path.
+- `service-business.summary.ts` reports `source: api-server-prisma-delegate-summary`.
+
+Phase 7C implemented:
+
+- Workflow target lookup and readiness checks moved to generated Prisma delegates.
+- `findServiceWorkflowTarget(...)` and `loadServiceWorkflowReadiness(...)` are delegated through the workflow repository facade.
+
+Phase 7D implemented:
+
+- Service request creation and cost line write helpers moved to generated Prisma delegates.
+- Public CRUD repository exports keep stable names while delegating to `service-business.delegate-writes.repository.ts`.
+
+Phase 7E implemented:
+
+- Quotation creation, quotation approval, invoice creation, and invoice payment recording moved to generated Prisma delegates.
+- Billing writes remain behind stable public CRUD repository exports.
+
+Phase 7F implemented:
+
+- Guarded workflow status transitions now use generated Prisma delegates.
+- `updateServiceWorkflowStatusWithDelegate(...)` updates `ServiceRequest`, `ServiceJob`, and `ServiceTimelineItem` inside a Prisma transaction.
+- The public workflow repository delegates reads and writes through the delegate-backed repositories.
 
 Main files:
 
 - `artifacts/api-server/prisma/schema.prisma`
 - `artifacts/api-server/src/features/service-business/service-business.delegate.repository.ts`
+- `artifacts/api-server/src/features/service-business/service-business.delegate-writes.repository.ts`
+- `artifacts/api-server/src/features/service-business/service-business.repository.ts`
+- `artifacts/api-server/src/features/service-business/service-business.crud.repository.ts`
 - `artifacts/api-server/src/features/service-business/service-business.summary.ts`
 - `docs/workspaces/custom-business-service-prisma-delegate-cleanup.md`
 
-Remaining Phase 7B target:
+Current raw SQL boundary:
 
-- Replace read-only workflow lookups with delegates.
-- Replace simple writes with delegates after `prisma generate` and typecheck pass.
-- Keep multi-step writes and workflow transactions explicit.
+- Service Business core CRUD, billing, summary, and guarded workflow repositories no longer have a known raw SQL dependency.
+- Keep global typecheck status separate because unrelated non-service errors can still fail the full API server typecheck.
 
 Validation:
 
 - `pnpm --filter @workspace/api-server run generate`
-- `pnpm --filter @workspace/api-server run typecheck`
 - `pnpm --filter @workspace/api-server run build`
+- `pnpm --filter @workspace/api-server run typecheck`
+
+Service Business cleanup should be considered safe when remaining errors do not come from:
+
+- `src/features/service-business`
+- `src/routes/service-business.ts`
+- `src/routes/service-business-workflow.ts`
