@@ -8,6 +8,7 @@ export const serviceBusinessPermissions = {
   quoteCreate: "custom-business.service.quote.create",
   quoteApprove: "custom-business.service.quote.approve",
   invoiceCreate: "custom-business.service.invoice.create",
+  invoicePaymentRecord: "custom-business.service.invoice.payment.record",
   configManage: "custom-business.service.config.manage",
 } as const;
 
@@ -38,6 +39,7 @@ export const serviceBusinessPermissionGroups = [
       serviceBusinessPermissions.quoteCreate,
       serviceBusinessPermissions.quoteApprove,
       serviceBusinessPermissions.invoiceCreate,
+      serviceBusinessPermissions.invoicePaymentRecord,
     ],
   },
   {
