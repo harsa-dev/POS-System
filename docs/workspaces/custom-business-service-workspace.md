@@ -20,6 +20,8 @@ artifacts/pos-system/src/app/workspace/custom-business/service/service-business-
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-empty-state.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-placeholder-panel.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-preview-modal.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-activity-preview.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-activity-feed.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-view-model.ts
@@ -69,6 +71,7 @@ This is correct for now because the backend does not yet have service-specific e
 - service delivery proof
 - service invoice linkage
 - service-specific status transition
+- audit log / activity stream persistence
 
 ## Current frontend preview
 
@@ -81,6 +84,7 @@ The workspace now contains hard-coded examples for:
 - disabled status action rail
 - local-only request preview modal
 - local-only quotation preview modal
+- service activity / audit preview feed
 - status transition map draft
 - transition requirement preview
 - cost line breakdown
@@ -114,11 +118,13 @@ ServiceBusinessWorkspaceLayout
 ├── ServiceBusinessJobList
 │   └── ServiceBusinessJobCard
 ├── ServiceBusinessJobDetailPanel
-│   └── ServiceBusinessActionRail
+│   ├── ServiceBusinessActionRail
+│   └── ServiceBusinessActivityFeed
 ├── ServiceBusinessPlaceholderPanel
 ├── ServiceBusinessPricingModulesPanel
 ├── ServiceBusinessConfigReadinessPanel
 └── ServiceBusinessPreviewModal
+    └── ServiceBusinessActivityFeed
 ```
 
 This keeps future API migration focused in `use-service-business-workspace.ts` instead of forcing a rewrite of the whole layout.
@@ -137,9 +143,11 @@ Current mock interactions:
 - close selected job detail panel
 - preview next status actions based on the selected job status
 - preview transition requirements for each next action
+- preview service job activity events
 - open request preview modal
 - open quotation preview modal
 - edit local-only preview fields
+- preview modal activity events
 - disabled action rail buttons for future status changes
 - disabled modal submit buttons for future mutations
 
@@ -155,8 +163,27 @@ Current previews:
 
 - new request payload preview
 - draft quotation payload preview based on selected job context
+- local modal activity events that describe future audit entries
 
 These previews do not call API functions, do not mutate mock jobs, and do not persist data after closing.
+
+## Activity preview
+
+The files below contain the frontend-only activity / audit trail preview:
+
+```txt
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-activity-preview.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-activity-feed.tsx
+```
+
+The activity feed combines:
+
+- timeline events from the selected mock job
+- system preview events for current status and priority
+- next-action preview events from the action rail
+- modal preview events for request and quotation draft forms
+
+These are display-only events. They are not audit logs and should not be treated as persisted records until backend support exists.
 
 ## View model adapter
 
@@ -228,6 +255,7 @@ The test plan covers:
 - tab behavior
 - selected job detail behavior
 - preview modal behavior
+- activity preview behavior
 - action rail behavior
 - transition requirement preview
 - API placeholder behavior
@@ -287,8 +315,9 @@ Before activation, implement:
 6. invoice and payment linkage
 7. permission enforcement for `custom-business.*`
 8. API contracts and frontend API client methods
-9. test data / seed data
-10. typecheck and build validation
+9. audit log / activity stream persistence
+10. test data / seed data
+11. typecheck and build validation
 
 ## Expected service workflow
 
