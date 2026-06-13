@@ -1,4 +1,5 @@
 import type { Role } from "@prisma/client";
+import type { RawMaterialPenHealthStatus } from "../services/raw-material/raw-material-pen.types.js";
 import { Router } from "express";
 
 import { requireBusinessContextForRequest, requireBusinessMode } from "../lib/business-context/index.js";
@@ -13,7 +14,6 @@ import {
   deactivateRawMaterialPen,
   listRawMaterialPens,
   updateRawMaterialPen,
-  type RawMaterialPenHealthStatus,
 } from "../services/raw-material/index.js";
 
 const router = Router();
