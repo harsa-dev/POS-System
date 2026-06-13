@@ -149,10 +149,6 @@ function ModeSelectionRoute() {
   }
 
   if (!user) return <Redirect to={ROUTES.LOGIN} />;
-  const storedMode = getStoredBusinessMode();
-  if (storedMode) {
-    return <Redirect to={getBusinessModeEntryRoute(storedMode)} />;
-  }
 
   return <ModeSelector />;
 }
