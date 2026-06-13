@@ -38,14 +38,14 @@ router.get("/retail/health", (_req, res) => {
   });
 });
 
-router.get("/retail/dashboard", (_req, res) => {
+router.get("/retail/dashboard", async (_req, res) => {
   return successResponse(res, {
-    data: retailService.getDashboard(),
+    data: await retailService.getDashboard(),
   });
 });
 
-router.get("/retail/products", (req, res) => {
-  const data = retailService.listProducts({
+router.get("/retail/products", async (req, res) => {
+  const data = await retailService.listProducts({
     search: getStringQuery(req.query.search),
     category: getStringQuery(req.query.category),
     stockStatus: getStringQuery(req.query.stockStatus),
@@ -62,8 +62,8 @@ router.get("/retail/products", (req, res) => {
   });
 });
 
-router.get("/retail/products/:id", (req, res) => {
-  const product = retailService.getProductById(req.params.id);
+router.get("/retail/products/:id", async (req, res) => {
+  const product = await retailService.getProductById(req.params.id);
 
   if (!product) {
     return errorResponse(res, {
@@ -76,8 +76,8 @@ router.get("/retail/products/:id", (req, res) => {
   return successResponse(res, { data: product });
 });
 
-router.get("/retail/barcode/:code", (req, res) => {
-  const product = retailService.lookupBarcode(req.params.code);
+router.get("/retail/barcode/:code", async (req, res) => {
+  const product = await retailService.lookupBarcode(req.params.code);
 
   if (!product) {
     return errorResponse(res, {
@@ -97,25 +97,25 @@ router.get("/retail/barcode/:code", (req, res) => {
   });
 });
 
-router.get("/retail/inventory/risks", (_req, res) => {
+router.get("/retail/inventory/risks", async (_req, res) => {
   return successResponse(res, {
-    data: retailService.getInventoryRisks(),
+    data: await retailService.getInventoryRisks(),
   });
 });
 
-router.get("/retail/receiving", (_req, res) => {
+router.get("/retail/receiving", async (_req, res) => {
   return successResponse(res, {
-    data: retailService.getReceivingQueue(),
+    data: await retailService.getReceivingQueue(),
   });
 });
 
-router.get("/retail/command-center", (_req, res) => {
+router.get("/retail/command-center", async (_req, res) => {
   return successResponse(res, {
-    data: retailService.getCommandCenter(),
+    data: await retailService.getCommandCenter(),
   });
 });
 
-router.post("/retail/sales/preview", (req, res) => {
+router.post("/retail/sales/preview", async (req, res) => {
   if (!isSalePreviewInput(req.body)) {
     return errorResponse(res, {
       status: 400,
@@ -125,11 +125,11 @@ router.post("/retail/sales/preview", (req, res) => {
   }
 
   return successResponse(res, {
-    data: retailService.previewSale(req.body),
+    data: await retailService.previewSale(req.body),
   });
 });
 
-router.post("/retail/sales/mock-checkout", (req, res) => {
+router.post("/retail/sales/mock-checkout", async (req, res) => {
   if (!isSalePreviewInput(req.body)) {
     return errorResponse(res, {
       status: 400,
@@ -138,7 +138,7 @@ router.post("/retail/sales/mock-checkout", (req, res) => {
     });
   }
 
-  const data = retailService.mockCheckout(req.body);
+  const data = await retailService.mockCheckout(req.body);
 
   return successResponse(res, {
     status: data.canCheckout ? 201 : 200,
@@ -149,7 +149,7 @@ router.post("/retail/sales/mock-checkout", (req, res) => {
   });
 });
 
-router.post("/retail/returns/preview", (req, res) => {
+router.post("/retail/returns/preview", async (req, res) => {
   if (!isReturnPreviewInput(req.body)) {
     return errorResponse(res, {
       status: 400,
@@ -159,7 +159,7 @@ router.post("/retail/returns/preview", (req, res) => {
   }
 
   return successResponse(res, {
-    data: retailService.previewReturn(req.body),
+    data: await retailService.previewReturn(req.body),
   });
 });
 
