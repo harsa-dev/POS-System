@@ -40,17 +40,14 @@ type RetailReceivingDelegateRow = {
   }>;
 };
 
-type ProductLockRow = {
-  id: string;
-  sku: string;
-  name: string;
-  cost: number;
-  currentStock: number;
+type DelegateWriteCount = {
+  count: number;
 };
 
 type RetailProductDelegate = {
   findMany(args: Record<string, unknown>): Promise<RetailProductDelegateRow[]>;
   findFirst(args: Record<string, unknown>): Promise<RetailProductDelegateRow | null>;
+  updateMany(args: Record<string, unknown>): Promise<DelegateWriteCount>;
 };
 
 type RetailSupplierDelegate = {
@@ -61,10 +58,39 @@ type RetailReceivingDelegate = {
   findMany(args: Record<string, unknown>): Promise<RetailReceivingDelegateRow[]>;
 };
 
+type RetailSaleDelegate = {
+  create(args: Record<string, unknown>): Promise<unknown>;
+};
+
+type RetailSaleItemDelegate = {
+  createMany(args: Record<string, unknown>): Promise<DelegateWriteCount>;
+};
+
+type RetailPaymentDelegate = {
+  create(args: Record<string, unknown>): Promise<unknown>;
+};
+
+type RetailStockMovementDelegate = {
+  create(args: Record<string, unknown>): Promise<unknown>;
+};
+
 type RetailDelegateClient = typeof prisma & {
   retailProduct: RetailProductDelegate;
   retailSupplier: RetailSupplierDelegate;
   retailReceiving: RetailReceivingDelegate;
+  retailSale: RetailSaleDelegate;
+  retailSaleItem: RetailSaleItemDelegate;
+  retailPayment: RetailPaymentDelegate;
+  retailStockMovement: RetailStockMovementDelegate;
+};
+
+type RetailTransactionDelegateClient = {
+  retailProduct: RetailProductDelegate;
+  retailSale: RetailSaleDelegate;
+  retailSaleItem: RetailSaleItemDelegate;
+  retailPayment: RetailPaymentDelegate;
+  retailStockMovement: RetailStockMovementDelegate;
+  $executeRaw(query: unknown): Promise<number>;
 };
 
 const retailDb = prisma as unknown as RetailDelegateClient;
@@ -315,244 +341,195 @@ export const retailPrismaRepository = {
     const now = new Date();
     const method = input.preview.paymentMethod;
 
-    return prisma.$transaction(async (tx) => {
-      const stockMovementIds: string[] = [];
+    return prisma.$transaction(
+      async (tx) => {
+        const retailTx = tx as unknown as RetailTransactionDelegateClient;
+        const stockMovementIds: string[] = [];
 
-      for (const line of input.preview.lines) {
-        const lockedRows = await tx.$queryRaw<ProductLockRow[]>(Prisma.sql`
-          SELECT "id", "sku", "name", "cost", "currentStock"
-          FROM "RetailProduct"
-          WHERE "businessId" = ${input.scope.businessId}
-            AND "id" = ${line.productId}
-            AND "isActive" = TRUE
-          FOR UPDATE
-        `);
-        const product = lockedRows[0];
+        await retailTx.retailSale.create({
+          data: {
+            id: saleId,
+            businessId: input.scope.businessId,
+            createdById: input.actor.id,
+            receiptNumber,
+            paymentMethod: method,
+            subtotal: input.preview.subtotal,
+            discountTotal: input.preview.discountTotal,
+            taxIncluded: input.preview.taxIncluded,
+            total: input.preview.payableTotal,
+            grossProfit: input.preview.grossProfit,
+            status: "completed",
+            createdAt: now,
+            updatedAt: now,
+          },
+        });
 
-        if (!product) {
-          throw new Error(`Retail product ${line.productId} was not found during checkout.`);
+        await retailTx.retailSaleItem.createMany({
+          data: input.preview.lines.map((line) => ({
+            id: createId(),
+            saleId,
+            productId: line.productId,
+            skuSnapshot: line.sku,
+            nameSnapshot: line.name,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            costSnapshot: line.cost,
+            subtotal: line.subtotal,
+            discountAmount: line.discountAmount,
+            taxIncluded: line.taxIncluded,
+            lineTotal: line.lineTotal,
+            grossProfit: line.grossProfit,
+          })),
+        });
+
+        for (const line of input.preview.lines) {
+          const product = await retailTx.retailProduct.findFirst({
+            where: {
+              businessId: input.scope.businessId,
+              id: line.productId,
+              isActive: true,
+            },
+            select: productDtoSelect,
+          });
+
+          if (!product) {
+            throw new Error(`Retail product ${line.productId} was not found during checkout.`);
+          }
+
+          if (product.currentStock < line.quantity) {
+            throw new Error(`${product.sku} stock changed before checkout could be completed.`);
+          }
+
+          const beforeQuantity = product.currentStock;
+          const afterQuantity = beforeQuantity - line.quantity;
+          const stockUpdate = await retailTx.retailProduct.updateMany({
+            where: {
+              businessId: input.scope.businessId,
+              id: line.productId,
+              isActive: true,
+              currentStock: {
+                gte: line.quantity,
+              },
+            },
+            data: {
+              currentStock: {
+                decrement: line.quantity,
+              },
+              updatedAt: now,
+            },
+          });
+
+          if (stockUpdate.count !== 1) {
+            throw new Error(`${product.sku} stock changed before checkout could be completed.`);
+          }
+
+          const movementId = createId();
+          stockMovementIds.push(movementId);
+
+          await retailTx.retailStockMovement.create({
+            data: {
+              id: movementId,
+              businessId: input.scope.businessId,
+              productId: line.productId,
+              type: "out",
+              reason: "sale",
+              source: "retail_sale",
+              sourceId: saleId,
+              quantity: line.quantity,
+              beforeQuantity,
+              afterQuantity,
+              note: "Retail checkout stock deduction.",
+              createdById: input.actor.id,
+              createdAt: now,
+            },
+          });
         }
 
-        if (product.currentStock < line.quantity) {
-          throw new Error(`${product.sku} stock changed before checkout could be completed.`);
-        }
-      }
+        await retailTx.retailPayment.create({
+          data: {
+            id: paymentId,
+            saleId,
+            provider: "manual",
+            method,
+            status: "paid",
+            amount: input.preview.payableTotal,
+            paidAt: now,
+            createdAt: now,
+            updatedAt: now,
+          },
+        });
 
-      await tx.$executeRaw(Prisma.sql`
-        INSERT INTO "RetailSale" (
-          "id",
-          "businessId",
-          "createdById",
-          "receiptNumber",
-          "paymentMethod",
-          "subtotal",
-          "discountTotal",
-          "taxIncluded",
-          "total",
-          "grossProfit",
-          "status",
-          "createdAt",
-          "updatedAt"
-        ) VALUES (
-          ${saleId},
-          ${input.scope.businessId},
-          ${input.actor.id},
-          ${receiptNumber},
-          ${method},
-          ${input.preview.subtotal},
-          ${input.preview.discountTotal},
-          ${input.preview.taxIncluded},
-          ${input.preview.payableTotal},
-          ${input.preview.grossProfit},
-          'completed',
-          ${now},
-          ${now}
-        )
-      `);
-
-      for (const line of input.preview.lines) {
-        const stockRows = await tx.$queryRaw<ProductLockRow[]>(Prisma.sql`
-          SELECT "id", "sku", "name", "cost", "currentStock"
-          FROM "RetailProduct"
-          WHERE "businessId" = ${input.scope.businessId}
-            AND "id" = ${line.productId}
-          FOR UPDATE
-        `);
-        const product = stockRows[0];
-
-        if (!product) {
-          throw new Error(`Retail product ${line.productId} was not found during stock update.`);
-        }
-
-        const beforeQuantity = product.currentStock;
-        const afterQuantity = beforeQuantity - line.quantity;
-        const saleItemId = createId();
-        const movementId = createId();
-        stockMovementIds.push(movementId);
-
-        await tx.$executeRaw(Prisma.sql`
-          INSERT INTO "RetailSaleItem" (
-            "id",
-            "saleId",
-            "productId",
-            "skuSnapshot",
-            "nameSnapshot",
-            "quantity",
-            "unitPrice",
-            "costSnapshot",
-            "subtotal",
-            "discountAmount",
-            "taxIncluded",
-            "lineTotal",
-            "grossProfit"
-          ) VALUES (
-            ${saleItemId},
-            ${saleId},
-            ${line.productId},
-            ${line.sku},
-            ${line.name},
-            ${line.quantity},
-            ${line.unitPrice},
-            ${line.cost},
-            ${line.subtotal},
-            ${line.discountAmount},
-            ${line.taxIncluded},
-            ${line.lineTotal},
-            ${line.grossProfit}
-          )
-        `);
-
-        await tx.$executeRaw(Prisma.sql`
-          UPDATE "RetailProduct"
-          SET "currentStock" = ${afterQuantity}, "updatedAt" = ${now}
-          WHERE "businessId" = ${input.scope.businessId}
-            AND "id" = ${line.productId}
-        `);
-
-        await tx.$executeRaw(Prisma.sql`
-          INSERT INTO "RetailStockMovement" (
+        await retailTx.$executeRaw(Prisma.sql`
+          INSERT INTO "CashflowEntry" (
             "id",
             "businessId",
-            "productId",
             "type",
-            "reason",
-            "source",
+            "account",
+            "amount",
+            "status",
+            "occurredAt",
+            "title",
+            "description",
+            "sourceType",
             "sourceId",
-            "quantity",
-            "beforeQuantity",
-            "afterQuantity",
-            "note",
+            "reference",
             "createdById",
-            "createdAt"
+            "createdAt",
+            "updatedAt"
           ) VALUES (
-            ${movementId},
+            ${createId()},
             ${input.scope.businessId},
-            ${line.productId},
-            'out',
-            'sale',
-            'retail_sale',
+            'INCOME',
+            ${normalizePaymentAccount(method)},
+            ${input.preview.payableTotal},
+            'POSTED',
+            ${now},
+            'Retail checkout payment',
+            'Auto-created from retail checkout.',
+            'ORDER_PAYMENT',
             ${saleId},
-            ${line.quantity},
-            ${beforeQuantity},
-            ${afterQuantity},
-            'Retail checkout stock deduction.',
+            ${receiptNumber},
             ${input.actor.id},
+            ${now},
             ${now}
           )
         `);
-      }
 
-      await tx.$executeRaw(Prisma.sql`
-        INSERT INTO "RetailPayment" (
-          "id",
-          "saleId",
-          "provider",
-          "method",
-          "status",
-          "amount",
-          "paidAt",
-          "createdAt",
-          "updatedAt"
-        ) VALUES (
-          ${paymentId},
-          ${saleId},
-          'manual',
-          ${method},
-          'paid',
-          ${input.preview.payableTotal},
-          ${now},
-          ${now},
-          ${now}
-        )
-      `);
+        await retailTx.$executeRaw(Prisma.sql`
+          INSERT INTO "AuditLog" (
+            "id",
+            "businessId",
+            "userId",
+            "action",
+            "entityType",
+            "entityId",
+            "changes",
+            "createdAt"
+          ) VALUES (
+            ${createId()},
+            ${input.scope.businessId},
+            ${input.actor.id},
+            'CREATE',
+            'RetailSale',
+            ${saleId},
+            CAST(${JSON.stringify({ receiptNumber, total: input.preview.payableTotal, stockMovementIds })} AS jsonb),
+            ${now}
+          )
+        `);
 
-      await tx.$executeRaw(Prisma.sql`
-        INSERT INTO "CashflowEntry" (
-          "id",
-          "businessId",
-          "type",
-          "account",
-          "amount",
-          "status",
-          "occurredAt",
-          "title",
-          "description",
-          "sourceType",
-          "sourceId",
-          "reference",
-          "createdById",
-          "createdAt",
-          "updatedAt"
-        ) VALUES (
-          ${createId()},
-          ${input.scope.businessId},
-          'INCOME',
-          ${normalizePaymentAccount(method)},
-          ${input.preview.payableTotal},
-          'POSTED',
-          ${now},
-          'Retail checkout payment',
-          'Auto-created from retail checkout.',
-          'ORDER_PAYMENT',
-          ${saleId},
-          ${receiptNumber},
-          ${input.actor.id},
-          ${now},
-          ${now}
-        )
-      `);
-
-      await tx.$executeRaw(Prisma.sql`
-        INSERT INTO "AuditLog" (
-          "id",
-          "businessId",
-          "userId",
-          "action",
-          "entityType",
-          "entityId",
-          "changes",
-          "createdAt"
-        ) VALUES (
-          ${createId()},
-          ${input.scope.businessId},
-          ${input.actor.id},
-          'CREATE',
-          'RetailSale',
-          ${saleId},
-          CAST(${JSON.stringify({ receiptNumber, total: input.preview.payableTotal, stockMovementIds })} AS jsonb),
-          ${now}
-        )
-      `);
-
-      return {
-        ...input.preview,
-        persisted: true,
-        saleId,
-        receiptNumber,
-        paymentId,
-        stockMovementIds,
-        createdAt: now.toISOString(),
-      };
-    });
+        return {
+          ...input.preview,
+          persisted: true,
+          saleId,
+          receiptNumber,
+          paymentId,
+          stockMovementIds,
+          createdAt: now.toISOString(),
+        };
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      },
+    );
   },
 } satisfies RetailRepository;
