@@ -19,14 +19,6 @@ artifacts/api-server/src/services/raw-material/
 artifacts/api-server/prisma/schema.prisma
 ```
 
-Existing frontend / shared surfaces:
-
-```txt
-artifacts/pos-system/src/app/workspace/raw-material/
-artifacts/pos-system/src/features/raw-material/core-system/
-artifacts/pos-system/src/features/shared/raw-material-bridge/
-```
-
 Known modules:
 
 ```txt
@@ -45,12 +37,10 @@ shared dashboard bridge
 
 Status: implemented.
 
-Goal:
+Implemented output:
 
 ```txt
-Bring docs in line with actual repository state.
-Stop treating Raw Material mode as mock-only when backend code and Prisma models already exist.
-Define the implementation phases before adding more logic.
+docs/workspaces/raw-material-backend-phases.md
 ```
 
 Important correction:
@@ -61,20 +51,9 @@ It still says mock-only / no Prisma / no migration.
 The current main branch already contains Raw Material Prisma models, migrations, routes, services, and stock movement handlers.
 ```
 
-No code behavior was changed in this phase.
-
 ## Phase 1 - Baseline backend audit and route contract normalization
 
 Status: implemented.
-
-Goal:
-
-```txt
-Audit existing route behavior.
-Normalize response shape.
-Normalize endpoint naming between frontend API contract and API server.
-Document what is already production-backed versus still preview-only.
-```
 
 Implemented output:
 
@@ -94,15 +73,6 @@ Backend already persists data for many of those surfaces.
 ## Phase 2 - Permission hardening
 
 Status: implemented.
-
-Goal:
-
-```txt
-Replace ALL_ROLES guards with raw-material action permissions.
-Keep route behavior the same.
-Do not touch schema.
-Do not touch migrations.
-```
 
 Implemented files:
 
@@ -132,60 +102,49 @@ raw-material.stock.transfer
 raw-material.stock.consume
 ```
 
-Role grouping:
-
-```txt
-VIEW_ROLES      = OWNER, MANAGER, ADMIN, OPERATOR, STAFF, VIEWER
-OPERATE_ROLES   = OWNER, MANAGER, ADMIN, OPERATOR, STAFF
-STOCK_ROLES     = OWNER, MANAGER, ADMIN, OPERATOR
-APPROVAL_ROLES  = OWNER, MANAGER, ADMIN
-```
-
 ## Phase 3 - Workflow guards and domain invariants
 
-Status: next.
+Status: implemented.
 
-Goal:
-
-```txt
-Add domain guards for status changes and stock-sensitive actions.
-Prevent illegal transitions and unsafe stock mutation.
-```
-
-Workflow areas:
+Implemented files:
 
 ```txt
-intake quality status
-batch quality status
-processing status
-kandang health status
-stock movement type/reason/source
+artifacts/api-server/src/services/raw-material/raw-material.workflow.ts
+artifacts/api-server/src/services/raw-material/raw-material.stock-rules.ts
+artifacts/api-server/src/services/raw-material/raw-material-processing-run.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-pen.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-stock-movement.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-stock-movement.types.ts
+artifacts/api-server/src/services/raw-material/raw-material-stock-movement.validation.ts
+artifacts/api-server/src/services/raw-material/index.ts
+docs/workspaces/raw-material-workflow-guards.md
 ```
 
-Guard examples:
+Covered workflow areas:
 
 ```txt
-Cannot create weighing for intake from another business.
-Cannot create batch with accepted quantity greater than intake accepted quantity.
-Cannot transfer more than batch remaining quantity.
-Cannot consume more than available batch quantity.
-Cannot complete processing if output quantities are invalid.
-Cannot assign inactive batch as feed batch to active kandang pen.
+processing status transitions
+processing output/input invariants
+stock adjustment guards
+stock transfer guards
+processing stock consumption guards
+kandang occupancy/capacity guards
+kandang feed batch guards
+stock movement enum alignment with Prisma schema
 ```
 
-Expected outputs:
+Important stock enum correction:
 
 ```txt
-raw-material.workflow.ts
-raw-material.stock-rules.ts
-transition/validation preview helpers
-route/service integration
-no migration unless a missing column is explicitly proven necessary
+Old service literals: TRANSFER, PROCESSING_USAGE
+Prisma enum literals: TRANSFER_IN, TRANSFER_OUT, PRODUCTION_USAGE
 ```
+
+No Prisma schema or migration was changed in this phase.
 
 ## Phase 4 - Service layer cleanup
 
-Status: planned.
+Status: next.
 
 Goal:
 
@@ -204,8 +163,6 @@ raw-material.workflow.ts
 raw-material.presenter.ts
 raw-material.audit.ts
 ```
-
-Existing services are already partially split per domain, so this phase should not blindly merge everything into one mega-service.
 
 Priority order:
 
@@ -258,24 +215,6 @@ Suggested endpoint:
 
 ```txt
 GET /api/raw-material/summary
-```
-
-Summary fields:
-
-```txt
-supplier count
-active supplier count
-storage capacity / used / available
-intake totals
-accepted/rejected quantities
-weighing net total
-active batch count
-batch remaining quantity
-near-expiry batch count
-processing run status distribution
-kandang occupancy summary
-stock movement counts by type/reason
-latest activity
 ```
 
 ## Phase 7 - Prisma delegate and typecheck cleanup
@@ -333,16 +272,6 @@ Update frontend raw-material API contract and workspace bridge to match real bac
 Keep mock fallback for unauthenticated/dev preview states.
 ```
 
-Expected outputs:
-
-```txt
-raw-material API client
-API-first bridge
-contract persistence labels updated
-workspace action buttons wired only when safe
-mock fallback retained
-```
-
 ## Non-goals
 
 Do not do these unless a later phase explicitly approves it:
@@ -358,8 +287,8 @@ Do not change restaurant/service-business workflows while doing raw material wor
 
 ## Current recommended next action
 
-Start with Phase 3:
+Start with Phase 4:
 
 ```txt
-Workflow guards and domain invariants.
+Service layer cleanup.
 ```
