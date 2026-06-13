@@ -6,6 +6,20 @@ Planning draft only. No backend route is implemented in this phase.
 
 This contract exists so the mock workspace can later be replaced with API calls without redesigning the UI again.
 
+Typed frontend contract file:
+
+```txt
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts
+```
+
+Placeholder API file:
+
+```txt
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
+```
+
+The placeholder API functions are typed but intentionally throw `not implemented`.
+
 ## Permissions
 
 Suggested permission keys:
@@ -54,6 +68,25 @@ CLOSED              -> terminal
 ```
 
 The frontend action rail uses this map to show disabled next actions. Backend must still validate all transitions later. The UI map is a preview, not a source of truth.
+
+## Request and response type candidates
+
+Current typed candidates:
+
+```txt
+ServiceBusinessWorkspaceResponse
+ListServiceBusinessJobsQuery
+CreateServiceRequestInput
+UpdateServiceJobStatusInput
+AddServiceCostLineInput
+CreateServiceQuotationInput
+ApproveServiceQuotationInput
+CreateServiceInvoiceInput
+RecordServiceInvoicePaymentInput
+ServiceBusinessMutationPreviewResponse
+```
+
+These types are frontend draft contracts. Backend DTO naming can still change later.
 
 ## Endpoints later
 
