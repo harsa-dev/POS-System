@@ -1,3 +1,4 @@
+import { persistRetailReturnWithDelegate } from "./retail.return-repository.js";
 import { retailRepository } from "./retail.repository-provider.js";
 import type {
   RetailActor,
@@ -8,6 +9,7 @@ import type {
   RetailProductDto,
   RetailReturnPreviewDto,
   RetailReturnPreviewInput,
+  RetailReturnResultDto,
   RetailSaleLinePreviewDto,
   RetailSalePreviewDto,
   RetailSalePreviewInput,
@@ -381,6 +383,17 @@ export const retailService = {
       restockableLines,
       reviewReasons: Array.from(new Set(reviewReasons)),
     };
+  },
+
+  async persistReturn(scope: RetailBusinessScope, actor: RetailActor, input: RetailReturnPreviewInput): Promise<RetailReturnResultDto> {
+    const preview = await this.previewReturn(scope, input);
+
+    return persistRetailReturnWithDelegate({
+      scope,
+      actor,
+      input,
+      preview,
+    });
   },
 
   async getCommandCenter(scope: RetailBusinessScope): Promise<RetailCommandCenterDto> {
