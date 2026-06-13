@@ -11,17 +11,21 @@ import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import {
   cancelRawMaterialIntake,
+  createRawMaterialBatch,
   createRawMaterialIntake,
   createRawMaterialStorageLocation,
   createRawMaterialSupplier,
   createRawMaterialWeighing,
+  deactivateRawMaterialBatch,
   deactivateRawMaterialStorageLocation,
   deactivateRawMaterialSupplier,
   deleteRawMaterialWeighing,
+  listRawMaterialBatches,
   listRawMaterialIntakes,
   listRawMaterialStorageLocations,
   listRawMaterialSuppliers,
   listRawMaterialWeighings,
+  updateRawMaterialBatch,
   updateRawMaterialIntake,
   updateRawMaterialStorageLocation,
   updateRawMaterialSupplier,
@@ -373,6 +377,93 @@ router.delete("/raw-material/weighings/:id", async (req, res) => {
     return successResponse(res, {
       data,
       message: "Raw material weighing deleted.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/raw-material/batches", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await listRawMaterialBatches({
+      actor: getActor(user),
+      businessContext,
+      intakeId: typeof req.query.intakeId === "string" ? req.query.intakeId : undefined,
+      storageLocationId: typeof req.query.storageLocationId === "string" ? req.query.storageLocationId : undefined,
+      qualityStatus: typeof req.query.qualityStatus === "string" ? req.query.qualityStatus : undefined,
+      isActive: req.query.isActive === undefined ? undefined : req.query.isActive === "true",
+      search: typeof req.query.search === "string" ? req.query.search : undefined,
+    });
+
+    return successResponse(res, { data });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/raw-material/batches", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await createRawMaterialBatch({
+      actor: getActor(user),
+      businessContext,
+      input: req.body ?? {},
+    });
+
+    return successResponse(res, {
+      data,
+      status: 201,
+      message: "Raw material batch created.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.patch("/raw-material/batches/:id", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await updateRawMaterialBatch({
+      actor: getActor(user),
+      businessContext,
+      id: req.params.id,
+      input: req.body ?? {},
+    });
+
+    return successResponse(res, {
+      data,
+      message: "Raw material batch updated.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.delete("/raw-material/batches/:id", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await deactivateRawMaterialBatch({
+      actor: getActor(user),
+      businessContext,
+      id: req.params.id,
+    });
+
+    return successResponse(res, {
+      data,
+      message: "Raw material batch quarantined and deactivated.",
     });
   } catch (error) {
     return handleApiError(res, error);
