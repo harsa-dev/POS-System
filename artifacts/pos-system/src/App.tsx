@@ -53,6 +53,7 @@ const RestaurantTablesWorkspace = lazy(() => import("@/app/workspace/restaurant/
 const RestaurantMenuWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-menu-workspace"));
 const RestaurantRecipesWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-recipes-workspace"));
 const RestaurantOrdersWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-orders-workspace"));
+const RetailWorkspace = lazy(() => import("@/app/workspace/retail/retail-workspace"));
 const RawMaterialPlaceholderWorkspace = lazy(() => import("@/app/workspace/raw-material/raw-material-placeholder-workspace"));
 
 const queryClient = new QueryClient({
@@ -266,6 +267,13 @@ function ProtectedAppRoutes() {
           <Route path={ROUTES.WORKSPACE_RESTAURANT_RECIPES}><ModeProtectedRoute requiredMode="restaurant"><RestaurantRecipesWorkspace /></ModeProtectedRoute></Route>
           <Route path={ROUTES.WORKSPACE_RESTAURANT_MENU}><ModeProtectedRoute requiredMode="restaurant"><RestaurantMenuWorkspace /></ModeProtectedRoute></Route>
           <Route path={ROUTES.WORKSPACE_RESTAURANT_ORDERS}><ModeProtectedRoute requiredMode="restaurant"><RestaurantOrdersWorkspace /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/cashier"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="cashier" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/catalog"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="catalog" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/barcode"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="barcode" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/receiving"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="receiving" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/stock-opname"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="stock-opname" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/shelf-management"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="shelf-management" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/promotions"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="promotions" /></ModeProtectedRoute></Route>
           <Route path={ROUTES.V3_RAW_MATERIAL_INTAKE}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="intake" /></ModeProtectedRoute></Route>
           <Route path={ROUTES.V3_RAW_MATERIAL_WEIGHING}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="weighing" /></ModeProtectedRoute></Route>
           <Route path={ROUTES.V3_RAW_MATERIAL_BATCHES}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="batches" /></ModeProtectedRoute></Route>
