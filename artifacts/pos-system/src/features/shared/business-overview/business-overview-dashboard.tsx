@@ -167,12 +167,102 @@ const sharedModules: SharedModule[] = [
     tone: "blue",
   },
   {
-    id: "shifts",
+    id: "cashier-shifts",
     name: "Cashier Shift Reports",
     description: "Cashier performance, expected cash, variance, and shift sync summary.",
     route: ROUTES.CASHIER_SHIFT_REPORTS,
     owner: "Cashier Ops",
     readiness: "Restaurant/Retail",
+    tone: "amber",
+  },
+  {
+    id: "hpp",
+    name: "HPP Calculator",
+    description: "Cost breakdown, unit cost, target markup, and selling price simulation.",
+    route: ROUTES.HPP_CALCULATOR,
+    owner: "Finance Ops",
+    readiness: "Hardcoded demo",
+    tone: "green",
+  },
+  {
+    id: "operation-reports",
+    name: "Shift Reports",
+    description: "Shared operational closing summary for shift revenue, variance, and review.",
+    route: ROUTES.OPERATION_REPORTS,
+    owner: "Operations",
+    readiness: "Hardcoded demo",
+    tone: "amber",
+  },
+  {
+    id: "team-management",
+    name: "Team Management",
+    description: "Employee directory, department, role, workload, and onboarding status.",
+    route: ROUTES.TEAM_MANAGEMENT,
+    owner: "HR Ops",
+    readiness: "Hardcoded demo",
+    tone: "blue",
+  },
+  {
+    id: "roster-overview",
+    name: "Shift Overview",
+    description: "Weekly workforce coverage, open slots, and schedule risk preview.",
+    route: ROUTES.ROSTER_OVERVIEW,
+    owner: "HR Ops",
+    readiness: "Hardcoded demo",
+    tone: "slate",
+  },
+  {
+    id: "employee-performance",
+    name: "Employee Performance",
+    description: "Performance scorecard, role output, coaching alerts, and KPI planning.",
+    route: ROUTES.EMPLOYEE_PERFORMANCE,
+    owner: "HR Ops",
+    readiness: "Hardcoded demo",
+    tone: "green",
+  },
+  {
+    id: "audit-log",
+    name: "Audit Log",
+    description: "Important system events, actor tracking, severity, and future audit trail.",
+    route: ROUTES.AUDIT_LOG,
+    owner: "Control",
+    readiness: "Hardcoded demo",
+    tone: "slate",
+  },
+  {
+    id: "approvals",
+    name: "Approval Center",
+    description: "Purchase, payroll, contract, and operation exception approval queue.",
+    route: ROUTES.APPROVALS,
+    owner: "Management",
+    readiness: "Hardcoded demo",
+    tone: "amber",
+  },
+  {
+    id: "contracts",
+    name: "Employee Contracts",
+    description: "Contract type, validity, renewal alert, and document readiness preview.",
+    route: ROUTES.EMPLOYEE_CONTRACTS,
+    owner: "HR Ops",
+    readiness: "Hardcoded demo",
+    tone: "blue",
+  },
+  {
+    id: "attendance",
+    name: "Employee Attendance",
+    description: "Check-in, check-out, missing attendance, and shift attendance overview.",
+    route: ROUTES.EMPLOYEE_ATTENDANCE,
+    owner: "HR Ops",
+    readiness: "Hardcoded demo",
+    tone: "green",
+  },
+  {
+    id: "payroll",
+    name: "Payroll",
+    description: "Salary preview, allowance, deduction, approval readiness, and payout draft.",
+    route: ROUTES.PAYROLL,
+    owner: "Finance HR",
+    readiness: "Hardcoded demo",
     tone: "amber",
   },
 ];
@@ -207,12 +297,12 @@ const operationQueue: QueueItem[] = [
   },
   {
     id: "Q-1004",
-    sourceMode: "Retail / Supermarket",
-    title: "Barcode catalog mapping",
-    owner: "Product Data",
-    amount: 0,
-    status: "Waiting",
-    eta: "Waiting setup",
+    sourceMode: "Shared Workforce",
+    title: "Payroll draft approval",
+    owner: "Finance HR",
+    amount: 13_700_000,
+    status: "Needs Review",
+    eta: "Today, 17:00",
   },
   {
     id: "Q-1005",
@@ -220,7 +310,7 @@ const operationQueue: QueueItem[] = [
     title: "Client invoice workflow draft",
     owner: "Billing",
     amount: 0,
-    status: "Needs Review",
+    status: "Waiting",
     eta: "Design phase",
   },
 ];
@@ -320,7 +410,7 @@ export function BusinessOverviewDashboard() {
   return (
     <DashboardShell
       title="Shared Business Dashboard"
-      description="Hardcoded cross-mode overview for demoing shared business modules before every mode has real backend data."
+      description="Hardcoded cross-mode overview for demoing shared business, workforce, finance, audit, and operations modules before every mode has real backend data."
     >
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         <div className="flex items-start gap-3">
@@ -329,8 +419,8 @@ export function BusinessOverviewDashboard() {
             <p className="font-semibold">Demo-only shared dashboard</p>
             <p className="mt-1 leading-6">
               Semua angka di halaman ini masih hardcoded. Dashboard ini dibuat sebagai
-              presentation layer lintas mode, bukan sumber data produksi dan bukan pengganti
-              business mode service.
+              presentation layer lintas mode, bukan sumber data produksi, bukan schema baru,
+              dan bukan pengganti business mode service.
             </p>
           </div>
         </div>
@@ -377,19 +467,19 @@ export function BusinessOverviewDashboard() {
           </div>
         </DashboardPanel>
 
-        <DashboardPanel title="Shared Finance Snapshot" description="Dummy finance summary used for layout, KPI, and future API planning.">
+        <DashboardPanel title="Shared Finance Snapshot" description="Dummy finance summary used for layout, KPI, workforce cost, and future API planning.">
           <div className="grid gap-3 p-4">
             <StatCard label="Cash Available" value={formatCurrency(37_950_000)} note="Cash + bank balance mock" icon={WalletCards} tone="green" />
             <StatCard label="Pending Invoices" value={formatCurrency(16_500_000)} note="18 unpaid customer invoices" icon={ReceiptText} tone="amber" />
             <StatCard label="Open Partners" value={formatNumber(126)} note="Customers, suppliers, and service clients" icon={Handshake} tone="blue" />
-            <StatCard label="Reports Ready" value={formatNumber(8)} note="P&L, shift, stock, invoice, and cashflow views" icon={FileText} tone="slate" />
+            <StatCard label="Reports Ready" value={formatNumber(17)} note="Finance, workforce, audit, approval, and operation views" icon={FileText} tone="slate" />
           </div>
         </DashboardPanel>
       </div>
 
       <DashboardPanel
         title="Cross-Mode Operation Queue"
-        description="Mock queue data to preview how shared operations may look after restaurant, raw material, retail, and service mode are wired to real APIs."
+        description="Mock queue data to preview how shared operations may look after restaurant, raw material, retail, service, and workforce modules are wired to real APIs."
       >
         <DataTable columns={queueColumns} data={operationQueue} getRowKey={(row) => row.id} minWidth={1040} pagination={false} />
       </DashboardPanel>
