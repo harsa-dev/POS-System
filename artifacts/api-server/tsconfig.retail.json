@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "src/routes/retail.ts",
+    "src/services/retail/**/*.ts",
+    "src/lib/auth.ts",
+    "src/lib/business-context/**/*.ts",
+    "src/lib/constants.ts",
+    "src/lib/errors/**/*.ts",
+    "src/lib/responses/**/*.ts",
+    "src/lib/logger.ts",
+    "src/lib/prisma.ts"
+  ]
+}
