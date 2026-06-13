@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, BarChart3, ClipboardCheck, LockKeyhole, RadioTower, ServerCog, ShieldCheck, WalletCards } from "lucide-react";
+import { AlertTriangle, BarChart3, ClipboardCheck, LockKeyhole, RadioTower, ServerCog, ShieldCheck } from "lucide-react";
 
 import { StatCard, StatusPill } from "@/features/shared/cards";
 import { DashboardPanel } from "@/features/shared/dashboard";
