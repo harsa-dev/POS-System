@@ -65,25 +65,27 @@ export const businessModeRegistry = [
     label: "Raw Material / Livestock",
     shortLabel: "Raw Material",
     description:
-      "Planned workspace for intake, weighing, batches, storage, processing, kandang operations, suppliers, and reports.",
-    status: "planned",
+      "Preview workspace for intake, weighing, batches, storage, processing, kandang operations, suppliers, inventory policy, and reports.",
+    status: "available",
     category: "raw-material",
-    route: "/select-mode",
+    route: "/v3/raw-material/kandang",
     storageKey: BUSINESS_MODE_STORAGE_KEY,
     isDefault: false,
-    isSelectable: false,
-    badgeLabel: "Planned",
-    primaryModules: ["Dashboard", "Inventory", "Suppliers", "Reports"],
-    plannedModules: [
+    isSelectable: true,
+    badgeLabel: "Preview",
+    primaryModules: [
+      "Dashboard",
+      "Inventory",
       "Intake",
       "Weighing",
       "Batches",
       "Storage",
       "Processing",
       "Kandang",
+      "Suppliers",
+      "Reports",
     ],
-    unavailableReason:
-      "Raw Material / Livestock mode is planned and must not reuse Restaurant workflow prematurely.",
+    plannedModules: [],
   },
   {
     id: "custom-business",
@@ -146,8 +148,7 @@ export function isBusinessModeSelectable(mode: BusinessModeId): boolean {
 }
 
 export function normalizeBusinessModeId(
-  value: unknown,
-): BusinessModeId | null {
+  value: unknown,\): BusinessModeId | null {
   if (isBusinessModeId(value)) return value;
 
   return null;
