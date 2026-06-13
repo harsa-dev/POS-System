@@ -2,7 +2,7 @@ import {
   calculateServiceCostTotal,
   calculateServiceQuoteTotalFromCost,
 } from "./service-business.crud.service.js";
-import { loadServiceJobs } from "./service-business.crud.repository.js";
+import { loadServiceBusinessSummaryJobs } from "./service-business.delegate.repository.js";
 import {
   serviceBusinessInvoiceStatuses,
   serviceBusinessWorkflowStatuses,
@@ -52,7 +52,7 @@ function formatStatusLabel(status: ServiceBusinessWorkflowStatus) {
 }
 
 export async function getServiceBusinessDashboardSummary(businessId: string) {
-  const jobs = await loadServiceJobs(businessId);
+  const jobs = await loadServiceBusinessSummaryJobs(businessId);
   const workflowDistribution = createWorkflowDistribution();
   const invoiceDistribution = createInvoiceDistribution();
 
@@ -107,7 +107,7 @@ export async function getServiceBusinessDashboardSummary(businessId: string) {
 
   return {
     generatedAt: new Date().toISOString(),
-    source: "api-server-prisma-sql-summary" as const,
+    source: "api-server-prisma-delegate-summary" as const,
     totals: {
       jobs: summary.totalJobs,
       activeJobs: summary.activeJobs,
