@@ -20,6 +20,8 @@ artifacts/pos-system/src/app/workspace/custom-business/service/service-business-
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-empty-state.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-placeholder-panel.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-view-model.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-job-detail-panel.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-metric-cards.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workflow-pipeline.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-job-list.tsx
@@ -67,6 +69,7 @@ The workspace now contains hard-coded examples for:
 - metric cards
 - service workflow pipeline
 - service job cards
+- selected service job detail panel
 - cost line breakdown
 - quotation subtotal, discount, tax, total, and gross profit preview
 - invoice collection progress
@@ -94,6 +97,7 @@ ServiceBusinessWorkspaceLayout
 ├── ServiceBusinessWorkflowPipeline
 ├── ServiceBusinessJobList
 │   └── ServiceBusinessJobCard
+├── ServiceBusinessJobDetailPanel
 ├── ServiceBusinessPlaceholderPanel
 ├── ServiceBusinessPricingModulesPanel
 └── ServiceBusinessConfigReadinessPanel
@@ -110,7 +114,20 @@ Current mock interactions:
 - filter by priority
 - reset filters
 - tab switch between overview, jobs, quotations, invoices, and config
+- select a service job
+- show selected job detail panel
+- close selected job detail panel
 - disabled action buttons for future request and quotation creation
+
+## View model adapter
+
+The file below maps raw mock job data into display-ready values:
+
+```txt
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-view-model.ts
+```
+
+Later backend responses should be normalized through this kind of boundary before reaching UI components.
 
 ## API placeholder
 
