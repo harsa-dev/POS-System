@@ -51,29 +51,29 @@ model Business {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  owner                     User                         @relation("BusinessOwner", fields: [ownerId], references: [id])
-  employees                 User[]                       @relation("BusinessEmployees")
-  restaurant                Restaurant?
-  categories                Category[]
-  menuItems                 MenuItem[]
-  inventoryItems            InventoryItem[]              @relation("BusinessInventoryItems")
-  orders                    Order[]
-  invoices                  Invoice[]
-  stockMovements            StockMovement[]              @relation("BusinessStockMovements")
-  cashflowEntries           CashflowEntry[]              @relation("BusinessCashflowEntries")
-  rawMaterialSuppliers      RawMaterialSupplier[]
+  owner                       User                         @relation("BusinessOwner", fields: [ownerId], references: [id])
+  employees                   User[]                       @relation("BusinessEmployees")
+  restaurant                  Restaurant?
+  categories                  Category[]
+  menuItems                   MenuItem[]
+  inventoryItems              InventoryItem[]              @relation("BusinessInventoryItems")
+  orders                      Order[]
+  invoices                    Invoice[]
+  stockMovements              StockMovement[]              @relation("BusinessStockMovements")
+  cashflowEntries             CashflowEntry[]              @relation("BusinessCashflowEntries")
+  rawMaterialSuppliers        RawMaterialSupplier[]
   rawMaterialStorageLocations RawMaterialStorageLocation[]
-  rawMaterialIntakes        RawMaterialIntake[]
-  rawMaterialWeighings      RawMaterialWeighing[]
-  rawMaterialBatches        RawMaterialBatch[]
-  rawMaterialProcessingRuns RawMaterialProcessingRun[]
-  rawMaterialKandangPens    RawMaterialKandangPen[]
-  rawMaterialStockMovements RawMaterialStockMovement[]
-  tables                    DiningTable[]
-  shifts                    Shift[]
-  attendances               Attendance[]
-  attendanceSetting         AttendanceSetting?
-  auditLogs                 AuditLog[]
+  rawMaterialIntakes          RawMaterialIntake[]
+  rawMaterialWeighings        RawMaterialWeighing[]
+  rawMaterialBatches          RawMaterialBatch[]
+  rawMaterialProcessingRuns   RawMaterialProcessingRun[]
+  rawMaterialKandangPens      RawMaterialKandangPen[]
+  rawMaterialStockMovements   RawMaterialStockMovement[]
+  tables                      DiningTable[]
+  shifts                      Shift[]
+  attendances                 Attendance[]
+  attendanceSetting           AttendanceSetting?
+  auditLogs                   AuditLog[]
 
   @@index([ownerId])
   @@index([type])
@@ -216,18 +216,18 @@ model Order {
 }
 
 model Payment {
-  id          String        @id @default(cuid())
-  orderId     String        @unique
-  provider    String
-  method      String
-  status      PaymentStatus @default(PENDING)
-  externalId  String?
-  paymentUrl  String?
-  qrString    String?
-  vaNumber    String?
-  paidAt      DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id         String        @id @default(cuid())
+  orderId    String        @unique
+  provider   String
+  method     String
+  status     PaymentStatus @default(PENDING)
+  externalId String?
+  paymentUrl String?
+  qrString   String?
+  vaNumber   String?
+  paidAt     DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -428,12 +428,12 @@ model RawMaterialBatch {
   createdAt         DateTime                      @default(now())
   updatedAt         DateTime                      @updatedAt
 
-  business          Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  intake            RawMaterialIntake          @relation(fields: [intakeId], references: [id])
-  storageLocation   RawMaterialStorageLocation @relation(fields: [storageLocationId], references: [id])
-  processingRuns    RawMaterialProcessingRun[]
-  kandangPens       RawMaterialKandangPen[]
-  stockMovements    RawMaterialStockMovement[]
+  business        Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  intake          RawMaterialIntake          @relation(fields: [intakeId], references: [id])
+  storageLocation RawMaterialStorageLocation @relation(fields: [storageLocationId], references: [id])
+  processingRuns  RawMaterialProcessingRun[]
+  kandangPens     RawMaterialKandangPen[]
+  stockMovements  RawMaterialStockMovement[]
 
   @@unique([businessId, lotCode])
   @@index([businessId])
@@ -538,15 +538,15 @@ model RawMaterialStockMovement {
 }
 
 model StockMovement {
-  id              String              @id @default(cuid())
+  id              String               @id @default(cuid())
   inventoryItemId String
   businessId      String
   /// Legacy compatibility while old restaurant-scoped services migrate to businessId.
   restaurantId    String?
   type            StockMovementType
   quantity        Float
-  reason          StockMovementReason @default(MANUAL_ADJUSTMENT)
-  source          StockMovementSource @default(MANUAL)
+  reason          StockMovementReason  @default(MANUAL_ADJUSTMENT)
+  source          StockMovementSource  @default(MANUAL)
   /// Legacy alias for source used by old services.
   sourceType      StockMovementSource?
   sourceId        String?
@@ -554,7 +554,7 @@ model StockMovement {
   createdById     String?
   /// Legacy alias for createdById used by old services.
   actorId         String?
-  createdAt       DateTime            @default(now())
+  createdAt       DateTime             @default(now())
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
   business      Business      @relation("BusinessStockMovements", fields: [businessId], references: [id], onDelete: Cascade)
