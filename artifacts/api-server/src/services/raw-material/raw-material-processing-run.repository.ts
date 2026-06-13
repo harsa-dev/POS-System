@@ -1,4 +1,4 @@
-import { Prisma, type RawMaterialProcessingRun, type RawMaterialProcessingStatus } from "@prisma/client";
+import { Prisma, RawMaterialProcessingStatus, type RawMaterialProcessingRun } from "@prisma/client";
 
 import { prisma } from "../../lib/prisma.js";
 import type { RawMaterialProcessingRunQuery } from "./raw-material-processing-run.types.js";
@@ -171,7 +171,7 @@ export async function updateRawMaterialProcessingRunRecord(data: RawMaterialProc
 export async function cancelRawMaterialProcessingRunRecord(id: string) {
   return prisma.rawMaterialProcessingRun.update({
     where: { id },
-    data: { status: "CANCELLED" },
+    data: { status: RawMaterialProcessingStatus.CANCELLED },
     include: { inputBatch: true },
   });
 }
