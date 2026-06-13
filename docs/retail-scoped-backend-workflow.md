@@ -16,7 +16,7 @@ Phase 6 - Retail OpenAPI client coverage: implemented
 Phase 7 - Prisma schema delegate cleanup: in progress
   Phase 7A - Schema model mapping: implemented
   Phase 7B - Summary read delegate: implemented
-  Phase 7C - Workflow read delegate: planned
+  Phase 7C - Workflow read delegate: implemented
   Phase 7D - Checkout preview + cost read delegate: planned
   Phase 7E - Sale + payment + stock movement write delegate: planned
   Phase 7F - Guarded workflow status write delegate: planned
@@ -59,19 +59,6 @@ Do not use full `prisma migrate dev` or `prisma migrate deploy` for this Retail 
 
 ## Phase 2 - Backend route, guard, and workflow preview: implemented
 
-Implemented scope:
-
-```txt
-- Retail routes are mounted under /api/retail/*
-- Retail route handlers are authenticated except health
-- Retail route handlers resolve business context
-- Retail route handlers verify Retail business mode
-- Retail sale preview exists
-- Retail mock checkout exists
-- Retail real checkout endpoint exists
-- Retail return preview exists
-```
-
 Implemented endpoints:
 
 ```txt
@@ -83,6 +70,7 @@ GET  /api/retail/barcode/:code
 GET  /api/retail/inventory/risks
 GET  /api/retail/receiving
 GET  /api/retail/command-center
+GET  /api/retail/shared-dashboard/:dashboardId
 POST /api/retail/sales/preview
 POST /api/retail/sales/mock-checkout
 POST /api/retail/sales/checkout
@@ -121,15 +109,6 @@ Primary endpoint:
 
 ```txt
 GET /api/retail/shared-dashboard/:dashboardId
-```
-
-Retail behavior:
-
-```txt
-- render relevant Retail dashboard context
-- replace generic dashboards that do not fit Retail
-- skip payroll/contracts/attendance-heavy pages unless Retail-specific workforce logic exists
-- fallback to local Retail mock context if API is unavailable
 ```
 
 ---
@@ -270,18 +249,6 @@ pnpm --filter @workspace/api-server run generate
 pnpm --filter @workspace/api-server run typecheck:retail
 ```
 
-Delegate target after the command succeeds:
-
-```txt
-prisma.retailProduct.findMany
-prisma.retailProduct.findFirst
-prisma.retailProduct.update
-prisma.retailSale.create
-prisma.retailSaleItem.createMany
-prisma.retailPayment.create
-prisma.retailStockMovement.create
-```
-
 ### Phase 7B - Summary read delegate: implemented
 
 Implemented scope:
@@ -293,12 +260,6 @@ Implemented scope:
 - Summary DTO shapes remain unchanged
 - No route changes are required
 - No frontend changes are required
-```
-
-Primary file:
-
-```txt
-artifacts/api-server/src/services/retail/retail.prisma-repository.ts
 ```
 
 Converted repository methods:
@@ -318,46 +279,45 @@ Delegate behavior:
 - getInventoryRisks derives suggestedOrderQty and estimatedCost in application code
 ```
 
-Why some raw SQL still exists:
+### Phase 7C - Workflow read delegate: implemented
+
+Implemented scope:
 
 ```txt
-Phase 7B only covers summary reads. Workflow reads, receiving reads, preview cost reads, checkout writes, and guarded status writes are intentionally left for Phase 7C-7F.
+- Retail product detail reads now use prisma.retailProduct.findFirst
+- Retail barcode/SKU lookup now uses prisma.retailProduct.findFirst
+- Retail receiving queue reads now use prisma.retailReceiving.findMany with supplier and product item selects
+- Product DTO shape remains unchanged
+- Receiving queue DTO shape remains unchanged
+- No route changes are required
+- No frontend changes are required
+- Checkout write transaction is intentionally still raw SQL until Phase 7E
 ```
 
-Acceptance criteria:
-
-```txt
-- GET /api/retail/products still returns the same product DTO shape
-- GET /api/retail/inventory/risks still returns the same risk DTO shape
-- GET /api/retail/dashboard still works because service summary reads still use the repository seam
-- GET /api/retail/shared-dashboard/:dashboardId still works without route/frontend changes
-```
-
-### Phase 7C - Workflow read delegate: planned
-
-Goal:
-
-```txt
-Convert operational read workflows from raw SQL to Prisma delegates.
-```
-
-Target methods:
+Converted repository methods:
 
 ```txt
 findProductById(scope, productId)
 findProductByCode(scope, code)
 listReceivingQueue(scope)
-sale preview product lookup reads
-return preview sale/product lookup reads
+```
+
+Delegate behavior:
+
+```txt
+- findProductById stays business-scoped and active-product scoped
+- findProductByCode resolves barcode or SKU case-insensitively
+- listReceivingQueue stays business-scoped and orders by expectedDate ascending
+- listReceivingQueue maps nested receiving items into the existing missingQty DTO shape
 ```
 
 Acceptance criteria:
 
 ```txt
-- Barcode lookup still resolves by barcode or SKU
-- Product detail still remains business-scoped
-- Receiving queue still remains business-scoped
-- Sale preview still validates inactive/out-of-stock products correctly
+- GET /api/retail/products/:id still returns the same product DTO shape
+- GET /api/retail/barcode/:code still resolves by barcode or SKU
+- GET /api/retail/receiving still returns the same receiving queue DTO shape
+- POST /api/retail/sales/preview can still reuse repository product reads without route changes
 ```
 
 ### Phase 7D - Checkout preview + cost read delegate: planned
