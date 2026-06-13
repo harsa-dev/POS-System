@@ -7,6 +7,8 @@ const allModes = [
   "custom-business",
 ] as const;
 
+const cashierShiftModes = ["restaurant", "retail"] as const;
+
 export const businessModules: readonly V3ModuleMetadata[] = [
   {
     id: "employees",
@@ -42,7 +44,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
     description: "Shared shift reporting workspace for cashier performance and reconciliation.",
     layer: "business",
     status: "active",
-    supportedModes: allModes,
+    supportedModes: cashierShiftModes,
     routeBase: "/dashboard/cashier-shift-reports",
     sidebarGroup: "Shared Business",
     sidebarVisible: true,
