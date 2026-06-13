@@ -1,9 +1,15 @@
+import { useState } from "react";
+
 import { ServiceBusinessConfigReadinessPanel } from "./service-business-config-readiness-panel";
 import { ServiceBusinessEmptyState } from "./service-business-empty-state";
 import { ServiceBusinessJobDetailPanel } from "./service-business-job-detail-panel";
 import { ServiceBusinessJobList } from "./service-business-job-list";
 import { ServiceBusinessMetricCards } from "./service-business-metric-cards";
 import { ServiceBusinessPlaceholderPanel } from "./service-business-placeholder-panel";
+import {
+  ServiceBusinessPreviewModal,
+  type ServiceBusinessPreviewModalType,
+} from "./service-business-preview-modal";
 import { ServiceBusinessPricingModulesPanel } from "./service-business-pricing-modules-panel";
 import { ServiceBusinessWorkflowPipeline } from "./service-business-workflow-pipeline";
 import { ServiceBusinessWorkspaceHeader } from "./service-business-workspace-header";
@@ -11,6 +17,8 @@ import { useServiceBusinessWorkspace } from "./use-service-business-workspace";
 
 export function ServiceBusinessWorkspaceLayout() {
   const workspace = useServiceBusinessWorkspace();
+  const [activePreviewModal, setActivePreviewModal] =
+    useState<ServiceBusinessPreviewModalType | null>(null);
   const hasFilteredJobs = workspace.filteredJobs.length > 0;
   const shouldShowJobs =
     workspace.activeTab === "overview" || workspace.activeTab === "jobs";
@@ -24,6 +32,8 @@ export function ServiceBusinessWorkspaceLayout() {
         availableStatuses={workspace.availableStatuses}
         filteredCount={workspace.filteredJobs.length}
         onActiveTabChange={workspace.setActiveTab}
+        onOpenQuotationPreview={() => setActivePreviewModal("quotation")}
+        onOpenRequestPreview={() => setActivePreviewModal("request")}
         onPriorityFilterChange={workspace.setPriorityFilter}
         onResetFilters={workspace.resetFilters}
         onSearchQueryChange={workspace.setSearchQuery}
@@ -74,6 +84,15 @@ export function ServiceBusinessWorkspaceLayout() {
         <ServiceBusinessConfigReadinessPanel
           configDraft={workspace.configDraft}
           readinessChecks={workspace.readinessChecks}
+        />
+      ) : null}
+
+      {activePreviewModal ? (
+        <ServiceBusinessPreviewModal
+          key={`${activePreviewModal}-${workspace.selectedJobId ?? "none"}`}
+          selectedJob={workspace.selectedJob}
+          type={activePreviewModal}
+          onClose={() => setActivePreviewModal(null)}
         />
       ) : null}
     </div>
