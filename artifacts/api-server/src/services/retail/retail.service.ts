@@ -11,12 +11,23 @@ import type {
   RetailSaleLinePreviewDto,
   RetailSalePreviewDto,
   RetailSalePreviewInput,
+  RetailSharedDashboardDto,
+  RetailSharedDashboardId,
+  RetailSharedDashboardRowDto,
 } from "./retail.types.js";
 
 const defaultPaymentMethod: RetailCheckoutPaymentMethod = "cash";
 
 function roundMoney(value: number) {
   return Math.round(value);
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function calculateTaxIncluded(lineTotal: number, taxRatePercent: number) {
@@ -54,6 +65,35 @@ function buildSaleLinePreview(input: { product: RetailProductDto; quantity: numb
     blocked,
     warning: blocked ? "Requested quantity is not available in retail stock." : undefined,
   };
+}
+
+function getProductRows(products: RetailProductDto[]): RetailSharedDashboardRowDto[] {
+  return products.slice(0, 6).map((product) => ({
+    title: product.name,
+    primary: `${product.sku} · ${product.currentStock} ${product.unit} · ${formatMoney(product.price)}`,
+    secondary: `${product.shelfLocation} · ${product.category} · reorder at ${product.reorderPoint}`,
+    status: product.currentStock <= 0 ? "blocked" : product.currentStock <= product.reorderPoint ? "review" : "healthy",
+  }));
+}
+
+function getRiskRows(risks: Awaited<ReturnType<typeof retailRepository.getInventoryRisks>>): RetailSharedDashboardRowDto[] {
+  return risks.slice(0, 6).map((risk) => ({
+    title: risk.name,
+    primary: `${risk.sku} · stock ${risk.currentStock}/${risk.reorderPoint}`,
+    secondary: `Suggested order ${risk.suggestedOrderQty} · estimated ${formatMoney(risk.estimatedCost)}`,
+    status: risk.currentStock <= 0 ? "blocked" : "review",
+  }));
+}
+
+function getSkippedRows(label: string, replacement: string): RetailSharedDashboardRowDto[] {
+  return [
+    {
+      title: `${label} is not called in retail mode`,
+      primary: `Retail mode uses ${replacement} instead of the generic shared dashboard component.`,
+      secondary: "The original dashboard remains available for other business modes.",
+      status: "planned",
+    },
+  ];
 }
 
 async function previewSale(scope: RetailBusinessScope, input: RetailSalePreviewInput): Promise<RetailSalePreviewDto> {
@@ -162,6 +202,109 @@ export const retailService = {
 
   getReceivingQueue(scope: RetailBusinessScope) {
     return retailRepository.listReceivingQueue(scope);
+  },
+
+  async getSharedDashboard(scope: RetailBusinessScope, dashboardId: RetailSharedDashboardId): Promise<RetailSharedDashboardDto> {
+    const dashboard = await this.getDashboard(scope);
+    const products = await retailRepository.listProducts(scope);
+    const risks = await retailRepository.getInventoryRisks(scope);
+    const receivingQueue = await retailRepository.listReceivingQueue(scope);
+    const commandCenter = await this.getCommandCenter(scope);
+    const margin = dashboard.summary.todayRevenue > 0
+      ? Math.round((dashboard.summary.grossProfit / dashboard.summary.todayRevenue) * 100)
+      : 0;
+    const productRows = getProductRows(products);
+    const riskRows = getRiskRows(risks);
+    const receivingRows: RetailSharedDashboardRowDto[] = receivingQueue.slice(0, 6).map((item) => ({
+      title: item.supplierName,
+      primary: `${item.status} · expected ${item.expectedDate}`,
+      secondary: `${item.items.length} lines · ${formatMoney(item.totalCost)}`,
+      status: item.status === "received" ? "healthy" : "review",
+    }));
+    const actionRows: RetailSharedDashboardRowDto[] = commandCenter.priorityActions.map((action) => ({
+      title: action.title,
+      primary: `${action.ownerRole} · ${action.source}`,
+      secondary: `Priority ${action.priority}`,
+      status: action.priority === "high" ? "review" : "planned",
+    }));
+
+    if (dashboardId === "inventory") {
+      return {
+        id: dashboardId,
+        title: "Retail inventory control",
+        description: "Retail inventory is loaded from the Prisma-backed retail product and receiving tables.",
+        metrics: [
+          { label: "Active SKU", value: String(dashboard.summary.activeSku), helper: "From RetailProduct table" },
+          { label: "Stock alerts", value: String(dashboard.summary.stockAlerts), helper: "Below reorder point or empty" },
+          { label: "Pending receiving", value: String(dashboard.summary.pendingReceiving), helper: "Open supplier receiving" },
+        ],
+        rows: riskRows.length > 0 ? riskRows : productRows,
+        bridgeNote: "This shared dashboard is served by /api/retail/shared-dashboard/inventory.",
+        source: "prisma",
+      };
+    }
+
+    if (dashboardId === "cashflow" || dashboardId === "financial-reports" || dashboardId === "sales") {
+      return {
+        id: dashboardId,
+        title: dashboardId === "sales" ? "Retail sales analytics" : dashboardId === "cashflow" ? "Retail cashflow" : "Retail financial reports",
+        description: "Retail financial signals use persisted retail products and checkout readiness from the backend.",
+        metrics: [
+          { label: "Revenue preview", value: formatMoney(dashboard.summary.todayRevenue), helper: "Projected from retail checkout service" },
+          { label: "Gross profit", value: formatMoney(dashboard.summary.grossProfit), helper: `${margin}% margin preview` },
+          { label: "Checkout writes", value: dashboard.checkoutReadiness.writesDatabase ? "Enabled" : "Mock", helper: "RetailSale + payment + stock movement" },
+        ],
+        rows: productRows,
+        bridgeNote: `This shared dashboard is served by /api/retail/shared-dashboard/${dashboardId}.`,
+        source: "prisma",
+      };
+    }
+
+    if (dashboardId === "invoice-generator") {
+      return {
+        id: dashboardId,
+        title: "Retail receipts and supplier billing",
+        description: "Retail mode uses receipt and supplier receiving context instead of generic invoice generation.",
+        metrics: [
+          { label: "Open receiving", value: String(dashboard.summary.pendingReceiving), helper: "Supplier billing readiness" },
+          { label: "Receiving value", value: formatMoney(receivingQueue.reduce((total, item) => total + item.totalCost, 0)), helper: "Open PO value" },
+          { label: "Receipt mode", value: "Retail", helper: "Customer receipt first, invoice optional" },
+        ],
+        rows: receivingRows,
+        bridgeNote: "This shared dashboard is served by /api/retail/shared-dashboard/invoice-generator.",
+        source: "prisma",
+      };
+    }
+
+    if (dashboardId === "employee-attendance" || dashboardId === "employee-contracts" || dashboardId === "payroll") {
+      return {
+        id: dashboardId,
+        title: "Retail HR surface skipped",
+        description: "Retail mode does not call heavy HR dashboards until staff payroll and contracts become a retail requirement.",
+        metrics: [
+          { label: "Status", value: "Skipped", helper: "Not required for Retail Mode scope" },
+          { label: "Replacement", value: "Shift reports", helper: "Cashier shift context only" },
+          { label: "Source", value: "Prisma API", helper: "Served by retail backend" },
+        ],
+        rows: getSkippedRows(dashboardId, "retail shift reports"),
+        bridgeNote: `This shared dashboard is intentionally skipped in retail mode by /api/retail/shared-dashboard/${dashboardId}.`,
+        source: "prisma",
+      };
+    }
+
+    return {
+      id: dashboardId,
+      title: "Retail command context",
+      description: "Retail shared dashboard bridge is using backend retail command, stock, receiving, and checkout readiness signals.",
+      metrics: [
+        { label: "Health score", value: `${commandCenter.healthScore}/100`, helper: "Retail command center" },
+        { label: "Action queue", value: String(commandCenter.priorityActions.length), helper: "Manager/owner actions" },
+        { label: "Prisma source", value: "Active", helper: "Backend route is wired" },
+      ],
+      rows: actionRows.length > 0 ? actionRows : productRows,
+      bridgeNote: `This shared dashboard is served by /api/retail/shared-dashboard/${dashboardId}.`,
+      source: "prisma",
+    };
   },
 
   previewSale,
