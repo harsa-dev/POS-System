@@ -1,6 +1,6 @@
 # Custom Business Service Prisma Delegate Cleanup
 
-Status: Phase 7B in progress  
+Status: Phase 7D in progress  
 Scope: Business Mode Service / Custom Business Service  
 Branch: main
 
@@ -80,7 +80,7 @@ Business -> ServiceRequest[] -> ServiceTimelineItem[]
 
 This avoids Prisma validation error P1012 for a missing opposite relation field.
 
-## Phase 7B implemented so far
+## Phase 7B and 7C implemented
 
 A delegate-backed read repository exists at:
 
@@ -129,23 +129,51 @@ artifacts/api-server/src/features/service-business/service-business.repository.t
 
 So the workflow preview and guarded status update read side no longer uses raw SQL for target lookup or readiness checks. The guarded status write transaction still uses explicit SQL for now.
 
+## Phase 7D implemented so far
+
+A delegate-backed write helper exists at:
+
+```txt
+artifacts/api-server/src/features/service-business/service-business.delegate-writes.repository.ts
+```
+
+The first write paths moved to generated Prisma delegates are:
+
+```txt
+createServiceRequestRecordWithDelegate(...)
+createServiceCostLineRecordWithDelegate(...)
+```
+
+The public repository functions still keep the same names:
+
+```txt
+createServiceRequestRecord(...)
+createServiceCostLineRecord(...)
+```
+
+Those functions now delegate to the Prisma helper instead of writing raw SQL directly.
+
+This keeps the route and service contracts unchanged while moving the safest write paths first.
+
 ## Current raw SQL boundary
 
 The following write-heavy paths still intentionally use raw SQL:
 
 ```txt
-artifacts/api-server/src/features/service-business/service-business.crud.repository.ts
+artifacts/api-server/src/features/service-business/service-business.crud.repository.ts::createServiceQuotationRecord
+artifacts/api-server/src/features/service-business/service-business.crud.repository.ts::approveServiceQuotationRecord
+artifacts/api-server/src/features/service-business/service-business.crud.repository.ts::createServiceInvoiceRecord
+artifacts/api-server/src/features/service-business/service-business.crud.repository.ts::recordServiceInvoicePaymentRecord
 artifacts/api-server/src/features/service-business/service-business.repository.ts::updateServiceWorkflowStatus
 ```
 
 Recommended next order:
 
 ```txt
-1. Simple writes: createServiceCostLineRecord, createServiceQuotationRecord.
-2. Approval/update writes: approveServiceQuotationRecord.
+1. Quotation write transaction: createServiceQuotationRecord.
+2. Approval/update write transaction: approveServiceQuotationRecord.
 3. Invoice writes: createServiceInvoiceRecord, recordServiceInvoicePaymentRecord.
-4. Request creation transaction: createServiceRequestRecord.
-5. Workflow transaction: updateServiceWorkflowStatus.
+4. Workflow transaction: updateServiceWorkflowStatus.
 ```
 
 Keep transaction boundaries explicit when replacing raw SQL multi-step writes.
@@ -177,33 +205,3 @@ If `generate` fails with a relation error around `Business.serviceTimelineItems`
 ## No migration rule
 
 Do not create a new migration just for this cleanup phase unless Prisma validation proves the active schema cannot map the existing SQL migration.
-
-The target is delegate mapping for existing database objects, not schema creation.
-
-## Safety constraints
-
-Do not touch:
-
-```txt
-Restaurant workflow
-Retail workflow
-Raw-material workflow
-Business mode selector activation
-Existing shared Invoice model
-Existing Cashflow model
-Existing AuditLog model
-```
-
-Do not rename the SQL tables created by the Service Business migration.
-
-## Completion definition
-
-Phase 7 is complete only when:
-
-```txt
-schema.prisma includes Service Business models and enums
-prisma generate passes
-api-server typecheck passes
-repository raw SQL usage is reduced or isolated behind delegates
-existing endpoint contracts still pass
-```
