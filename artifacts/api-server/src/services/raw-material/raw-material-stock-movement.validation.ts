@@ -19,13 +19,18 @@ const allowedTypes = new Set<RawMaterialStockMovementType>([
 ]);
 
 const allowedReasons = new Set<RawMaterialStockMovementReason>([
-  "BATCH_CREATION",
+  "PURCHASE",
+  "RECEIVING",
   "MANUAL_ADJUSTMENT",
-  "TRANSFER",
-  "PROCESSING_USAGE",
-  "WASTE",
+  "STOCK_COUNT",
   "CORRECTION",
-  "OPENING_BALANCE",
+  "TRANSFER_IN",
+  "TRANSFER_OUT",
+  "PRODUCTION_USAGE",
+  "WASTE",
+  "DAMAGED",
+  "EXPIRED",
+  "RETURN",
 ]);
 
 const allowedSources = new Set<RawMaterialStockMovementSource>([
@@ -34,6 +39,7 @@ const allowedSources = new Set<RawMaterialStockMovementSource>([
   "BATCH",
   "PROCESSING_RUN",
   "TRANSFER",
+  "STOCK_COUNT",
   "SYSTEM",
 ]);
 
@@ -84,7 +90,7 @@ export function validateRawMaterialAdjustmentInput(input: RawMaterialAdjustmentI
   if (!Number.isFinite(deltaQuantity) || deltaQuantity === 0) {
     throw new Error("Adjustment delta quantity must be a non-zero number");
   }
-  if (reason === "TRANSFER" || reason === "PROCESSING_USAGE") {
+  if (reason === "TRANSFER_IN" || reason === "TRANSFER_OUT" || reason === "PRODUCTION_USAGE") {
     throw new Error("Adjustment reason is not allowed for manual adjustment");
   }
 
