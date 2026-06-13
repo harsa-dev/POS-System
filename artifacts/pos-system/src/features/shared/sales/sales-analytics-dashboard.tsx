@@ -33,6 +33,7 @@ import { DataTable, TableToolbar, type DataTableColumn } from "@/features/shared
 import type { DashboardTone, DateRangeOption } from "@/features/shared/types";
 import {
   salesAnalyticsApi,
+  salesAnalyticsSortKeys,
   type SalesAnalyticsDataPointDto,
   type SalesAnalyticsDto,
   type SalesAnalyticsExportFileDto,
@@ -42,6 +43,8 @@ import {
   type SalesAnalyticsReconciliationDetailRowDto,
   type SalesAnalyticsReconciliationDto,
   type SalesAnalyticsReconciliationIssueSeverity,
+  type SalesAnalyticsSortDirection,
+  type SalesAnalyticsSortKey,
   type SalesTransactionDto,
 } from "@/lib/api/sales-analytics-api";
 
@@ -49,7 +52,7 @@ const ALL_PRODUCTS = "__all_products__";
 const ALL_CATEGORIES = "__all_categories__";
 const ALL_PAYMENT_METHODS = "__all_payment_methods__";
 const ALL_ORDER_STATUSES = "__all_order_statuses__";
-const DEFAULT_ROW_LIMIT = 50;
+const DEFAULT_PAGE_SIZE = 10;
 
 const emptySummary: SalesAnalyticsDto["summary"] = {
   grossRevenue: 0,
@@ -186,7 +189,7 @@ function getIssueTone(severity: SalesAnalyticsReconciliationIssueSeverity): Dash
 }
 
 const reconciliationDetailColumns: DataTableColumn<SalesAnalyticsReconciliationDetailRowDto>[] = [
-  { key: "date", header: "Date", cell: (row) => formatDate(row.date) },
+  { key: "date", header: "Date", cell: (row) => formatDate(row.date), sortable: true },
   { key: "sourceType", header: "Source", cell: (row) => formatStatusLabel(row.sourceType) },
   {
     key: "reference",
@@ -370,6 +373,10 @@ export function SalesAnalyticsDashboard() {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState(ALL_PAYMENT_METHODS);
   const [orderStatusFilter, setOrderStatusFilter] = useState(ALL_ORDER_STATUSES);
   const [dateRange, setDateRange] = useState<DateRangeOption>("This Month");
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<SalesAnalyticsSortKey>("date");
+  const [sortDirection, setSortDirection] =
+    useState<SalesAnalyticsSortDirection>("desc");
   const [report, setReport] = useState<SalesAnalyticsDto | null>(null);
   const [filterOptions, setFilterOptions] =
     useState<SalesAnalyticsFilterOptionsDto | null>(null);
@@ -387,7 +394,10 @@ export function SalesAnalyticsDashboard() {
     return {
       ...getDateRangeQuery(dateRange),
       basis: "paid",
-      limit: DEFAULT_ROW_LIMIT,
+      page,
+      pageSize: DEFAULT_PAGE_SIZE,
+      sortBy,
+      sortDirection,
       productId: productFilter === ALL_PRODUCTS ? undefined : productFilter,
       categoryId: categoryFilter === ALL_CATEGORIES ? undefined : categoryFilter,
       paymentMethod:
@@ -398,7 +408,17 @@ export function SalesAnalyticsDashboard() {
           : (orderStatusFilter as SalesAnalyticsOrderStatus),
       q: search || undefined,
     };
-  }, [categoryFilter, dateRange, orderStatusFilter, paymentMethodFilter, productFilter, productSearch]);
+  }, [
+    categoryFilter,
+    dateRange,
+    orderStatusFilter,
+    page,
+    paymentMethodFilter,
+    productFilter,
+    productSearch,
+    sortBy,
+    sortDirection,
+  ]);
 
   const loadReport = useCallback(async () => {
     setIsLoading(true);
@@ -410,7 +430,7 @@ export function SalesAnalyticsDashboard() {
         await Promise.all([
           salesAnalyticsApi.getReport(query),
           salesAnalyticsApi.getReconciliation(query),
-          salesAnalyticsApi.getFilterOptions(query),
+          salesAnalyticsApi.getFilterOptions(),
         ]);
 
       setReport(reportResponse.data);
@@ -430,6 +450,17 @@ export function SalesAnalyticsDashboard() {
   useEffect(() => {
     void loadReport();
   }, [loadReport, refreshToken]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    categoryFilter,
+    dateRange,
+    orderStatusFilter,
+    paymentMethodFilter,
+    productFilter,
+    productSearch,
+  ]);
 
   const rows = report?.rows ?? [];
   const summary = report?.summary ?? emptySummary;
@@ -482,6 +513,27 @@ export function SalesAnalyticsDashboard() {
     setRefreshToken((value) => value + 1);
   }, []);
 
+  const handleSortChange = useCallback((nextSortBy: string) => {
+    if (!salesAnalyticsSortKeys.includes(nextSortBy as SalesAnalyticsSortKey)) {
+      return;
+    }
+
+    const typedSortBy = nextSortBy as SalesAnalyticsSortKey;
+
+    setPage(1);
+    setSortBy((currentSortBy) => {
+      if (currentSortBy === typedSortBy) {
+        setSortDirection((currentDirection) =>
+          currentDirection === "asc" ? "desc" : "asc",
+        );
+        return currentSortBy;
+      }
+
+      setSortDirection("desc");
+      return typedSortBy;
+    });
+  }, []);
+
   const handleExport = useCallback(async () => {
     if (!report) return;
 
@@ -514,17 +566,19 @@ export function SalesAnalyticsDashboard() {
         <span className="font-semibold text-foreground">#{row.orderNumber}</span>
       ),
     },
-    { key: "date", header: "Date", cell: (row) => formatDate(row.date) },
+    { key: "date", header: "Date", cell: (row) => formatDate(row.date), sortable: true },
     {
       key: "productName",
       header: "Product",
+      sortable: true,
       cell: (row) => <span className="font-medium text-foreground">{row.productName}</span>,
     },
     { key: "categoryName", header: "Category", cell: (row) => row.categoryName },
-    { key: "quantity", header: "Quantity", cell: (row) => formatNumber(row.quantity) },
+    { key: "quantity", header: "Quantity", cell: (row) => formatNumber(row.quantity), sortable: true },
     {
       key: "paymentStatus",
       header: "Payment Status",
+      sortable: true,
       cell: (row) => (
         <StatusPill tone={getStatusTone(row.paymentStatus)}>
           {formatStatusLabel(row.paymentStatus)}
@@ -559,17 +613,20 @@ export function SalesAnalyticsDashboard() {
     {
       key: "totalRevenue",
       header: "Total Revenue",
+      sortable: true,
       cell: (row) => <span className="font-medium">{formatCurrency(row.totalRevenue)}</span>,
     },
     { key: "cogs", header: "COGS / HPP", cell: (row) => formatCurrency(row.cogs) },
     {
       key: "grossProfit",
       header: "Gross Profit",
+      sortable: true,
       cell: (row) => <span className="font-medium">{formatCurrency(row.grossProfit)}</span>,
     },
     {
       key: "margin",
       header: "Margin",
+      sortable: true,
       cell: (row) => `${row.margin.toFixed(1)}%`,
     },
     {
@@ -821,6 +878,24 @@ export function SalesAnalyticsDashboard() {
                 ? "Loading backend sales rows..."
                 : "No backend sales analytics rows for this filter yet."
             }
+            pagination={
+              report
+                ? {
+                    label: "Sales rows",
+                    page: report.pagination.page,
+                    pageSize: report.pagination.pageSize,
+                    totalRows: report.pagination.totalRows,
+                    totalPages: report.pagination.totalPages,
+                    onPageChange: setPage,
+                  }
+                : { pageSize: DEFAULT_PAGE_SIZE }
+            }
+            sorting={{
+              sortBy,
+              sortDirection,
+              onSortChange: handleSortChange,
+              sortableKeys: [...salesAnalyticsSortKeys],
+            }}
           />
         </DashboardPanel>
       )}

@@ -8,7 +8,10 @@ export type {
   SalesAnalyticsFilterOptionDto,
   SalesAnalyticsFilterOptionsDto,
   SalesAnalyticsOrderStatus,
+  SalesAnalyticsPaginationDto,
   SalesAnalyticsQuery,
+  SalesAnalyticsSortDirection,
+  SalesAnalyticsSortKey,
   SalesAnalyticsReconciliationDetailRowDto,
   SalesAnalyticsReconciliationDto,
   SalesAnalyticsReconciliationIssueDto,
@@ -22,6 +25,8 @@ export {
   salesAnalyticsBases,
   salesAnalyticsExportFormats,
   salesAnalyticsPaidOrderStatuses,
+  salesAnalyticsSortDirections,
+  salesAnalyticsSortKeys,
 } from "./sales-analytics.types.js";
 
 export {
