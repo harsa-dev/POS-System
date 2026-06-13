@@ -1,4 +1,9 @@
-import { Prisma, RawMaterialProcessingStatus, type RawMaterialProcessingRun } from "@prisma/client";
+import {
+  Prisma,
+  RawMaterialProcessingStatus,
+  type RawMaterialBatchQualityStatus,
+  type RawMaterialProcessingRun,
+} from "@prisma/client";
 
 import { prisma } from "../../lib/prisma.js";
 import type { RawMaterialProcessingRunQuery } from "./raw-material-processing-run.types.js";
@@ -6,7 +11,7 @@ import type { RawMaterialProcessingRunQuery } from "./raw-material-processing-ru
 export type RawMaterialProcessingInputBatchForMutation = Readonly<{
   id: string;
   remainingQuantity: number;
-  qualityStatus: string;
+  qualityStatus: RawMaterialBatchQualityStatus;
   isActive: boolean;
 }>;
 
