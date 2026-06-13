@@ -17,7 +17,7 @@ Phase 7 - Prisma schema delegate cleanup: in progress
   Phase 7A - Schema model mapping: implemented
   Phase 7B - Summary read delegate: implemented
   Phase 7C - Workflow read delegate: implemented
-  Phase 7D - Checkout preview + cost read delegate: planned
+  Phase 7D - Checkout preview + cost read delegate: implemented
   Phase 7E - Sale + payment + stock movement write delegate: planned
   Phase 7F - Guarded workflow status write delegate: planned
 ```
@@ -320,30 +320,42 @@ Acceptance criteria:
 - POST /api/retail/sales/preview can still reuse repository product reads without route changes
 ```
 
-### Phase 7D - Checkout preview + cost read delegate: planned
+### Phase 7D - Checkout preview + cost read delegate: implemented
 
-Goal:
+Implemented scope:
 
 ```txt
-Move preview-time product, stock, cost, tax, discount, and gross-profit calculations onto Prisma delegate reads.
+- Retail checkout preview batch-loads active products through the delegate-backed product listing
+- Preview no longer loops one product detail read per sale line
+- Preview still blocks invalid product IDs
+- Preview still blocks inactive products because the delegate-backed product listing is active-product scoped
+- Preview still blocks insufficient stock
+- Preview keeps the same DTO contract for preview, mock checkout, and real checkout preflight
+- Preview calculates subtotal, discount, tax included, payable total, and gross profit before write transaction
 ```
 
-Target behavior:
+Converted service behavior:
 
 ```txt
-- Preview reads products through prisma.retailProduct
-- Preview keeps current DTO contract
-- Preview blocks invalid product IDs
-- Preview blocks inactive products
-- Preview blocks insufficient stock
-- Preview calculates subtotal, discount, tax, total, and gross profit consistently with checkout
+previewSale(scope, input)
+```
+
+Delegate behavior:
+
+```txt
+- previewSale reads products through retailRepository.listProducts(scope)
+- retailRepository.listProducts(scope) is backed by prisma.retailProduct.findMany from Phase 7B
+- previewSale builds a product map by requested product IDs
+- previewSale calculates line totals and gross profit from delegate-backed price, cost, stock, and tax fields
+- checkout(scope, actor, input) reuses the same preview before calling createSale
 ```
 
 Acceptance criteria:
 
 ```txt
 - POST /api/retail/sales/preview still returns the same totals and validation reasons
-- POST /api/retail/sales/checkout can reuse preview calculations safely
+- POST /api/retail/sales/mock-checkout still reuses preview without DB writes
+- POST /api/retail/sales/checkout can reuse preview calculations safely before the Phase 7E write transaction
 ```
 
 ### Phase 7E - Sale + payment + stock movement write delegate: planned
