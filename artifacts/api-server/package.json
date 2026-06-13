@@ -9,6 +9,8 @@
     "build": "pnpm run generate && node ./build.mjs",
     "start": "node --env-file-if-exists=.env --enable-source-maps ./dist/index.mjs",
     "typecheck": "pnpm run generate && tsc -p tsconfig.json --noEmit",
+    "typecheck:retail": "pnpm run generate && tsc -p tsconfig.retail.json --noEmit",
+    "retail:db:apply": "prisma db execute --schema prisma/schema.prisma --file prisma/migrations/202606140001_add_retail_core/migration.sql",
     "backfill:businesses": "node --env-file-if-exists=.env --import tsx ./scripts/backfill-business-tenant-bridge.ts",
     "backfill:inventory-business-scope": "node --env-file-if-exists=.env --import tsx ./scripts/backfill-inventory-business-scope.ts"
   },
