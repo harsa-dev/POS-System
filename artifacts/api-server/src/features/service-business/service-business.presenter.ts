@@ -1,4 +1,5 @@
-import { serviceBusinessWorkflowStatuses, type ServiceTransitionPreview } from "./service-business.types.js";
+import type { ServiceBusinessJob, ServiceBusinessMutationResult, ServiceTransitionPreview } from "./service-business.types.js";
+import { serviceBusinessWorkflowStatuses } from "./service-business.types.js";
 import { serviceBusinessAllowedTransitions } from "./service-business.workflow.js";
 
 export function presentServiceWorkflowStatuses() {
@@ -26,4 +27,28 @@ export function presentServiceStatusMutation({
     message: `Status changed to ${nextStatus}.`,
     transition: preview,
   };
+}
+
+export function presentServiceWorkspace(jobs: readonly ServiceBusinessJob[]) {
+  return {
+    jobs,
+    generatedAt: new Date().toISOString(),
+    mode: "custom-business-service",
+    dryRun: false,
+    source: "api-server-prisma-sql",
+  };
+}
+
+export function presentServiceJobList(jobs: readonly ServiceBusinessJob[]) {
+  return {
+    data: jobs,
+    meta: {
+      source: "api-server-prisma-sql",
+      dryRun: false,
+    },
+  };
+}
+
+export function presentServiceBusinessMutation(result: ServiceBusinessMutationResult) {
+  return result;
 }
