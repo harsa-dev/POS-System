@@ -14,14 +14,18 @@ import {
   createRawMaterialIntake,
   createRawMaterialStorageLocation,
   createRawMaterialSupplier,
+  createRawMaterialWeighing,
   deactivateRawMaterialStorageLocation,
   deactivateRawMaterialSupplier,
+  deleteRawMaterialWeighing,
   listRawMaterialIntakes,
   listRawMaterialStorageLocations,
   listRawMaterialSuppliers,
+  listRawMaterialWeighings,
   updateRawMaterialIntake,
   updateRawMaterialStorageLocation,
   updateRawMaterialSupplier,
+  updateRawMaterialWeighing,
 } from "../services/raw-material/index.js";
 
 const router = Router();
@@ -283,6 +287,92 @@ router.delete("/raw-material/intakes/:id", async (req, res) => {
     return successResponse(res, {
       data,
       message: "Raw material intake cancelled.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/raw-material/weighings", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await listRawMaterialWeighings({
+      actor: getActor(user),
+      businessContext,
+      intakeId: typeof req.query.intakeId === "string" ? req.query.intakeId : undefined,
+      stationName: typeof req.query.stationName === "string" ? req.query.stationName : undefined,
+      operatorName: typeof req.query.operatorName === "string" ? req.query.operatorName : undefined,
+      search: typeof req.query.search === "string" ? req.query.search : undefined,
+    });
+
+    return successResponse(res, { data });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/raw-material/weighings", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await createRawMaterialWeighing({
+      actor: getActor(user),
+      businessContext,
+      input: req.body ?? {},
+    });
+
+    return successResponse(res, {
+      data,
+      status: 201,
+      message: "Raw material weighing created.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.patch("/raw-material/weighings/:id", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await updateRawMaterialWeighing({
+      actor: getActor(user),
+      businessContext,
+      id: req.params.id,
+      input: req.body ?? {},
+    });
+
+    return successResponse(res, {
+      data,
+      message: "Raw material weighing updated.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.delete("/raw-material/weighings/:id", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await deleteRawMaterialWeighing({
+      actor: getActor(user),
+      businessContext,
+      id: req.params.id,
+    });
+
+    return successResponse(res, {
+      data,
+      message: "Raw material weighing deleted.",
     });
   } catch (error) {
     return handleApiError(res, error);
