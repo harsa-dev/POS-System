@@ -14,6 +14,7 @@ import type {
   ServiceBusinessInvoiceStatus,
   ServiceBusinessPriority,
   ServiceBusinessWorkflowStatus,
+  ServiceWorkflowTargetRow,
 } from "./service-business.types.js";
 import type {
   ServiceInvoiceTarget,
@@ -35,6 +36,15 @@ function toPrismaInvoiceStatus(status: ServiceBusinessInvoiceStatus) {
 
 function toPrismaWorkflowStatus(status: ServiceBusinessWorkflowStatus) {
   return status as PrismaServiceBusinessWorkflowStatus;
+}
+
+function buildWorkflowTimestampUpdate(nextStatus: ServiceBusinessWorkflowStatus) {
+  const now = new Date();
+
+  return {
+    startedAt: nextStatus === "IN_PROGRESS" ? now : undefined,
+    completedAt: nextStatus === "DELIVERED" || nextStatus === "CLOSED" ? now : undefined,
+  };
 }
 
 export async function createServiceRequestRecordWithDelegate({
@@ -337,6 +347,49 @@ export async function recordServiceInvoicePaymentRecordWithDelegate({
         id: randomUUID(),
         requestId: target.requestId,
         label: `Payment recorded: ${Math.round(paidAmount)}`,
+        actorName,
+      },
+    });
+  });
+}
+
+export async function updateServiceWorkflowStatusWithDelegate({
+  target,
+  nextStatus,
+  actorName,
+  note,
+}: {
+  target: ServiceWorkflowTargetRow;
+  nextStatus: ServiceBusinessWorkflowStatus;
+  actorName: string;
+  note?: string;
+}) {
+  const workflowStatus = toPrismaWorkflowStatus(nextStatus);
+  const timelineLabel = note
+    ? `Status updated to ${nextStatus}: ${note}`
+    : `Status updated to ${nextStatus}`;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.serviceRequest.update({
+      where: { id: target.requestId },
+      data: { status: workflowStatus },
+    });
+
+    if (target.jobId) {
+      await tx.serviceJob.update({
+        where: { id: target.jobId },
+        data: {
+          status: workflowStatus,
+          ...buildWorkflowTimestampUpdate(nextStatus),
+        },
+      });
+    }
+
+    await tx.serviceTimelineItem.create({
+      data: {
+        id: randomUUID(),
+        requestId: target.requestId,
+        label: timelineLabel,
         actorName,
       },
     });
