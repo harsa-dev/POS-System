@@ -1,4 +1,5 @@
-import { Router, type IRouter } from "express";
+import type { Role } from "@prisma/client";
+import { Router, type IRouter, type Request, type Response } from "express";
 
 import { requireRole } from "../lib/auth.js";
 import { requireBusinessContextForUser } from "../lib/business-context/index.js";
@@ -33,7 +34,7 @@ function isReturnPreviewInput(value: unknown): value is RetailReturnPreviewInput
   return Array.isArray(candidate.lines) && typeof candidate.reason === "string";
 }
 
-async function getRetailRequestContext(req, res, roles = ALL_ROLES) {
+async function getRetailRequestContext(req: Request, res: Response, roles: Role[] = ALL_ROLES) {
   const user = await requireRole(req, res, roles);
   if (!user) return null;
 
