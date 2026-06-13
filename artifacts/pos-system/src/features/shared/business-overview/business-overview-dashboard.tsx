@@ -14,6 +14,7 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import { ROUTES } from "@/constants/routes";
 import { StatCard, StatusPill } from "@/features/shared/cards";
 import {
   DashboardActionButton,
@@ -24,9 +25,9 @@ import {
 import { formatCurrency, formatNumber } from "@/features/shared/format";
 import { DataTable, type DataTableColumn } from "@/features/shared/table";
 import type { DashboardTone } from "@/features/shared/types";
-import { ROUTES } from "@/constants/routes";
 
 type ModeStatus = "Live" | "Preview" | "Planned";
+type QueueItemStatus = "Ready" | "In Progress" | "Needs Review" | "Waiting";
 
 type ModeSnapshot = {
   id: string;
@@ -48,8 +49,6 @@ type SharedModule = {
   tone: DashboardTone;
 };
 
-type QueueItemStatus = "Ready" | "In Progress" | "Needs Review" | "Blocked";
-
 type QueueItem = {
   id: string;
   sourceMode: string;
@@ -70,7 +69,7 @@ const queueStatusTone: Record<QueueItemStatus, DashboardTone> = {
   Ready: "green",
   "In Progress": "blue",
   "Needs Review": "amber",
-  Blocked: "rose",
+  Waiting: "slate",
 };
 
 const modeSnapshots: ModeSnapshot[] = [
@@ -212,7 +211,7 @@ const operationQueue: QueueItem[] = [
     title: "Barcode catalog mapping",
     owner: "Product Data",
     amount: 0,
-    status: "Blocked",
+    status: "Waiting",
     eta: "Waiting setup",
   },
   {
@@ -232,21 +231,13 @@ const queueColumns: DataTableColumn<QueueItem>[] = [
     header: "Queue ID",
     cell: (row) => <span className="font-semibold text-foreground">{row.id}</span>,
   },
-  {
-    key: "sourceMode",
-    header: "Mode",
-    cell: (row) => row.sourceMode,
-  },
+  { key: "sourceMode", header: "Mode", cell: (row) => row.sourceMode },
   {
     key: "title",
     header: "Work Item",
     cell: (row) => <span className="font-medium text-foreground">{row.title}</span>,
   },
-  {
-    key: "owner",
-    header: "Owner",
-    cell: (row) => row.owner,
-  },
+  { key: "owner", header: "Owner", cell: (row) => row.owner },
   {
     key: "amount",
     header: "Amount",
@@ -257,11 +248,7 @@ const queueColumns: DataTableColumn<QueueItem>[] = [
     header: "Status",
     cell: (row) => <StatusPill tone={queueStatusTone[row.status]}>{row.status}</StatusPill>,
   },
-  {
-    key: "eta",
-    header: "ETA",
-    cell: (row) => row.eta,
-  },
+  { key: "eta", header: "ETA", cell: (row) => row.eta },
 ];
 
 function ModuleLinkCard({ module }: { module: SharedModule }) {
@@ -325,24 +312,15 @@ function ModeSnapshotCard({ snapshot }: { snapshot: ModeSnapshot }) {
 }
 
 export function BusinessOverviewDashboard() {
-  const activeRevenue = modeSnapshots.reduce(
-    (total, snapshot) => total + snapshot.revenue,
-    0,
-  );
-  const totalWork = modeSnapshots.reduce(
-    (total, snapshot) => total + snapshot.activeWork,
-    0,
-  );
-  const totalAlerts = modeSnapshots.reduce(
-    (total, snapshot) => total + snapshot.alertCount,
-    0,
-  );
-  const liveModes = modeSnapshots.filter((snapshot) => snapshot.status !== "Planned").length;
+  const activeRevenue = modeSnapshots.reduce((total, item) => total + item.revenue, 0);
+  const totalWork = modeSnapshots.reduce((total, item) => total + item.activeWork, 0);
+  const totalAlerts = modeSnapshots.reduce((total, item) => total + item.alertCount, 0);
+  const liveModes = modeSnapshots.filter((item) => item.status !== "Planned").length;
 
   return (
     <DashboardShell
       title="Shared Business Dashboard"
-      description="Hardcoded cross-mode overview for demoing shared business modules before every mode has real backend data. Yes, fake data, but at least fake data that admits it is fake. Humanity could learn from that."
+      description="Hardcoded cross-mode overview for demoing shared business modules before every mode has real backend data."
     >
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         <div className="flex items-start gap-3">
@@ -350,7 +328,7 @@ export function BusinessOverviewDashboard() {
           <div>
             <p className="font-semibold">Demo-only shared dashboard</p>
             <p className="mt-1 leading-6">
-              Semua angka di halaman ini masih hardcoded. Dashboard ini sengaja dibuat sebagai
+              Semua angka di halaman ini masih hardcoded. Dashboard ini dibuat sebagai
               presentation layer lintas mode, bukan sumber data produksi dan bukan pengganti
               business mode service.
             </p>
@@ -359,46 +337,16 @@ export function BusinessOverviewDashboard() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard
-          label="Combined Revenue"
-          value={formatCurrency(activeRevenue)}
-          note="Restaurant + raw material dummy snapshot"
-          icon={Banknote}
-          tone="green"
-        />
-        <StatCard
-          label="Active Work Items"
-          value={formatNumber(totalWork)}
-          note="Orders, batches, tasks, and draft workflows"
-          icon={Clock3}
-          tone="blue"
-        />
-        <StatCard
-          label="Shared Modules"
-          value={formatNumber(sharedModules.length)}
-          note="Reusable dashboards across business modes"
-          icon={BarChart3}
-          tone="slate"
-        />
-        <StatCard
-          label="Mode Coverage"
-          value={`${liveModes}/${modeSnapshots.length}`}
-          note="Live or preview business modes"
-          icon={Package}
-          tone="amber"
-        />
-        <StatCard
-          label="Open Alerts"
-          value={formatNumber(totalAlerts)}
-          note="Dummy warnings across all modes"
-          icon={AlertTriangle}
-          tone="rose"
-        />
+        <StatCard label="Combined Revenue" value={formatCurrency(activeRevenue)} note="Restaurant + raw material dummy snapshot" icon={Banknote} tone="green" />
+        <StatCard label="Active Work Items" value={formatNumber(totalWork)} note="Orders, batches, tasks, and draft workflows" icon={Clock3} tone="blue" />
+        <StatCard label="Shared Modules" value={formatNumber(sharedModules.length)} note="Reusable dashboards across business modes" icon={BarChart3} tone="slate" />
+        <StatCard label="Mode Coverage" value={`${liveModes}/${modeSnapshots.length}`} note="Live or preview business modes" icon={Package} tone="amber" />
+        <StatCard label="Open Alerts" value={formatNumber(totalAlerts)} note="Dummy warnings across all modes" icon={AlertTriangle} tone="rose" />
       </div>
 
       <DashboardPanel
         title="Mode Snapshot"
-        description="High-level hardcoded status for each business mode without changing the mode selector service. A small miracle, apparently."
+        description="High-level hardcoded status for each business mode without changing the mode selector service."
       >
         <div className="grid gap-4 p-4 lg:grid-cols-2">
           {modeSnapshots.map((snapshot) => (
@@ -429,54 +377,21 @@ export function BusinessOverviewDashboard() {
           </div>
         </DashboardPanel>
 
-        <DashboardPanel
-          title="Shared Finance Snapshot"
-          description="Dummy finance summary used for layout, KPI, and future API planning."
-        >
+        <DashboardPanel title="Shared Finance Snapshot" description="Dummy finance summary used for layout, KPI, and future API planning.">
           <div className="grid gap-3 p-4">
-            <StatCard
-              label="Cash Available"
-              value={formatCurrency(37_950_000)}
-              note="Cash + bank balance mock"
-              icon={WalletCards}
-              tone="green"
-            />
-            <StatCard
-              label="Pending Invoices"
-              value={formatCurrency(16_500_000)}
-              note="18 unpaid customer invoices"
-              icon={ReceiptText}
-              tone="amber"
-            />
-            <StatCard
-              label="Open Partners"
-              value={formatNumber(126)}
-              note="Customers, suppliers, and service clients"
-              icon={Handshake}
-              tone="blue"
-            />
-            <StatCard
-              label="Reports Ready"
-              value={formatNumber(8)}
-              note="P&L, shift, stock, invoice, and cashflow views"
-              icon={FileText}
-              tone="slate"
-            />
+            <StatCard label="Cash Available" value={formatCurrency(37_950_000)} note="Cash + bank balance mock" icon={WalletCards} tone="green" />
+            <StatCard label="Pending Invoices" value={formatCurrency(16_500_000)} note="18 unpaid customer invoices" icon={ReceiptText} tone="amber" />
+            <StatCard label="Open Partners" value={formatNumber(126)} note="Customers, suppliers, and service clients" icon={Handshake} tone="blue" />
+            <StatCard label="Reports Ready" value={formatNumber(8)} note="P&L, shift, stock, invoice, and cashflow views" icon={FileText} tone="slate" />
           </div>
         </DashboardPanel>
       </div>
 
       <DashboardPanel
         title="Cross-Mode Operation Queue"
-        description="Fake queue data to preview how shared operations may look after restaurant, raw material, retail, and service mode are wired to real APIs."
+        description="Mock queue data to preview how shared operations may look after restaurant, raw material, retail, and service mode are wired to real APIs."
       >
-        <DataTable
-          columns={queueColumns}
-          data={operationQueue}
-          getRowKey={(row) => row.id}
-          minWidth={1040}
-          pagination={false}
-        />
+        <DataTable columns={queueColumns} data={operationQueue} getRowKey={(row) => row.id} minWidth={1040} pagination={false} />
       </DashboardPanel>
     </DashboardShell>
   );
