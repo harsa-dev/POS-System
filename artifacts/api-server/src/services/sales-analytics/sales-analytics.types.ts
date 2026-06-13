@@ -4,6 +4,18 @@ export const salesAnalyticsBases = ["paid"] as const;
 
 export const salesAnalyticsExportFormats = ["json", "csv"] as const;
 
+export const salesAnalyticsSortKeys = [
+  "date",
+  "productName",
+  "quantity",
+  "totalRevenue",
+  "grossProfit",
+  "margin",
+  "paymentStatus",
+] as const;
+
+export const salesAnalyticsSortDirections = ["asc", "desc"] as const;
+
 export const salesAnalyticsPaidOrderStatuses = [
   "PAID",
   "PREPARING",
@@ -20,6 +32,11 @@ export type SalesAnalyticsExportFormat =
 export type SalesAnalyticsOrderStatus =
   (typeof salesAnalyticsPaidOrderStatuses)[number];
 
+export type SalesAnalyticsSortKey = (typeof salesAnalyticsSortKeys)[number];
+
+export type SalesAnalyticsSortDirection =
+  (typeof salesAnalyticsSortDirections)[number];
+
 export type SalesAnalyticsActor = {
   id: string;
   role: Role;
@@ -34,7 +51,10 @@ export type SalesAnalyticsQuery = {
   paymentMethod?: string;
   orderStatus?: SalesAnalyticsOrderStatus;
   q?: string;
-  limit: number;
+  page: number;
+  pageSize: number;
+  sortBy: SalesAnalyticsSortKey;
+  sortDirection: SalesAnalyticsSortDirection;
 };
 
 export type SalesAnalyticsFilterOptionDto = {
@@ -47,6 +67,13 @@ export type SalesAnalyticsFilterOptionsDto = {
   categories: SalesAnalyticsFilterOptionDto[];
   paymentMethods: SalesAnalyticsFilterOptionDto[];
   orderStatuses: SalesAnalyticsFilterOptionDto[];
+};
+
+export type SalesAnalyticsPaginationDto = {
+  page: number;
+  pageSize: number;
+  totalRows: number;
+  totalPages: number;
 };
 
 export type SalesAnalyticsPeriodDto = {
@@ -118,6 +145,7 @@ export type SalesAnalyticsDto = {
   busyHours: SalesAnalyticsDataPointDto[];
   bestSellingProducts: SalesAnalyticsDataPointDto[];
   sourceHealth: SalesAnalyticsSourceHealthDto;
+  pagination: SalesAnalyticsPaginationDto;
 };
 
 export type SalesAnalyticsExportFileDto = {
