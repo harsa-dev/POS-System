@@ -13,10 +13,20 @@ Created files:
 ```txt
 artifacts/pos-system/src/app/workspace/custom-business/custom-business-service-workspace.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-layout.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-ui.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/use-service-business-workspace.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-metric-cards.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workflow-pipeline.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-job-list.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-job-card.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-pricing-modules-panel.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-config-readiness-panel.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-types.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-data.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-domain.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-permissions.ts
 docs/workspaces/custom-business-service-data-plan.md
+docs/workspaces/custom-business-service-api-contract.md
 ```
 
 Updated route constants:
@@ -58,8 +68,27 @@ The workspace now contains hard-coded examples for:
 - checklist
 - timeline
 - configuration draft
+- permission map draft
+- API contract draft
 
 This is not production data. It is intentionally a shape preview so the UI, workflow, and future schema direction are easier to reason about.
+
+## Component split
+
+The main layout is now only a composition layer:
+
+```txt
+ServiceBusinessWorkspaceLayout
+├── useServiceBusinessWorkspace
+├── ServiceBusinessMetricCards
+├── ServiceBusinessWorkflowPipeline
+├── ServiceBusinessJobList
+│   └── ServiceBusinessJobCard
+├── ServiceBusinessPricingModulesPanel
+└── ServiceBusinessConfigReadinessPanel
+```
+
+This keeps future API migration focused in `use-service-business-workspace.ts` instead of forcing a rewrite of the whole layout.
 
 ## Manual App route patch
 
