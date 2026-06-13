@@ -25,7 +25,8 @@ export type RawMaterialSharedDashboardId =
   | "shift-reports"
   | "team-management"
   | "employee-performance"
-  | "approvals";
+  | "approvals"
+  | "hpp-calculator";
 
 export type RawMaterialSharedMetric = Readonly<{
   label: string;
@@ -73,22 +74,14 @@ const futureProductionFeatures = rawMaterialScaleFeatures.filter(
   (feature) => feature.scale === "factory",
 );
 const newDummyFeatures = rawMaterialScaleFeatures.filter((feature) => feature.status === "new-dummy");
+const dummyProcurementSpend = 18_750_000;
+const dummyRejectedLoss = Math.round(rejectedKg * 5_250);
+const dummyAcceptedUnitCost = acceptedKg > 0 ? Math.round(dummyProcurementSpend / acceptedKg) : 0;
 
 function getStatusFromFeatureStatus(status: RawMaterialScaleFeatureStatus): RawMaterialSharedRow["status"] {
   if (status === "available") return "healthy";
   if (status === "future-production") return "planned";
   return "review";
-}
-
-function fallbackRows(label: string): readonly RawMaterialSharedRow[] {
-  return [
-    {
-      title: `${label} raw material bridge ready`,
-      primary: "Raw material mock context is available for this shared dashboard.",
-      secondary: "Schema, route handlers, and database writes are intentionally untouched.",
-      status: "planned",
-    },
-  ];
 }
 
 function getIntakeRows(): readonly RawMaterialSharedRow[] {
@@ -158,6 +151,23 @@ function getScaleFeatureRows(): readonly RawMaterialSharedRow[] {
   }));
 }
 
+function getHppRows(): readonly RawMaterialSharedRow[] {
+  return [
+    ...rawMaterialBatches.map((batch) => ({
+      title: batch.lotCode,
+      primary: `${batch.materialName} · available ${formatRawMaterialWeight(batch.remainingKg)}`,
+      secondary: `Dummy unit cost ${formatRawMaterialCurrency(dummyAcceptedUnitCost)}/kg · quality ${batch.qualityStatus}`,
+      status: batch.qualityStatus === "inspection" ? "review" as const : "healthy" as const,
+    })),
+    ...rawMaterialProcessingRuns.map((run) => ({
+      title: run.runNumber,
+      primary: `${run.outputName} · input ${formatRawMaterialWeight(run.inputKg)}`,
+      secondary: `Output ${formatRawMaterialWeight(run.outputKg)} · yield preview needs real costing rules later`,
+      status: run.status === "completed" ? "healthy" as const : "planned" as const,
+    })),
+  ];
+}
+
 const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardContext> = {
   overview: {
     id: "overview",
@@ -212,7 +222,7 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
     title: "Raw material cashflow bridge",
     description: "Raw material procurement pressure, intake volume, and future reorder planning are surfaced beside the shared cashflow dashboard.",
     metrics: [
-      { label: "Procurement preview", value: formatRawMaterialCurrency(18_750_000), helper: "Dummy planned raw-material spend" },
+      { label: "Procurement preview", value: formatRawMaterialCurrency(dummyProcurementSpend), helper: "Dummy planned raw-material spend" },
       { label: "Open intake", value: String(rawMaterialIntakes.filter((intake) => intake.qualityStatus === "inspection").length), helper: "Inspection can delay payable readiness" },
       { label: "Reorder signals", value: String(newDummyFeatures.length), helper: "Scale features still dummy" },
     ],
@@ -224,7 +234,7 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
     title: "Raw material financial report bridge",
     description: "Raw material mode exposes cost planning, rejection loss, storage pressure, and processing yield as financial-report context.",
     metrics: [
-      { label: "Planned spend", value: formatRawMaterialCurrency(18_750_000), helper: "Dummy procurement estimate" },
+      { label: "Planned spend", value: formatRawMaterialCurrency(dummyProcurementSpend), helper: "Dummy procurement estimate" },
       { label: "Quality loss", value: formatRawMaterialWeight(rejectedKg), helper: "Rejected intake quantity" },
       { label: "Yield watch", value: `${rawMaterialProcessingRuns.length} runs`, helper: "Processing output preview" },
     ],
@@ -295,6 +305,18 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
     ],
     rows: [...getBatchRows().filter((row) => row.status !== "healthy"), ...getKandangRows().filter((row) => row.status !== "healthy"), ...getScaleFeatureRows().filter((row) => row.status === "planned")],
     bridgeNote: "Approvals are displayed as review context only; no approval mutation or audit write exists.",
+  },
+  "hpp-calculator": {
+    id: "hpp-calculator",
+    title: "Raw material HPP bridge",
+    description: "Raw material mode turns HPP into a material-cost, rejection-loss, and processing-yield preview instead of a restaurant recipe costing screen.",
+    metrics: [
+      { label: "Dummy unit cost", value: `${formatRawMaterialCurrency(dummyAcceptedUnitCost)}/kg`, helper: "Planned spend divided by accepted kg" },
+      { label: "Rejected loss", value: formatRawMaterialCurrency(dummyRejectedLoss), helper: "Rejected kg multiplied by dummy material rate" },
+      { label: "Yield inputs", value: String(rawMaterialProcessingRuns.length), helper: "Processing runs available for costing preview" },
+    ],
+    rows: getHppRows(),
+    bridgeNote: "HPP base dashboard is hidden in raw material mode; this bridge only previews costing logic before finance/schema work exists.",
   },
 };
 
