@@ -34,6 +34,7 @@ import {
 } from "./internal-admin-consoles.mock";
 
 import { InternalAdminBackendReadinessPanel } from "./internal-admin-backend-readiness-panel";
+import { InternalAdminImplementationPlanPanel } from "./internal-admin-implementation-plan-panel";
 
 const toneMap: Record<ConsoleStatus | ConsoleRisk | string, DashboardTone> = {
   "Ready Mock": "green",
@@ -170,6 +171,10 @@ export function InternalAdminConsolePage({
         <DataTable columns={apiColumns} data={apiContracts} getRowKey={(row) => row.id} minWidth={1900} pagination={false} />
       </DashboardPanel>
 
+      <InternalAdminBackendReadinessPanel consoleId={consoleId} />
+
+      <InternalAdminImplementationPlanPanel />
+
       <div className="grid gap-5 xl:grid-cols-[1fr_1.05fr]">
         <DashboardPanel title="Schema Candidates" description="Kandidat model Prisma. Jangan masuk schema sampai API real dan kebutuhan persistence jelas.">
           <DataTable columns={schemaColumns} data={schemaCandidates} getRowKey={(row) => row.id} minWidth={1500} pagination={false} />
@@ -202,5 +207,3 @@ export function AdminActionAuditConsolePage() {
 export function SensitiveActionApprovalConsolePage() {
   return <InternalAdminConsolePage consoleId="sensitive-action-approval" />;
 }
-
-<InternalAdminBackendReadinessPanel consoleId={consoleId} />
