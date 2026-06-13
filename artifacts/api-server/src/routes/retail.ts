@@ -407,4 +407,31 @@ router.post("/retail/returns/preview", async (req, res) => {
   }
 });
 
+router.post("/retail/returns", async (req, res) => {
+  try {
+    const context = await getRetailRequestContext(req, res, OPERATIONS_ROLES);
+    if (!context) return;
+
+    if (!isReturnPreviewInput(req.body)) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Request body must contain return lines and reason.",
+      });
+    }
+
+    const data = await retailService.persistReturn(context.scope, context.actor, req.body);
+
+    return successResponse(res, {
+      status: data.persisted ? 201 : 409,
+      data,
+      message: data.persisted
+        ? "Retail return persisted and refund workflow posted."
+        : "Retail return requires manager review before persistence.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
 export default router;
