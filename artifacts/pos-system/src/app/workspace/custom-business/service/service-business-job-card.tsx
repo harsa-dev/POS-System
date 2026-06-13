@@ -1,4 +1,4 @@
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck, Eye } from "lucide-react";
 
 import {
   calculateBillableCost,
@@ -19,7 +19,15 @@ import {
 import type { ServiceBusinessJob } from "./service-business-workspace-types";
 import { ServicePill } from "./service-business-workspace-ui";
 
-export function ServiceBusinessJobCard({ job }: { job: ServiceBusinessJob }) {
+export function ServiceBusinessJobCard({
+  isSelected = false,
+  job,
+  onSelect,
+}: {
+  isSelected?: boolean;
+  job: ServiceBusinessJob;
+  onSelect?: (jobId: string) => void;
+}) {
   const costBase = calculateCostBase(job.costLines);
   const billableCost = calculateBillableCost(job.costLines);
   const subtotal = calculateQuoteSubtotal(job);
@@ -29,7 +37,11 @@ export function ServiceBusinessJobCard({ job }: { job: ServiceBusinessJob }) {
   const collectionRate = calculateCollectionRate(job.invoice, total);
 
   return (
-    <article className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+    <article
+      className={`rounded-2xl border bg-neutral-50 p-4 transition ${
+        isSelected ? "border-neutral-950 shadow-sm" : "border-neutral-200"
+      }`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-neutral-400">
@@ -148,6 +160,17 @@ export function ServiceBusinessJobCard({ job }: { job: ServiceBusinessJob }) {
           </div>
         </div>
       </div>
+
+      {onSelect ? (
+        <button
+          type="button"
+          onClick={() => onSelect(job.id)}
+          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-neutral-950 px-3 py-2 text-sm font-semibold text-white"
+        >
+          <Eye className="h-4 w-4" />
+          View detail
+        </button>
+      ) : null}
     </article>
   );
 }
