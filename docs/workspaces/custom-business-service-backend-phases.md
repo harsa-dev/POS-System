@@ -91,14 +91,30 @@ Main files:
 
 ## Phase 3 - Service layer split
 
-Status: planned
+Status: partially implemented
 
-Move business logic out of route files into dedicated modules:
+Phase 3A implemented:
 
-- `service-business.repository.ts`
-- `service-business.workflow.ts`
-- `service-business.validators.ts`
-- `service-business.presenter.ts`
+- Shared backend service business types.
+- Workflow validators.
+- Workflow read/write repository for guarded transitions.
+- Workflow service for transition rules and requirements.
+- Workflow presenter for response shape.
+- `service-business-workflow.ts` route refactored so it only handles HTTP auth, input, and response orchestration.
+
+New files:
+
+- `artifacts/api-server/src/features/service-business/service-business.types.ts`
+- `artifacts/api-server/src/features/service-business/service-business.validators.ts`
+- `artifacts/api-server/src/features/service-business/service-business.repository.ts`
+- `artifacts/api-server/src/features/service-business/service-business.workflow.ts`
+- `artifacts/api-server/src/features/service-business/service-business.presenter.ts`
+
+Still planned as Phase 3B:
+
+- Split `service-business.ts` CRUD and billing route into repository/service/presenter modules.
+- Move request creation, job listing, cost line creation, quote creation, invoice creation, and payment recording out of the route file.
+- Keep route files responsible for HTTP only.
 
 Target:
 
