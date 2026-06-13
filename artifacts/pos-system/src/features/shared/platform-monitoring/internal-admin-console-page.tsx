@@ -33,6 +33,8 @@ import {
   type InternalAdminWorkflow,
 } from "./internal-admin-consoles.mock";
 
+import { InternalAdminBackendReadinessPanel } from "./internal-admin-backend-readiness-panel";
+
 const toneMap: Record<ConsoleStatus | ConsoleRisk | string, DashboardTone> = {
   "Ready Mock": "green",
   Draft: "amber",
@@ -200,3 +202,5 @@ export function AdminActionAuditConsolePage() {
 export function SensitiveActionApprovalConsolePage() {
   return <InternalAdminConsolePage consoleId="sensitive-action-approval" />;
 }
+
+<InternalAdminBackendReadinessPanel consoleId={consoleId} />
