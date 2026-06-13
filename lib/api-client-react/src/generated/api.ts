@@ -9,6 +9,12 @@ import type {
   RetailInventoryRisksResponse,
   RetailProductListResponse,
   RetailReceivingQueueResponse,
+  RetailReceivingStatusUpdateInput,
+  RetailReceivingStatusUpdateResponse,
+  RetailReturnInput,
+  RetailReturnResponse,
+  RetailSaleCancellationInput,
+  RetailSaleCancellationResponse,
   RetailSaleCheckoutInput,
   RetailSalePreviewInput,
   RetailSalePreviewResponse,
@@ -99,7 +105,7 @@ export function useRetailListProducts<TData = Awaited<ReturnType<typeof retailLi
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-export const getRetailLookupBarcodeUrl = (code: string) => `/api/retail/barcode/${code}`;
+export const getRetailLookupBarcodeUrl = (code: string) => `/api/retail/barcode/${encodeURIComponent(code)}`;
 
 export const retailLookupBarcode = async (code: string, options?: RequestInit): Promise<RetailBarcodeLookupResponse> => {
   return customFetch<RetailBarcodeLookupResponse>(getRetailLookupBarcodeUrl(code), { ...options, method: "GET" });
@@ -116,6 +122,37 @@ export const getRetailGetReceivingQueueUrl = () => `/api/retail/receiving`;
 export const retailGetReceivingQueue = async (options?: RequestInit): Promise<RetailReceivingQueueResponse> => {
   return customFetch<RetailReceivingQueueResponse>(getRetailGetReceivingQueueUrl(), { ...options, method: "GET" });
 };
+
+export const getRetailUpdateReceivingStatusUrl = (id: string) => `/api/retail/receiving/${encodeURIComponent(id)}/status`;
+
+export const retailUpdateReceivingStatus = async (
+  id: string,
+  retailReceivingStatusUpdateInput: RetailReceivingStatusUpdateInput,
+  options?: RequestInit,
+): Promise<RetailReceivingStatusUpdateResponse> => {
+  return customFetch<RetailReceivingStatusUpdateResponse>(getRetailUpdateReceivingStatusUrl(id), {
+    ...options,
+    method: "PATCH",
+    body: JSON.stringify(retailReceivingStatusUpdateInput),
+  });
+};
+
+export const getRetailUpdateReceivingStatusMutationOptions = <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof retailUpdateReceivingStatus>>, TError, { id: string; data: RetailReceivingStatusUpdateInput }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn = (props: { id: string; data: RetailReceivingStatusUpdateInput }) => retailUpdateReceivingStatus(props.id, props.data, requestOptions);
+  return { mutationFn, ...mutationOptions } as UseMutationOptions<Awaited<ReturnType<typeof retailUpdateReceivingStatus>>, TError, { id: string; data: RetailReceivingStatusUpdateInput }, TContext>;
+};
+
+export function useRetailUpdateReceivingStatus<TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof retailUpdateReceivingStatus>>, TError, { id: string; data: RetailReceivingStatusUpdateInput }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<Awaited<ReturnType<typeof retailUpdateReceivingStatus>>, TError, { id: string; data: RetailReceivingStatusUpdateInput }, TContext> {
+  const mutationOptions = getRetailUpdateReceivingStatusMutationOptions(options);
+  return useMutation(mutationOptions);
+}
 
 export const getRetailGetSharedDashboardUrl = (dashboardId: RetailSharedDashboardId) => `/api/retail/shared-dashboard/${dashboardId}`;
 
@@ -178,5 +215,96 @@ export function useRetailCheckoutSale<TError = ErrorType<unknown>, TContext = un
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<Awaited<ReturnType<typeof retailCheckoutSale>>, TError, { data: RetailSaleCheckoutInput }, TContext> {
   const mutationOptions = getRetailCheckoutSaleMutationOptions(options);
+  return useMutation(mutationOptions);
+}
+
+export const getRetailPreviewReturnUrl = () => `/api/retail/returns/preview`;
+
+export const retailPreviewReturn = async (
+  retailReturnInput: RetailReturnInput,
+  options?: RequestInit,
+): Promise<RetailReturnResponse> => {
+  return customFetch<RetailReturnResponse>(getRetailPreviewReturnUrl(), {
+    ...options,
+    method: "POST",
+    body: JSON.stringify(retailReturnInput),
+  });
+};
+
+export const getRetailPreviewReturnMutationOptions = <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof retailPreviewReturn>>, TError, { data: RetailReturnInput }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn = (props: { data: RetailReturnInput }) => retailPreviewReturn(props.data, requestOptions);
+  return { mutationFn, ...mutationOptions } as UseMutationOptions<Awaited<ReturnType<typeof retailPreviewReturn>>, TError, { data: RetailReturnInput }, TContext>;
+};
+
+export function useRetailPreviewReturn<TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof retailPreviewReturn>>, TError, { data: RetailReturnInput }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<Awaited<ReturnType<typeof retailPreviewReturn>>, TError, { data: RetailReturnInput }, TContext> {
+  const mutationOptions = getRetailPreviewReturnMutationOptions(options);
+  return useMutation(mutationOptions);
+}
+
+export const getRetailPersistReturnUrl = () => `/api/retail/returns`;
+
+export const retailPersistReturn = async (
+  retailReturnInput: RetailReturnInput,
+  options?: RequestInit,
+): Promise<RetailReturnResponse> => {
+  return customFetch<RetailReturnResponse>(getRetailPersistReturnUrl(), {
+    ...options,
+    method: "POST",
+    body: JSON.stringify(retailReturnInput),
+  });
+};
+
+export const getRetailPersistReturnMutationOptions = <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof retailPersistReturn>>, TError, { data: RetailReturnInput }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn = (props: { data: RetailReturnInput }) => retailPersistReturn(props.data, requestOptions);
+  return { mutationFn, ...mutationOptions } as UseMutationOptions<Awaited<ReturnType<typeof retailPersistReturn>>, TError, { data: RetailReturnInput }, TContext>;
+};
+
+export function useRetailPersistReturn<TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof retailPersistReturn>>, TError, { data: RetailReturnInput }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<Awaited<ReturnType<typeof retailPersistReturn>>, TError, { data: RetailReturnInput }, TContext> {
+  const mutationOptions = getRetailPersistReturnMutationOptions(options);
+  return useMutation(mutationOptions);
+}
+
+export const getRetailCancelSaleUrl = (saleId: string) => `/api/retail/sales/${encodeURIComponent(saleId)}/cancel`;
+
+export const retailCancelSale = async (
+  saleId: string,
+  retailSaleCancellationInput: RetailSaleCancellationInput = {},
+  options?: RequestInit,
+): Promise<RetailSaleCancellationResponse> => {
+  return customFetch<RetailSaleCancellationResponse>(getRetailCancelSaleUrl(saleId), {
+    ...options,
+    method: "POST",
+    body: JSON.stringify(retailSaleCancellationInput),
+  });
+};
+
+export const getRetailCancelSaleMutationOptions = <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof retailCancelSale>>, TError, { saleId: string; data?: RetailSaleCancellationInput }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn = (props: { saleId: string; data?: RetailSaleCancellationInput }) => retailCancelSale(props.saleId, props.data ?? {}, requestOptions);
+  return { mutationFn, ...mutationOptions } as UseMutationOptions<Awaited<ReturnType<typeof retailCancelSale>>, TError, { saleId: string; data?: RetailSaleCancellationInput }, TContext>;
+};
+
+export function useRetailCancelSale<TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof retailCancelSale>>, TError, { saleId: string; data?: RetailSaleCancellationInput }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<Awaited<ReturnType<typeof retailCancelSale>>, TError, { saleId: string; data?: RetailSaleCancellationInput }, TContext> {
+  const mutationOptions = getRetailCancelSaleMutationOptions(options);
   return useMutation(mutationOptions);
 }
