@@ -8,6 +8,17 @@ import type {
   RawMaterialBatchUpdatePayload,
 } from "./raw-material-batch.types.js";
 
+const rawMaterialBatchQualityStatusValues = new Set<string>(Object.values(RawMaterialBatchQualityStatus));
+
+function normalizeRawMaterialBatchQualityStatus(value: RawMaterialBatchQuery["qualityStatus"]) {
+  if (!value) return undefined;
+
+  const normalized = String(value).trim().toUpperCase();
+  if (!rawMaterialBatchQualityStatusValues.has(normalized)) return undefined;
+
+  return normalized as RawMaterialBatchQualityStatus;
+}
+
 export function getRawMaterialBatchInclude() {
   return {
     intake: {
@@ -96,11 +107,12 @@ export async function sumActiveRawMaterialBatchQuantityForIntake(params: {
 }
 
 export function listRawMaterialBatchRows(businessId: string, query: RawMaterialBatchQuery = {}) {
+  const qualityStatus = normalizeRawMaterialBatchQualityStatus(query.qualityStatus);
   const where: Prisma.RawMaterialBatchWhereInput = {
     businessId,
     ...(query.intakeId ? { intakeId: query.intakeId } : {}),
     ...(query.storageLocationId ? { storageLocationId: query.storageLocationId } : {}),
-    ...(query.qualityStatus ? { qualityStatus: query.qualityStatus } : {}),
+    ...(qualityStatus ? { qualityStatus } : {}),
     ...(typeof query.isActive === "boolean" ? { isActive: query.isActive } : {}),
     ...(query.search
       ? {
