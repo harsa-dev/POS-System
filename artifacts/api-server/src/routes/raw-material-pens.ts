@@ -1,11 +1,13 @@
 import type { Role } from "@prisma/client";
 import { Router } from "express";
 
-import { requireRole } from "../lib/auth.js";
 import { requireBusinessContextForRequest, requireBusinessMode } from "../lib/business-context/index.js";
-import { ALL_ROLES } from "../lib/constants.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { successResponse } from "../lib/responses/success-response.js";
+import {
+  RAW_MATERIAL_PERMISSIONS,
+  requireRawMaterialPermission,
+} from "../services/raw-material/raw-material.permissions.js";
 import {
   createRawMaterialPen,
   deactivateRawMaterialPen,
@@ -30,7 +32,7 @@ function getOptionalBoolean(value: unknown) {
 
 router.get("/raw-material/pens", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.view);
     if (!user) return;
     const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await listRawMaterialPens({
@@ -53,7 +55,7 @@ router.get("/raw-material/pens", async (req, res) => {
 
 router.post("/raw-material/pens", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.kandangManage);
     if (!user) return;
     const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await createRawMaterialPen({
@@ -69,7 +71,7 @@ router.post("/raw-material/pens", async (req, res) => {
 
 router.patch("/raw-material/pens/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.kandangManage);
     if (!user) return;
     const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await updateRawMaterialPen({
@@ -86,7 +88,7 @@ router.patch("/raw-material/pens/:id", async (req, res) => {
 
 router.delete("/raw-material/pens/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.kandangManage);
     if (!user) return;
     const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await deactivateRawMaterialPen({
