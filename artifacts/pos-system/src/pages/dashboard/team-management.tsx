@@ -1,5 +1,11 @@
-import { TeamManagementDashboard } from "@/features/shared/workforce-operations/workforce-operations-dashboards";
+import * as WorkforceExtras from "@/features/shared/workforce-operations/workforce-operation-extras";
+import * as WorkforceDashboards from "@/features/shared/workforce-operations/workforce-operations-dashboards";
 
 export default function TeamManagementPage() {
-  return <TeamManagementDashboard />;
+  return (
+    <>
+      <WorkforceDashboards.TeamManagementDashboard />
+      <WorkforceExtras.TeamManagementExtras />
+    </>
+  );
 }
