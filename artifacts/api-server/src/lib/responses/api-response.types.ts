@@ -11,6 +11,7 @@ export type ApiPaginationMeta = {
 export type ApiMeta = {
   pagination?: ApiPaginationMeta;
   filters?: Record<string, unknown>;
+  [key: string]: unknown;
 };
 
 export type ApiSuccessResponse<TData> = {
