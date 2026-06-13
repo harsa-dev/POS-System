@@ -36,7 +36,7 @@ function formatScaleLabel(scale: string) {
 }
 
 export function RetailGrowthWorkspace({ moduleId }: RetailGrowthWorkspaceProps) {
-  const module = retailGrowthModules.find((item) => item.id === moduleId) ?? retailGrowthModules[0];
+  const module = retailGrowthModules.find((item) => item.id === moduleId) ?? retailGrowthModules[0]!;
 
   return (
     <section className="space-y-6">
