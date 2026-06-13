@@ -53,6 +53,7 @@ model Business {
   stockMovements StockMovement[] @relation("BusinessStockMovements")
   cashflowEntries CashflowEntry[] @relation("BusinessCashflowEntries")
   rawMaterialSuppliers RawMaterialSupplier[]
+  rawMaterialStorageLocations RawMaterialStorageLocation[]
   tables DiningTable[]
   shifts Shift[]
   attendances Attendance[]
@@ -282,6 +283,28 @@ model RawMaterialSupplier {
   @@index([reliabilityScore])
 }
 
+model RawMaterialStorageLocation {
+  id String @id @default(cuid())
+  businessId String
+  code String
+  name String
+  type RawMaterialStorageType @default(DRY)
+  capacityKg Float @default(0)
+  usedKg Float @default(0)
+  temperatureCelsius Float?
+  isActive Boolean @default(true)
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  @@unique([businessId, code])
+  @@index([businessId])
+  @@index([type])
+  @@index([isActive])
+  @@index([usedKg])
+  @@index([capacityKg])
+}
+
 model StockMovement {
   id String @id @default(cuid())
   inventoryItemId String
@@ -434,6 +457,7 @@ enum Role { OWNER MANAGER ADMIN OPERATOR STAFF VIEWER }
 enum InventoryType { INGREDIENT PACKAGING EQUIPMENT PRODUCT RAW_MATERIAL FINISHED_GOOD SUPPLY TOOL SPARE_PART FEED MEDICINE }
 enum InventoryUnit { PCS GRAM KILOGRAM LITER ML PACK BOTTLE BOX CARTON SACK ROLL SET PAIR DOSE TABLET CAPSULE VIAL CAN }
 enum RawMaterialSupplierCategory { FEED LIVESTOCK PACKAGING RAW_GOODS }
+enum RawMaterialStorageType { DRY COLD OPEN_YARD KANDANG_SUPPORT }
 enum StockMovementType { IN OUT ADJUSTMENT }
 enum PaymentStatus { PENDING PAID FAILED EXPIRED }
 enum InvoiceStatus { DRAFT SENT PAID CANCELLED }
