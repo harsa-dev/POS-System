@@ -1,12 +1,14 @@
 import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
 
-export type AuthUser = {
+export type CurrentUser = {
   id: string;
   name: string;
   email: string;
   role: string;
-  restaurantId?: string | null;
+  businessId?: string | null;
 };
+
+export type AuthUser = CurrentUser;
 
 export type LoginRequest = {
   email: string;

@@ -116,7 +116,6 @@ router.get("/inventory-capabilities", async (req, res) => {
     const businessContext = await requireBusinessContextForRequest(req, user);
     const data = {
       businessId: businessContext.businessId,
-      restaurantId: businessContext.restaurantId,
       businessType: businessContext.businessType,
       businessMode: businessContext.businessMode,
       policy: getInventoryModePolicy(businessContext),

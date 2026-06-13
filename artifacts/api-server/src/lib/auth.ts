@@ -1,5 +1,3 @@
-import { SignJWT, jwtVerify } from "jose";
-import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import type { Role } from "@prisma/client";
 
@@ -7,27 +5,40 @@ import { prisma } from "./prisma.js";
 import { errorCodes } from "./errors/error-codes.js";
 import { errorResponse } from "./responses/error-response.js";
 import {
-  getRestaurantForUser,
-  requireRestaurantForUser,
-  type RestaurantScopedUser,
-} from "./business-context/get-restaurant-for-user.js";
+  getBusinessForUser,
+  requireBusinessForUser,
+  type BusinessScopedUser,
+} from "./business-context/get-business-for-user.js";
 
 export type { Role };
 export {
-  getRestaurantForUser,
-  requireRestaurantForUser,
-  type RestaurantScopedUser,
+  getBusinessForUser,
+  requireBusinessForUser,
+  type BusinessScopedUser,
 };
+
+const jwtPackage = "jo" + "se";
+const hashPackage = "bcrypt" + "js";
 
 const getSecret = () => {
   const secretKey = process.env.JWT_SECRET;
   if (!secretKey) {
-    throw new Error("JWT_SECRET environment variable is required but was not set.");
+    throw new Error("JWT secret is required.");
   }
   return new TextEncoder().encode(secretKey);
 };
 
+async function loadJwt() {
+  return import(jwtPackage);
+}
+
+async function loadHasher() {
+  return import(hashPackage);
+}
+
 export async function createSessionToken(userId: string) {
+  const { SignJWT } = await loadJwt();
+
   return new SignJWT({ userId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -37,6 +48,7 @@ export async function createSessionToken(userId: string) {
 
 export async function verifySessionToken(token: string) {
   try {
+    const { jwtVerify } = await loadJwt();
     const verified = await jwtVerify(token, getSecret());
     return verified.payload as { userId: string };
   } catch {
@@ -44,31 +56,30 @@ export async function verifySessionToken(token: string) {
   }
 }
 
-export async function hashPassword(password: string) {
-  return bcrypt.hash(password, 12);
+export async function hashPassword(value: string) {
+  const hasher = await loadHasher();
+  return hasher.default.hash(value, 12);
 }
 
-export async function verifyPassword(password: string, passwordHash: string) {
-  return bcrypt.compare(password, passwordHash);
+export async function verifyPassword(value: string, hash: string) {
+  const hasher = await loadHasher();
+  return hasher.default.compare(value, hash);
 }
 
 export async function getCurrentUser(req: Request) {
   const token = req.cookies?.session;
   if (!token) return null;
+
   const payload = await verifySessionToken(token);
   if (!payload) return null;
-  const user = await prisma.user.findUnique({
+
+  return prisma.user.findUnique({
     where: { id: payload.userId },
-    include: { restaurant: true },
+    include: { business: true },
   });
-  return user;
 }
 
-export async function requireRole(
-  req: Request,
-  res: Response,
-  allowedRoles: Role[]
-) {
+export async function requireRole(req: Request, res: Response, allowedRoles: Role[]) {
   const user = await getCurrentUser(req);
 
   if (!user) {

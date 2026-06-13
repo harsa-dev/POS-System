@@ -1,4 +1,6 @@
 export {
+  businessOrderStatusPermissions,
+  businessOrderStatusTransitions,
   checkOrderStatusTransition,
   legacyOrderStatusPermissions,
   legacyOrderStatusTransitions,
@@ -7,6 +9,7 @@ export {
 
 export {
   assertCanMoveOrderStatus,
+  businessOrderTransitions,
   canMoveOrderStatus,
   legacyRestaurantOrderTransitions,
 } from "./order-status-workflow.js";

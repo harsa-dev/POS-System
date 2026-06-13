@@ -64,7 +64,6 @@ export function BusinessModeSwitcher() {
 
     if (!isChanged) {
       setActiveModeId(getCurrentBusinessMode());
-      return;
     }
 
     setLocation(mode.route);
@@ -97,8 +96,9 @@ export function BusinessModeSwitcher() {
           <div className="border-b border-neutral-100 px-4 py-3">
             <p className="text-sm font-bold text-neutral-950">Business mode</p>
             <p className="mt-1 text-xs leading-5 text-neutral-500">
-              Restaurant / F&amp;B is the only active workspace for now. Other
-              modes are planned and intentionally locked.
+              Restaurant / F&amp;B is production-focused. Raw Material / Livestock
+              is enabled as a preview workspace for route, sidebar, API header,
+              and tenant-scope testing.
             </p>
           </div>
 

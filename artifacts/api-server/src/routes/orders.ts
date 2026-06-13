@@ -1,24 +1,20 @@
 import { Router } from "express";
-import { Prisma } from "@prisma/client";
-import type { OrderStatus, OrderType } from "@prisma/client";
-import { prisma } from "../lib/prisma.js";
+import type { OrderStatus, OrderType, Prisma } from "@prisma/client";
+
 import { requireRole } from "../lib/auth.js";
-import { getBusinessContextForUser } from "../lib/business-context/index.js";
+import { requireBusinessContextForUser } from "../lib/business-context/index.js";
+import { prisma } from "../lib/prisma.js";
+import { OPERATIONS_ROLES, PAYMENT_METHODS, READONLY_ROLES } from "../lib/constants.js";
+import { errorCodes } from "../lib/errors/error-codes.js";
+import { handleApiError } from "../lib/errors/handle-api-error.js";
+import { errorResponse } from "../lib/responses/error-response.js";
+import { successResponse } from "../lib/responses/success-response.js";
 import { canTransitionOrderStatus } from "../services/permissions/index.js";
-import {
-  ALL_ROLES,
-  POS_ROLES,
-  OPS_ROLES,
-  ERR,
-  PAYMENT_METHODS,
-} from "../lib/constants.js";
-import { realtime } from "../lib/realtime.js";
-import { REALTIME_EVENTS } from "../lib/realtime-events.js";
 
 const router = Router();
-const isDevelopment = process.env.NODE_ENV !== "production";
 
-const orderStatuses = [
+const paymentMethods = new Set<string>(Object.values(PAYMENT_METHODS));
+const orderStatuses: readonly OrderStatus[] = [
   "PENDING_PAYMENT",
   "PAID",
   "PREPARING",
@@ -26,705 +22,600 @@ const orderStatuses = [
   "SERVED",
   "COMPLETED",
   "CANCELLED",
-] satisfies OrderStatus[];
+];
 
-const orderTypes = ["DINE_IN", "TAKEAWAY"] satisfies OrderType[];
+const orderInclude = {
+  items: {
+    include: {
+      menuItem: {
+        include: {
+          category: true,
+          recipes: {
+            include: {
+              inventoryItem: true,
+            },
+          },
+        },
+      },
+    },
+  },
+  table: true,
+  shift: true,
+  payment: true,
+} satisfies Prisma.OrderInclude;
+
+type OrderRecord = Prisma.OrderGetPayload<{
+  include: typeof orderInclude;
+}>;
+
+type BusinessScopedUser = {
+  id: string;
+  role: Prisma.UserGetPayload<{}>["role"];
+  businessId: string | null;
+};
 
 type CreateOrderItemInput = {
   menuItemId: string;
   quantity: number;
 };
 
-type RequiredStockMovement = {
-  inventoryItemId: string;
-  quantity: number;
-};
-
-type ParseOrderItemsResult =
-  | { success: true; items: CreateOrderItemInput[] }
-  | { success: false; message: string };
-
-class OrderValidationError extends Error {}
-
-function logCreateOrderTiming(
-  startedAt: number,
-  label: string,
-  extra?: Record<string, unknown>,
-) {
-  if (!isDevelopment) return;
-
-  console.info("[orders:create]", {
-    label,
-    elapsedMs: Date.now() - startedAt,
-    ...extra,
-  });
-}
-
 function isOrderStatus(value: string): value is OrderStatus {
   return orderStatuses.includes(value as OrderStatus);
 }
 
-function isOrderType(value: string): value is OrderType {
-  return orderTypes.includes(value as OrderType);
+function normalizeOrderType(value: unknown): OrderType {
+  return value === "DINE_IN" ? "DINE_IN" : "TAKEAWAY";
 }
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
+function normalizePaymentMethod(value: unknown) {
+  const paymentMethod = String(value ?? "").trim().toUpperCase();
+
+  if (!paymentMethods.has(paymentMethod)) {
+    return null;
+  }
+
+  return paymentMethod;
 }
 
-function getNoRecipeOrderMessage(menuItemName: string) {
-  return `Menu item "${menuItemName}" has no recipe configured and cannot be ordered. Add at least one ingredient first.`;
+function toPositiveInteger(value: unknown) {
+  const numberValue = Number(value);
+
+  if (!Number.isInteger(numberValue) || numberValue < 1) {
+    return null;
+  }
+
+  return numberValue;
 }
 
-function getNoRecipeProcessingMessage(menuItemName: string) {
-  return `Menu item "${menuItemName}" has no recipe configured and cannot be processed. Add at least one ingredient first.`;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function parseOrderItems(value: unknown): ParseOrderItemsResult {
+function parseCreateOrderItems(value: unknown): CreateOrderItemInput[] | null {
   if (!Array.isArray(value) || value.length === 0) {
-    return { success: false, message: "No items provided" };
+    return null;
   }
 
-  const items: CreateOrderItemInput[] = [];
+  const groupedItems = new Map<string, number>();
 
-  for (const [index, item] of value.entries()) {
-    if (!isRecord(item)) {
-      return { success: false, message: `Invalid item at position ${index + 1}` };
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) {
+      return null;
     }
 
-    const menuItemId = String(item.menuItemId ?? "").trim();
-    const quantity = Number(item.quantity);
+    const rawItem = item as Record<string, unknown>;
+    const menuItemId = String(rawItem.menuItemId ?? "").trim();
+    const quantity = toPositiveInteger(rawItem.quantity);
 
-    if (!menuItemId) {
-      return {
-        success: false,
-        message: `Menu item is required at position ${index + 1}`,
-      };
+    if (!menuItemId || quantity === null) {
+      return null;
     }
 
-    if (!Number.isInteger(quantity) || quantity < 1) {
-      return {
-        success: false,
-        message: `Quantity must be a positive integer at position ${index + 1}`,
-      };
-    }
-
-    items.push({ menuItemId, quantity });
+    groupedItems.set(menuItemId, (groupedItems.get(menuItemId) ?? 0) + quantity);
   }
 
-  return { success: true, items };
+  return Array.from(groupedItems.entries()).map(([menuItemId, quantity]) => ({
+    menuItemId,
+    quantity,
+  }));
 }
 
-const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
-  PENDING_PAYMENT: ["PAID", "CANCELLED"],
-  PAID: ["PREPARING", "CANCELLED"],
-  PREPARING: ["READY", "CANCELLED"],
-  READY: ["SERVED", "CANCELLED"],
-  SERVED: ["COMPLETED"],
-  COMPLETED: [],
-  CANCELLED: [],
-};
+function formatOrderNumber(orderNumber: number) {
+  return `#${String(orderNumber).padStart(4, "0")}`;
+}
 
-// GET /api/orders
+function calculateRateAmount(subtotal: number, rate: number) {
+  return Math.round(subtotal * (rate / 100));
+}
+
+function assertCashPayment(amountPaid: number, total: number) {
+  if (!Number.isFinite(amountPaid) || amountPaid < total) {
+    return {
+      ok: false,
+      message: "Cash amountPaid must be greater than or equal to the order total.",
+    };
+  }
+
+  return { ok: true };
+}
+
+function mapOrder(order: OrderRecord) {
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    code: formatOrderNumber(order.orderNumber),
+    subtotal: order.subtotal,
+    taxAmount: order.taxAmount,
+    serviceAmount: order.serviceAmount,
+    total: order.total,
+    paymentMethod: order.paymentMethod,
+    amountPaid: order.amountPaid,
+    changeAmount: order.changeAmount,
+    status: order.status,
+    inventoryDeducted: order.inventoryDeducted,
+    businessId: order.businessId,
+    shiftId: order.shiftId,
+    tableId: order.tableId,
+    type: order.type,
+    cancelReason: order.cancelReason,
+    cancelledAt: order.cancelledAt,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    table: order.table,
+    shift: order.shift,
+    payment: order.payment,
+    items: order.items.map((item) => ({
+      id: item.id,
+      orderId: item.orderId,
+      menuItemId: item.menuItemId,
+      quantity: item.quantity,
+      price: item.price,
+      subtotal: item.subtotal,
+      menuItem: item.menuItem,
+    })),
+  };
+}
+
+async function getBusinessId(user: BusinessScopedUser) {
+  const context = await requireBusinessContextForUser(user);
+  return context.businessId;
+}
+
+async function getBusinessContext(user: BusinessScopedUser) {
+  return requireBusinessContextForUser(user);
+}
+
 router.get("/orders", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRole(req, res, READONLY_ROLES);
     if (!user) return;
-    const businessContext = await getBusinessContextForUser(user);
-    if (!businessContext)
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    const restaurant = businessContext.restaurant;
 
-    const { status, type, limit, page } = req.query as Record<string, string>;
-    const take = Number(limit ?? 50);
-    const skip = (Number(page ?? 1) - 1) * take;
-    const orderStatus = status && isOrderStatus(status) ? status : undefined;
-    const orderType = type && isOrderType(type) ? type : undefined;
+    const businessId = await getBusinessId(user);
+    const rawStatus = String(req.query.status ?? "").trim();
+    const status = rawStatus && isOrderStatus(rawStatus) ? rawStatus : undefined;
+    const type = req.query.type === "DINE_IN" ? "DINE_IN" : req.query.type === "TAKEAWAY" ? "TAKEAWAY" : undefined;
+    const tableId = String(req.query.tableId ?? "").trim() || undefined;
 
     const orders = await prisma.order.findMany({
       where: {
-        restaurantId: restaurant.id,
-        ...(orderStatus ? { status: orderStatus } : {}),
-        ...(orderType ? { type: orderType } : {}),
+        businessId,
+        ...(status ? { status } : {}),
+        ...(type ? { type } : {}),
+        ...(tableId ? { tableId } : {}),
       },
-      include: {
-        items: { include: { menuItem: true } },
-        table: true,
-        shift: true,
-        payment: true,
-      },
+      include: orderInclude,
       orderBy: { createdAt: "desc" },
-      take,
-      skip,
     });
 
-    res.json({ success: true, data: orders });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch orders" });
+    return successResponse(res, {
+      data: orders.map(mapOrder),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
-// POST /api/orders
-router.post("/orders", async (req, res) => {
-  try {
-    const requestStartedAt = Date.now();
-    const user = await requireRole(req, res, POS_ROLES);
-    if (!user) return;
-    const businessContext = await getBusinessContextForUser(user);
-    if (!businessContext)
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    const restaurant = businessContext.restaurant;
-
-    const body = req.body ?? {};
-    const paymentMethod = String(body.paymentMethod ?? "").toUpperCase();
-    const amountPaid = Number(body.amountPaid ?? 0);
-    if (!Number.isFinite(amountPaid) || !Number.isInteger(amountPaid) || amountPaid < 0)
-      return void res.status(400).json({ success: false, message: "Invalid payment amount" });
-
-    const orderTypeValue = String(body.orderType ?? "TAKEAWAY");
-    if (!isOrderType(orderTypeValue))
-      return void res.status(400).json({ success: false, message: "Invalid order type" });
-    const orderType = orderTypeValue;
-    const requestedTableId = body.tableId ? String(body.tableId).trim() : null;
-    const tableId = orderType === "DINE_IN" ? requestedTableId : null;
-    const parsedItems = parseOrderItems(body.items);
-
-    if (!parsedItems.success)
-      return void res
-        .status(400)
-        .json({ success: false, message: parsedItems.message });
-
-    const items = parsedItems.items;
-
-    if (orderType === "DINE_IN" && !tableId)
-      return void res
-        .status(400)
-        .json({ success: false, message: "Table is required for dine-in order" });
-
-    if (orderType === "DINE_IN" && tableId) {
-      const table = await prisma.diningTable.findFirst({
-        where: { id: tableId, restaurantId: restaurant.id },
-        select: { id: true, isActive: true, status: true },
-      });
-
-      if (!table)
-        return void res
-          .status(400)
-          .json({ success: false, message: "Table not found for this restaurant" });
-
-      if (!table.isActive)
-        return void res
-          .status(400)
-          .json({ success: false, message: "Table is inactive" });
-
-      if (table.status !== "AVAILABLE")
-        return void res
-          .status(400)
-          .json({ success: false, message: "Table is not available" });
-    }
-
-    // Check open shift
-    const currentShift = await prisma.shift.findFirst({
-      where: { userId: user.id, restaurantId: restaurant.id, status: "OPEN" },
-    });
-    if (!currentShift)
-      return void res
-        .status(400)
-        .json({ success: false, message: ERR.NO_OPEN_SHIFT });
-
-    // Validate payment method
-    const paymentEnabledMap: Record<string, boolean> = {
-      [PAYMENT_METHODS.CASH]: restaurant.cashEnabled,
-      [PAYMENT_METHODS.QRIS]: restaurant.qrisEnabled,
-      [PAYMENT_METHODS.CARD]: restaurant.cardEnabled,
-      [PAYMENT_METHODS.TRANSFER]: restaurant.transferEnabled,
-    };
-    if (!paymentEnabledMap[paymentMethod])
-      return void res
-        .status(400)
-        .json({ success: false, message: `Payment method ${paymentMethod} is not enabled` });
-
-    // Get menu items
-    const menuItemIds = items.map((i) => i.menuItemId).filter(Boolean) as string[];
-    const menuItems = await prisma.menuItem.findMany({
-      where: { id: { in: menuItemIds }, restaurantId: restaurant.id, isAvailable: true },
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        recipes: {
-          select: {
-            quantityNeeded: true,
-            inventoryItemId: true,
-            inventoryItem: { select: { id: true, name: true, currentStock: true } },
-          },
-        },
-      },
-    });
-
-    const menuItemById = new Map(menuItems.map((menuItem) => [menuItem.id, menuItem]));
-
-    // Calculate totals and immutable recipe requirements before opening the
-    // interactive transaction. Stock freshness is still re-checked under row
-    // lock inside the transaction.
-    let subtotal = 0;
-    const orderItemsData: Prisma.OrderItemUncheckedCreateWithoutOrderInput[] = [];
-    const requiredQtyMap = new Map<string, number>();
-    const requiredStockMovements: RequiredStockMovement[] = [];
-
-    for (const item of items) {
-      const mi = menuItemById.get(item.menuItemId);
-      if (!mi) return void res.status(400).json({ success: false, message: `Menu item not found: ${item.menuItemId}` });
-      if (mi.recipes.length === 0)
-        return void res.status(400).json({
-          success: false,
-          message: getNoRecipeOrderMessage(mi.name),
-        });
-
-      const lineTotal = mi.price * item.quantity;
-      subtotal += lineTotal;
-      orderItemsData.push({ menuItemId: mi.id, quantity: item.quantity, price: mi.price, subtotal: lineTotal });
-
-      for (const recipe of mi.recipes) {
-        const quantity = recipe.quantityNeeded * item.quantity;
-        requiredQtyMap.set(
-          recipe.inventoryItemId,
-          (requiredQtyMap.get(recipe.inventoryItemId) ?? 0) + quantity,
-        );
-        requiredStockMovements.push({
-          inventoryItemId: recipe.inventoryItemId,
-          quantity,
-        });
-      }
-    }
-
-    const sortedInventoryIds = [...requiredQtyMap.keys()].sort();
-
-    const taxAmount = Math.round(subtotal * (restaurant.taxRate / 100));
-    const serviceAmount = Math.round(subtotal * (restaurant.serviceRate / 100));
-    const total = subtotal + taxAmount + serviceAmount;
-
-    const isCash = paymentMethod === PAYMENT_METHODS.CASH;
-    const finalAmountPaid = isCash ? amountPaid : total;
-    if (isCash && finalAmountPaid < total)
-      return void res.status(400).json({ success: false, message: "Insufficient payment amount" });
-
-    const changeAmount = isCash ? finalAmountPaid - total : 0;
-
-    // Bug #4: wrap the transaction in a retry loop.
-    // If two concurrent requests compute the same orderNumber, the DB unique
-    // constraint (@@unique([restaurantId, orderNumber])) raises P2002. The
-    // entire $transaction is rolled back atomically, so no partial writes occur.
-    // A fresh attempt recomputes orderNumber from the latest row and succeeds.
-    logCreateOrderTiming(requestStartedAt, "before transaction", {
-      itemCount: items.length,
-      inventoryItemCount: sortedInventoryIds.length,
-      isCash,
-    });
-
-    const order = await (async () => {
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          const createdOrder = await prisma.$transaction(async (tx) => {
-            logCreateOrderTiming(requestStartedAt, "transaction started", {
-              attempt,
-            });
-
-            if (tableId) {
-              const tableUpdate = await tx.diningTable.updateMany({
-                where: {
-                  id: tableId,
-                  restaurantId: restaurant.id,
-                  isActive: true,
-                  status: "AVAILABLE",
-                },
-                data: { status: "OCCUPIED" },
-              });
-
-              if (tableUpdate.count !== 1) {
-                throw new OrderValidationError("Table is not available");
-              }
-            }
-
-            // Generate order number FIRST so it is available for StockMovement
-            // notes (Bug #7) and the order create below.
-            const lastOrder = await tx.order.findFirst({
-              where: { restaurantId: restaurant.id },
-              orderBy: { orderNumber: "desc" },
-              select: { orderNumber: true },
-            });
-            const nextOrderNumber = (lastOrder?.orderNumber ?? 0) + 1;
-
-            // Deduct stock immediately for cash orders. Required quantities were
-            // computed outside the transaction; the row lock below re-reads
-            // currentStock before applying each deduction.
-            if (isCash) {
-              for (const inventoryItemId of sortedInventoryIds) {
-                const totalRequired = requiredQtyMap.get(inventoryItemId) ?? 0;
-                const lockedRows = await tx.$queryRaw<
-                  Array<{ id: string; currentStock: number }>
-                >`
-                  SELECT id, "currentStock"
-                  FROM "InventoryItem"
-                  WHERE id = ${inventoryItemId}
-                    AND "restaurantId" = ${restaurant.id}
-                  FOR UPDATE
-                `;
-                const lockedItem = lockedRows[0];
-
-                if (!lockedItem) {
-                  throw new OrderValidationError("Inventory item not found while processing order");
-                }
-
-                if (lockedItem.currentStock < totalRequired) {
-                  throw new OrderValidationError(`Insufficient stock for inventory item ${inventoryItemId}`);
-                }
-
-                await tx.inventoryItem.update({
-                  where: { id: inventoryItemId },
-                  data: { currentStock: { decrement: totalRequired } },
-                });
-              }
-            }
-
-            const created = await tx.order.create({
-              data: {
-                restaurantId: restaurant.id,
-                shiftId: currentShift.id,
-                tableId,
-                orderNumber: nextOrderNumber,
-                subtotal,
-                taxAmount,
-                serviceAmount,
-                total,
-                paymentMethod,
-                amountPaid: finalAmountPaid,
-                changeAmount,
-                status: isCash ? "PAID" : "PENDING_PAYMENT",
-                inventoryDeducted: isCash,
-                type: orderType,
-                items: { create: orderItemsData },
-              },
-              include: { items: true, table: true, shift: true, payment: true },
-            });
-
-            if (isCash) {
-              for (const movement of requiredStockMovements) {
-                await tx.stockMovement.create({
-                  data: {
-                    inventoryItemId: movement.inventoryItemId,
-                    type: "OUT",
-                    quantity: movement.quantity,
-                    reason: "RECIPE_USAGE",
-                    note: `Order #${nextOrderNumber}`,
-                  },
-                });
-              }
-            }
-
-            const updatedShift = await tx.shift.update({
-              where: { id: currentShift.id },
-              data: { expectedCash: { increment: isCash ? total : 0 } },
-            });
-
-            // Audit log: order created
-            await tx.auditLog.create({
-              data: {
-                restaurantId: restaurant.id,
-                userId: user.id,
-                action: "CREATE",
-                entityType: "Order",
-                entityId: created.id,
-                changes: {
-                  orderNumber: created.orderNumber,
-                  status: created.status,
-                  total,
-                  paymentMethod,
-                  itemCount: orderItemsData.length,
-                  shiftId: updatedShift.id,
-                  tableId,
-                },
-              },
-            });
-
-            logCreateOrderTiming(requestStartedAt, "transaction completed", {
-              attempt,
-              orderId: created.id,
-              orderNumber: created.orderNumber,
-            });
-
-            return created;
-          });
-
-          return createdOrder;
-        } catch (err: unknown) {
-          // P2002 = unique constraint violation on orderNumber — safe to retry
-          // because the failed transaction is fully rolled back.
-          if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002" && attempt < 3) continue;
-          // Business rule errors are surfaced by the outer route handler.
-          throw err;
-        }
-      }
-
-      throw new Error("Failed to create unique order number after retries");
-    })();
-
-    logCreateOrderTiming(requestStartedAt, "response ready", {
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-    });
-
-    res.status(201).json({ success: true, data: order });
-
-    realtime.broadcast(businessContext.businessId, REALTIME_EVENTS.ORDER_CREATED, {
-      order,
-    });
-  } catch (err: unknown) {
-    if (err instanceof OrderValidationError)
-      return void res.status(400).json({ success: false, message: err.message });
-
-    res.status(500).json({ success: false, message: getErrorMessage(err, "Failed to create order") });
-  }
-});
-
-// GET /api/orders/:id
 router.get("/orders/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRole(req, res, READONLY_ROLES);
     if (!user) return;
-    const businessContext = await getBusinessContextForUser(user);
-    if (!businessContext)
-      return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    const restaurant = businessContext.restaurant;
+
+    const businessId = await getBusinessId(user);
+    const id = String(req.params.id ?? "").trim();
 
     const order = await prisma.order.findFirst({
-      where: { id: req.params.id, restaurantId: restaurant.id },
-      include: {
-        items: { include: { menuItem: { include: { recipes: { include: { inventoryItem: true } } } } } },
-        table: true,
-        shift: true,
-        payment: true,
-      },
+      where: { id, businessId },
+      include: orderInclude,
     });
-    if (!order) return void res.status(404).json({ success: false, message: ERR.ORDER_NOT_FOUND });
-    res.json({ success: true, data: order });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch order" });
+
+    if (!order) {
+      return errorResponse(res, {
+        status: 404,
+        code: errorCodes.orderNotFound,
+        message: "Order not found.",
+      });
+    }
+
+    return successResponse(res, {
+      data: mapOrder(order),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
-// PATCH /api/orders/:id/status
-router.patch("/orders/:id/status", async (req, res) => {
+router.post("/orders", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRole(req, res, OPERATIONS_ROLES);
     if (!user) return;
-    const businessContext = await getBusinessContextForUser(user);
-    if (!businessContext)
-      return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    const restaurant = businessContext.restaurant;
 
-    const { id } = req.params;
-    const statusValue = String(req.body?.status ?? "");
-    const cancelReason = String(req.body?.cancelReason ?? "").trim();
+    const businessContext = await getBusinessContext(user);
+    const businessId = businessContext.businessId;
+    const paymentMethod = normalizePaymentMethod(req.body?.paymentMethod);
+    const orderType = normalizeOrderType(req.body?.orderType ?? req.body?.type);
+    const tableId = req.body?.tableId === null || req.body?.tableId === undefined
+      ? null
+      : String(req.body.tableId).trim();
+    const amountPaid = Number(req.body?.amountPaid ?? 0);
+    const items = parseCreateOrderItems(req.body?.items);
 
-    if (!isOrderStatus(statusValue))
-      return void res.status(400).json({ success: false, message: "Invalid order status" });
-    const status = statusValue;
-
-    if (status === "CANCELLED" && !cancelReason)
-      return void res.status(400).json({ success: false, message: "Cancel reason is required" });
-
-    const existingOrder = await prisma.order.findFirst({
-      where: { id, restaurantId: restaurant.id },
-      include: {
-        items: {
-          include: {
-            menuItem: { include: { recipes: { include: { inventoryItem: true } } } },
-          },
-        },
-        table: true,
-      },
-    });
-    if (!existingOrder) return void res.status(404).json({ success: false, message: ERR.ORDER_NOT_FOUND });
-    if (!allowedTransitions[existingOrder.status].includes(status))
-      return void res.status(400).json({ success: false, message: `Cannot transition from ${existingOrder.status} to ${status}` });
-    if (!canTransitionOrderStatus(user.role, existingOrder.status, status))
-      return void res.status(403).json({ success: false, message: "Your role cannot perform this order transition" });
-
-    const isProcessingPaidOrder = existingOrder.status === "PAID" && status === "PREPARING";
-    const isCancelling = status === "CANCELLED";
-    const shouldRestoreCashShift = isCancelling && existingOrder.paymentMethod === PAYMENT_METHODS.CASH && existingOrder.status !== "PENDING_PAYMENT";
-
-    const inventoryOperations = [] as Promise<unknown>[];
-    if (isProcessingPaidOrder && !existingOrder.inventoryDeducted) {
-      for (const item of existingOrder.items) {
-        if (item.menuItem.recipes.length === 0) {
-          return void res.status(400).json({
-            success: false,
-            message: getNoRecipeProcessingMessage(item.menuItem.name),
-          });
-        }
-
-        for (const recipe of item.menuItem.recipes) {
-          const qty = recipe.quantityNeeded * item.quantity;
-          const inventoryItem = await prisma.inventoryItem.findFirst({
-            where: { id: recipe.inventoryItemId, restaurantId: restaurant.id },
-          });
-          if (!inventoryItem || inventoryItem.currentStock < qty)
-            return void res.status(400).json({ success: false, message: `Insufficient stock for ${recipe.inventoryItem.name}` });
-          inventoryOperations.push(
-            prisma.inventoryItem.update({
-              where: { id: inventoryItem.id },
-              data: { currentStock: { decrement: qty } },
-            }),
-            prisma.stockMovement.create({
-              data: {
-                inventoryItemId: inventoryItem.id,
-                type: "OUT",
-                quantity: qty,
-                reason: "RECIPE_USAGE",
-                note: `Order #${existingOrder.orderNumber}`,
-              },
-            }),
-          );
-        }
-      }
+    if (!paymentMethod) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Invalid payment method.",
+      });
     }
 
-    await prisma.$transaction(async (tx) => {
-      for (const op of inventoryOperations) {
-        await op;
-      }
+    if (!items) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Order requires at least one valid item.",
+      });
+    }
 
-      await tx.order.update({
-        where: { id },
-        data: {
-          status,
-          inventoryDeducted: isProcessingPaidOrder ? true : existingOrder.inventoryDeducted,
-          ...(isCancelling
-            ? {
-                cancelReason,
-                cancelledAt: new Date(),
-              }
-            : {}),
+    if (orderType === "DINE_IN" && !tableId) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Dine-in order requires tableId.",
+      });
+    }
+
+    if (orderType === "TAKEAWAY" && tableId) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Takeaway order must not include tableId.",
+      });
+    }
+
+    const createdOrder = await prisma.$transaction(async (tx) => {
+      const menuItems = await tx.menuItem.findMany({
+        where: {
+          businessId,
+          id: { in: items.map((item) => item.menuItemId) },
+          isAvailable: true,
+        },
+        include: {
+          category: true,
+          recipes: {
+            include: {
+              inventoryItem: true,
+            },
+          },
         },
       });
 
-      if (isCancelling && existingOrder.inventoryDeducted) {
-        for (const item of existingOrder.items) {
-          for (const recipe of item.menuItem.recipes) {
-            const qty = recipe.quantityNeeded * item.quantity;
-            await tx.inventoryItem.update({
-              where: { id: recipe.inventoryItemId },
-              data: { currentStock: { increment: qty } },
-            });
-            await tx.stockMovement.create({
-              data: {
-                inventoryItemId: recipe.inventoryItemId,
-                type: "IN",
-                quantity: qty,
-                reason: "RETURN",
-                note: `Order #${existingOrder.orderNumber} cancelled`,
-              },
-            });
-          }
-        }
+      if (menuItems.length !== items.length) {
+        throw new Error("One or more menu items are not available in this business.");
       }
 
-      if (shouldRestoreCashShift && existingOrder.shiftId) {
+      const menuById = new Map(menuItems.map((item) => [item.id, item]));
+      const subtotal = items.reduce((total, item) => {
+        const menuItem = menuById.get(item.menuItemId);
+        return total + (menuItem?.price ?? 0) * item.quantity;
+      }, 0);
+
+      const taxRate = businessContext.business.restaurant?.taxRate ?? 0;
+      const serviceRate = businessContext.business.restaurant?.serviceRate ?? 0;
+      const taxAmount = calculateRateAmount(subtotal, taxRate);
+      const serviceAmount = calculateRateAmount(subtotal, serviceRate);
+      const total = subtotal + taxAmount + serviceAmount;
+      const normalizedAmountPaid = paymentMethod === PAYMENT_METHODS.CASH ? amountPaid : 0;
+      const cashValidation = paymentMethod === PAYMENT_METHODS.CASH
+        ? assertCashPayment(normalizedAmountPaid, total)
+        : { ok: true };
+
+      if (!cashValidation.ok) {
+        throw new Error(cashValidation.message);
+      }
+
+      const table = orderType === "DINE_IN" && tableId
+        ? await tx.diningTable.findFirst({
+            where: {
+              id: tableId,
+              businessId,
+              isActive: true,
+            },
+          })
+        : null;
+
+      if (orderType === "DINE_IN" && !table) {
+        throw new Error("Table not found in this business.");
+      }
+
+      const openShift = await tx.shift.findFirst({
+        where: {
+          businessId,
+          userId: user.id,
+          status: "OPEN",
+        },
+        orderBy: { openedAt: "desc" },
+      });
+
+      const maxOrder = await tx.order.aggregate({
+        where: { businessId },
+        _max: { orderNumber: true },
+      });
+
+      const orderNumber = (maxOrder._max.orderNumber ?? 0) + 1;
+      const initialStatus: OrderStatus =
+        paymentMethod === PAYMENT_METHODS.CASH ? "PAID" : "PENDING_PAYMENT";
+
+      const order = await tx.order.create({
+        data: {
+          businessId,
+          orderNumber,
+          subtotal,
+          taxAmount,
+          serviceAmount,
+          total,
+          paymentMethod,
+          amountPaid: normalizedAmountPaid,
+          changeAmount: paymentMethod === PAYMENT_METHODS.CASH ? normalizedAmountPaid - total : 0,
+          status: initialStatus,
+          shiftId: openShift?.id ?? null,
+          tableId: table?.id ?? null,
+          type: orderType,
+          items: {
+            create: items.map((item) => {
+              const menuItem = menuById.get(item.menuItemId);
+              const price = menuItem?.price ?? 0;
+
+              return {
+                menuItemId: item.menuItemId,
+                quantity: item.quantity,
+                price,
+                subtotal: price * item.quantity,
+              };
+            }),
+          },
+          payment: {
+            create: {
+              provider: paymentMethod === PAYMENT_METHODS.CASH ? "CASH" : "PENDING_PROVIDER",
+              method: paymentMethod,
+              status: paymentMethod === PAYMENT_METHODS.CASH ? "PAID" : "PENDING",
+              paidAt: paymentMethod === PAYMENT_METHODS.CASH ? new Date() : null,
+            },
+          },
+        },
+        include: orderInclude,
+      });
+
+      if (paymentMethod === PAYMENT_METHODS.CASH && openShift) {
         await tx.shift.update({
-          where: { id: existingOrder.shiftId },
-          data: { expectedCash: { decrement: existingOrder.total } },
+          where: { id: openShift.id },
+          data: { expectedCash: { increment: total } },
         });
       }
 
-      if (status === "COMPLETED" || status === "CANCELLED") {
-        if (existingOrder.tableId) {
-          await tx.diningTable.update({
-            where: { id: existingOrder.tableId },
-            data: { status: status === "COMPLETED" ? "CLEANING" : "AVAILABLE" },
-          });
-        }
+      if (table) {
+        await tx.diningTable.update({
+          where: { id: table.id },
+          data: { status: "OCCUPIED" },
+        });
       }
+
+      await tx.auditLog.create({
+        data: {
+          businessId,
+          userId: user.id,
+          action: "CREATE",
+          entityType: "Order",
+          entityId: order.id,
+          changes: {
+            orderNumber,
+            total,
+            paymentMethod,
+            status: initialStatus,
+            type: orderType,
+            itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+          },
+        },
+      });
+
+      return order;
     });
 
-    // Audit log: order status changed
+    return successResponse(res, {
+      status: 201,
+      data: mapOrder(createdOrder),
+      message: "Order created.",
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: error.message,
+      });
+    }
+
+    return handleApiError(res, error);
+  }
+});
+
+router.patch("/orders/:id/status", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, OPERATIONS_ROLES);
+    if (!user) return;
+
+    const businessContext = await getBusinessContext(user);
+    const orderId = String(req.params.id ?? "").trim();
+    const nextStatusValue = String(req.body?.status ?? "").trim();
+    const cancelReason = String(req.body?.cancelReason ?? "").trim();
+
+    if (!orderId) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Order id is required.",
+      });
+    }
+
+    if (!isOrderStatus(nextStatusValue)) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Invalid order status.",
+      });
+    }
+
+    if (!canTransitionOrderStatus(user.role, nextStatusValue)) {
+      return errorResponse(res, {
+        status: 403,
+        code: errorCodes.forbidden,
+        message: "Your role cannot update this order status.",
+      });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        businessId: businessContext.businessId,
+      },
+      include: orderInclude,
+    });
+
+    if (!order) {
+      return errorResponse(res, {
+        status: 404,
+        code: errorCodes.orderNotFound,
+        message: "Order not found.",
+      });
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        status: nextStatusValue,
+        ...(nextStatusValue === "CANCELLED"
+          ? {
+              cancelReason,
+              cancelledAt: new Date(),
+            }
+          : {}),
+      },
+      include: orderInclude,
+    });
+
     await prisma.auditLog.create({
       data: {
-        restaurantId: restaurant.id,
+        businessId: businessContext.businessId,
         userId: user.id,
         action: "UPDATE",
         entityType: "Order",
-        entityId: id,
+        entityId: order.id,
         changes: {
-          orderNumber: existingOrder.orderNumber,
-          from: existingOrder.status,
-          to: status,
-          ...(isCancelling ? { cancelReason } : {}),
+          from: order.status,
+          to: nextStatusValue,
+          ...(nextStatusValue === "CANCELLED" ? { cancelReason } : {}),
         },
       },
     });
 
-    res.json({ success: true, message: "Order status updated" });
-
-    realtime.broadcast(businessContext.businessId, REALTIME_EVENTS.ORDER_UPDATED, {
-      id,
-      orderNumber: existingOrder.orderNumber,
-      status,
+    return successResponse(res, {
+      data: mapOrder(updatedOrder),
+      message: "Order status updated.",
     });
-  } catch (err: unknown) {
-    res.status(500).json({ success: false, message: getErrorMessage(err, "Failed to update order status") });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
-// PATCH /api/orders/:id/move-table
 router.patch("/orders/:id/move-table", async (req, res) => {
   try {
-    const user = await requireRole(req, res, OPS_ROLES);
+    const user = await requireRole(req, res, OPERATIONS_ROLES);
     if (!user) return;
-    const businessContext = await getBusinessContextForUser(user);
-    if (!businessContext)
-      return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    const restaurant = businessContext.restaurant;
 
-    const { id } = req.params;
-    const tableId = String(req.body?.tableId ?? "");
-    if (!tableId) return void res.status(400).json({ success: false, message: "Table is required" });
+    const businessId = await getBusinessId(user);
+    const orderId = String(req.params.id ?? "").trim();
+    const tableId = String(req.body?.tableId ?? "").trim();
 
-    const order = await prisma.order.findFirst({
-      where: { id, restaurantId: restaurant.id },
-      include: { table: true },
-    });
-    if (!order) return void res.status(404).json({ success: false, message: ERR.ORDER_NOT_FOUND });
-    if (order.type !== "DINE_IN") return void res.status(400).json({ success: false, message: "Only dine-in orders can move tables" });
-    if (order.status === "COMPLETED" || order.status === "CANCELLED")
-      return void res.status(400).json({ success: false, message: "Cannot move completed order" });
+    if (!tableId) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "tableId is required.",
+      });
+    }
 
-    const newTable = await prisma.diningTable.findFirst({
-      where: { id: tableId, restaurantId: restaurant.id, isActive: true },
-    });
-    if (!newTable) return void res.status(404).json({ success: false, message: "Table not found" });
-    if (newTable.status === "OCCUPIED") return void res.status(400).json({ success: false, message: "Table already occupied" });
+    const result = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findFirst({
+        where: { id: orderId, businessId },
+        include: { table: true },
+      });
 
-    await prisma.$transaction(async (tx) => {
-      if (order.tableId) {
-        await tx.diningTable.update({ where: { id: order.tableId }, data: { status: "AVAILABLE" } });
+      if (!order) {
+        throw new Error("Order not found.");
       }
-      await tx.diningTable.update({ where: { id: newTable.id }, data: { status: "OCCUPIED" } });
-      await tx.order.update({ where: { id: order.id }, data: { tableId: newTable.id } });
+
+      const nextTable = await tx.diningTable.findFirst({
+        where: {
+          id: tableId,
+          businessId,
+          isActive: true,
+        },
+      });
+
+      if (!nextTable) {
+        throw new Error("Target table not found in this business.");
+      }
+
+      if (order.tableId && order.tableId !== nextTable.id) {
+        await tx.diningTable.update({
+          where: { id: order.tableId },
+          data: { status: "AVAILABLE" },
+        });
+      }
+
+      await tx.diningTable.update({
+        where: { id: nextTable.id },
+        data: { status: "OCCUPIED" },
+      });
+
+      return tx.order.update({
+        where: { id: order.id },
+        data: {
+          tableId: nextTable.id,
+          type: "DINE_IN",
+        },
+        include: orderInclude,
+      });
     });
 
-    res.json({ success: true, message: "Table moved successfully" });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to move table" });
+    return successResponse(res, {
+      data: mapOrder(result),
+      message: "Order table updated.",
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: error.message,
+      });
+    }
+
+    return handleApiError(res, error);
   }
 });
 

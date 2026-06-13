@@ -1,37 +1,47 @@
-import { Router } from "express";
 import crypto from "crypto";
 import type { OrderStatus, PaymentStatus } from "@prisma/client";
-import { prisma } from "../lib/prisma.js";
+import { Router } from "express";
+
 import { requireRole } from "../lib/auth.js";
+import { createBusinessScopeWhere, requireBusinessContextForUser } from "../lib/business-context/index.js";
 import { POS_ROLES } from "../lib/constants.js";
-import { requireBusinessContextForUser } from "../lib/business-context/index.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
+import { prisma } from "../lib/prisma.js";
 import { errorResponse } from "../lib/responses/error-response.js";
+import { successResponse } from "../lib/responses/success-response.js";
 import { createCashflowEntryRecord } from "../services/cashflow/cashflow.repository.js";
 import { mapPaymentMethodToAccount } from "../services/cashflow/cashflow.validation.js";
 
 const router = Router();
 
-function writableBusinessId(params: { businessId?: string | null; restaurantId: string }) {
-  return params.businessId && params.businessId !== params.restaurantId
-    ? params.businessId
-    : null;
-}
+router.get("/payments", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, POS_ROLES);
+    if (!user) return;
 
-// POST /api/payments/create-transaction
-// Creates a Midtrans Snap transaction for non-cash orders.
-// Body: { orderId, total, customerName }
-// Returns: { success, redirectUrl }
+    const businessContext = await requireBusinessContextForUser(user);
+    const payments = await prisma.payment.findMany({
+      where: { order: createBusinessScopeWhere(businessContext) },
+      include: { order: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return successResponse(res, { data: payments });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
 router.post("/payments/create-transaction", async (req, res) => {
   try {
     const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForUser(user);
-    const restaurant = businessContext.restaurant;
+    const restaurantProfile = businessContext.business.restaurant;
 
-    if (!restaurant.midtransEnabled || !restaurant.midtransServerKey) {
+    if (!restaurantProfile?.midtransEnabled || !restaurantProfile.midtransServerKey) {
       return void errorResponse(res, {
         status: 400,
         code: errorCodes.paymentProviderNotConfigured,
@@ -39,9 +49,6 @@ router.post("/payments/create-transaction", async (req, res) => {
       });
     }
 
-    // Bug #1 fix: only orderId is required from the client; total is taken from
-    // the authoritative order record, never from the request body. This prevents
-    // a caller from submitting a manipulated charge amount to Midtrans.
     const { orderId, customerName } = req.body ?? {};
     if (!orderId) {
       return void errorResponse(res, {
@@ -52,7 +59,7 @@ router.post("/payments/create-transaction", async (req, res) => {
     }
 
     const order = await prisma.order.findFirst({
-      where: { id: String(orderId), restaurantId: businessContext.restaurantId },
+      where: { id: String(orderId), businessId: businessContext.businessId },
     });
 
     if (!order) {
@@ -63,41 +70,40 @@ router.post("/payments/create-transaction", async (req, res) => {
       });
     }
 
-    const serverKey = restaurant.midtransServerKey;
+    const serverKey = restaurantProfile.midtransServerKey;
     const isProduction = process.env.MIDTRANS_ENV === "production";
     const snapBaseUrl = isProduction
       ? "https://app.midtrans.com/snap/v1/transactions"
       : "https://app.sandbox.midtrans.com/snap/v1/transactions";
 
-    const authHeader = `Basic ${Buffer.from(`${serverKey}:`).toString("base64")}`;
-
-    const snapBody = {
-      transaction_details: {
-        order_id: order.id,
-        gross_amount: order.total, // always use the DB total, never the client-supplied value
-      },
-      customer_details: {
-        first_name: String(customerName || "Customer"),
-      },
-    };
-
     const snapRes = await fetch(snapBaseUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: authHeader,
+        Authorization: `Basic ${Buffer.from(`${serverKey}:`).toString("base64")}`,
       },
-      body: JSON.stringify(snapBody),
+      body: JSON.stringify({
+        transaction_details: {
+          order_id: order.id,
+          gross_amount: order.total,
+        },
+        customer_details: {
+          first_name: String(customerName || "Customer"),
+        },
+      }),
     });
 
-    const snapData = await snapRes.json() as { token?: string; redirect_url?: string; error_messages?: string[] };
+    const snapData = await snapRes.json() as {
+      token?: string;
+      redirect_url?: string;
+      error_messages?: string[];
+    };
 
     if (!snapRes.ok || !snapData.redirect_url) {
-      const msg = snapData.error_messages?.join(", ") ?? "Midtrans transaction creation failed.";
       return void errorResponse(res, {
         status: 502,
         code: errorCodes.paymentProviderError,
-        message: msg,
+        message: snapData.error_messages?.join(", ") ?? "Midtrans transaction creation failed.",
       });
     }
 
@@ -116,17 +122,12 @@ router.post("/payments/create-transaction", async (req, res) => {
       },
     });
 
-    // Keep redirectUrl at the top level for backward compatibility with the
-    // existing frontend payment API wrapper.
     return void res.json({ success: true, redirectUrl: snapData.redirect_url });
-  } catch (err: unknown) {
-    return handleApiError(res, err);
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
-// POST /api/payments/midtrans-webhook
-// Receives Midtrans payment status notifications, verifies the signature,
-// and updates the order + payment record accordingly.
 router.post("/payments/midtrans-webhook", async (req, res) => {
   try {
     const body = req.body ?? {};
@@ -149,10 +150,13 @@ router.post("/payments/midtrans-webhook", async (req, res) => {
 
     const order = await prisma.order.findFirst({
       where: { id: String(order_id) },
-      include: { restaurant: true },
+      include: {
+        payment: true,
+        business: { include: { restaurant: true } },
+      },
     });
 
-    if (!order || !order.restaurant) {
+    if (!order?.business.restaurant) {
       return void errorResponse(res, {
         status: 404,
         code: errorCodes.orderNotFound,
@@ -160,7 +164,7 @@ router.post("/payments/midtrans-webhook", async (req, res) => {
       });
     }
 
-    const serverKey = order.restaurant.midtransServerKey;
+    const serverKey = order.business.restaurant.midtransServerKey;
     if (!serverKey) {
       return void errorResponse(res, {
         status: 400,
@@ -196,7 +200,7 @@ router.post("/payments/midtrans-webhook", async (req, res) => {
 
     const isPending = transaction_status === "pending";
     const isSettled =
-      (transaction_status === "settlement") ||
+      transaction_status === "settlement" ||
       (transaction_status === "capture" && fraud_status === "accept");
     const isFailed =
       transaction_status === "cancel" ||
@@ -247,11 +251,7 @@ router.post("/payments/midtrans-webhook", async (req, res) => {
       if (isSettled) {
         await createCashflowEntryRecord(tx, {
           id: crypto.randomUUID(),
-          businessId: writableBusinessId({
-            businessId: order.restaurant.businessId,
-            restaurantId: order.restaurantId,
-          }),
-          restaurantId: order.restaurantId,
+          businessId: order.businessId,
           sourceType: "PAYMENT_WEBHOOK",
           sourceId: order.id,
           idempotencyKey: `ORDER_PAYMENT:${order.id}`,
@@ -281,8 +281,8 @@ router.post("/payments/midtrans-webhook", async (req, res) => {
     });
 
     return void res.json({ success: true });
-  } catch (err: unknown) {
-    return handleApiError(res, err);
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 

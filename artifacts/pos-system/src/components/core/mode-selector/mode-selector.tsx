@@ -63,7 +63,10 @@ export function ModeSelector() {
     if (!mode.isSelectable) return;
 
     const changed = setCurrentBusinessMode(mode.id, "select-mode");
-    if (!changed) return;
+
+    if (!changed) {
+      setCurrentMode(getCurrentBusinessMode());
+    }
 
     setLocation(mode.route);
   }
@@ -80,9 +83,10 @@ export function ModeSelector() {
           </h1>
           <p className="mt-3 text-sm leading-6 text-neutral-600 sm:text-base">
             Choose the workspace context for this session. Restaurant / F&amp;B is
-            the active operational mode. Other modes are visible as planned
-            workspaces so the roadmap is clear without pretending unfinished
-            workflows already exist.
+            the main operational workspace, while Raw Material / Livestock is
+            enabled as a controlled preview so route, sidebar, API header, and
+            tenant-scope bugs can be found before real production workflows are
+            added.
           </p>
         </div>
 

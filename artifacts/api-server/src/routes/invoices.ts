@@ -1,15 +1,15 @@
-import {
-  InvoiceDiscountType,
-  InvoiceStatus,
-  Prisma,
-  type Invoice,
-  type InvoiceItem,
-} from "@prisma/client";
+import { InvoiceDiscountType, InvoiceStatus, Prisma } from "@prisma/client";
+import type { Invoice, InvoiceItem } from "@prisma/client";
 import { Router } from "express";
 
-import { getRestaurantForUser, requireRole } from "../lib/auth.js";
-import { ERR, POS_ROLES } from "../lib/constants.js";
+import { requireRole } from "../lib/auth.js";
+import { requireBusinessContextForUser } from "../lib/business-context/index.js";
+import { POS_ROLES } from "../lib/constants.js";
+import { errorCodes } from "../lib/errors/error-codes.js";
+import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { prisma } from "../lib/prisma.js";
+import { errorResponse } from "../lib/responses/error-response.js";
+import { successResponse } from "../lib/responses/success-response.js";
 
 const router = Router();
 
@@ -41,9 +41,7 @@ type ValidInvoiceInput = {
   items: InvoiceLineInput[];
 };
 
-type InvoiceWithItems = Invoice & {
-  items: InvoiceItem[];
-};
+type InvoiceWithItems = Invoice & { items: InvoiceItem[] };
 
 class InvoiceInputError extends Error {
   constructor(message: string) {
@@ -98,25 +96,15 @@ function parseInvoiceStatus(value: unknown) {
   if (status === "PAID") return InvoiceStatus.PAID;
   if (status === "CANCELLED") return InvoiceStatus.CANCELLED;
   if (!status) return InvoiceStatus.DRAFT;
-
   throw new InvoiceInputError("Invoice status is invalid");
 }
 
 function parseDiscountType(value: unknown) {
   const discountType = getText(value).toUpperCase();
-  if (discountType === "PERCENTAGE" || discountType === "PERCENT") {
-    return InvoiceDiscountType.PERCENTAGE;
-  }
-  if (discountType === "FIXED" || discountType === "AMOUNT") {
-    return InvoiceDiscountType.FIXED;
-  }
+  if (discountType === "PERCENTAGE" || discountType === "PERCENT") return InvoiceDiscountType.PERCENTAGE;
+  if (discountType === "FIXED" || discountType === "AMOUNT") return InvoiceDiscountType.FIXED;
   if (!discountType) return InvoiceDiscountType.PERCENTAGE;
-
   throw new InvoiceInputError("Discount type is invalid");
-}
-
-function calculateLineTotal(quantity: number, unitPrice: number) {
-  return Math.round(quantity * unitPrice);
 }
 
 function validateItems(value: unknown): InvoiceLineInput[] {
@@ -125,68 +113,38 @@ function validateItems(value: unknown): InvoiceLineInput[] {
   }
 
   return value.map((rawItem, index) => {
-    if (!isRecord(rawItem)) {
-      throw new InvoiceInputError(`Item ${index + 1} is invalid`);
-    }
+    if (!isRecord(rawItem)) throw new InvoiceInputError(`Item ${index + 1} is invalid`);
 
     const description = getText(rawItem.description);
-    if (!description) {
-      throw new InvoiceInputError(`Item ${index + 1} description is required`);
-    }
-
     const quantity = getFiniteNumber(rawItem.quantity);
-    if (quantity === null || quantity <= 0) {
-      throw new InvoiceInputError(
-        `Item ${index + 1} quantity must be greater than 0`,
-      );
-    }
-
     const unitPrice = getFiniteNumber(rawItem.unitPrice);
-    if (unitPrice === null || unitPrice < 0) {
-      throw new InvoiceInputError(
-        `Item ${index + 1} unit price must be 0 or more`,
-      );
-    }
+
+    if (!description) throw new InvoiceInputError(`Item ${index + 1} description is required`);
+    if (quantity === null || quantity <= 0) throw new InvoiceInputError(`Item ${index + 1} quantity must be greater than 0`);
+    if (unitPrice === null || unitPrice < 0) throw new InvoiceInputError(`Item ${index + 1} unit price must be 0 or more`);
 
     const roundedUnitPrice = Math.round(unitPrice);
-
     return {
       description,
       quantity,
       unitPrice: roundedUnitPrice,
-      lineTotal: calculateLineTotal(quantity, roundedUnitPrice),
+      lineTotal: Math.round(quantity * roundedUnitPrice),
     };
   });
 }
 
-function calculateDiscountAmount(
-  discountType: InvoiceDiscountType,
-  discountValue: number,
-  subtotal: number,
-) {
-  if (discountValue < 0) {
-    throw new InvoiceInputError("Discount value must be 0 or more");
-  }
-
+function calculateDiscountAmount(discountType: InvoiceDiscountType, discountValue: number, subtotal: number) {
+  if (discountValue < 0) throw new InvoiceInputError("Discount value must be 0 or more");
   if (discountType === InvoiceDiscountType.PERCENTAGE) {
-    if (discountValue > 100) {
-      throw new InvoiceInputError("Percentage discount must be between 0 and 100");
-    }
-
+    if (discountValue > 100) throw new InvoiceInputError("Percentage discount must be between 0 and 100");
     return Math.round(subtotal * (discountValue / 100));
   }
-
-  if (discountValue > subtotal) {
-    throw new InvoiceInputError("Fixed discount cannot exceed subtotal");
-  }
-
+  if (discountValue > subtotal) throw new InvoiceInputError("Fixed discount cannot exceed subtotal");
   return Math.round(discountValue);
 }
 
-function validateInvoiceInput(body: unknown, restaurantName: string): ValidInvoiceInput {
-  if (!isRecord(body)) {
-    throw new InvoiceInputError("Invoice payload is required");
-  }
+function validateInvoiceInput(body: unknown, fallbackBusinessName: string): ValidInvoiceInput {
+  if (!isRecord(body)) throw new InvoiceInputError("Invoice payload is required");
 
   const business = optionalRecord(body.business);
   const customer = optionalRecord(body.customer);
@@ -196,26 +154,18 @@ function validateInvoiceInput(body: unknown, restaurantName: string): ValidInvoi
   const subtotal = items.reduce((total, item) => total + item.lineTotal, 0);
   const discountType = parseDiscountType(discount.type ?? discount.mode);
   const discountValue = getFiniteNumber(discount.value) ?? 0;
-  const discountAmount = calculateDiscountAmount(
-    discountType,
-    discountValue,
-    subtotal,
-  );
+  const discountAmount = calculateDiscountAmount(discountType, discountValue, subtotal);
   const grandTotal = Math.max(subtotal - discountAmount, 0);
   const customerName = getText(customer.name);
 
-  if (!customerName) {
-    throw new InvoiceInputError("Customer name is required");
-  }
+  if (!customerName) throw new InvoiceInputError("Customer name is required");
 
   return {
     invoiceNumber: getOptionalText(billing.invoiceNumber) ?? undefined,
     invoiceDate: parseDate(billing.invoiceDate, "Invoice date", new Date()),
-    dueDate: getOptionalText(billing.dueDate)
-      ? parseDate(billing.dueDate, "Due date")
-      : null,
+    dueDate: getOptionalText(billing.dueDate) ? parseDate(billing.dueDate, "Due date") : null,
     status: parseInvoiceStatus(body.status),
-    businessName: getText(business.name) || restaurantName,
+    businessName: getText(business.name) || fallbackBusinessName,
     businessEmail: getOptionalText(business.email),
     businessPhone: getOptionalText(business.phone),
     businessAddress: getOptionalText(business.address),
@@ -233,65 +183,48 @@ function validateInvoiceInput(body: unknown, restaurantName: string): ValidInvoi
 }
 
 function getDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}${month}${day}`;
+  return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
 }
 
-async function generateInvoiceNumber(restaurantId: string) {
+async function generateInvoiceNumber(businessId: string) {
   const dateKey = getDateKey();
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(startOfDay);
   endOfDay.setDate(endOfDay.getDate() + 1);
   const existingToday = await prisma.invoice.count({
-    where: {
-      restaurantId,
-      createdAt: { gte: startOfDay, lt: endOfDay },
-    },
+    where: { businessId, createdAt: { gte: startOfDay, lt: endOfDay } },
   });
 
   for (let attempt = 1; attempt <= 25; attempt += 1) {
-    const sequence = String(existingToday + attempt).padStart(4, "0");
-    const invoiceNumber = `INV-${dateKey}-${sequence}`;
+    const invoiceNumber = `INV-${dateKey}-${String(existingToday + attempt).padStart(4, "0")}`;
     const existing = await prisma.invoice.findUnique({
-      where: {
-        restaurantId_invoiceNumber: { restaurantId, invoiceNumber },
-      },
+      where: { businessId_invoiceNumber: { businessId, invoiceNumber } },
     });
-
     if (!existing) return invoiceNumber;
   }
 
   return `INV-${dateKey}-${String(Date.now()).slice(-6)}`;
 }
 
-async function resolveInvoiceNumber({
-  restaurantId,
-  requestedInvoiceNumber,
-  existingInvoiceId,
-}: {
-  restaurantId: string;
+async function resolveInvoiceNumber(params: {
+  businessId: string;
   requestedInvoiceNumber?: string;
   existingInvoiceId?: string;
 }) {
-  if (!requestedInvoiceNumber) return generateInvoiceNumber(restaurantId);
-
+  if (!params.requestedInvoiceNumber) return generateInvoiceNumber(params.businessId);
   const existing = await prisma.invoice.findUnique({
     where: {
-      restaurantId_invoiceNumber: {
-        restaurantId,
-        invoiceNumber: requestedInvoiceNumber,
+      businessId_invoiceNumber: {
+        businessId: params.businessId,
+        invoiceNumber: params.requestedInvoiceNumber,
       },
     },
   });
-
-  if (existing && existing.id !== existingInvoiceId) {
+  if (existing && existing.id !== params.existingInvoiceId) {
     throw new InvoiceInputError("Invoice number is already used");
   }
-
-  return requestedInvoiceNumber;
+  return params.requestedInvoiceNumber;
 }
 
 function invoiceItemOrderBy() {
@@ -302,26 +235,43 @@ function invoiceResponse(invoice: InvoiceWithItems) {
   return invoice;
 }
 
+function baseInvoiceData(input: ValidInvoiceInput, businessId: string, invoiceNumber: string) {
+  return {
+    businessId,
+    invoiceNumber,
+    invoiceDate: input.invoiceDate,
+    dueDate: input.dueDate,
+    status: input.status,
+    businessName: input.businessName,
+    businessEmail: input.businessEmail,
+    businessPhone: input.businessPhone,
+    businessAddress: input.businessAddress,
+    customerName: input.customerName,
+    customerPhone: input.customerPhone,
+    customerAddress: input.customerAddress,
+    notes: input.notes,
+    discountType: input.discountType,
+    discountValue: input.discountValue,
+    subtotal: input.subtotal,
+    discountAmount: input.discountAmount,
+    grandTotal: input.grandTotal,
+    cancelledAt: input.status === InvoiceStatus.CANCELLED ? new Date() : null,
+  };
+}
+
 router.get("/invoices", async (req, res) => {
   try {
     const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) {
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    }
-
+    const businessContext = await requireBusinessContextForUser(user);
     const invoices = await prisma.invoice.findMany({
-      where: { restaurantId: restaurant.id },
+      where: { businessId: businessContext.businessId },
       include: { items: { orderBy: invoiceItemOrderBy() } },
       orderBy: { updatedAt: "desc" },
     });
-
-    res.json({ success: true, data: invoices.map(invoiceResponse) });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch invoices" });
+    return successResponse(res, { data: invoices.map(invoiceResponse) });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -329,27 +279,17 @@ router.get("/invoices/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) {
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    }
-
+    const businessContext = await requireBusinessContextForUser(user);
     const invoice = await prisma.invoice.findFirst({
-      where: { id: req.params.id, restaurantId: restaurant.id },
+      where: { id: req.params.id, businessId: businessContext.businessId },
       include: { items: { orderBy: invoiceItemOrderBy() } },
     });
-
     if (!invoice) {
-      return void res
-        .status(404)
-        .json({ success: false, message: "Invoice not found" });
+      return errorResponse(res, { status: 404, code: errorCodes.notFound, message: "Invoice not found." });
     }
-
-    res.json({ success: true, data: invoiceResponse(invoice) });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch invoice" });
+    return successResponse(res, { data: invoiceResponse(invoice) });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -357,85 +297,22 @@ router.post("/invoices", async (req, res) => {
   try {
     const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) {
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    }
-
-    const input = validateInvoiceInput(req.body, restaurant.name);
-    const invoiceNumber = await resolveInvoiceNumber({
-      restaurantId: restaurant.id,
-      requestedInvoiceNumber: input.invoiceNumber,
+    const businessContext = await requireBusinessContextForUser(user);
+    const input = validateInvoiceInput(req.body, businessContext.businessName);
+    const invoiceNumber = await resolveInvoiceNumber({ businessId: businessContext.businessId, requestedInvoiceNumber: input.invoiceNumber });
+    const invoice = await prisma.invoice.create({
+      data: {
+        ...baseInvoiceData(input, businessContext.businessId, invoiceNumber),
+        items: { create: input.items },
+      },
+      include: { items: { orderBy: invoiceItemOrderBy() } },
     });
-
-    const invoice = await prisma.$transaction(async (tx) => {
-      const created = await tx.invoice.create({
-        data: {
-          restaurantId: restaurant.id,
-          invoiceNumber,
-          invoiceDate: input.invoiceDate,
-          dueDate: input.dueDate,
-          status: input.status,
-          businessName: input.businessName,
-          businessEmail: input.businessEmail,
-          businessPhone: input.businessPhone,
-          businessAddress: input.businessAddress,
-          customerName: input.customerName,
-          customerPhone: input.customerPhone,
-          customerAddress: input.customerAddress,
-          notes: input.notes,
-          discountType: input.discountType,
-          discountValue: input.discountValue,
-          subtotal: input.subtotal,
-          discountAmount: input.discountAmount,
-          grandTotal: input.grandTotal,
-          cancelledAt: input.status === InvoiceStatus.CANCELLED ? new Date() : null,
-          items: {
-            create: input.items.map((item) => ({
-              description: item.description,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              lineTotal: item.lineTotal,
-            })),
-          },
-        },
-        include: { items: { orderBy: invoiceItemOrderBy() } },
-      });
-
-      await tx.auditLog.create({
-        data: {
-          restaurantId: restaurant.id,
-          userId: user.id,
-          action: "CREATE",
-          entityType: "Invoice",
-          entityId: created.id,
-          changes: {
-            invoiceNumber: created.invoiceNumber,
-            grandTotal: created.grandTotal,
-          },
-        },
-      });
-
-      return created;
-    });
-
-    res.status(201).json({ success: true, data: invoiceResponse(invoice) });
+    return successResponse(res, { status: 201, data: invoiceResponse(invoice), message: "Invoice created." });
   } catch (error) {
     if (error instanceof InvoiceInputError) {
-      return void res.status(400).json({ success: false, message: error.message });
+      return errorResponse(res, { status: 400, code: errorCodes.validationError, message: error.message });
     }
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      return void res
-        .status(400)
-        .json({ success: false, message: "Invoice number is already used" });
-    }
-
-    res.status(500).json({ success: false, message: "Failed to create invoice" });
+    return handleApiError(res, error);
   }
 });
 
@@ -443,105 +320,34 @@ router.patch("/invoices/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) {
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    }
-
-    const existing = await prisma.invoice.findFirst({
-      where: { id: req.params.id, restaurantId: restaurant.id },
-      include: { items: { orderBy: invoiceItemOrderBy() } },
-    });
-
+    const businessContext = await requireBusinessContextForUser(user);
+    const existing = await prisma.invoice.findFirst({ where: { id: req.params.id, businessId: businessContext.businessId } });
     if (!existing) {
-      return void res
-        .status(404)
-        .json({ success: false, message: "Invoice not found" });
+      return errorResponse(res, { status: 404, code: errorCodes.notFound, message: "Invoice not found." });
     }
-
-    if (existing.status === InvoiceStatus.CANCELLED) {
-      return void res
-        .status(400)
-        .json({ success: false, message: "Cancelled invoices cannot be updated" });
-    }
-
-    const input = validateInvoiceInput(req.body, restaurant.name);
+    const input = validateInvoiceInput(req.body, businessContext.businessName);
     const invoiceNumber = await resolveInvoiceNumber({
-      restaurantId: restaurant.id,
-      requestedInvoiceNumber: input.invoiceNumber,
+      businessId: businessContext.businessId,
+      requestedInvoiceNumber: input.invoiceNumber ?? existing.invoiceNumber,
       existingInvoiceId: existing.id,
     });
-
     const invoice = await prisma.$transaction(async (tx) => {
       await tx.invoiceItem.deleteMany({ where: { invoiceId: existing.id } });
-      const updated = await tx.invoice.update({
+      return tx.invoice.update({
         where: { id: existing.id },
         data: {
-          invoiceNumber,
-          invoiceDate: input.invoiceDate,
-          dueDate: input.dueDate,
-          status: input.status,
-          businessName: input.businessName,
-          businessEmail: input.businessEmail,
-          businessPhone: input.businessPhone,
-          businessAddress: input.businessAddress,
-          customerName: input.customerName,
-          customerPhone: input.customerPhone,
-          customerAddress: input.customerAddress,
-          notes: input.notes,
-          discountType: input.discountType,
-          discountValue: input.discountValue,
-          subtotal: input.subtotal,
-          discountAmount: input.discountAmount,
-          grandTotal: input.grandTotal,
-          cancelledAt: input.status === InvoiceStatus.CANCELLED ? new Date() : null,
-          items: {
-            create: input.items.map((item) => ({
-              description: item.description,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              lineTotal: item.lineTotal,
-            })),
-          },
+          ...baseInvoiceData(input, businessContext.businessId, invoiceNumber),
+          items: { create: input.items },
         },
         include: { items: { orderBy: invoiceItemOrderBy() } },
       });
-
-      await tx.auditLog.create({
-        data: {
-          restaurantId: restaurant.id,
-          userId: user.id,
-          action: "UPDATE",
-          entityType: "Invoice",
-          entityId: updated.id,
-          changes: {
-            invoiceNumber: updated.invoiceNumber,
-            status: updated.status,
-            grandTotal: updated.grandTotal,
-          },
-        },
-      });
-
-      return updated;
     });
-
-    res.json({ success: true, data: invoiceResponse(invoice) });
+    return successResponse(res, { data: invoiceResponse(invoice), message: "Invoice updated." });
   } catch (error) {
     if (error instanceof InvoiceInputError) {
-      return void res.status(400).json({ success: false, message: error.message });
+      return errorResponse(res, { status: 400, code: errorCodes.validationError, message: error.message });
     }
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      return void res
-        .status(400)
-        .json({ success: false, message: "Invoice number is already used" });
-    }
-
-    res.status(500).json({ success: false, message: "Failed to update invoice" });
+    return handleApiError(res, error);
   }
 });
 
@@ -549,56 +355,19 @@ router.delete("/invoices/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) {
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
+    const businessContext = await requireBusinessContextForUser(user);
+    const invoice = await prisma.invoice.findFirst({ where: { id: req.params.id, businessId: businessContext.businessId } });
+    if (!invoice) {
+      return errorResponse(res, { status: 404, code: errorCodes.notFound, message: "Invoice not found." });
     }
-
-    const existing = await prisma.invoice.findFirst({
-      where: { id: req.params.id, restaurantId: restaurant.id },
+    const deleted = await prisma.invoice.update({
+      where: { id: invoice.id },
+      data: { status: InvoiceStatus.CANCELLED, cancelledAt: new Date() },
       include: { items: { orderBy: invoiceItemOrderBy() } },
     });
-
-    if (!existing) {
-      return void res
-        .status(404)
-        .json({ success: false, message: "Invoice not found" });
-    }
-
-    if (existing.status === InvoiceStatus.CANCELLED) {
-      return void res.json({ success: true, data: invoiceResponse(existing) });
-    }
-
-    const invoice = await prisma.$transaction(async (tx) => {
-      const cancelled = await tx.invoice.update({
-        where: { id: existing.id },
-        data: { status: InvoiceStatus.CANCELLED, cancelledAt: new Date() },
-        include: { items: { orderBy: invoiceItemOrderBy() } },
-      });
-
-      await tx.auditLog.create({
-        data: {
-          restaurantId: restaurant.id,
-          userId: user.id,
-          action: "DELETE",
-          entityType: "Invoice",
-          entityId: cancelled.id,
-          changes: { status: InvoiceStatus.CANCELLED },
-        },
-      });
-
-      return cancelled;
-    });
-
-    res.json({
-      success: true,
-      message: "Invoice cancelled",
-      data: invoiceResponse(invoice),
-    });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to cancel invoice" });
+    return successResponse(res, { data: invoiceResponse(deleted), message: "Invoice cancelled." });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 

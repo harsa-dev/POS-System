@@ -1,336 +1,151 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
-import { requireRole, getRestaurantForUser } from "../lib/auth.js";
-import { MANAGEMENT_AND_KITCHEN_ROLES, MANAGEMENT_ROLES, POS_ROLES, ERR } from "../lib/constants.js";
+import { requireRole } from "../lib/auth.js";
+import { MANAGEMENT_AND_KITCHEN_ROLES, MANAGEMENT_ROLES, POS_ROLES } from "../lib/constants.js";
+import { requireBusinessContextForUser } from "../lib/business-context/index.js";
+import { handleApiError } from "../lib/errors/handle-api-error.js";
 
 const router = Router();
 
-// GET /api/menu-items
+async function getBusinessId(user: { id: string; role: any; businessId: string | null }) {
+  const context = await requireBusinessContextForUser(user);
+  return context.businessId;
+}
+
 router.get("/menu-items", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_AND_KITCHEN_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant)
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-
+    const businessId = await getBusinessId(user);
     const includeUnavailable = req.query.includeUnavailable === "true";
-
     const menuItems = await prisma.menuItem.findMany({
-      where: {
-        restaurantId: restaurant.id,
-        ...(includeUnavailable
-          ? {}
-          : { isAvailable: true, recipes: { some: {} } }),
-      },
-      include: {
-        category: true,
-        recipes: { include: { inventoryItem: true } },
-      },
+      where: { businessId, ...(includeUnavailable ? {} : { isAvailable: true, recipes: { some: {} } }) },
+      include: { category: true, recipes: { include: { inventoryItem: true } } },
       orderBy: { createdAt: "desc" },
     });
-
-    const menuItemsWithStatus = menuItems.map((menuItem) => {
-      const recipeCount = menuItem.recipes.length;
-      const hasRecipe = recipeCount > 0;
-      const recipeMetadata = { hasRecipe, recipeCount };
-
-      if (!menuItem.isAvailable)
-        return {
-          ...menuItem,
-          ...recipeMetadata,
-          availabilityStatus: "UNAVAILABLE",
-        };
-      if (!hasRecipe)
-        return {
-          ...menuItem,
-          ...recipeMetadata,
-          availabilityStatus: "NO_RECIPE",
-        };
-      const hasEnoughStock = menuItem.recipes.every(
-        (r) =>
-          r.inventoryItem && r.inventoryItem.currentStock >= r.quantityNeeded
-      );
-      return {
-        ...menuItem,
-        ...recipeMetadata,
-        availabilityStatus: hasEnoughStock ? "AVAILABLE" : "OUT_OF_STOCK",
-      };
-    });
-
-    menuItemsWithStatus.sort((a, b) => {
-      const order: Record<string, number> = {
-        AVAILABLE: 0,
-        OUT_OF_STOCK: 1,
-        NO_RECIPE: 2,
-        UNAVAILABLE: 3,
-      };
-      return order[a.availabilityStatus] - order[b.availabilityStatus];
-    });
-
-    res.json({ success: true, data: menuItemsWithStatus });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch menu items" });
+    res.json({ success: true, data: menuItems });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
-// POST /api/menu-items
 router.post("/menu-items", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant)
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-
-    const { name, description, price, imageUrl, categoryId, isAvailable } =
-      req.body ?? {};
-    if (!name || price === undefined)
-      return void res
-        .status(400)
-        .json({ success: false, message: "Name and price are required" });
-
+    const businessId = await getBusinessId(user);
+    const { name, description, price, imageUrl, categoryId, isAvailable } = req.body ?? {};
+    if (!name || price === undefined) return void res.status(400).json({ success: false, message: "Name and price are required" });
     const menuItem = await prisma.$transaction(async (tx) => {
       const created = await tx.menuItem.create({
-        data: {
-          name,
-          description: description || null,
-          price: Number(price),
-          imageUrl: imageUrl || null,
-          categoryId: categoryId || null,
-          ...(typeof isAvailable === "boolean" ? { isAvailable } : {}),
-          restaurantId: restaurant.id,
-        },
+        data: { name, description: description || null, price: Number(price), imageUrl: imageUrl || null, categoryId: categoryId || null, ...(typeof isAvailable === "boolean" ? { isAvailable } : {}), businessId },
         include: { category: true },
       });
-      await tx.auditLog.create({
-        data: {
-          restaurantId: restaurant.id,
-          userId: user.id,
-          action: "CREATE",
-          entityType: "MenuItem",
-          entityId: created.id,
-          changes: { name: created.name, price: created.price },
-        },
-      });
+      await tx.auditLog.create({ data: { businessId, userId: user.id, action: "CREATE", entityType: "MenuItem", entityId: created.id, changes: { name: created.name, price: created.price } } });
       return created;
     });
-
     res.status(201).json({ success: true, data: menuItem });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to create menu item" });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
-// PATCH /api/menu-items/:id
 router.patch("/menu-items/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant)
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-
+    const businessId = await getBusinessId(user);
     const { id } = req.params;
-    const existing = await prisma.menuItem.findFirst({
-      where: { id, restaurantId: restaurant.id },
-      include: { _count: { select: { recipes: true } } },
-    });
-    if (!existing)
-      return void res
-        .status(404)
-        .json({ success: false, message: "Menu item not found" });
-
-    const { name, description, price, imageUrl, categoryId, isAvailable } =
-      req.body ?? {};
-    if (isAvailable === true && existing._count.recipes === 0)
-      return void res.status(400).json({
-        success: false,
-        message:
-          "This menu item cannot be made available until at least one recipe ingredient is configured.",
-      });
-
+    const existing = await prisma.menuItem.findFirst({ where: { id, businessId }, include: { _count: { select: { recipes: true } } } });
+    if (!existing) return void res.status(404).json({ success: false, message: "Menu item not found" });
+    const { name, description, price, imageUrl, categoryId, isAvailable } = req.body ?? {};
+    if (isAvailable === true && existing._count.recipes === 0) return void res.status(400).json({ success: false, message: "Menu item needs at least one recipe before it can be available." });
     const menuItem = await prisma.menuItem.update({
       where: { id },
-      data: {
-        ...(name !== undefined ? { name } : {}),
-        ...(description !== undefined ? { description: description || null } : {}),
-        ...(price !== undefined ? { price: Number(price) } : {}),
-        ...(imageUrl !== undefined ? { imageUrl: imageUrl || null } : {}),
-        ...(categoryId !== undefined ? { categoryId: categoryId || null } : {}),
-        ...(isAvailable !== undefined ? { isAvailable } : {}),
-      },
+      data: { ...(name !== undefined ? { name } : {}), ...(description !== undefined ? { description: description || null } : {}), ...(price !== undefined ? { price: Number(price) } : {}), ...(imageUrl !== undefined ? { imageUrl: imageUrl || null } : {}), ...(categoryId !== undefined ? { categoryId: categoryId || null } : {}), ...(isAvailable !== undefined ? { isAvailable } : {}) },
       include: { category: true },
     });
-
     res.json({ success: true, data: menuItem });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to update menu item" });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
-// DELETE /api/menu-items/:id
 router.delete("/menu-items/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant)
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-
+    const businessId = await getBusinessId(user);
     const { id } = req.params;
-    const existing = await prisma.menuItem.findFirst({
-      where: { id, restaurantId: restaurant.id },
-    });
-    if (!existing)
-      return void res
-        .status(404)
-        .json({ success: false, message: "Menu item not found" });
-
+    const existing = await prisma.menuItem.findFirst({ where: { id, businessId } });
+    if (!existing) return void res.status(404).json({ success: false, message: "Menu item not found" });
     const menuItem = await prisma.$transaction(async (tx) => {
-      const archived = await tx.menuItem.update({
-        where: { id },
-        data: { isAvailable: false },
-      });
-      await tx.auditLog.create({
-        data: {
-          restaurantId: restaurant.id,
-          userId: user.id,
-          action: "DELETE",
-          entityType: "MenuItem",
-          entityId: archived.id,
-          changes: { isAvailable: false },
-        },
-      });
+      const archived = await tx.menuItem.update({ where: { id }, data: { isAvailable: false } });
+      await tx.auditLog.create({ data: { businessId, userId: user.id, action: "DELETE", entityType: "MenuItem", entityId: archived.id, changes: { isAvailable: false } } });
       return archived;
     });
-
     res.json({ success: true, message: "Menu item archived", data: menuItem });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to archive menu item" });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
-// GET /api/categories
 router.get("/categories", async (req, res) => {
   try {
     const user = await requireRole(req, res, POS_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant)
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-
-    const categories = await prisma.category.findMany({
-      where: { restaurantId: restaurant.id },
-      orderBy: { createdAt: "desc" },
-    });
+    const businessId = await getBusinessId(user);
+    const categories = await prisma.category.findMany({ where: { businessId }, orderBy: { createdAt: "desc" } });
     res.json({ success: true, data: categories });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch categories" });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
-// POST /api/categories
 router.post("/categories", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant)
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-
+    const businessId = await getBusinessId(user);
     const name = String(req.body?.name ?? "").trim();
-    if (!name)
-      return void res
-        .status(400)
-        .json({ success: false, message: "Category name is required" });
-
-    const category = await prisma.category.create({
-      data: { name, restaurantId: restaurant.id },
-    });
+    if (!name) return void res.status(400).json({ success: false, message: "Category name is required" });
+    const category = await prisma.category.create({ data: { name, businessId } });
     res.status(201).json({ success: true, data: category });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to create category" });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
-// PATCH /api/categories/:id
 router.patch("/categories/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant)
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-
+    const businessId = await getBusinessId(user);
     const { id } = req.params;
     const name = String(req.body?.name ?? "").trim();
-    if (!name)
-      return void res
-        .status(400)
-        .json({ success: false, message: "Category name is required" });
-
-    const existing = await prisma.category.findFirst({
-      where: { id, restaurantId: restaurant.id },
-    });
-    if (!existing)
-      return void res
-        .status(404)
-        .json({ success: false, message: "Category not found" });
-
+    if (!name) return void res.status(400).json({ success: false, message: "Category name is required" });
+    const existing = await prisma.category.findFirst({ where: { id, businessId } });
+    if (!existing) return void res.status(404).json({ success: false, message: "Category not found" });
     const category = await prisma.category.update({ where: { id }, data: { name } });
     res.json({ success: true, data: category });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to update category" });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
-// DELETE /api/categories/:id
 router.delete("/categories/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant)
-      return void res
-        .status(404)
-        .json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-
+    const businessId = await getBusinessId(user);
     const { id } = req.params;
-    const existing = await prisma.category.findFirst({
-      where: { id, restaurantId: restaurant.id },
-      include: { menuItems: { select: { id: true }, take: 1 } },
-    });
-    if (!existing)
-      return void res
-        .status(404)
-        .json({ success: false, message: "Category not found" });
-    if (existing.menuItems.length > 0)
-      return void res
-        .status(400)
-        .json({
-          success: false,
-          message: "Category is still used by menu items. Move or edit those items first.",
-        });
-
+    const existing = await prisma.category.findFirst({ where: { id, businessId }, include: { menuItems: { select: { id: true }, take: 1 } } });
+    if (!existing) return void res.status(404).json({ success: false, message: "Category not found" });
+    if (existing.menuItems.length > 0) return void res.status(400).json({ success: false, message: "Category is still used by menu items." });
     await prisma.category.delete({ where: { id } });
     res.json({ success: true, message: "Category deleted" });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to delete category" });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 

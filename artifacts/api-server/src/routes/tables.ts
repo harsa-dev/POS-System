@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { requireRole } from "../lib/auth.js";
-import { createRestaurantScopeWhere, requireBusinessContextForUser } from "../lib/business-context/index.js";
+import { createBusinessScopeWhere, requireBusinessContextForUser } from "../lib/business-context/index.js";
 import { MANAGEMENT_AND_SERVER_ROLES, MANAGEMENT_ROLES, OPS_ROLES } from "../lib/constants.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
@@ -13,6 +13,15 @@ import { successResponse } from "../lib/responses/success-response.js";
 
 const router = Router();
 
+function cleanText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function parseCapacity(value: unknown) {
+  const capacity = Number(value ?? 2);
+  return Number.isInteger(capacity) && capacity > 0 ? capacity : null;
+}
+
 router.get("/tables", async (req, res) => {
   try {
     const user = await requireRole(req, res, OPS_ROLES);
@@ -21,7 +30,7 @@ router.get("/tables", async (req, res) => {
     const businessContext = await requireBusinessContextForUser(user);
 
     const tables = await prisma.diningTable.findMany({
-      where: createRestaurantScopeWhere(businessContext),
+      where: createBusinessScopeWhere(businessContext),
       orderBy: { createdAt: "desc" },
     });
 
@@ -37,8 +46,8 @@ router.post("/tables", async (req, res) => {
     if (!user) return;
 
     const businessContext = await requireBusinessContextForUser(user);
-    const name = String(req.body?.name ?? "").trim();
-    const capacity = Number(req.body?.capacity ?? 2);
+    const name = cleanText(req.body?.name);
+    const capacity = parseCapacity(req.body?.capacity);
 
     if (!name) {
       return errorResponse(res, {
@@ -48,21 +57,26 @@ router.post("/tables", async (req, res) => {
       });
     }
 
-    if (capacity <= 0) {
+    if (capacity === null) {
       return errorResponse(res, {
         status: 400,
         code: errorCodes.validationError,
-        message: "Capacity must be greater than 0.",
+        message: "Capacity must be a positive integer.",
       });
     }
 
     const table = await prisma.diningTable.create({
       data: {
+        businessId: businessContext.businessId,
         name,
         capacity,
         status: "AVAILABLE",
-        restaurantId: businessContext.restaurantId,
       },
+    });
+
+    realtime.broadcast(businessContext.businessId, REALTIME_EVENTS.TABLE_UPDATED, {
+      id: table.id,
+      status: table.status,
     });
 
     return successResponse(res, { data: table, status: 201 });
@@ -77,12 +91,12 @@ router.patch("/tables/:id", async (req, res) => {
     if (!user) return;
 
     const businessContext = await requireBusinessContextForUser(user);
-    const { id } = req.params;
+    const id = String(req.params.id ?? "").trim();
 
     const existing = await prisma.diningTable.findFirst({
       where: {
         id,
-        ...createRestaurantScopeWhere(businessContext),
+        ...createBusinessScopeWhere(businessContext),
       },
     });
 
@@ -94,15 +108,31 @@ router.patch("/tables/:id", async (req, res) => {
       });
     }
 
-    const { name, capacity, status, isActive } = req.body ?? {};
+    const body = req.body ?? {};
+    const name = cleanText(body.name);
+    const capacity = body.capacity === undefined ? undefined : parseCapacity(body.capacity);
+
+    if (body.capacity !== undefined && capacity === null) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Capacity must be a positive integer.",
+      });
+    }
+
     const table = await prisma.diningTable.update({
       where: { id },
       data: {
         ...(name ? { name } : {}),
-        ...(capacity !== undefined ? { capacity: Number(capacity) } : {}),
-        ...(status ? { status } : {}),
-        ...(typeof isActive === "boolean" ? { isActive } : {}),
+        ...(capacity !== undefined && capacity !== null ? { capacity } : {}),
+        ...(body.status ? { status: body.status } : {}),
+        ...(typeof body.isActive === "boolean" ? { isActive: body.isActive } : {}),
       },
+    });
+
+    realtime.broadcast(businessContext.businessId, REALTIME_EVENTS.TABLE_UPDATED, {
+      id: table.id,
+      status: table.status,
     });
 
     return successResponse(res, { data: table });
@@ -117,12 +147,12 @@ router.delete("/tables/:id", async (req, res) => {
     if (!user) return;
 
     const businessContext = await requireBusinessContextForUser(user);
-    const { id } = req.params;
+    const id = String(req.params.id ?? "").trim();
 
     const existing = await prisma.diningTable.findFirst({
       where: {
         id,
-        ...createRestaurantScopeWhere(businessContext),
+        ...createBusinessScopeWhere(businessContext),
       },
     });
 
@@ -137,6 +167,11 @@ router.delete("/tables/:id", async (req, res) => {
     const table = await prisma.diningTable.update({
       where: { id },
       data: { isActive: false, status: "INACTIVE" },
+    });
+
+    realtime.broadcast(businessContext.businessId, REALTIME_EVENTS.TABLE_UPDATED, {
+      id: table.id,
+      status: table.status,
     });
 
     return successResponse(res, {
@@ -154,12 +189,12 @@ router.patch("/tables/:id/mark-clean", async (req, res) => {
     if (!user) return;
 
     const businessContext = await requireBusinessContextForUser(user);
-    const { id } = req.params;
+    const id = String(req.params.id ?? "").trim();
 
     const table = await prisma.diningTable.findFirst({
       where: {
         id,
-        ...createRestaurantScopeWhere(businessContext),
+        ...createBusinessScopeWhere(businessContext),
       },
     });
 

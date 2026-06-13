@@ -13,8 +13,7 @@ type CashflowDb = PrismaClient | Prisma.TransactionClient;
 
 export type CreateCashflowEntryRecord = {
   id: string;
-  businessId: string | null;
-  restaurantId: string;
+  businessId: string;
   sourceType: CashflowSourceType;
   sourceId?: string | null;
   idempotencyKey?: string | null;
@@ -55,8 +54,8 @@ export type CategorySummaryRow = {
   count: number;
 };
 
-function getWhereSql(restaurantId: string, query: CashflowQuery) {
-  const where: Prisma.Sql[] = [Prisma.sql`"restaurantId" = ${restaurantId}`];
+function getWhereSql(businessId: string, query: CashflowQuery) {
+  const where: Prisma.Sql[] = [Prisma.sql`"businessId" = ${businessId}`];
 
   if (query.from) where.push(Prisma.sql`"occurredAt" >= ${query.from}`);
   if (query.to) where.push(Prisma.sql`"occurredAt" <= ${query.to}`);
@@ -79,7 +78,7 @@ function getWhereSql(restaurantId: string, query: CashflowQuery) {
 
 export async function createCashflowEntryRecord(
   db: CashflowDb,
-  data: CreateCashflowEntryRecord
+  data: CreateCashflowEntryRecord,
 ) {
   const metadata = data.metadata === undefined ? null : JSON.stringify(data.metadata);
 
@@ -87,7 +86,6 @@ export async function createCashflowEntryRecord(
     INSERT INTO "CashflowEntry" (
       "id",
       "businessId",
-      "restaurantId",
       "sourceType",
       "sourceId",
       "idempotencyKey",
@@ -105,7 +103,6 @@ export async function createCashflowEntryRecord(
     ) VALUES (
       ${data.id},
       ${data.businessId},
-      ${data.restaurantId},
       CAST(${data.sourceType} AS "CashflowSourceType"),
       ${data.sourceId ?? null},
       ${data.idempotencyKey ?? null},
@@ -121,7 +118,7 @@ export async function createCashflowEntryRecord(
       ${data.createdById ?? null},
       CAST(${metadata} AS jsonb)
     )
-    ON CONFLICT ("restaurantId", "idempotencyKey") DO NOTHING
+    ON CONFLICT ("businessId", "idempotencyKey") DO NOTHING
     RETURNING *;
   `;
 
@@ -130,12 +127,12 @@ export async function createCashflowEntryRecord(
 
 export async function findCashflowEntryById(
   db: CashflowDb,
-  restaurantId: string,
-  id: string
+  businessId: string,
+  id: string,
 ) {
   const rows = await db.$queryRaw<CashflowEntryRecord[]>`
     SELECT * FROM "CashflowEntry"
-    WHERE "restaurantId" = ${restaurantId} AND "id" = ${id}
+    WHERE "businessId" = ${businessId} AND "id" = ${id}
     LIMIT 1;
   `;
 
@@ -144,12 +141,12 @@ export async function findCashflowEntryById(
 
 export async function findCashflowEntryByIdempotencyKey(
   db: CashflowDb,
-  restaurantId: string,
-  idempotencyKey: string
+  businessId: string,
+  idempotencyKey: string,
 ) {
   const rows = await db.$queryRaw<CashflowEntryRecord[]>`
     SELECT * FROM "CashflowEntry"
-    WHERE "restaurantId" = ${restaurantId} AND "idempotencyKey" = ${idempotencyKey}
+    WHERE "businessId" = ${businessId} AND "idempotencyKey" = ${idempotencyKey}
     LIMIT 1;
   `;
 
@@ -158,11 +155,11 @@ export async function findCashflowEntryByIdempotencyKey(
 
 export async function listCashflowEntryRecords(
   db: CashflowDb,
-  restaurantId: string,
-  query: CashflowQuery
+  businessId: string,
+  query: CashflowQuery,
 ) {
   const offset = (query.page - 1) * query.limit;
-  const whereSql = getWhereSql(restaurantId, query);
+  const whereSql = getWhereSql(businessId, query);
 
   return db.$queryRaw<CashflowEntryRecord[]>`
     SELECT * FROM "CashflowEntry"
@@ -175,10 +172,10 @@ export async function listCashflowEntryRecords(
 
 export async function countCashflowEntryRecords(
   db: CashflowDb,
-  restaurantId: string,
-  query: CashflowQuery
+  businessId: string,
+  query: CashflowQuery,
 ) {
-  const whereSql = getWhereSql(restaurantId, query);
+  const whereSql = getWhereSql(businessId, query);
   const rows = await db.$queryRaw<CountRow[]>`
     SELECT COUNT(*)::int AS "count"
     FROM "CashflowEntry"
@@ -190,10 +187,10 @@ export async function countCashflowEntryRecords(
 
 export async function getCashflowSummary(
   db: CashflowDb,
-  restaurantId: string,
-  query: CashflowQuery
+  businessId: string,
+  query: CashflowQuery,
 ): Promise<SummaryRow> {
-  const whereSql = getWhereSql(restaurantId, {
+  const whereSql = getWhereSql(businessId, {
     ...query,
     page: 1,
     limit: 1,
@@ -232,10 +229,10 @@ export async function getCashflowSummary(
 
 export async function getCashflowTrend(
   db: CashflowDb,
-  restaurantId: string,
-  query: CashflowQuery
+  businessId: string,
+  query: CashflowQuery,
 ) {
-  const whereSql = getWhereSql(restaurantId, {
+  const whereSql = getWhereSql(businessId, {
     ...query,
     page: 1,
     limit: 1,
@@ -263,11 +260,11 @@ export async function getCashflowTrend(
 
 export async function getCashflowCategorySummary(
   db: CashflowDb,
-  restaurantId: string,
+  businessId: string,
   query: CashflowQuery,
-  direction: "income" | "expense"
+  direction: "income" | "expense",
 ) {
-  const whereSql = getWhereSql(restaurantId, {
+  const whereSql = getWhereSql(businessId, {
     ...query,
     page: 1,
     limit: 1,
@@ -294,13 +291,13 @@ export async function getCashflowCategorySummary(
 
 export async function voidCashflowEntryRecord(
   db: CashflowDb,
-  restaurantId: string,
-  id: string
+  businessId: string,
+  id: string,
 ) {
   const rows = await db.$queryRaw<CashflowEntryRecord[]>`
     UPDATE "CashflowEntry"
     SET "status" = 'VOIDED', "voidedAt" = now(), "updatedAt" = now()
-    WHERE "restaurantId" = ${restaurantId} AND "id" = ${id}
+    WHERE "businessId" = ${businessId} AND "id" = ${id}
     RETURNING *;
   `;
 

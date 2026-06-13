@@ -11,4 +11,5 @@ export { CustomersPartnersDashboard } from "./customers";
 export { FinancialReportsDashboard } from "./financial-reports";
 export { InvoiceGeneratorDashboard } from "./invoice-generator";
 export { InventoryManagementDashboard } from "./inventory";
+export { RawMaterialSharedDashboardBridge } from "./raw-material-bridge";
 export { SalesAnalyticsDashboard } from "./sales";

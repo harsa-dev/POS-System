@@ -6,6 +6,10 @@ export const ROUTES = {
   LOGIN: "/login",
   REGISTER: "/register",
   SELECT_MODE: "/select-mode",
+  PRIVACY: "/privacy",
+  TERMS: "/terms",
+  SECURITY: "/security",
+  COOKIES: "/cookies",
 
   DASHBOARD: "/dashboard",
 
@@ -19,12 +23,29 @@ export const ROUTES = {
   SERVING: "/dashboard/fnb/server/serving",
   PAYMENTS: "/dashboard/fnb/server/payments",
 
+  BUSINESS_OVERVIEW: "/dashboard/overview",
+  INTERNAL_MONITORING: "/dashboard/internal-monitoring",
+  ADMIN_ROLE_CONSOLE: "/dashboard/internal/admin-role-console",
+  BILLING_OPERATIONS_CONSOLE: "/dashboard/internal/billing-operations-console",
+  OPERATOR_SUPPORT_CONSOLE: "/dashboard/internal/operator-support-console",
+  ADMIN_ACTION_AUDIT_CONSOLE: "/dashboard/internal/admin-action-audit-console",
+  APPROVAL_CONTROL_CONSOLE: "/dashboard/internal/approval-control-console",
   ANALYTICS: "/dashboard/analytics",
   CUSTOMERS: "/dashboard/customers",
   CASHFLOW: "/dashboard/cashflow",
   FINANCIAL_REPORTS: "/dashboard/financial-reports",
   INVOICE_GENERATOR: "/dashboard/invoice-generator",
   CASHIER_SHIFT_REPORTS: "/dashboard/cashier-shift-reports",
+  HPP_CALCULATOR: "/dashboard/hpp-calculator",
+  OPERATION_REPORTS: "/dashboard/shift-reports",
+  TEAM_MANAGEMENT: "/dashboard/team-management",
+  ROSTER_OVERVIEW: "/dashboard/roster-overview",
+  EMPLOYEE_PERFORMANCE: "/dashboard/employee-performance",
+  AUDIT_LOG: "/dashboard/audit-log",
+  APPROVALS: "/dashboard/approvals",
+  EMPLOYEE_CONTRACTS: "/dashboard/employee-contracts",
+  EMPLOYEE_ATTENDANCE: "/dashboard/employee-attendance",
+  PAYROLL: "/dashboard/payroll",
   PAYMENTS_SUCCESS: "/dashboard/payments/success",
   PAYMENTS_ERROR: "/dashboard/payments/error",
   INVENTORY: "/dashboard/inventory",
@@ -39,7 +60,13 @@ export const ROUTES = {
 
   WORKSPACE_CUSTOM_BUSINESS_SERVICE: "/workspace/custom-business/service",
 
+  V3_RAW_MATERIAL_INTAKE: "/v3/raw-material/intake",
+  V3_RAW_MATERIAL_WEIGHING: "/v3/raw-material/weighing",
+  V3_RAW_MATERIAL_BATCHES: "/v3/raw-material/batches",
+  V3_RAW_MATERIAL_STORAGE: "/v3/raw-material/storage",
+  V3_RAW_MATERIAL_PROCESSING: "/v3/raw-material/processing",
   V3_RAW_MATERIAL_KANDANG: "/v3/raw-material/kandang",
+  V3_RAW_MATERIAL_SUPPLIERS: "/v3/raw-material/suppliers",
 } as const;
 
 // ---------------------------------------------------------------------------

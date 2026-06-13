@@ -43,8 +43,7 @@ export type CashflowActor = {
 
 export type CashflowEntryRecord = {
   id: string;
-  businessId: string | null;
-  restaurantId: string;
+  businessId: string;
   sourceType: CashflowSourceType;
   sourceId: string | null;
   idempotencyKey: string | null;
