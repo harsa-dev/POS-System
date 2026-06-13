@@ -8,7 +8,9 @@ import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import {
   createRawMaterialPen,
+  deactivateRawMaterialPen,
   listRawMaterialPens,
+  updateRawMaterialPen,
   type RawMaterialPenHealthStatus,
 } from "../services/raw-material/index.js";
 
@@ -60,6 +62,39 @@ router.post("/raw-material/pens", async (req, res) => {
       input: req.body ?? {},
     });
     return successResponse(res, { data, status: 201, message: "Raw material pen created." });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.patch("/raw-material/pens/:id", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await updateRawMaterialPen({
+      actor: getActor(user),
+      businessContext,
+      id: req.params.id,
+      input: req.body ?? {},
+    });
+    return successResponse(res, { data, message: "Raw material pen updated." });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.delete("/raw-material/pens/:id", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await deactivateRawMaterialPen({
+      actor: getActor(user),
+      businessContext,
+      id: req.params.id,
+    });
+    return successResponse(res, { data, message: "Raw material pen deactivated." });
   } catch (error) {
     return handleApiError(res, error);
   }
