@@ -1,3 +1,4 @@
+import type { RetailRepository } from "./retail.repository.js";
 import type {
   RetailInventoryRiskDto,
   RetailProductDto,
@@ -155,4 +156,4 @@ export const retailMockRepository = {
         };
       });
   },
-};
+} satisfies RetailRepository;
