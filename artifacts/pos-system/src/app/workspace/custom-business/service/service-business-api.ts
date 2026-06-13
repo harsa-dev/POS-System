@@ -11,6 +11,7 @@ import type {
   ServiceBusinessMutationPreviewResponse,
   ServiceBusinessTransitionPreviewResponse,
   ServiceBusinessWorkflowResponse,
+  ServiceBusinessWorkspaceResponse,
   UpdateServiceJobStatusInput,
 } from "./service-business-api-contract-types";
 import type { ServiceBusinessJob, ServiceBusinessWorkflowStatus } from "./service-business-workspace-types";
