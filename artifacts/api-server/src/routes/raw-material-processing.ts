@@ -7,6 +7,7 @@ import { ALL_ROLES } from "../lib/constants.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import {
+  cancelRawMaterialProcessingRun,
   createRawMaterialProcessingRun,
   listRawMaterialProcessingRuns,
   updateRawMaterialProcessingRun,
@@ -66,6 +67,22 @@ router.patch("/raw-material/processing-runs/:id", async (req, res) => {
       input: req.body ?? {},
     });
     return successResponse(res, { data, message: "Raw material processing run updated." });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/raw-material/processing-runs/:id/cancel", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await cancelRawMaterialProcessingRun({
+      actor: getActor(user),
+      businessContext,
+      id: req.params.id,
+    });
+    return successResponse(res, { data, message: "Raw material processing run cancelled." });
   } catch (error) {
     return handleApiError(res, error);
   }
