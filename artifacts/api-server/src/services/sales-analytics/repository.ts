@@ -1,6 +1,6 @@
 import { OrderStatus, PaymentStatus, Prisma, StockMovementReason, type PrismaClient } from "@prisma/client";
 
-import type { SalesAnalyticsQuery } from "./sales-analytics.types.js";
+import type { SalesAnalyticsFilterOptionsDto, SalesAnalyticsQuery } from "./sales-analytics.types.js";
 
 const PAID_ORDER_STATUSES = [
   OrderStatus.PAID,
@@ -68,11 +68,32 @@ export type SalesCogsSummaryRow = {
   cogs: number | string | null;
 };
 
-function productFilter(query: SalesAnalyticsQuery) {
+type FilterOptionRow = {
+  value: string;
+  label: string;
+};
+
+function orderStatusFilter(query: SalesAnalyticsQuery) {
+  if (query.orderStatus) {
+    return Prisma.sql`o.status = ${query.orderStatus}`;
+  }
+
+  return Prisma.sql`o.status IN (${Prisma.join(PAID_ORDER_STATUSES)})`;
+}
+
+function analyticsFilters(query: SalesAnalyticsQuery) {
   const filters: Prisma.Sql[] = [];
 
   if (query.productId) {
     filters.push(Prisma.sql`oi."menuItemId" = ${query.productId}`);
+  }
+
+  if (query.categoryId) {
+    filters.push(Prisma.sql`mi."categoryId" = ${query.categoryId}`);
+  }
+
+  if (query.paymentMethod) {
+    filters.push(Prisma.sql`o."paymentMethod" = ${query.paymentMethod}`);
   }
 
   if (query.q) {
@@ -87,8 +108,8 @@ function orderItemWhere(restaurantId: string, query: SalesAnalyticsQuery) {
     Prisma.sql`o."restaurantId" = ${restaurantId}`,
     Prisma.sql`o."createdAt" >= ${query.from}`,
     Prisma.sql`o."createdAt" <= ${query.to}`,
-    Prisma.sql`o.status IN (${Prisma.join(PAID_ORDER_STATUSES)})`,
-    ...productFilter(query),
+    orderStatusFilter(query),
+    ...analyticsFilters(query),
   ];
 
   return Prisma.sql`${Prisma.join(filters, " AND ")}`;
@@ -278,14 +299,51 @@ export async function getSalesSourceHealth(
         WHERE ${stockMovementWhere(restaurantId, query)}
           AND sm_missing."unitCostSnapshot" IS NULL
       ) AS "stockMovementsMissingCostSnapshot"
-    FROM "Order" o
-    LEFT JOIN "OrderItem" oi ON oi."orderId" = o.id
+    FROM "OrderItem" oi
+    INNER JOIN "Order" o ON o.id = oi."orderId"
+    INNER JOIN "MenuItem" mi ON mi.id = oi."menuItemId"
     LEFT JOIN "Payment" p ON p."orderId" = o.id
-    WHERE o."restaurantId" = ${restaurantId}
-      AND o."createdAt" >= ${query.from}
-      AND o."createdAt" <= ${query.to}
-      AND o.status IN (${Prisma.join(PAID_ORDER_STATUSES)})
+    WHERE ${orderItemWhere(restaurantId, query)}
   `;
 
   return row;
+}
+
+export async function listSalesAnalyticsFilterOptions(
+  prisma: PrismaClient,
+  restaurantId: string,
+): Promise<SalesAnalyticsFilterOptionsDto> {
+  const [products, categories, paymentMethods] = await Promise.all([
+    prisma.$queryRaw<FilterOptionRow[]>`
+      SELECT mi.id AS value, mi.name AS label
+      FROM "MenuItem" mi
+      WHERE mi."restaurantId" = ${restaurantId}
+        AND mi."isAvailable" = true
+      ORDER BY mi.name ASC
+    `,
+    prisma.$queryRaw<FilterOptionRow[]>`
+      SELECT c.id AS value, c.name AS label
+      FROM "Category" c
+      WHERE c."restaurantId" = ${restaurantId}
+      ORDER BY c.name ASC
+    `,
+    prisma.$queryRaw<FilterOptionRow[]>`
+      SELECT DISTINCT o."paymentMethod" AS value, o."paymentMethod" AS label
+      FROM "Order" o
+      WHERE o."restaurantId" = ${restaurantId}
+        AND o."paymentMethod" IS NOT NULL
+        AND o."paymentMethod" <> ''
+      ORDER BY o."paymentMethod" ASC
+    `,
+  ]);
+
+  return {
+    products,
+    categories,
+    paymentMethods,
+    orderStatuses: PAID_ORDER_STATUSES.map((status) => ({
+      value: status,
+      label: status,
+    })),
+  };
 }

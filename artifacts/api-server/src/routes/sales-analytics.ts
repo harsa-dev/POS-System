@@ -9,6 +9,7 @@ import { successResponse } from "../lib/responses/success-response.js";
 import {
   exportSalesAnalytics,
   getSalesAnalytics,
+  getSalesAnalyticsFilterOptions,
   getSalesAnalyticsReconciliation,
   parseSalesAnalyticsExportRequest,
   parseSalesAnalyticsRequest,
@@ -45,6 +46,28 @@ router.get("/sales-analytics", async (req, res) => {
 
     res.setHeader("Cache-Control", "no-store");
     return successResponse(res, { data, message: "Sales analytics retrieved." });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+
+router.get("/sales-analytics/filter-options", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+    const data = await getSalesAnalyticsFilterOptions({
+      actor: getActor(user),
+      businessContext,
+    });
+
+    res.setHeader("Cache-Control", "no-store");
+    return successResponse(res, {
+      data,
+      message: "Sales analytics filter options retrieved.",
+    });
   } catch (error) {
     return handleApiError(res, error);
   }

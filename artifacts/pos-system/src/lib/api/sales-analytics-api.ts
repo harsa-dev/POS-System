@@ -9,17 +9,39 @@ export type SalesAnalyticsBasis = (typeof salesAnalyticsBases)[number];
 export type SalesAnalyticsExportFormat =
   (typeof salesAnalyticsExportFormats)[number];
 
+export type SalesAnalyticsOrderStatus =
+  | "PAID"
+  | "PREPARING"
+  | "READY"
+  | "SERVED"
+  | "COMPLETED";
+
 export type SalesAnalyticsQuery = {
   from?: string;
   to?: string;
   basis?: SalesAnalyticsBasis;
   productId?: string;
+  categoryId?: string;
+  paymentMethod?: string;
+  orderStatus?: SalesAnalyticsOrderStatus;
   q?: string;
   limit?: number;
 };
 
 export type SalesAnalyticsExportQuery = SalesAnalyticsQuery & {
   format?: SalesAnalyticsExportFormat;
+};
+
+export type SalesAnalyticsFilterOptionDto = {
+  value: string;
+  label: string;
+};
+
+export type SalesAnalyticsFilterOptionsDto = {
+  products: SalesAnalyticsFilterOptionDto[];
+  categories: SalesAnalyticsFilterOptionDto[];
+  paymentMethods: SalesAnalyticsFilterOptionDto[];
+  orderStatuses: SalesAnalyticsFilterOptionDto[];
 };
 
 export type SalesAnalyticsPeriodDto = {
@@ -165,6 +187,9 @@ export function buildSalesAnalyticsQueryString(params?: SalesAnalyticsExportQuer
   if (params?.to) searchParams.set("to", params.to);
   if (params?.basis) searchParams.set("basis", params.basis);
   if (params?.productId) searchParams.set("productId", params.productId);
+  if (params?.categoryId) searchParams.set("categoryId", params.categoryId);
+  if (params?.paymentMethod) searchParams.set("paymentMethod", params.paymentMethod);
+  if (params?.orderStatus) searchParams.set("orderStatus", params.orderStatus);
   if (params?.q) searchParams.set("q", params.q);
   if (params?.format) searchParams.set("format", params.format);
   if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
@@ -178,6 +203,12 @@ export const salesAnalyticsApi = {
   getReport(params?: SalesAnalyticsQuery) {
     return apiClient.get<ApiDataEnvelope<SalesAnalyticsDto>>(
       `/api/sales-analytics${buildSalesAnalyticsQueryString(params)}`,
+    );
+  },
+
+  getFilterOptions(params?: SalesAnalyticsQuery) {
+    return apiClient.get<ApiDataEnvelope<SalesAnalyticsFilterOptionsDto>>(
+      `/api/sales-analytics/filter-options${buildSalesAnalyticsQueryString(params)}`,
     );
   },
 

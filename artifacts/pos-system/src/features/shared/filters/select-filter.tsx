@@ -1,3 +1,16 @@
+export type SelectFilterOption = string | {
+  value: string;
+  label: string;
+};
+
+function getOptionValue(option: SelectFilterOption) {
+  return typeof option === "string" ? option : option.value;
+}
+
+function getOptionLabel(option: SelectFilterOption) {
+  return typeof option === "string" ? option : option.label;
+}
+
 export function SelectFilter({
   label,
   value,
@@ -6,7 +19,7 @@ export function SelectFilter({
 }: {
   label: string;
   value: string;
-  options: string[];
+  options: SelectFilterOption[];
   onChange: (value: string) => void;
 }) {
   return (
@@ -17,11 +30,15 @@ export function SelectFilter({
         onChange={(event) => onChange(event.target.value)}
         className="w-full bg-transparent text-sm outline-none"
       >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
+        {options.map((option) => {
+          const optionValue = getOptionValue(option);
+
+          return (
+            <option key={optionValue} value={optionValue}>
+              {getOptionLabel(option)}
+            </option>
+          );
+        })}
       </select>
     </label>
   );

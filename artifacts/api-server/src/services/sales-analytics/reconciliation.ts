@@ -67,11 +67,23 @@ function toDetailRow(row: DetailRow): SalesAnalyticsReconciliationDetailRowDto {
   };
 }
 
-function productFilter(query: SalesAnalyticsQuery) {
+function analyticsFilters(query: SalesAnalyticsQuery) {
   const filters: Prisma.Sql[] = [];
 
   if (query.productId) {
     filters.push(Prisma.sql`oi."menuItemId" = ${query.productId}`);
+  }
+
+  if (query.categoryId) {
+    filters.push(Prisma.sql`mi."categoryId" = ${query.categoryId}`);
+  }
+
+  if (query.paymentMethod) {
+    filters.push(Prisma.sql`o."paymentMethod" = ${query.paymentMethod}`);
+  }
+
+  if (query.orderStatus) {
+    filters.push(Prisma.sql`o.status = ${query.orderStatus}`);
   }
 
   if (query.q) {
@@ -96,7 +108,7 @@ function orderItemWhere(restaurantId: string, query: SalesAnalyticsQuery) {
     Prisma.sql`o."createdAt" >= ${query.from}`,
     Prisma.sql`o."createdAt" <= ${query.to}`,
     Prisma.sql`o.status IN (${Prisma.join(PAID_ORDER_STATUSES)})`,
-    ...productFilter(query),
+    ...analyticsFilters(query),
   ];
 
   return Prisma.sql`${Prisma.join(filters, " AND ")}`;
@@ -338,8 +350,14 @@ async function listCancelledOrders(
   return rows.map(toDetailRow);
 }
 
-function hasProductScopedFilter(query: SalesAnalyticsQuery) {
-  return Boolean(query.productId || query.q);
+function hasScopedAnalyticsFilter(query: SalesAnalyticsQuery) {
+  return Boolean(
+    query.productId ||
+      query.categoryId ||
+      query.paymentMethod ||
+      query.orderStatus ||
+      query.q,
+  );
 }
 
 function buildIssues(input: {
@@ -348,7 +366,7 @@ function buildIssues(input: {
   missingCostSnapshotCount: number;
   zeroRevenueRowCount: number;
   cancelledOrderCount: number;
-  hasProductScopedFilter: boolean;
+  hasScopedAnalyticsFilter: boolean;
 }): SalesAnalyticsReconciliationIssueDto[] {
   const issues: SalesAnalyticsReconciliationIssueDto[] = [];
 
@@ -396,9 +414,9 @@ function buildIssues(input: {
     });
   }
 
-  if (input.hasProductScopedFilter) {
+  if (input.hasScopedAnalyticsFilter) {
     issues.push({
-      key: "product_scoped_cogs_hidden",
+      key: "scoped_cogs_hidden",
       title: "Product-scoped COGS is hidden",
       description:
         "Product/search filtered sales analytics intentionally hides COGS until item-level cost allocation exists.",
@@ -466,7 +484,7 @@ export async function getSalesAnalyticsReconciliation(params: {
       missingCostSnapshotCount,
       zeroRevenueRowCount,
       cancelledOrderCount,
-      hasProductScopedFilter: hasProductScopedFilter(params.query),
+      hasScopedAnalyticsFilter: hasScopedAnalyticsFilter(params.query),
     }),
     ordersWithoutPaidPayment,
     paymentTotalMismatches,

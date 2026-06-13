@@ -1,13 +1,24 @@
-import type { Role } from "@prisma/client";
+import type { OrderStatus, Role } from "@prisma/client";
 
 export const salesAnalyticsBases = ["paid"] as const;
 
 export const salesAnalyticsExportFormats = ["json", "csv"] as const;
 
+export const salesAnalyticsPaidOrderStatuses = [
+  "PAID",
+  "PREPARING",
+  "READY",
+  "SERVED",
+  "COMPLETED",
+] as const satisfies readonly OrderStatus[];
+
 export type SalesAnalyticsBasis = (typeof salesAnalyticsBases)[number];
 
 export type SalesAnalyticsExportFormat =
   (typeof salesAnalyticsExportFormats)[number];
+
+export type SalesAnalyticsOrderStatus =
+  (typeof salesAnalyticsPaidOrderStatuses)[number];
 
 export type SalesAnalyticsActor = {
   id: string;
@@ -19,8 +30,23 @@ export type SalesAnalyticsQuery = {
   to: Date;
   basis: SalesAnalyticsBasis;
   productId?: string;
+  categoryId?: string;
+  paymentMethod?: string;
+  orderStatus?: SalesAnalyticsOrderStatus;
   q?: string;
   limit: number;
+};
+
+export type SalesAnalyticsFilterOptionDto = {
+  value: string;
+  label: string;
+};
+
+export type SalesAnalyticsFilterOptionsDto = {
+  products: SalesAnalyticsFilterOptionDto[];
+  categories: SalesAnalyticsFilterOptionDto[];
+  paymentMethods: SalesAnalyticsFilterOptionDto[];
+  orderStatuses: SalesAnalyticsFilterOptionDto[];
 };
 
 export type SalesAnalyticsPeriodDto = {

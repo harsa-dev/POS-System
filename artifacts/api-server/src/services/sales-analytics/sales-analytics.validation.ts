@@ -3,8 +3,10 @@ import { errorCodes } from "../../lib/errors/error-codes.js";
 import {
   salesAnalyticsBases,
   salesAnalyticsExportFormats,
+  salesAnalyticsPaidOrderStatuses,
   type SalesAnalyticsBasis,
   type SalesAnalyticsExportFormat,
+  type SalesAnalyticsOrderStatus,
   type SalesAnalyticsQuery,
 } from "./sales-analytics.types.js";
 
@@ -12,6 +14,8 @@ const MAX_ANALYTICS_RANGE_DAYS = 400;
 const DEFAULT_ANALYTICS_ROW_LIMIT = 50;
 const MAX_ANALYTICS_ROW_LIMIT = 100;
 const MAX_SEARCH_LENGTH = 80;
+const MAX_FILTER_VALUE_LENGTH = 80;
+const MAX_PAYMENT_METHOD_LENGTH = 32;
 
 function isValidDate(value: Date) {
   return !Number.isNaN(value.getTime());
@@ -63,7 +67,7 @@ function parseBasis(value: unknown): SalesAnalyticsBasis {
   });
 }
 
-function parseOptionalString(value: unknown, field: string) {
+function parseOptionalString(value: unknown, field: string, maxLength = MAX_FILTER_VALUE_LENGTH) {
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value !== "string") {
     throw new AppError({
@@ -74,22 +78,52 @@ function parseOptionalString(value: unknown, field: string) {
   }
 
   const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
+  if (trimmed.length === 0) return undefined;
 
-function parseSearch(value: unknown) {
-  const search = parseOptionalString(value, "q");
-  if (!search) return undefined;
-
-  if (search.length > MAX_SEARCH_LENGTH) {
+  if (trimmed.length > maxLength) {
     throw new AppError({
       statusCode: 400,
       code: errorCodes.validationError,
-      message: `Search cannot exceed ${MAX_SEARCH_LENGTH} characters.`,
+      message: `${field} cannot exceed ${maxLength} characters.`,
     });
   }
 
-  return search;
+  return trimmed;
+}
+
+function parseSearch(value: unknown) {
+  return parseOptionalString(value, "q", MAX_SEARCH_LENGTH);
+}
+
+function parsePaymentMethod(value: unknown) {
+  const paymentMethod = parseOptionalString(
+    value,
+    "paymentMethod",
+    MAX_PAYMENT_METHOD_LENGTH,
+  );
+
+  return paymentMethod?.toUpperCase();
+}
+
+function parseOrderStatus(value: unknown): SalesAnalyticsOrderStatus | undefined {
+  const orderStatus = parseOptionalString(value, "orderStatus");
+  if (!orderStatus) return undefined;
+
+  const normalized = orderStatus.toUpperCase();
+  if (
+    salesAnalyticsPaidOrderStatuses.includes(
+      normalized as SalesAnalyticsOrderStatus,
+    )
+  ) {
+    return normalized as SalesAnalyticsOrderStatus;
+  }
+
+  throw new AppError({
+    statusCode: 400,
+    code: errorCodes.validationError,
+    message: "Invalid sales analytics orderStatus filter.",
+    details: { allowedValues: salesAnalyticsPaidOrderStatuses },
+  });
 }
 
 function parseLimit(value: unknown) {
@@ -151,6 +185,9 @@ export function parseSalesAnalyticsQuery(rawQuery: Record<string, unknown>): Sal
   const to = parseDate(rawQuery.to, "to", endOfToday());
   const basis = parseBasis(rawQuery.basis);
   const productId = parseOptionalString(rawQuery.productId, "productId");
+  const categoryId = parseOptionalString(rawQuery.categoryId, "categoryId");
+  const paymentMethod = parsePaymentMethod(rawQuery.paymentMethod);
+  const orderStatus = parseOrderStatus(rawQuery.orderStatus);
   const q = parseSearch(rawQuery.q);
   const limit = parseLimit(rawQuery.limit);
 
@@ -161,6 +198,9 @@ export function parseSalesAnalyticsQuery(rawQuery: Record<string, unknown>): Sal
     to,
     basis,
     productId,
+    categoryId,
+    paymentMethod,
+    orderStatus,
     q,
     limit,
   };

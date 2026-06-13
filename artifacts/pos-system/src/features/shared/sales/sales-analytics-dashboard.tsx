@@ -36,6 +36,8 @@ import {
   type SalesAnalyticsDataPointDto,
   type SalesAnalyticsDto,
   type SalesAnalyticsExportFileDto,
+  type SalesAnalyticsFilterOptionsDto,
+  type SalesAnalyticsOrderStatus,
   type SalesAnalyticsQuery,
   type SalesAnalyticsReconciliationDetailRowDto,
   type SalesAnalyticsReconciliationDto,
@@ -43,7 +45,10 @@ import {
   type SalesTransactionDto,
 } from "@/lib/api/sales-analytics-api";
 
-const ALL_PRODUCTS = "All Products";
+const ALL_PRODUCTS = "__all_products__";
+const ALL_CATEGORIES = "__all_categories__";
+const ALL_PAYMENT_METHODS = "__all_payment_methods__";
+const ALL_ORDER_STATUSES = "__all_order_statuses__";
 const DEFAULT_ROW_LIMIT = 50;
 
 const emptySummary: SalesAnalyticsDto["summary"] = {
@@ -361,8 +366,13 @@ export function SalesAnalyticsDashboard() {
   const [mode, setMode] = useState("Sales Table");
   const [productFilter, setProductFilter] = useState(ALL_PRODUCTS);
   const [productSearch, setProductSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORIES);
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState(ALL_PAYMENT_METHODS);
+  const [orderStatusFilter, setOrderStatusFilter] = useState(ALL_ORDER_STATUSES);
   const [dateRange, setDateRange] = useState<DateRangeOption>("This Month");
   const [report, setReport] = useState<SalesAnalyticsDto | null>(null);
+  const [filterOptions, setFilterOptions] =
+    useState<SalesAnalyticsFilterOptionsDto | null>(null);
   const [reconciliation, setReconciliation] =
     useState<SalesAnalyticsReconciliationDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -371,21 +381,24 @@ export function SalesAnalyticsDashboard() {
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
-  const productQuery = useMemo(() => {
-    const search = productSearch.trim();
-    if (search) return search;
-
-    return productFilter === ALL_PRODUCTS ? undefined : productFilter;
-  }, [productFilter, productSearch]);
-
   const query = useMemo<SalesAnalyticsQuery>(() => {
+    const search = productSearch.trim();
+
     return {
       ...getDateRangeQuery(dateRange),
       basis: "paid",
       limit: DEFAULT_ROW_LIMIT,
-      q: productQuery,
+      productId: productFilter === ALL_PRODUCTS ? undefined : productFilter,
+      categoryId: categoryFilter === ALL_CATEGORIES ? undefined : categoryFilter,
+      paymentMethod:
+        paymentMethodFilter === ALL_PAYMENT_METHODS ? undefined : paymentMethodFilter,
+      orderStatus:
+        orderStatusFilter === ALL_ORDER_STATUSES
+          ? undefined
+          : (orderStatusFilter as SalesAnalyticsOrderStatus),
+      q: search || undefined,
     };
-  }, [dateRange, productQuery]);
+  }, [categoryFilter, dateRange, orderStatusFilter, paymentMethodFilter, productFilter, productSearch]);
 
   const loadReport = useCallback(async () => {
     setIsLoading(true);
@@ -393,13 +406,16 @@ export function SalesAnalyticsDashboard() {
     setExportErrorMessage(null);
 
     try {
-      const [reportResponse, reconciliationResponse] = await Promise.all([
-        salesAnalyticsApi.getReport(query),
-        salesAnalyticsApi.getReconciliation(query),
-      ]);
+      const [reportResponse, reconciliationResponse, filterOptionsResponse] =
+        await Promise.all([
+          salesAnalyticsApi.getReport(query),
+          salesAnalyticsApi.getReconciliation(query),
+          salesAnalyticsApi.getFilterOptions(query),
+        ]);
 
       setReport(reportResponse.data);
       setReconciliation(reconciliationResponse.data);
+      setFilterOptions(filterOptionsResponse.data);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -418,18 +434,40 @@ export function SalesAnalyticsDashboard() {
   const rows = report?.rows ?? [];
   const summary = report?.summary ?? emptySummary;
 
-  const productOptions = useMemo(() => {
-    const names = new Set<string>();
+  const productOptions = useMemo(
+    () => [
+      { value: ALL_PRODUCTS, label: "All Products" },
+      ...(filterOptions?.products ?? []),
+    ],
+    [filterOptions?.products],
+  );
 
-    for (const item of report?.bestSellingProducts ?? []) {
-      names.add(item.label);
-    }
-    for (const row of rows) {
-      names.add(row.productName);
-    }
+  const categoryOptions = useMemo(
+    () => [
+      { value: ALL_CATEGORIES, label: "All Categories" },
+      ...(filterOptions?.categories ?? []),
+    ],
+    [filterOptions?.categories],
+  );
 
-    return [ALL_PRODUCTS, ...Array.from(names).sort((a, b) => a.localeCompare(b))];
-  }, [report?.bestSellingProducts, rows]);
+  const paymentMethodOptions = useMemo(
+    () => [
+      { value: ALL_PAYMENT_METHODS, label: "All Payment Methods" },
+      ...(filterOptions?.paymentMethods ?? []),
+    ],
+    [filterOptions?.paymentMethods],
+  );
+
+  const orderStatusOptions = useMemo(
+    () => [
+      { value: ALL_ORDER_STATUSES, label: "All Order Statuses" },
+      ...(filterOptions?.orderStatuses ?? []).map((option) => ({
+        value: option.value,
+        label: formatStatusLabel(option.label),
+      })),
+    ],
+    [filterOptions?.orderStatuses],
+  );
 
   const peakHour = useMemo(() => {
     const source = report?.busyHours ?? [];
@@ -605,12 +643,30 @@ export function SalesAnalyticsDashboard() {
         <TableToolbar
           filters={
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <DashboardFilters className="xl:min-w-[720px]">
+              <DashboardFilters className="xl:min-w-[980px]">
                 <SelectFilter
                   label="Product Filter"
                   value={productFilter}
                   options={productOptions}
                   onChange={setProductFilter}
+                />
+                <SelectFilter
+                  label="Category Filter"
+                  value={categoryFilter}
+                  options={categoryOptions}
+                  onChange={setCategoryFilter}
+                />
+                <SelectFilter
+                  label="Payment Method Filter"
+                  value={paymentMethodFilter}
+                  options={paymentMethodOptions}
+                  onChange={setPaymentMethodFilter}
+                />
+                <SelectFilter
+                  label="Order Status Filter"
+                  value={orderStatusFilter}
+                  options={orderStatusOptions}
+                  onChange={setOrderStatusFilter}
                 />
                 <SearchFilter
                   label="Product Search"

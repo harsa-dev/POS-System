@@ -5,6 +5,9 @@ export type {
   SalesAnalyticsDto,
   SalesAnalyticsExportFileDto,
   SalesAnalyticsExportFormat,
+  SalesAnalyticsFilterOptionDto,
+  SalesAnalyticsFilterOptionsDto,
+  SalesAnalyticsOrderStatus,
   SalesAnalyticsQuery,
   SalesAnalyticsReconciliationDetailRowDto,
   SalesAnalyticsReconciliationDto,
@@ -18,11 +21,13 @@ export type {
 export {
   salesAnalyticsBases,
   salesAnalyticsExportFormats,
+  salesAnalyticsPaidOrderStatuses,
 } from "./sales-analytics.types.js";
 
 export {
   exportSalesAnalytics,
   getSalesAnalytics,
+  getSalesAnalyticsFilterOptions,
   parseSalesAnalyticsExportRequest,
   parseSalesAnalyticsRequest,
 } from "./sales-analytics.service.js";
