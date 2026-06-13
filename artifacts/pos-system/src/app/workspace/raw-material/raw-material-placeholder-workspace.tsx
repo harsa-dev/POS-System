@@ -23,6 +23,8 @@ import {
   rawMaterialApiContracts,
   rawMaterialBatches,
   rawMaterialMockService,
+  rawMaterialScaleFeatures,
+  rawMaterialScaleProfiles,
   rawMaterialStorageLocations,
   rawMaterialSuppliers,
   rawMaterialWorkspaceModules,
@@ -36,6 +38,7 @@ import {
   RawMaterialReadinessCard,
   RawMaterialStaticSnapshots,
 } from "./raw-material-readonly-sections";
+import { RawMaterialScaleDashboard } from "./raw-material-scale-dashboard";
 import {
   rawMaterialModuleIcons,
   rawMaterialQualityFilterOptions,
@@ -187,6 +190,8 @@ export default function RawMaterialPlaceholderWorkspace({
       </div>
 
       <RawMaterialMetricsGrid metrics={metricsEnvelope.data} />
+
+      <RawMaterialScaleDashboard profiles={rawMaterialScaleProfiles} features={rawMaterialScaleFeatures} />
 
       <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
         {draftNotice}
