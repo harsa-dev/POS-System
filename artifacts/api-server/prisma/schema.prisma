@@ -561,8 +561,18 @@ model AttendanceSetting {
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }
 
-model Permission { id String @id @default(cuid()) key String @unique description String? rolePermissions RolePermission[] }
-model RolePermission { id String @id @default(cuid()) role Role permissionId String permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade) @@unique([role, permissionId], name: "role_permissionId") }
+model Permission { 
+  id String @id @default(cuid()) 
+  key String @unique 
+  description String? 
+  rolePermissions RolePermission[] 
+  }
+
+model RolePermission { 
+  id String @id @default(cuid()) 
+  role Role permissionId String 
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade) @@unique([role, permissionId], name: "role_permissionId") 
+  }
 
 model AuditLog {
   id String @id @default(cuid())
@@ -582,30 +592,239 @@ model AuditLog {
   @@index([createdAt])
 }
 
-enum Role { OWNER MANAGER ADMIN OPERATOR STAFF VIEWER }
-enum InventoryType { INGREDIENT PACKAGING EQUIPMENT PRODUCT RAW_MATERIAL FINISHED_GOOD SUPPLY TOOL SPARE_PART FEED MEDICINE }
-enum InventoryUnit { PCS GRAM KILOGRAM LITER ML PACK BOTTLE BOX CARTON SACK ROLL SET PAIR DOSE TABLET CAPSULE VIAL CAN }
-enum RawMaterialSupplierCategory { FEED LIVESTOCK PACKAGING RAW_GOODS }
-enum RawMaterialStorageType { DRY COLD OPEN_YARD KANDANG_SUPPORT }
-enum RawMaterialUnit { KG SACK CRATE HEAD LITER PCS }
-enum RawMaterialIntakeStatus { DRAFT INSPECTION ACCEPTED PARTIALLY_REJECTED REJECTED CANCELLED }
-enum RawMaterialBatchQualityStatus { INSPECTION ACCEPTED REJECTED QUARANTINED }
-enum RawMaterialProcessingStatus { PLANNED RUNNING COMPLETED CANCELLED }
-enum StockMovementType { IN OUT ADJUSTMENT }
-enum PaymentStatus { PENDING PAID FAILED EXPIRED }
-enum InvoiceStatus { DRAFT SENT PAID CANCELLED }
-enum InvoiceDiscountType { PERCENTAGE FIXED }
-enum OrderStatus { PENDING_PAYMENT PAID PREPARING READY SERVED COMPLETED CANCELLED }
-enum AuditAction { CREATE UPDATE DELETE }
-enum OrderType { DINE_IN TAKEAWAY }
-enum TableStatus { AVAILABLE OCCUPIED RESERVED CLEANING INACTIVE }
-enum ShiftStatus { OPEN CLOSED }
-enum AttendanceStatus { PRESENT LATE ABSENT LEAVE }
-enum StockMovementReason { PURCHASE RECIPE_USAGE WASTE EXPIRED MANUAL_ADJUSTMENT DAMAGED RETURN OPENING_STOCK STOCK_COUNT CORRECTION TRANSFER_IN TRANSFER_OUT PRODUCTION_USAGE SERVICE_USAGE LIVESTOCK_USAGE IMPORT }
-enum StockMovementSource { MANUAL ORDER RECIPE PURCHASE WASTE RETURN TRANSFER STOCK_COUNT IMPORT SYSTEM }
-enum CashflowEntryType { INCOME EXPENSE TRANSFER_IN TRANSFER_OUT ADJUSTMENT }
-enum CashflowEntryStatus { PENDING POSTED VOIDED }
-enum CashflowAccount { CASH BANK QRIS CARD TRANSFER OTHER }
-enum CashflowSourceType { ORDER_PAYMENT PAYMENT_WEBHOOK SHIFT_CLOSE INVOICE MANUAL INVENTORY_PURCHASE REFUND SYSTEM }
-enum BusinessType { RESTAURANT RETAIL SERVICE LIVESTOCK RAW_MATERIAL }
-enum BusinessMode { RESTAURANT RETAIL SERVICE LIVESTOCK RAW_MATERIAL }
+enum Role { 
+  OWNER 
+  MANAGER 
+  ADMIN 
+  OPERATOR 
+  STAFF 
+  VIEWER 
+  }
+
+enum InventoryType { 
+  INGREDIENT 
+  PACKAGING 
+  EQUIPMENT 
+  PRODUCT 
+  RAW_MATERIAL 
+  FINISHED_GOOD 
+  SUPPLY 
+  TOOL 
+  SPARE_PART 
+  FEED 
+  MEDICINE 
+  }
+
+enum InventoryUnit { 
+  PCS 
+  GRAM 
+  KILOGRAM 
+  LITER 
+  ML 
+  PACK 
+  BOTTLE 
+  BOX 
+  CARTON 
+  SACK 
+  ROLL 
+  SET 
+  PAIR 
+  DOSE 
+  TABLET 
+  CAPSULE 
+  VIAL 
+  CAN 
+  }
+
+enum RawMaterialSupplierCategory {
+   FEED 
+   LIVESTOCK 
+   PACKAGING 
+   RAW_GOODS 
+   }
+
+enum RawMaterialStorageType { 
+  DRY 
+  COLD 
+  OPEN_YARD 
+  KANDANG_SUPPORT 
+  }
+
+enum RawMaterialUnit { 
+  KG 
+  SACK 
+  CRATE 
+  HEAD 
+  LITER 
+  PCS }
+
+enum RawMaterialIntakeStatus { 
+  DRAFT 
+  INSPECTION 
+  ACCEPTED 
+  PARTIALLY_REJECTED 
+  REJECTED 
+  CANCELLED 
+  }
+
+enum RawMaterialBatchQualityStatus { 
+  INSPECTION 
+  ACCEPTED 
+  REJECTED 
+  QUARANTINED 
+  }
+
+enum RawMaterialProcessingStatus { 
+  PLANNED 
+  RUNNING 
+  COMPLETED 
+  CANCELLED 
+  }
+
+enum StockMovementType { 
+  IN 
+  OUT 
+  ADJUSTMENT 
+  }
+
+enum PaymentStatus { 
+  PENDING 
+  PAID 
+  FAILED 
+  EXPIRED 
+  }
+
+enum InvoiceStatus { 
+  DRAFT 
+  SENT 
+  PAID 
+  CANCELLED 
+  }
+
+enum InvoiceDiscountType { 
+  PERCENTAGE 
+  FIXED 
+  }
+
+enum OrderStatus { 
+  PENDING_PAYMENT 
+  PAID 
+  PREPARING 
+  READY 
+  SERVED 
+  COMPLETED 
+  CANCELLED 
+  }
+
+enum AuditAction { 
+  CREATE 
+  UPDATE 
+  DELETE 
+  }
+
+enum OrderType { 
+  DINE_IN 
+  TAKEAWAY 
+  }
+
+enum TableStatus { 
+  AVAILABLE 
+  OCCUPIED 
+  RESERVED 
+  CLEANING 
+  INACTIVE 
+  }
+
+enum ShiftStatus { 
+  OPEN 
+  CLOSED 
+  }
+
+enum AttendanceStatus { 
+  PRESENT 
+  LATE 
+  ABSENT 
+  LEAVE 
+  }
+
+enum StockMovementReason { 
+  PURCHASE 
+  RECIPE_USAGE 
+  WASTE 
+  EXPIRED 
+  MANUAL_ADJUSTMENT 
+  DAMAGED 
+  RETURN 
+  OPENING_STOCK 
+  STOCK_COUNT 
+  CORRECTION 
+  TRANSFER_IN 
+  TRANSFER_OUT 
+  PRODUCTION_USAGE 
+  SERVICE_USAGE 
+  LIVESTOCK_USAGE 
+  IMPORT 
+  }
+
+enum StockMovementSource { 
+  MANUAL 
+  ORDER 
+  RECIPE 
+  PURCHASE 
+  WASTE 
+  RETURN 
+  TRANSFER 
+  STOCK_COUNT 
+  IMPORT 
+  SYSTEM 
+  }
+
+enum CashflowEntryType { 
+  INCOME 
+  EXPENSE 
+  TRANSFER_IN 
+  TRANSFER_OUT 
+  ADJUSTMENT 
+  }
+
+enum CashflowEntryStatus { 
+  PENDING 
+  POSTED 
+  VOIDED 
+  }
+
+enum CashflowAccount { 
+  CASH 
+  BANK 
+  QRIS 
+  CARD 
+  TRANSFER 
+  OTHER 
+  }
+
+enum CashflowSourceType { 
+  ORDER_PAYMENT 
+  PAYMENT_WEBHOOK 
+  SHIFT_CLOSE 
+  INVOICE 
+  MANUAL 
+  INVENTORY_PURCHASE 
+  REFUND 
+  SYSTEM 
+  }
+
+enum BusinessType { 
+  RESTAURANT 
+  RETAIL 
+  SERVICE 
+  LIVESTOCK 
+  RAW_MATERIAL 
+  }
+
+enum BusinessMode { 
+  RESTAURANT 
+  RETAIL 
+  SERVICE 
+  LIVESTOCK 
+  RAW_MATERIAL 
+  }
