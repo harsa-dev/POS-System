@@ -1,6 +1,6 @@
 # Custom Business Service Prisma Delegate Cleanup
 
-Status: Phase 7A implemented  
+Status: Phase 7B started  
 Scope: Business Mode Service / Custom Business Service  
 Branch: main
 
@@ -14,17 +14,29 @@ The database tables already exist from:
 artifacts/api-server/prisma/migrations/202606140002_add_service_business_core/migration.sql
 ```
 
-Phase 7 should map those existing tables into Prisma schema models so later backend cleanup can use generated delegates instead of `$queryRaw` / `$executeRaw` everywhere.
+The active schema now includes Service Business models and enums, so the cleanup can proceed incrementally from read paths to write paths.
 
-## What was added in Phase 7A
+## Active schema state
 
-A schema fragment was added at:
+The active schema file is:
 
 ```txt
-artifacts/api-server/prisma/schema-service-business.fragment.prisma
+artifacts/api-server/prisma/schema.prisma
 ```
 
-This fragment contains Prisma model mappings for existing Service Business tables:
+It now includes these Service Business models:
+
+```txt
+ServiceRequest
+ServiceJob
+ServiceCostLine
+ServiceQuotation
+ServiceInvoice
+ServiceChecklistItem
+ServiceTimelineItem
+```
+
+Mapped SQL tables:
 
 ```txt
 ServiceRequest        -> service_requests
@@ -36,7 +48,7 @@ ServiceChecklistItem  -> service_checklist_items
 ServiceTimelineItem   -> service_timeline_items
 ```
 
-It also maps existing Postgres enums:
+Mapped SQL enums:
 
 ```txt
 ServiceBusinessWorkflowStatus -> service_business_workflow_status
@@ -46,86 +58,97 @@ ServiceBusinessQuoteStatus    -> service_business_quote_status
 ServiceBusinessInvoiceStatus  -> service_business_invoice_status
 ```
 
-## Why the active schema was not directly rewritten
+## Important relation note
 
-The active schema file is large:
-
-```txt
-artifacts/api-server/prisma/schema.prisma
-```
-
-The GitHub connector can edit files, but cannot run:
-
-```bash
-prisma validate
-prisma generate
-pnpm --filter @workspace/api-server run typecheck
-```
-
-Because this phase changes generated Prisma delegate surfaces, the active schema should only be appended when the developer or Codex can immediately validate and generate locally.
-
-The fragment is intentionally placed beside the active schema as a safe handoff artifact, not as a loaded schema file.
-
-## Required manual/Codex application steps
-
-1. Open:
-
-```txt
-artifacts/api-server/prisma/schema.prisma
-```
-
-2. Inside `model Business`, add these relation fields:
+`Business` should only expose the direct relation that exists in the SQL schema:
 
 ```prisma
-serviceRequests      ServiceRequest[]
+serviceRequests ServiceRequest[]
+```
+
+Do not add this relation unless a new migration adds `business_id` to `service_timeline_items`:
+
+```prisma
 serviceTimelineItems ServiceTimelineItem[]
 ```
 
-3. Append the models and enums from:
+`ServiceTimelineItem` belongs to `ServiceRequest` through `requestId`, so the safe relation path is:
 
 ```txt
-artifacts/api-server/prisma/schema-service-business.fragment.prisma
+Business -> ServiceRequest[] -> ServiceTimelineItem[]
 ```
 
-4. Run validation:
+This avoids Prisma validation error P1012 for a missing opposite relation field.
 
-```bash
-pnpm --filter @workspace/api-server run generate
+## Phase 7B implemented in this pass
+
+A delegate-backed read repository was added at:
+
+```txt
+artifacts/api-server/src/features/service-business/service-business.delegate.repository.ts
 ```
 
-5. Run typecheck/build:
+It uses generated Prisma delegates for the shared dashboard summary read path:
 
-```bash
-pnpm --filter @workspace/api-server run typecheck
-pnpm --filter @workspace/api-server run build
+```txt
+prisma.serviceRequest.findMany(...)
 ```
 
-6. Only after those commands pass, begin Phase 7B: replace selected raw SQL reads/writes with generated Prisma delegates.
+The summary service now calls:
 
-## Phase 7B target
+```txt
+loadServiceBusinessSummaryJobs(businessId)
+```
 
-After schema delegates generate successfully, refactor these files incrementally:
+from the delegate repository instead of using the raw SQL `loadServiceJobs` path.
+
+Updated file:
+
+```txt
+artifacts/api-server/src/features/service-business/service-business.summary.ts
+```
+
+The summary response source now identifies this path as:
+
+```txt
+api-server-prisma-delegate-summary
+```
+
+## Remaining Phase 7B work
+
+The following files still contain raw SQL and should be migrated gradually only after `prisma generate` passes locally:
 
 ```txt
 artifacts/api-server/src/features/service-business/service-business.crud.repository.ts
 artifacts/api-server/src/features/service-business/service-business.repository.ts
-artifacts/api-server/src/features/service-business/service-business.summary.ts
 ```
 
-Recommended order:
+Recommended next order:
 
 ```txt
-1. Read queries: loadServiceJobs, findServiceJob, findServiceWorkflowTarget.
+1. Read-only lookups: findServiceJob, findServiceWorkflowTarget, loadServiceWorkflowReadiness.
 2. Simple writes: createServiceCostLineRecord, createServiceQuotationRecord.
 3. Multi-step writes: createServiceRequestRecord, createServiceInvoiceRecord, recordServiceInvoicePaymentRecord.
-4. Workflow writes: updateServiceWorkflowStatus.
+4. Workflow transaction: updateServiceWorkflowStatus.
 ```
 
 Keep transaction boundaries explicit when replacing raw SQL multi-step writes.
 
+## Validation commands
+
+Run from the repository root:
+
+```bash
+pnpm --filter @workspace/api-server run generate
+pnpm --filter @workspace/api-server run typecheck
+pnpm --filter @workspace/api-server run build
+```
+
+If `generate` fails with a relation error around `Business.serviceTimelineItems`, remove that field from `model Business`. The timeline relation does not have a direct `business_id` column.
+
 ## No migration rule
 
-Do not create a new migration just for this phase unless `prisma validate` proves the active schema cannot map the existing SQL migration.
+Do not create a new migration just for this cleanup phase unless Prisma validation proves the active schema cannot map the existing SQL migration.
 
 The target is delegate mapping for existing database objects, not schema creation.
 
