@@ -15,6 +15,7 @@ export const errorCodes = {
 
   businessNotFound: "BUSINESS_NOT_FOUND",
   restaurantNotFound: "RESTAURANT_NOT_FOUND",
+  businessModeMismatch: "BUSINESS_MODE_MISMATCH",
   orderNotFound: "ORDER_NOT_FOUND",
   duplicatePayment: "DUPLICATE_PAYMENT",
   invalidStateTransition: "INVALID_STATE_TRANSITION",
