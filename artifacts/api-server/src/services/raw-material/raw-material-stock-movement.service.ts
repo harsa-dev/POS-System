@@ -1,6 +1,4 @@
-import { randomUUID } from "node:crypto";
-
-import { Prisma, Role } from "@prisma/client";
+import { Role } from "@prisma/client";
 
 import type { BusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
@@ -16,14 +14,19 @@ import {
   assertRawMaterialQuantityRange,
   assertRawMaterialStorageUsage,
 } from "./raw-material.stock-rules.js";
+import {
+  createRawMaterialStockMovementRecord,
+  findRawMaterialProcessingConsumptionMovement,
+  findRawMaterialStockMovementRowById,
+  listRawMaterialStockMovementRows,
+  loadRawMaterialBatchForMutation,
+  loadRawMaterialStorageForMutation,
+  type RawMaterialRepositoryTx,
+} from "./raw-material-stock-movement.repository.js";
 import type {
   RawMaterialAdjustmentInput,
   RawMaterialProcessingConsumptionInput,
   RawMaterialStockMovementQuery,
-  RawMaterialStockMovementReason,
-  RawMaterialStockMovementRow,
-  RawMaterialStockMovementSource,
-  RawMaterialStockMovementType,
   RawMaterialTransferInput,
 } from "./raw-material-stock-movement.types.js";
 import {
@@ -39,8 +42,6 @@ import { assertRawMaterialProcessingCanConsumeStock } from "./raw-material.workf
 const viewRoles = new Set<Role>([Role.OWNER, Role.MANAGER, Role.ADMIN, Role.OPERATOR, Role.STAFF, Role.VIEWER]);
 const manageRoles = new Set<Role>([Role.OWNER, Role.MANAGER, Role.ADMIN, Role.OPERATOR]);
 
-type Tx = Prisma.TransactionClient;
-
 function appError(statusCode: number, code: string, message: string, details?: Record<string, unknown>): never {
   throw new AppError({ statusCode, code, message, details });
 }
@@ -55,11 +56,8 @@ function assertCanManage(actor: RawMaterialActor) {
   appError(403, errorCodes.forbidden, "You do not have permission to manage raw material stock movements.");
 }
 
-async function loadBatchForMutation(tx: Tx, businessId: string, batchId: string) {
-  const batch = await tx.rawMaterialBatch.findFirst({
-    where: { id: batchId, businessId },
-    include: { storageLocation: true },
-  });
+async function getBatchForMutation(tx: RawMaterialRepositoryTx, businessId: string, batchId: string) {
+  const batch = await loadRawMaterialBatchForMutation(tx, businessId, batchId);
 
   if (!batch) appError(404, errorCodes.notFound, "Raw material batch not found.");
   if (!batch.isActive) appError(400, errorCodes.validationError, "Raw material batch is inactive.");
@@ -67,102 +65,18 @@ async function loadBatchForMutation(tx: Tx, businessId: string, batchId: string)
   return batch;
 }
 
-async function loadStorageForMutation(tx: Tx, businessId: string, storageLocationId: string) {
-  const storage = await tx.rawMaterialStorageLocation.findFirst({
-    where: { id: storageLocationId, businessId, isActive: true },
-  });
+async function getStorageForMutation(tx: RawMaterialRepositoryTx, businessId: string, storageLocationId: string) {
+  const storage = await loadRawMaterialStorageForMutation(tx, businessId, storageLocationId);
 
   if (!storage) appError(404, errorCodes.notFound, "Raw material storage location not found or inactive.");
   return storage;
 }
 
-async function insertMovement(tx: Tx, input: {
-  businessId: string;
-  batchId: string;
-  sourceStorageLocationId?: string | null;
-  targetStorageLocationId?: string | null;
-  type: RawMaterialStockMovementType;
-  reason: RawMaterialStockMovementReason;
-  source: RawMaterialStockMovementSource;
-  sourceId?: string | null;
-  quantity: number;
-  beforeQuantity?: number | null;
-  afterQuantity?: number | null;
-  note?: string | null;
-  createdById?: string | null;
-}) {
-  const id = randomUUID();
+async function getMovementDto(tx: RawMaterialRepositoryTx, businessId: string, movementId: string) {
+  const row = await findRawMaterialStockMovementRowById(tx, businessId, movementId);
 
-  await tx.$executeRaw`
-    INSERT INTO "RawMaterialStockMovement" (
-      "id",
-      "businessId",
-      "batchId",
-      "sourceStorageLocationId",
-      "targetStorageLocationId",
-      "type",
-      "reason",
-      "source",
-      "sourceId",
-      "quantity",
-      "beforeQuantity",
-      "afterQuantity",
-      "note",
-      "createdById"
-    ) VALUES (
-      ${id},
-      ${input.businessId},
-      ${input.batchId},
-      ${input.sourceStorageLocationId ?? null},
-      ${input.targetStorageLocationId ?? null},
-      ${input.type}::"RawMaterialStockMovementType",
-      ${input.reason}::"RawMaterialStockMovementReason",
-      ${input.source}::"RawMaterialStockMovementSource",
-      ${input.sourceId ?? null},
-      ${input.quantity},
-      ${input.beforeQuantity ?? null},
-      ${input.afterQuantity ?? null},
-      ${input.note ?? null},
-      ${input.createdById ?? null}
-    )
-  `;
-
-  return id;
-}
-
-async function findMovementById(tx: Tx, businessId: string, id: string) {
-  const rows = await tx.$queryRaw<RawMaterialStockMovementRow[]>`
-    SELECT
-      movement."id",
-      movement."businessId",
-      movement."batchId",
-      batch."lotCode" AS "batchLotCode",
-      batch."materialName" AS "materialName",
-      movement."sourceStorageLocationId",
-      source_storage."code" AS "sourceStorageCode",
-      movement."targetStorageLocationId",
-      target_storage."code" AS "targetStorageCode",
-      movement."type",
-      movement."reason",
-      movement."source",
-      movement."sourceId",
-      movement."quantity",
-      movement."beforeQuantity",
-      movement."afterQuantity",
-      movement."note",
-      movement."createdById",
-      movement."createdAt"
-    FROM "RawMaterialStockMovement" movement
-    JOIN "RawMaterialBatch" batch ON batch."id" = movement."batchId"
-    LEFT JOIN "RawMaterialStorageLocation" source_storage ON source_storage."id" = movement."sourceStorageLocationId"
-    LEFT JOIN "RawMaterialStorageLocation" target_storage ON target_storage."id" = movement."targetStorageLocationId"
-    WHERE movement."businessId" = ${businessId} AND movement."id" = ${id}
-    LIMIT 1
-  `;
-
-  const row = rows[0];
   if (!row) appError(404, errorCodes.notFound, "Raw material stock movement not found.");
-  return row;
+  return toRawMaterialStockMovementDto(row);
 }
 
 export async function listRawMaterialStockMovements(params: {
@@ -173,46 +87,16 @@ export async function listRawMaterialStockMovements(params: {
   const { actor, businessContext, query = {} } = params;
   assertCanView(actor);
 
-  const type = normalizeRawMaterialStockMovementType(query.type);
-  const reason = normalizeRawMaterialStockMovementReason(query.reason);
-  const source = normalizeRawMaterialStockMovementSource(query.source);
-  const search = query.search?.trim();
-  const rows = await prisma.$queryRaw<RawMaterialStockMovementRow[]>`
-    SELECT
-      movement."id",
-      movement."businessId",
-      movement."batchId",
-      batch."lotCode" AS "batchLotCode",
-      batch."materialName" AS "materialName",
-      movement."sourceStorageLocationId",
-      source_storage."code" AS "sourceStorageCode",
-      movement."targetStorageLocationId",
-      target_storage."code" AS "targetStorageCode",
-      movement."type",
-      movement."reason",
-      movement."source",
-      movement."sourceId",
-      movement."quantity",
-      movement."beforeQuantity",
-      movement."afterQuantity",
-      movement."note",
-      movement."createdById",
-      movement."createdAt"
-    FROM "RawMaterialStockMovement" movement
-    JOIN "RawMaterialBatch" batch ON batch."id" = movement."batchId"
-    LEFT JOIN "RawMaterialStorageLocation" source_storage ON source_storage."id" = movement."sourceStorageLocationId"
-    LEFT JOIN "RawMaterialStorageLocation" target_storage ON target_storage."id" = movement."targetStorageLocationId"
-    WHERE movement."businessId" = ${businessContext.businessId}
-      AND (${query.batchId ?? null}::text IS NULL OR movement."batchId" = ${query.batchId ?? null})
-      AND (${type ?? null}::"RawMaterialStockMovementType" IS NULL OR movement."type" = ${type ?? null}::"RawMaterialStockMovementType")
-      AND (${reason ?? null}::"RawMaterialStockMovementReason" IS NULL OR movement."reason" = ${reason ?? null}::"RawMaterialStockMovementReason")
-      AND (${source ?? null}::"RawMaterialStockMovementSource" IS NULL OR movement."source" = ${source ?? null}::"RawMaterialStockMovementSource")
-      AND (${query.sourceId ?? null}::text IS NULL OR movement."sourceId" = ${query.sourceId ?? null})
-      AND (${query.storageLocationId ?? null}::text IS NULL OR movement."sourceStorageLocationId" = ${query.storageLocationId ?? null} OR movement."targetStorageLocationId" = ${query.storageLocationId ?? null})
-      AND (${search ?? null}::text IS NULL OR batch."lotCode" ILIKE ${`%${search ?? ""}%`} OR batch."materialName" ILIKE ${`%${search ?? ""}%`} OR movement."note" ILIKE ${`%${search ?? ""}%`})
-    ORDER BY movement."createdAt" DESC
-    LIMIT 200
-  `;
+  const rows = await listRawMaterialStockMovementRows({
+    businessId: businessContext.businessId,
+    batchId: query.batchId,
+    type: normalizeRawMaterialStockMovementType(query.type),
+    reason: normalizeRawMaterialStockMovementReason(query.reason),
+    source: normalizeRawMaterialStockMovementSource(query.source),
+    sourceId: query.sourceId,
+    storageLocationId: query.storageLocationId,
+    search: query.search,
+  });
 
   return rows.map(toRawMaterialStockMovementDto);
 }
@@ -229,7 +113,7 @@ export async function adjustRawMaterialBatchStock(params: {
   assertRawMaterialPositiveMovementQuantity(Math.abs(data.deltaQuantity), "Adjustment quantity");
 
   return prisma.$transaction(async (tx) => {
-    const batch = await loadBatchForMutation(tx, businessContext.businessId, data.batchId);
+    const batch = await getBatchForMutation(tx, businessContext.businessId, data.batchId);
     const nextRemaining = batch.remainingQuantity + data.deltaQuantity;
     assertRawMaterialQuantityRange({ nextRemaining, batchQuantity: batch.quantity });
 
@@ -245,7 +129,7 @@ export async function adjustRawMaterialBatchStock(params: {
       data: { usedKg: nextUsedKg },
     });
 
-    const movementId = await insertMovement(tx, {
+    const movementId = await createRawMaterialStockMovementRecord(tx, {
       businessId: businessContext.businessId,
       batchId: batch.id,
       sourceStorageLocationId: batch.storageLocationId,
@@ -260,7 +144,7 @@ export async function adjustRawMaterialBatchStock(params: {
       createdById: actor.id,
     });
 
-    return toRawMaterialStockMovementDto(await findMovementById(tx, businessContext.businessId, movementId));
+    return getMovementDto(tx, businessContext.businessId, movementId);
   });
 }
 
@@ -274,8 +158,8 @@ export async function transferRawMaterialBatchStorage(params: {
   const data = validateRawMaterialTransferInput(params.input);
 
   return prisma.$transaction(async (tx) => {
-    const batch = await loadBatchForMutation(tx, businessContext.businessId, data.batchId);
-    const targetStorage = await loadStorageForMutation(tx, businessContext.businessId, data.targetStorageLocationId);
+    const batch = await getBatchForMutation(tx, businessContext.businessId, data.batchId);
+    const targetStorage = await getStorageForMutation(tx, businessContext.businessId, data.targetStorageLocationId);
 
     assertRawMaterialDifferentStorage({
       sourceStorageLocationId: batch.storageLocationId,
@@ -292,7 +176,7 @@ export async function transferRawMaterialBatchStorage(params: {
     await tx.rawMaterialStorageLocation.update({ where: { id: targetStorage.id }, data: { usedKg: nextTargetUsedKg } });
     await tx.rawMaterialBatch.update({ where: { id: batch.id }, data: { storageLocationId: targetStorage.id } });
 
-    const outId = await insertMovement(tx, {
+    const outId = await createRawMaterialStockMovementRecord(tx, {
       businessId: businessContext.businessId,
       batchId: batch.id,
       sourceStorageLocationId: batch.storageLocationId,
@@ -306,7 +190,7 @@ export async function transferRawMaterialBatchStorage(params: {
       note: data.note,
       createdById: actor.id,
     });
-    await insertMovement(tx, {
+    await createRawMaterialStockMovementRecord(tx, {
       businessId: businessContext.businessId,
       batchId: batch.id,
       sourceStorageLocationId: batch.storageLocationId,
@@ -321,7 +205,7 @@ export async function transferRawMaterialBatchStorage(params: {
       createdById: actor.id,
     });
 
-    return toRawMaterialStockMovementDto(await findMovementById(tx, businessContext.businessId, outId));
+    return getMovementDto(tx, businessContext.businessId, outId);
   });
 }
 
@@ -335,14 +219,12 @@ export async function consumeRawMaterialForProcessingRun(params: {
   const data = validateRawMaterialProcessingConsumptionInput(params.input);
 
   return prisma.$transaction(async (tx) => {
-    const existingLedger = await tx.$queryRaw<{ id: string }[]>`
-      SELECT "id" FROM "RawMaterialStockMovement"
-      WHERE "businessId" = ${businessContext.businessId}
-        AND "source" = 'PROCESSING_RUN'::"RawMaterialStockMovementSource"
-        AND "sourceId" = ${data.processingRunId}
-      LIMIT 1
-    `;
-    if (existingLedger.length > 0) {
+    const existingLedger = await findRawMaterialProcessingConsumptionMovement(
+      tx,
+      businessContext.businessId,
+      data.processingRunId,
+    );
+    if (existingLedger) {
       appError(409, errorCodes.conflict, "Processing run has already consumed stock.");
     }
 
@@ -369,7 +251,7 @@ export async function consumeRawMaterialForProcessingRun(params: {
     await tx.rawMaterialBatch.update({ where: { id: batch.id }, data: { remainingQuantity: nextRemaining } });
     await tx.rawMaterialStorageLocation.update({ where: { id: batch.storageLocationId }, data: { usedKg: nextUsedKg } });
 
-    const movementId = await insertMovement(tx, {
+    const movementId = await createRawMaterialStockMovementRecord(tx, {
       businessId: businessContext.businessId,
       batchId: batch.id,
       sourceStorageLocationId: batch.storageLocationId,
@@ -384,6 +266,6 @@ export async function consumeRawMaterialForProcessingRun(params: {
       createdById: actor.id,
     });
 
-    return toRawMaterialStockMovementDto(await findMovementById(tx, businessContext.businessId, movementId));
+    return getMovementDto(tx, businessContext.businessId, movementId);
   });
 }
