@@ -9,6 +9,7 @@ import { createContext, useContext, useEffect, useState, lazy, Suspense } from "
 import { LoginForm } from "@/components/auth/login-form";
 import { RegisterForm } from "@/components/auth/register-form";
 import { ModeSelector } from "@/components/core/mode-selector";
+import { LegalPage } from "@/pages/legal/legal-page";
 import {
   RouteGuard,
   getStoredBusinessMode,
@@ -67,7 +68,7 @@ type User = {
   name: string;
   email: string;
   role: string;
-  restaurantId?: string | null;
+  businessId?: string | null;
 };
 
 type AuthContextType = {
@@ -175,6 +176,16 @@ function PageFallback() {
     <div className="flex min-h-[40vh] items-center justify-center">
       <div className="text-sm text-neutral-400">Loading...</div>
     </div>
+  );
+}
+
+function AuthPageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-100 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(59,130,246,0.18),transparent_32%),radial-gradient(circle_at_85%_10%,rgba(16,185,129,0.16),transparent_28%),radial-gradient(circle_at_50%_100%,rgba(99,102,241,0.16),transparent_34%)]" />
+      <div className="absolute left-1/2 top-0 h-64 w-[42rem] -translate-x-1/2 rounded-full bg-white/50 blur-3xl" />
+      <div className="relative z-10 w-full">{children}</div>
+    </main>
   );
 }
 
@@ -335,15 +346,19 @@ function Router() {
     <Switch>
       <Route path={ROUTES.ROOT}><Redirect to={ROUTES.LOGIN} /></Route>
       <Route path={ROUTES.LOGIN}>
-        <main className="flex min-h-screen items-center justify-center bg-neutral-50">
+        <AuthPageShell>
           <LoginForm />
-        </main>
+        </AuthPageShell>
       </Route>
       <Route path={ROUTES.REGISTER}>
-        <main className="flex min-h-screen items-center justify-center bg-neutral-50">
+        <AuthPageShell>
           <RegisterForm />
-        </main>
+        </AuthPageShell>
       </Route>
+      <Route path={ROUTES.PRIVACY}><LegalPage kind="privacy" /></Route>
+      <Route path={ROUTES.TERMS}><LegalPage kind="terms" /></Route>
+      <Route path={ROUTES.SECURITY}><LegalPage kind="security" /></Route>
+      <Route path={ROUTES.COOKIES}><LegalPage kind="cookies" /></Route>
       <Route path={ROUTES.SELECT_MODE}><ModeSelectionRoute /></Route>
       <Route>
         <div className="flex min-h-screen items-center justify-center">
