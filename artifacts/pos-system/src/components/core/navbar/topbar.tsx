@@ -2,6 +2,8 @@
 
 import { Bell, Menu, Search } from "lucide-react";
 
+import { BusinessModeSwitcher } from "@/components/core/business-mode";
+
 type TopbarProps = {
   userName: string;
   role: string;
@@ -41,6 +43,8 @@ export function Topbar({ userName, role, onToggleSidebar }: TopbarProps) {
         </div>
 
         <div className="flex min-w-0 shrink-0 items-center gap-3">
+          <BusinessModeSwitcher />
+
           <div className="hidden w-72 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-500 shadow-sm md:flex xl:w-96">
             <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
 
