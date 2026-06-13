@@ -9,6 +9,7 @@ import type {
   ListServiceBusinessJobsQuery,
   RecordServiceInvoicePaymentInput,
   ServiceBusinessMutationPreviewResponse,
+  ServiceBusinessSummaryResponse,
   ServiceBusinessTransitionPreviewResponse,
   ServiceBusinessWorkflowResponse,
   ServiceBusinessWorkspaceResponse,
@@ -46,6 +47,14 @@ export const serviceBusinessApi = {
     return unwrapData(
       apiClient.get<ServiceBusinessEnvelope<ServiceBusinessWorkspaceResponse>>(
         `${SERVICE_BUSINESS_API_BASE}/workspace`,
+      ),
+    );
+  },
+
+  getSummary(): Promise<ServiceBusinessSummaryResponse> {
+    return unwrapData(
+      apiClient.get<ServiceBusinessEnvelope<ServiceBusinessSummaryResponse>>(
+        `${SERVICE_BUSINESS_API_BASE}/summary`,
       ),
     );
   },
