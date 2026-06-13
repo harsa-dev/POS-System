@@ -31,6 +31,16 @@ const CashflowPage         = lazy(() => import("@/pages/dashboard/cashflow"));
 const FinancialReportsPage = lazy(() => import("@/pages/dashboard/financial-reports"));
 const InvoiceGeneratorPage = lazy(() => import("@/pages/dashboard/invoice-generator"));
 const CashierShiftReportsPage = lazy(() => import("@/pages/dashboard/cashier-shift-reports"));
+const HppCalculatorPage = lazy(() => import("@/pages/dashboard/hpp-calculator"));
+const OperationReportsPage = lazy(() => import("@/pages/dashboard/shift-reports"));
+const TeamManagementPage = lazy(() => import("@/pages/dashboard/team-management"));
+const RosterOverviewPage = lazy(() => import("@/pages/dashboard/roster-overview"));
+const EmployeePerformancePage = lazy(() => import("@/pages/dashboard/employee-performance"));
+const AuditLogPage = lazy(() => import("@/pages/dashboard/audit-log"));
+const ApprovalsPage = lazy(() => import("@/pages/dashboard/approvals"));
+const EmployeeContractsPage = lazy(() => import("@/pages/dashboard/employee-contracts"));
+const EmployeeAttendancePage = lazy(() => import("@/pages/dashboard/employee-attendance"));
+const PayrollPage = lazy(() => import("@/pages/dashboard/payroll"));
 const PaymentsPage         = lazy(() => import("@/pages/dashboard/payments"));
 const PaymentSuccessPage   = lazy(() => import("@/pages/dashboard/payment-success"));
 const PaymentErrorPage     = lazy(() => import("@/pages/dashboard/payment-error"));
@@ -282,6 +292,16 @@ function ProtectedAppRoutes() {
           <Route path={ROUTES.FINANCIAL_REPORTS}><FinancialReportsPage /></Route>
           <Route path={ROUTES.INVOICE_GENERATOR}><InvoiceGeneratorPage /></Route>
           <Route path={ROUTES.CASHIER_SHIFT_REPORTS}><CashierShiftReportsPage /></Route>
+          <Route path={ROUTES.HPP_CALCULATOR}><HppCalculatorPage /></Route>
+          <Route path={ROUTES.OPERATION_REPORTS}><OperationReportsPage /></Route>
+          <Route path={ROUTES.TEAM_MANAGEMENT}><TeamManagementPage /></Route>
+          <Route path={ROUTES.ROSTER_OVERVIEW}><RosterOverviewPage /></Route>
+          <Route path={ROUTES.EMPLOYEE_PERFORMANCE}><EmployeePerformancePage /></Route>
+          <Route path={ROUTES.AUDIT_LOG}><AuditLogPage /></Route>
+          <Route path={ROUTES.APPROVALS}><ApprovalsPage /></Route>
+          <Route path={ROUTES.EMPLOYEE_CONTRACTS}><EmployeeContractsPage /></Route>
+          <Route path={ROUTES.EMPLOYEE_ATTENDANCE}><EmployeeAttendancePage /></Route>
+          <Route path={ROUTES.PAYROLL}><PayrollPage /></Route>
           <Route path={ROUTES.PAYMENTS}><ModeProtectedRoute requiredMode="restaurant"><PaymentsPage /></ModeProtectedRoute></Route>
           <Route path={ROUTES.INVENTORY}><InventoryPage /></Route>
           <Route path={ROUTES.SERVING}><ModeProtectedRoute requiredMode="restaurant"><ServingPage /></ModeProtectedRoute></Route>
