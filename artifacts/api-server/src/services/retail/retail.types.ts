@@ -137,6 +137,21 @@ export type RetailReturnPreviewDto = {
   reviewReasons: string[];
 };
 
+export type RetailPersistedReturnDto = Omit<RetailReturnPreviewDto, "persisted"> & {
+  persisted: true;
+  returnId: string;
+  returnNumber: string;
+  saleId: string;
+  originalReceiptNumber: string;
+  refundAmount: number;
+  restockedQuantity: number;
+  stockMovementIds: string[];
+  cashflowEntryId: string;
+  createdAt: string;
+};
+
+export type RetailReturnResultDto = RetailReturnPreviewDto | RetailPersistedReturnDto;
+
 export type RetailDashboardDto = {
   mode: "retail";
   persistence: "mock-only" | "prisma";
