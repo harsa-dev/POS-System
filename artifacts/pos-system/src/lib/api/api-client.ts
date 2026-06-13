@@ -1,6 +1,14 @@
 export const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 const ABSOLUTE_OR_EMBEDDED_URL_PATTERN = /^(https?:|data:|blob:)/i;
+const BUSINESS_MODE_STORAGE_KEY = "currentBusinessMode";
+const BUSINESS_MODE_HEADER = "X-Business-Mode";
+const API_BUSINESS_MODE_VALUES = new Set([
+  "restaurant",
+  "retail",
+  "raw-material",
+  "custom-business",
+]);
 const isDev = import.meta.env.DEV;
 
 export type ApiEnvelope<T = unknown> = {
@@ -58,6 +66,24 @@ type ApiRequestOptions = Omit<RequestInit, "body"> & {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function getStoredBusinessModeHeaderValue() {
+  if (typeof window === "undefined") return null;
+
+  const value = window.localStorage.getItem(BUSINESS_MODE_STORAGE_KEY);
+  if (!value || !API_BUSINESS_MODE_VALUES.has(value)) return null;
+
+  return value;
+}
+
+function attachBusinessModeHeader(headers: Headers) {
+  if (headers.has(BUSINESS_MODE_HEADER)) return;
+
+  const mode = getStoredBusinessModeHeaderValue();
+  if (!mode) return;
+
+  headers.set(BUSINESS_MODE_HEADER, mode);
 }
 
 function extractBackendMessage(body: unknown) {
@@ -171,6 +197,8 @@ export async function apiRequest<T>(
   const headers = new Headers(fetchOptions.headers);
   const body = json === undefined ? requestBody : JSON.stringify(json);
 
+  attachBusinessModeHeader(headers);
+
   if (json !== undefined && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
@@ -223,6 +251,8 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
   const url = resolveApiUrl(endpoint);
   const method = options?.method ?? "GET";
   const headers = new Headers(options?.headers);
+
+  attachBusinessModeHeader(headers);
 
   if (!(options?.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
