@@ -16,6 +16,7 @@ import {
   requireSalesAnalyticsView,
 } from "./sales-analytics.permissions.js";
 import {
+  countSalesTransactionRows,
   getCogsByOrderIds,
   getSalesBestSellingProducts,
   getSalesBusyHours,
@@ -59,6 +60,19 @@ export function parseSalesAnalyticsExportRequest(
   };
 }
 
+function buildPaginationDto(params: {
+  page: number;
+  pageSize: number;
+  totalRows: number;
+}) {
+  return {
+    page: params.page,
+    pageSize: params.pageSize,
+    totalRows: params.totalRows,
+    totalPages: Math.max(Math.ceil(params.totalRows / params.pageSize), 1),
+  };
+}
+
 function hasScopedCogsFilter(query: SalesAnalyticsQuery) {
   return Boolean(
     query.productId ||
@@ -99,7 +113,10 @@ function serializeQuery(query: SalesAnalyticsQuery) {
     paymentMethod: query.paymentMethod ?? null,
     orderStatus: query.orderStatus ?? null,
     q: query.q ?? null,
-    limit: query.limit,
+    page: query.page,
+    pageSize: query.pageSize,
+    sortBy: query.sortBy,
+    sortDirection: query.sortDirection,
   };
 }
 
@@ -183,6 +200,10 @@ function buildSalesAnalyticsCsv(report: SalesAnalyticsDto) {
       ["Period To", report.period.to],
       ["Period Label", report.period.label],
       ["Basis", report.basis],
+      ["Page", report.pagination.page],
+      ["Page Size", report.pagination.pageSize],
+      ["Total Rows", report.pagination.totalRows],
+      ["Total Pages", report.pagination.totalPages],
     ],
   });
 
@@ -299,6 +320,10 @@ function buildSalesAnalyticsCsv(report: SalesAnalyticsDto) {
         "Stock Movements Missing Cost Snapshot",
         report.sourceHealth.stockMovementsMissingCostSnapshot,
       ],
+      [
+        "Stock Movements Without Order Source",
+        report.sourceHealth.stockMovementsWithoutOrderSource,
+      ],
     ],
   });
 
@@ -331,6 +356,7 @@ export async function getSalesAnalytics(params: {
     busyHours,
     bestSellingProducts,
     rows,
+    totalRows,
     sourceHealth,
   ] = await Promise.all([
     getSalesRevenueSummary(prisma, restaurantId, params.query),
@@ -339,6 +365,7 @@ export async function getSalesAnalytics(params: {
     getSalesBusyHours(prisma, restaurantId, params.query),
     getSalesBestSellingProducts(prisma, restaurantId, params.query),
     listSalesTransactionRows(prisma, restaurantId, params.query),
+    countSalesTransactionRows(prisma, restaurantId, params.query),
     getSalesSourceHealth(prisma, restaurantId, params.query),
   ]);
 
@@ -346,12 +373,19 @@ export async function getSalesAnalytics(params: {
   const cogsByOrder = buildCogsByOrderMap(
     await getCogsByOrderIds(prisma, restaurantId, orderIds),
   );
+  const cogsValue = Number(cogs?.cogs ?? 0);
   const scopedCogsFilter = hasScopedCogsFilter(params.query);
   const sourceHealthDto = toSalesAnalyticsSourceHealthDto(sourceHealth);
 
+  if (cogsValue > 0) {
+    sourceHealthDto.warnings.push(
+      "COGS is allocated from order-level stock movement snapshots by item revenue share until item-level cost snapshots are available.",
+    );
+  }
+
   if (scopedCogsFilter) {
     sourceHealthDto.warnings.push(
-      "COGS is hidden for scoped sales analytics filters until item-level cost allocation is implemented.",
+      "COGS is estimated from order-level stock movement snapshots allocated by item revenue share for scoped filters.",
     );
   }
 
@@ -361,21 +395,22 @@ export async function getSalesAnalytics(params: {
     generatedAt: new Date().toISOString(),
     summary: toSalesAnalyticsSummaryDto({
       revenue,
-      cogs: scopedCogsFilter ? 0 : Number(cogs?.cogs ?? 0),
+      cogs: cogsValue,
     }),
     rows: rows.map((row) =>
-      toSalesTransactionDto(
-        row,
-        scopedCogsFilter ? 0 : (cogsByOrder.get(row.orderId) ?? 0),
-      ),
+      toSalesTransactionDto(row, cogsByOrder.get(row.orderId) ?? 0),
     ),
     dailyTrend: dailyTrend.map(toSalesAnalyticsDataPoint),
     busyHours: busyHours.map(toSalesAnalyticsDataPoint),
     bestSellingProducts: bestSellingProducts.map(toBestSellerPoint),
     sourceHealth: sourceHealthDto,
+    pagination: buildPaginationDto({
+      page: params.query.page,
+      pageSize: params.query.pageSize,
+      totalRows: Number(totalRows?.totalRows ?? 0),
+    }),
   };
 }
-
 
 export async function getSalesAnalyticsFilterOptions(params: {
   actor: SalesAnalyticsActor;
