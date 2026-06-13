@@ -11,6 +11,38 @@ export type ServiceBusinessWorkspaceResponse = {
   mode: "custom-business-service";
 };
 
+export type ServiceBusinessSummaryResponse = {
+  generatedAt: string;
+  source: "api-server-prisma-sql-summary";
+  totals: {
+    jobs: number;
+    activeJobs: number;
+    highPriorityJobs: number;
+    approvedQuotes: number;
+    issuedInvoices: number;
+  };
+  money: {
+    quoteTotal: number;
+    invoiceTotal: number;
+    pendingCollection: number;
+    paidAmount: number;
+  };
+  collection: {
+    averageRate: number;
+    overallRate: number;
+  };
+  workflowDistribution: Record<ServiceBusinessWorkflowStatus, number>;
+  invoiceDistribution: Record<string, number>;
+  latestJob: {
+    id: string;
+    requestCode: string;
+    title: string;
+    customerName: string;
+    status: ServiceBusinessWorkflowStatus;
+    statusLabel: string;
+  } | null;
+};
+
 export type ListServiceBusinessJobsQuery = {
   search?: string;
   status?: ServiceBusinessWorkflowStatus | "all";
