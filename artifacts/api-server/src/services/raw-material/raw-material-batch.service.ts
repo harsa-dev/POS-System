@@ -1,14 +1,24 @@
-import { Prisma, RawMaterialBatchQualityStatus, RawMaterialIntakeStatus, Role } from "@prisma/client";
+import { RawMaterialIntakeStatus, Role } from "@prisma/client";
 
-import { prisma } from "../../lib/prisma";
 import type { BusinessScopedUser as AuthenticatedUser } from "../../lib/auth.js";
-import { toRawMaterialBatchDto } from "./raw-material-batch.dto";
-import type { RawMaterialBatchPayload, RawMaterialBatchQuery } from "./raw-material-batch.types";
+import { toRawMaterialBatchDto } from "./raw-material-batch.presenter.js";
+import {
+  createRawMaterialBatchRecord,
+  deactivateRawMaterialBatchRecord,
+  findRawMaterialBatchById,
+  findRawMaterialBatchLotConflict,
+  listRawMaterialBatchRows,
+  loadRawMaterialIntakeForBatch,
+  loadRawMaterialStorageLocationForBatch,
+  sumActiveRawMaterialBatchQuantityForIntake,
+  updateRawMaterialBatchRecord,
+} from "./raw-material-batch.repository.js";
+import type { RawMaterialBatchPayload, RawMaterialBatchQuery } from "./raw-material-batch.types.js";
 import {
   assertRawMaterialBatchQuantityShape,
   normalizeRawMaterialBatchPayload,
   normalizeRawMaterialBatchUpdatePayload,
-} from "./raw-material-batch.validation";
+} from "./raw-material-batch.validation.js";
 
 type RawMaterialBatchRouteActor = Readonly<{
   id: string;
@@ -79,35 +89,15 @@ function assertCanManage(user: AuthenticatedUser) {
   }
 }
 
-function getBatchInclude() {
-  return {
-    intake: {
-      select: {
-        referenceNumber: true,
-        materialName: true,
-      },
-    },
-    storageLocation: {
-      select: {
-        code: true,
-        name: true,
-      },
-    },
-  } satisfies Prisma.RawMaterialBatchInclude;
-}
-
 async function assertUniqueLotCode(
   businessId: string,
   lotCode: string,
   currentBatchId?: string,
 ) {
-  const existing = await prisma.rawMaterialBatch.findFirst({
-    where: {
-      businessId,
-      lotCode,
-      ...(currentBatchId ? { id: { not: currentBatchId } } : {}),
-    },
-    select: { id: true },
+  const existing = await findRawMaterialBatchLotConflict({
+    businessId,
+    lotCode,
+    currentBatchId,
   });
 
   if (existing) {
@@ -116,19 +106,7 @@ async function assertUniqueLotCode(
 }
 
 async function assertValidIntake(businessId: string, intakeId: string) {
-  const intake = await prisma.rawMaterialIntake.findFirst({
-    where: {
-      id: intakeId,
-      businessId,
-    },
-    select: {
-      id: true,
-      materialName: true,
-      unit: true,
-      acceptedQuantity: true,
-      qualityStatus: true,
-    },
-  });
+  const intake = await loadRawMaterialIntakeForBatch(businessId, intakeId);
 
   if (!intake) {
     throw new Error("Raw material intake was not found");
@@ -142,19 +120,10 @@ async function assertValidIntake(businessId: string, intakeId: string) {
 }
 
 async function assertValidStorageLocation(businessId: string, storageLocationId: string) {
-  const storageLocation = await prisma.rawMaterialStorageLocation.findFirst({
-    where: {
-      id: storageLocationId,
-      businessId,
-      isActive: true,
-    },
-    select: {
-      id: true,
-      code: true,
-      capacityKg: true,
-      usedKg: true,
-    },
-  });
+  const storageLocation = await loadRawMaterialStorageLocationForBatch(
+    businessId,
+    storageLocationId,
+  );
 
   if (!storageLocation) {
     throw new Error("Raw material storage location was not found or inactive");
@@ -169,20 +138,14 @@ async function assertBatchQuantityWithinIntake(
   quantity: number,
   currentBatchId?: string,
 ) {
-  const aggregate = await prisma.rawMaterialBatch.aggregate({
-    where: {
+  const [existingBatchQuantity, intake] = await Promise.all([
+    sumActiveRawMaterialBatchQuantityForIntake({
       businessId,
       intakeId,
-      isActive: true,
-      ...(currentBatchId ? { id: { not: currentBatchId } } : {}),
-    },
-    _sum: {
-      quantity: true,
-    },
-  });
-
-  const intake = await assertValidIntake(businessId, intakeId);
-  const existingBatchQuantity = aggregate._sum.quantity ?? 0;
+      currentBatchId,
+    }),
+    assertValidIntake(businessId, intakeId),
+  ]);
   const nextTotal = existingBatchQuantity + quantity;
 
   if (nextTotal > intake.acceptedQuantity) {
@@ -237,32 +200,7 @@ export async function listRawMaterialBatches(
   assertCanView(resolved.user);
   const businessId = assertBusinessAccess(resolved.user);
 
-  const where: Prisma.RawMaterialBatchWhereInput = {
-    businessId,
-    ...(resolved.query.intakeId ? { intakeId: resolved.query.intakeId } : {}),
-    ...(resolved.query.storageLocationId ? { storageLocationId: resolved.query.storageLocationId } : {}),
-    ...(resolved.query.qualityStatus ? { qualityStatus: resolved.query.qualityStatus } : {}),
-    ...(typeof resolved.query.isActive === "boolean" ? { isActive: resolved.query.isActive } : {}),
-    ...(resolved.query.search
-      ? {
-          OR: [
-            { lotCode: { contains: resolved.query.search, mode: "insensitive" } },
-            { materialName: { contains: resolved.query.search, mode: "insensitive" } },
-            { notes: { contains: resolved.query.search, mode: "insensitive" } },
-          ],
-        }
-      : {}),
-  };
-
-  const batches = await prisma.rawMaterialBatch.findMany({
-    where,
-    include: getBatchInclude(),
-    orderBy: [
-      { isActive: "desc" },
-      { expiryDate: "asc" },
-      { createdAt: "desc" },
-    ],
-  });
+  const batches = await listRawMaterialBatchRows(businessId, resolved.query);
 
   return batches.map(toRawMaterialBatchDto);
 }
@@ -288,23 +226,7 @@ export async function createRawMaterialBatch(
     throw new Error("Batch unit must match intake unit");
   }
 
-  const batch = await prisma.rawMaterialBatch.create({
-    data: {
-      businessId,
-      lotCode: normalized.lotCode,
-      intakeId: normalized.intakeId,
-      storageLocationId: normalized.storageLocationId,
-      materialName: normalized.materialName,
-      unit: normalized.unit,
-      quantity: normalized.quantity,
-      remainingQuantity: normalized.remainingQuantity,
-      qualityStatus: normalized.qualityStatus,
-      expiryDate: normalized.expiryDate,
-      isActive: normalized.isActive,
-      notes: normalized.notes,
-    },
-    include: getBatchInclude(),
-  });
+  const batch = await createRawMaterialBatchRecord(businessId, normalized);
 
   return toRawMaterialBatchDto(batch);
 }
@@ -332,13 +254,7 @@ export async function updateRawMaterialBatch(
 
   assertCanManage(resolved.user);
   const businessId = assertBusinessAccess(resolved.user);
-  const existing = await prisma.rawMaterialBatch.findFirst({
-    where: {
-      id: resolved.batchId,
-      businessId,
-    },
-    include: getBatchInclude(),
-  });
+  const existing = await findRawMaterialBatchById(businessId, resolved.batchId);
 
   if (!existing) {
     throw new Error("Raw material batch was not found");
@@ -367,23 +283,7 @@ export async function updateRawMaterialBatch(
 
   assertRawMaterialBatchQuantityShape(nextQuantity, nextRemainingQuantity);
 
-  const updated = await prisma.rawMaterialBatch.update({
-    where: { id: existing.id },
-    data: {
-      ...(normalized.lotCode !== undefined ? { lotCode: normalized.lotCode } : {}),
-      ...(normalized.intakeId !== undefined ? { intakeId: normalized.intakeId } : {}),
-      ...(normalized.storageLocationId !== undefined ? { storageLocationId: normalized.storageLocationId } : {}),
-      ...(normalized.materialName !== undefined ? { materialName: normalized.materialName } : {}),
-      ...(normalized.unit !== undefined ? { unit: normalized.unit } : {}),
-      ...(normalized.quantity !== undefined ? { quantity: normalized.quantity } : {}),
-      ...(normalized.remainingQuantity !== undefined ? { remainingQuantity: normalized.remainingQuantity } : {}),
-      ...(normalized.qualityStatus !== undefined ? { qualityStatus: normalized.qualityStatus } : {}),
-      ...(normalized.expiryDate !== undefined ? { expiryDate: normalized.expiryDate } : {}),
-      ...(normalized.isActive !== undefined ? { isActive: normalized.isActive } : {}),
-      ...(normalized.notes !== undefined ? { notes: normalized.notes } : {}),
-    },
-    include: getBatchInclude(),
-  });
+  const updated = await updateRawMaterialBatchRecord(existing.id, normalized);
 
   return toRawMaterialBatchDto(updated);
 }
@@ -408,26 +308,13 @@ export async function deactivateRawMaterialBatch(
 
   assertCanManage(resolved.user);
   const businessId = assertBusinessAccess(resolved.user);
-  const existing = await prisma.rawMaterialBatch.findFirst({
-    where: {
-      id: resolved.batchId,
-      businessId,
-    },
-    select: { id: true },
-  });
+  const existing = await findRawMaterialBatchById(businessId, resolved.batchId);
 
   if (!existing) {
     throw new Error("Raw material batch was not found");
   }
 
-  const updated = await prisma.rawMaterialBatch.update({
-    where: { id: existing.id },
-    data: {
-      isActive: false,
-      qualityStatus: RawMaterialBatchQualityStatus.QUARANTINED,
-    },
-    include: getBatchInclude(),
-  });
+  const updated = await deactivateRawMaterialBatchRecord(existing.id);
 
   return toRawMaterialBatchDto(updated);
 }
