@@ -54,6 +54,7 @@ model Business {
   cashflowEntries CashflowEntry[] @relation("BusinessCashflowEntries")
   rawMaterialSuppliers RawMaterialSupplier[]
   rawMaterialStorageLocations RawMaterialStorageLocation[]
+  rawMaterialIntakes RawMaterialIntake[]
   tables DiningTable[]
   shifts Shift[]
   attendances Attendance[]
@@ -276,6 +277,7 @@ model RawMaterialSupplier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  intakes RawMaterialIntake[]
   @@unique([businessId, name])
   @@index([businessId])
   @@index([category])
@@ -297,12 +299,41 @@ model RawMaterialStorageLocation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  intakes RawMaterialIntake[]
   @@unique([businessId, code])
   @@index([businessId])
   @@index([type])
   @@index([isActive])
   @@index([usedKg])
   @@index([capacityKg])
+}
+
+model RawMaterialIntake {
+  id String @id @default(cuid())
+  businessId String
+  referenceNumber String
+  supplierId String
+  targetStorageLocationId String
+  materialName String
+  unit RawMaterialUnit @default(KG)
+  receivedQuantity Float
+  acceptedQuantity Float @default(0)
+  rejectedQuantity Float @default(0)
+  qualityStatus RawMaterialIntakeStatus @default(INSPECTION)
+  receivedAt DateTime @default(now())
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier RawMaterialSupplier @relation(fields: [supplierId], references: [id])
+  targetStorageLocation RawMaterialStorageLocation @relation(fields: [targetStorageLocationId], references: [id])
+  @@unique([businessId, referenceNumber])
+  @@index([businessId])
+  @@index([supplierId])
+  @@index([targetStorageLocationId])
+  @@index([qualityStatus])
+  @@index([receivedAt])
+  @@index([materialName])
 }
 
 model StockMovement {
@@ -458,6 +489,8 @@ enum InventoryType { INGREDIENT PACKAGING EQUIPMENT PRODUCT RAW_MATERIAL FINISHE
 enum InventoryUnit { PCS GRAM KILOGRAM LITER ML PACK BOTTLE BOX CARTON SACK ROLL SET PAIR DOSE TABLET CAPSULE VIAL CAN }
 enum RawMaterialSupplierCategory { FEED LIVESTOCK PACKAGING RAW_GOODS }
 enum RawMaterialStorageType { DRY COLD OPEN_YARD KANDANG_SUPPORT }
+enum RawMaterialUnit { KG SACK CRATE HEAD LITER PCS }
+enum RawMaterialIntakeStatus { DRAFT INSPECTION ACCEPTED PARTIALLY_REJECTED REJECTED CANCELLED }
 enum StockMovementType { IN OUT ADJUSTMENT }
 enum PaymentStatus { PENDING PAID FAILED EXPIRED }
 enum InvoiceStatus { DRAFT SENT PAID CANCELLED }
