@@ -61,17 +61,11 @@ It still says mock-only / no Prisma / no migration.
 The current main branch already contains Raw Material Prisma models, migrations, routes, services, and stock movement handlers.
 ```
 
-No code behavior is changed in this phase.
+No code behavior was changed in this phase.
 
 ## Phase 1 - Baseline backend audit and route contract normalization
 
 Status: implemented.
-
-Phase output:
-
-```txt
-docs/workspaces/raw-material-backend-audit.md
-```
 
 Goal:
 
@@ -82,7 +76,13 @@ Normalize endpoint naming between frontend API contract and API server.
 Document what is already production-backed versus still preview-only.
 ```
 
-Current mismatch reviewed:
+Implemented output:
+
+```txt
+docs/workspaces/raw-material-backend-audit.md
+```
+
+Current mismatch to review later:
 
 ```txt
 Frontend contract uses /api/v3/raw-material/*.
@@ -91,35 +91,9 @@ Some frontend contract entries still mark mock-only/future-db.
 Backend already persists data for many of those surfaces.
 ```
 
-Implemented outputs:
-
-```txt
-route matrix
-backend-backed/partial/contract-mismatch labels
-frontend contract update plan
-no migration
-no schema change
-```
-
-Audited route groups:
-
-```txt
-GET/POST/PATCH/DELETE suppliers
-GET/POST/PATCH/DELETE storage-locations
-GET/POST/PATCH/DELETE intakes
-GET/POST/PATCH/DELETE weighings
-GET/POST/PATCH/DELETE batches
-GET/POST/PATCH/CANCEL processing-runs
-GET/POST/PATCH/DELETE pens
-GET stock-movements
-POST stock-movements/adjust
-POST stock-movements/transfer
-POST stock-movements/consume-processing
-```
-
 ## Phase 2 - Permission hardening
 
-Status: next.
+Status: implemented.
 
 Goal:
 
@@ -130,7 +104,18 @@ Do not touch schema.
 Do not touch migrations.
 ```
 
-Suggested permission keys:
+Implemented files:
+
+```txt
+artifacts/api-server/src/services/raw-material/raw-material.permissions.ts
+artifacts/api-server/src/routes/raw-material.ts
+artifacts/api-server/src/routes/raw-material-processing.ts
+artifacts/api-server/src/routes/raw-material-pens.ts
+artifacts/api-server/src/routes/raw-material-stock-movements.ts
+docs/workspaces/raw-material-permission-hardening.md
+```
+
+Implemented permission keys:
 
 ```txt
 raw-material.view
@@ -147,7 +132,7 @@ raw-material.stock.transfer
 raw-material.stock.consume
 ```
 
-Suggested role grouping:
+Role grouping:
 
 ```txt
 VIEW_ROLES      = OWNER, MANAGER, ADMIN, OPERATOR, STAFF, VIEWER
@@ -156,18 +141,9 @@ STOCK_ROLES     = OWNER, MANAGER, ADMIN, OPERATOR
 APPROVAL_ROLES  = OWNER, MANAGER, ADMIN
 ```
 
-Expected outputs:
-
-```txt
-raw-material.permissions.ts
-route guard replacement
-permission matrix docs
-no migration
-```
-
 ## Phase 3 - Workflow guards and domain invariants
 
-Status: planned.
+Status: next.
 
 Goal:
 
@@ -240,16 +216,6 @@ intake and batch service
 supplier/storage/pens service
 ```
 
-Expected outputs:
-
-```txt
-thin routes
-repositories own Prisma access
-services own orchestration
-presenters own response shape
-validators own request parsing
-```
-
 ## Phase 5 - Audit integration
 
 Status: planned.
@@ -275,15 +241,6 @@ pen create/update/deactivate
 stock adjustment
 stock transfer
 processing consumption
-```
-
-Expected outputs:
-
-```txt
-raw-material.audit.ts
-audit helper integration in routes/services
-changes JSON shape per action
-no migration
 ```
 
 ## Phase 6 - Shared dashboard backend summary
@@ -321,16 +278,6 @@ stock movement counts by type/reason
 latest activity
 ```
 
-Expected outputs:
-
-```txt
-raw-material.summary.ts
-summary route
-frontend bridge API-first fallback
-shared dashboard relevance policy update if needed
-no migration
-```
-
 ## Phase 7 - Prisma delegate and typecheck cleanup
 
 Status: planned.
@@ -343,29 +290,14 @@ Fix known type errors in raw-material route/service exports.
 Do not hide errors with any or ts-ignore.
 ```
 
-Known current issue from local validation:
+Known current issues from local validation:
 
 ```txt
 src/routes/raw-material-pens.ts imports RawMaterialPenHealthStatus from services/raw-material/index.js,
 but the barrel may not export that type.
-```
 
-Additional typecheck item:
-
-```txt
 src/routes/raw-material.ts passes query.qualityStatus as string | undefined,
 but listRawMaterialBatches expects RawMaterialBatchQualityStatus | undefined.
-```
-
-Expected outputs:
-
-```txt
-barrel export fix
-query enum parser helpers
-Prisma generated type alignment
-pnpm --filter @workspace/api-server run generate passes
-pnpm --filter @workspace/api-server run build passes
-service/raw-material typecheck errors cleared
 ```
 
 ## Phase 8 - Stock mutation hardening
@@ -388,16 +320,6 @@ All reductions must reject negative afterQuantity.
 All processing consumption must reference a valid processing run and batch.
 Transfers must update source/target storage usage consistently.
 Manual adjustment must require reason/note depending on direction.
-```
-
-Expected outputs:
-
-```txt
-raw-material-stock-rules.ts
-stock transaction wrappers
-ledger presenter
-summary integration
-possibly no migration if current tables are sufficient
 ```
 
 ## Phase 9 - Frontend API sync
@@ -436,11 +358,8 @@ Do not change restaurant/service-business workflows while doing raw material wor
 
 ## Current recommended next action
 
-Proceed to Phase 2:
+Start with Phase 3:
 
 ```txt
-Permission hardening.
-Create raw-material.permissions.ts.
-Replace ALL_ROLES usage in raw-material routes with action-specific permission guards.
-Do not change schema or migrations.
+Workflow guards and domain invariants.
 ```
