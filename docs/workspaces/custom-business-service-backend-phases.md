@@ -133,11 +133,17 @@ Target state now reached:
 
 ## Phase 4 - Permission hardening
 
-Status: planned
+Status: implemented
 
-Current endpoints use `ALL_ROLES` while the service workflow is still being shaped.
+Implemented:
 
-Next permission split:
+- Service Business endpoints no longer use `ALL_ROLES` directly.
+- Added `service-business.permissions.ts` as the permission matrix for Service Business actions.
+- CRUD endpoints are guarded by action-specific permissions.
+- Workflow endpoints are guarded by view or status-update permissions.
+- No database migration was added in this phase.
+
+Permission keys:
 
 - `custom-business.service.view`
 - `custom-business.service.request.create`
@@ -147,6 +153,23 @@ Next permission split:
 - `custom-business.service.quote.approve`
 - `custom-business.service.invoice.create`
 - `custom-business.service.invoice.payment.record`
+
+Role matrix:
+
+- View: `OWNER`, `MANAGER`, `ADMIN`, `OPERATOR`, `STAFF`, `VIEWER`
+- Request create: `OWNER`, `MANAGER`, `ADMIN`, `OPERATOR`, `STAFF`
+- Job status update: `OWNER`, `MANAGER`, `ADMIN`, `OPERATOR`, `STAFF`
+- Cost line create: `OWNER`, `MANAGER`, `ADMIN`, `OPERATOR`, `STAFF`
+- Quote create: `OWNER`, `MANAGER`, `ADMIN`, `OPERATOR`
+- Quote approve: `OWNER`, `MANAGER`, `ADMIN`
+- Invoice create: `OWNER`, `MANAGER`, `ADMIN`, `OPERATOR`
+- Invoice payment record: `OWNER`, `MANAGER`, `ADMIN`, `OPERATOR`
+
+Main files:
+
+- `artifacts/api-server/src/features/service-business/service-business.permissions.ts`
+- `artifacts/api-server/src/routes/service-business.ts`
+- `artifacts/api-server/src/routes/service-business-workflow.ts`
 
 ## Phase 5 - Audit integration
 
