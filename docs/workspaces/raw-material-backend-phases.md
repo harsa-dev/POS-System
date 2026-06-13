@@ -144,7 +144,7 @@ No Prisma schema or migration was changed in this phase.
 
 ## Phase 4 - Service layer cleanup
 
-Status: in progress.
+Status: implemented.
 
 Goal:
 
@@ -165,14 +165,6 @@ artifacts/api-server/src/services/raw-material/raw-material-stock-movement.servi
 docs/workspaces/raw-material-service-layer-cleanup.md
 ```
 
-Scope:
-
-```txt
-Move stock movement persistence helpers out of the orchestration service.
-Keep stock movement route behavior unchanged.
-Keep schema and migrations untouched.
-```
-
 ### Phase 4B - Processing run repository/presenter split
 
 Status: implemented.
@@ -185,15 +177,6 @@ artifacts/api-server/src/services/raw-material/raw-material-processing-run.prese
 artifacts/api-server/src/services/raw-material/raw-material-processing-run.dto.ts
 artifacts/api-server/src/services/raw-material/raw-material-processing-run.service.ts
 docs/workspaces/raw-material-service-layer-cleanup.md
-```
-
-Scope:
-
-```txt
-Move processing run persistence helpers into a repository.
-Move processing run DTO mapping into a presenter.
-Keep processing run service as the orchestration and guard layer.
-Keep schema, migration, route path, and response contract unchanged.
 ```
 
 ### Phase 4C - Intake and batch repository/presenter split
@@ -214,38 +197,35 @@ artifacts/api-server/src/services/raw-material/raw-material-batch.service.ts
 docs/workspaces/raw-material-service-layer-cleanup.md
 ```
 
+### Phase 4D - Supplier, storage, and pen service split
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/api-server/src/services/raw-material/raw-material-supplier.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-supplier.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-storage-location.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-storage-location.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-pen.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-pen.service.ts
+docs/workspaces/raw-material-service-layer-cleanup.md
+```
+
 Scope:
 
 ```txt
-Move intake persistence helpers into a repository.
-Move intake DTO mapping into a presenter.
-Move batch persistence helpers into a repository.
-Move batch DTO mapping into a presenter.
-Keep intake and batch services as orchestration, validation, and guard layers.
+Move supplier persistence helpers into a repository.
+Move storage location persistence helpers into a repository.
+Move kandang pen raw SQL persistence helpers into a repository.
+Keep services as orchestration, validation, permission, and guard layers.
 Keep schema, migration, route path, and response contract unchanged.
-```
-
-### Phase 4D - Supplier, storage, and pen service split
-
-Status: next.
-
-Suggested files:
-
-```txt
-raw-material-supplier.repository.ts
-raw-material-supplier.presenter.ts
-raw-material-storage-location.repository.ts
-raw-material-storage-location.presenter.ts
-raw-material-pen.repository.ts
-raw-material-pen.presenter.ts
-raw-material-supplier.service.ts
-raw-material-storage-location.service.ts
-raw-material-pen.service.ts
 ```
 
 ## Phase 5 - Audit integration
 
-Status: planned.
+Status: next.
 
 Goal:
 
@@ -302,11 +282,8 @@ Do not hide errors with any or ts-ignore.
 Known current issues from local validation:
 
 ```txt
-src/routes/raw-material-pens.ts imports RawMaterialPenHealthStatus from services/raw-material/index.js,
-but the barrel may not export that type.
-
-src/routes/raw-material.ts passes query.qualityStatus as string | undefined,
-but listRawMaterialBatches expects RawMaterialBatchQualityStatus | undefined.
+No active Raw Material typecheck errors after the scoped Raw Material fixes.
+Non-Raw Material typecheck errors may still exist and are intentionally out of scope for this lane.
 ```
 
 ## Phase 8 - Stock mutation hardening
