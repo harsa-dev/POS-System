@@ -13,7 +13,7 @@ Phase 3 - Shared dashboard backend summary: implemented
 Phase 4 - Seed retail product/supplier per business: implemented
 Phase 5 - Frontend catalog and cashier API wiring: implemented
 Phase 6 - Retail OpenAPI client coverage: implemented
-Phase 7 - Prisma schema delegate cleanup: planned
+Phase 7 - Prisma schema delegate cleanup: implemented
 ```
 
 ## Phase 1 - Persistence foundation: implemented
@@ -218,43 +218,62 @@ Current note:
 The React client surface is implemented. Full Orval regeneration should still be run locally with pnpm --filter @workspace/api-spec codegen when the generator environment is stable, because the project keeps generated artifacts in git.
 ```
 
-## Phase 7 - Prisma schema delegate cleanup: planned
+## Phase 7 - Prisma schema delegate cleanup: implemented
 
-Current state:
-
-```txt
-Retail persistence is backed by SQL tables and Prisma raw queries.
-```
-
-Goal:
+Implemented scope:
 
 ```txt
-Sync Retail models into schema.prisma and replace raw repository methods with typed Prisma delegate calls gradually.
+- Retail Prisma schema sync script exists
+- Retail schema sync command exists
+- Script inserts Retail relations into User and Business models idempotently
+- Script inserts RetailSupplier, RetailProduct, RetailReceiving, RetailReceivingItem, RetailSale, RetailSaleItem, RetailPayment, and RetailStockMovement models idempotently
+- Existing raw SQL repository remains active until generated delegates are validated locally
 ```
 
-Models to add or sync:
+Primary files:
 
 ```txt
-RetailSupplier
-RetailProduct
-RetailReceiving
-RetailReceivingItem
-RetailSale
-RetailSaleItem
-RetailPayment
-RetailStockMovement
+artifacts/api-server/scripts/sync-retail-prisma-schema.ts
+artifacts/api-server/package.json
+artifacts/api-server/prisma/schema.prisma
 ```
 
-Target delegates:
+Command:
+
+```bash
+pnpm --filter @workspace/api-server run retail:schema:sync
+pnpm --filter @workspace/api-server run generate
+pnpm --filter @workspace/api-server run typecheck:retail
+```
+
+Delegate target after the command succeeds:
 
 ```txt
 prisma.retailProduct.findMany
+prisma.retailProduct.findFirst
+prisma.retailProduct.update
 prisma.retailSale.create
+prisma.retailSaleItem.createMany
 prisma.retailPayment.create
 prisma.retailStockMovement.create
 ```
 
-Do not convert everything at once if `typecheck:retail` becomes noisy. Convert repository methods one by one.
+Repository migration rule:
+
+```txt
+Do not replace every raw query in one pass. Convert list/read methods first, then checkout write transaction last.
+```
+
+Why the repository still uses raw SQL right now:
+
+```txt
+The production-safe path is:
+1. keep current raw SQL repository working
+2. sync schema.prisma locally
+3. generate Prisma client
+4. confirm retail delegates exist
+5. convert repository methods one by one
+```
 
 ## Scope Rule
 
@@ -266,11 +285,13 @@ IN SCOPE
 - artifacts/api-server/src/services/retail/**
 - artifacts/api-server/prisma/migrations/202606140001_add_retail_core/migration.sql
 - artifacts/api-server/scripts/seed-retail-demo-data.ts
+- artifacts/api-server/scripts/sync-retail-prisma-schema.ts
 - artifacts/pos-system/src/app/workspace/retail/retail-api-workspace.tsx
 - artifacts/pos-system/src/features/retail/**
 - artifacts/pos-system/src/features/shared/retail-bridge/**
 - Retail-specific OpenAPI paths and schemas
 - Retail-specific seed/demo workflow
+- Retail-specific Prisma schema delegate sync
 ```
 
 ```txt
@@ -293,6 +314,7 @@ From the repo root:
 ```bash
 pnpm --filter @workspace/api-server run retail:db:apply
 pnpm --filter @workspace/api-server run retail:seed
+pnpm --filter @workspace/api-server run retail:schema:sync
 pnpm --filter @workspace/api-server run generate
 pnpm --filter @workspace/api-server run typecheck:retail
 pnpm --filter @workspace/api-server run build
@@ -344,6 +366,8 @@ Retail track is considered stable when:
 ```txt
 - retail:db:apply succeeds on local/dev database
 - retail:seed creates visible Retail products
+- retail:schema:sync syncs Retail Prisma models into schema.prisma
+- generate exposes Retail Prisma delegates
 - GET /api/retail/products returns seeded rows
 - POST /api/retail/sales/preview returns totals and validation reasons
 - POST /api/retail/sales/checkout persists sale/payment/stock movement
