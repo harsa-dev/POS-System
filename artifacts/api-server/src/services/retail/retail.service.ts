@@ -53,12 +53,53 @@ function buildSaleLinePreview(input: { product: RetailProductDto; quantity: numb
   };
 }
 
+function previewSale(input: RetailSalePreviewInput): RetailSalePreviewDto {
+  const blockedReasons: string[] = [];
+  const lines = input.lines.map((line) => {
+    const product = retailMockRepository.findProductById(line.productId);
+
+    if (!product) {
+      blockedReasons.push(`Product ${line.productId} was not found.`);
+      return null;
+    }
+
+    const previewLine = buildSaleLinePreview({
+      product,
+      quantity: line.quantity,
+      discountPercent: line.discountPercent ?? 0,
+    });
+
+    if (previewLine.blocked) {
+      blockedReasons.push(`${product.sku} cannot be checked out with the requested quantity.`);
+    }
+
+    return previewLine;
+  }).filter((line): line is RetailSaleLinePreviewDto => line !== null);
+
+  if (lines.length === 0) {
+    blockedReasons.push("At least one valid sale line is required.");
+  }
+
+  return {
+    persisted: false,
+    canCheckout: blockedReasons.length === 0,
+    paymentMethod: input.paymentMethod ?? defaultPaymentMethod,
+    subtotal: lines.reduce((total, line) => total + line.subtotal, 0),
+    discountTotal: lines.reduce((total, line) => total + line.discountAmount, 0),
+    taxIncluded: lines.reduce((total, line) => total + line.taxIncluded, 0),
+    payableTotal: lines.reduce((total, line) => total + line.lineTotal, 0),
+    grossProfit: lines.reduce((total, line) => total + line.grossProfit, 0),
+    blockedReasons,
+    lines,
+  };
+}
+
 export const retailService = {
   getDashboard(): RetailDashboardDto {
     const products = retailMockRepository.listProducts();
     const inventoryRisks = retailMockRepository.getInventoryRisks();
     const receivingQueue = retailMockRepository.listReceivingQueue();
-    const samplePreview = this.previewSale({
+    const samplePreview = previewSale({
       paymentMethod: "cash",
       lines: products
         .filter((product) => product.currentStock > 0)
@@ -116,49 +157,10 @@ export const retailService = {
     return retailMockRepository.listReceivingQueue();
   },
 
-  previewSale(input: RetailSalePreviewInput): RetailSalePreviewDto {
-    const blockedReasons: string[] = [];
-    const lines = input.lines.map((line) => {
-      const product = retailMockRepository.findProductById(line.productId);
-
-      if (!product) {
-        blockedReasons.push(`Product ${line.productId} was not found.`);
-        return null;
-      }
-
-      const previewLine = buildSaleLinePreview({
-        product,
-        quantity: line.quantity,
-        discountPercent: line.discountPercent ?? 0,
-      });
-
-      if (previewLine.blocked) {
-        blockedReasons.push(`${product.sku} cannot be checked out with the requested quantity.`);
-      }
-
-      return previewLine;
-    }).filter((line): line is RetailSaleLinePreviewDto => line !== null);
-
-    if (lines.length === 0) {
-      blockedReasons.push("At least one valid sale line is required.");
-    }
-
-    return {
-      persisted: false,
-      canCheckout: blockedReasons.length === 0,
-      paymentMethod: input.paymentMethod ?? defaultPaymentMethod,
-      subtotal: lines.reduce((total, line) => total + line.subtotal, 0),
-      discountTotal: lines.reduce((total, line) => total + line.discountAmount, 0),
-      taxIncluded: lines.reduce((total, line) => total + line.taxIncluded, 0),
-      payableTotal: lines.reduce((total, line) => total + line.lineTotal, 0),
-      grossProfit: lines.reduce((total, line) => total + line.grossProfit, 0),
-      blockedReasons,
-      lines,
-    };
-  },
+  previewSale,
 
   mockCheckout(input: RetailSalePreviewInput) {
-    const preview = this.previewSale(input);
+    const preview = previewSale(input);
 
     return {
       ...preview,
