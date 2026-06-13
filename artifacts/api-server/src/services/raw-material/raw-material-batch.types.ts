@@ -36,4 +36,16 @@ export type NormalizedRawMaterialBatchPayload = Readonly<{
   notes: string | null;
 }>;
 
-export type RawMaterialBatchUpdatePayload = Partial<NormalizedRawMaterialBatchPayload>;
+export type RawMaterialBatchUpdatePayload = Partial<{
+  lotCode: string;
+  intakeId: string;
+  storageLocationId: string;
+  materialName: string;
+  unit: RawMaterialUnit;
+  quantity: number;
+  remainingQuantity: number;
+  qualityStatus: RawMaterialBatchQualityStatus;
+  expiryDate: Date | null;
+  isActive: boolean;
+  notes: string | null;
+}>;
