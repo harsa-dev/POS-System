@@ -12,6 +12,13 @@ import { authApi, getApiErrorMessage } from "@/lib/api";
 const DEMO_EMAIL = "owner@test.com";
 const DEMO_PASSWORD = "password123";
 
+const infoLinks = [
+  { label: "Privacy", href: ROUTES.PRIVACY },
+  { label: "Terms", href: ROUTES.TERMS },
+  { label: "Security", href: ROUTES.SECURITY },
+  { label: "Cookies", href: ROUTES.COOKIES },
+];
+
 export function LoginForm() {
   const [, navigate] = useLocation();
   const { refetch } = useAuth();
@@ -116,6 +123,9 @@ export function LoginForm() {
               <LockKeyhole className="h-5 w-5 text-sky-300" />
               <span>Session based authentication</span>
             </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs leading-5 text-white/55">
+              Info pages siap: Privacy, Terms, Security, dan Cookies. Dummy dulu, tapi tampilannya sudah lebih niat.
+            </div>
           </div>
         </div>
       </aside>
@@ -204,6 +214,19 @@ export function LoginForm() {
             Register
           </Link>
         </p>
+
+        <div className="mt-6 border-t border-slate-200 pt-5">
+          <p className="text-center text-xs leading-5 text-slate-400">
+            Dummy info pages sudah tersedia untuk auth flow.
+          </p>
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            {infoLinks.map((link) => (
+              <Link key={link.href} href={link.href} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200">
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </div>
       </form>
     </section>
   );
