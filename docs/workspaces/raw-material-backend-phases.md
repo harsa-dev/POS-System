@@ -144,7 +144,7 @@ No Prisma schema or migration was changed in this phase.
 
 ## Phase 4 - Service layer cleanup
 
-Status: next.
+Status: in progress.
 
 Goal:
 
@@ -164,13 +164,65 @@ raw-material.presenter.ts
 raw-material.audit.ts
 ```
 
-Priority order:
+### Phase 4A - Stock movement repository split
+
+Status: implemented.
+
+Implemented files:
 
 ```txt
-stock movement service
-processing run service
-intake and batch service
-supplier/storage/pens service
+artifacts/api-server/src/services/raw-material/raw-material-stock-movement.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-stock-movement.service.ts
+docs/workspaces/raw-material-service-layer-cleanup.md
+```
+
+Scope:
+
+```txt
+Move stock movement persistence helpers out of the orchestration service.
+Keep stock movement route behavior unchanged.
+Keep schema and migrations untouched.
+```
+
+Repository now owns:
+
+```txt
+load batch with storage for mutation
+load active storage for mutation
+insert stock movement ledger row
+find stock movement row by id
+list stock movement rows
+find duplicate processing consumption movement
+```
+
+Service now owns:
+
+```txt
+role assertion
+input validation
+stock/domain guard application
+transaction orchestration
+not-found/conflict error mapping
+DTO mapping
+```
+
+### Phase 4B - Processing run repository/presenter split
+
+Status: next.
+
+Suggested files:
+
+```txt
+raw-material-processing-run.repository.ts
+raw-material-processing-run.presenter.ts
+raw-material-processing-run.service.ts
+```
+
+Priority order after 4B:
+
+```txt
+Phase 4C - intake and batch service split
+Phase 4D - supplier/storage/pen service split
 ```
 
 ## Phase 5 - Audit integration
@@ -287,8 +339,8 @@ Do not change restaurant/service-business workflows while doing raw material wor
 
 ## Current recommended next action
 
-Start with Phase 4:
+Continue with Phase 4B:
 
 ```txt
-Service layer cleanup.
+Processing run repository/presenter split.
 ```
