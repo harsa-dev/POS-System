@@ -2,16 +2,24 @@ import { randomUUID } from "node:crypto";
 
 import {
   ServiceBusinessCostCategory as PrismaServiceBusinessCostCategory,
+  ServiceBusinessInvoiceStatus as PrismaServiceBusinessInvoiceStatus,
   ServiceBusinessPriority as PrismaServiceBusinessPriority,
+  ServiceBusinessQuoteStatus as PrismaServiceBusinessQuoteStatus,
   ServiceBusinessWorkflowStatus as PrismaServiceBusinessWorkflowStatus,
 } from "@prisma/client";
 
 import { prisma } from "../../lib/prisma.js";
 import type {
   ServiceBusinessCostCategory,
+  ServiceBusinessInvoiceStatus,
   ServiceBusinessPriority,
+  ServiceBusinessWorkflowStatus,
 } from "./service-business.types.js";
-import type { ServiceRequestTarget } from "./service-business.crud.repository.js";
+import type {
+  ServiceInvoiceTarget,
+  ServiceQuotationTarget,
+  ServiceRequestTarget,
+} from "./service-business.crud.repository.js";
 
 function toPrismaPriority(priority: ServiceBusinessPriority) {
   return priority as PrismaServiceBusinessPriority;
@@ -19,6 +27,14 @@ function toPrismaPriority(priority: ServiceBusinessPriority) {
 
 function toPrismaCostCategory(category: ServiceBusinessCostCategory) {
   return category.toUpperCase() as PrismaServiceBusinessCostCategory;
+}
+
+function toPrismaInvoiceStatus(status: ServiceBusinessInvoiceStatus) {
+  return status.toUpperCase() as PrismaServiceBusinessInvoiceStatus;
+}
+
+function toPrismaWorkflowStatus(status: ServiceBusinessWorkflowStatus) {
+  return status as PrismaServiceBusinessWorkflowStatus;
 }
 
 export async function createServiceRequestRecordWithDelegate({
@@ -114,5 +130,215 @@ export async function createServiceCostLineRecordWithDelegate({
       unitCost: Math.round(unitCost),
       billable,
     },
+  });
+}
+
+export async function createServiceQuotationRecordWithDelegate({
+  target,
+  costTotal,
+  discountAmount,
+  taxRate,
+  targetMarginRate,
+  total,
+  taxAmount,
+  validUntil,
+  actorName,
+}: {
+  target: ServiceRequestTarget;
+  costTotal: number;
+  discountAmount: number;
+  taxRate: number;
+  targetMarginRate: number;
+  total: number;
+  taxAmount: number;
+  validUntil: Date | null;
+  actorName: string;
+}) {
+  const quotationId = randomUUID();
+  const quotationCode = `QUO-${Date.now().toString().slice(-8)}`;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.serviceQuotation.create({
+      data: {
+        id: quotationId,
+        requestId: target.requestId,
+        jobId: target.jobId,
+        quotationCode,
+        status: PrismaServiceBusinessQuoteStatus.DRAFT,
+        subtotal: Math.round(costTotal),
+        discountAmount: Math.round(discountAmount),
+        taxRate,
+        taxAmount: Math.round(taxAmount),
+        marginRate: targetMarginRate,
+        total: Math.round(total),
+        validUntil,
+      },
+    });
+
+    await tx.serviceRequest.update({
+      where: { id: target.requestId },
+      data: { status: PrismaServiceBusinessWorkflowStatus.QUOTATION_DRAFT },
+    });
+
+    if (target.jobId) {
+      await tx.serviceJob.update({
+        where: { id: target.jobId },
+        data: { status: PrismaServiceBusinessWorkflowStatus.QUOTATION_DRAFT },
+      });
+    }
+
+    await tx.serviceTimelineItem.create({
+      data: {
+        id: randomUUID(),
+        requestId: target.requestId,
+        label: "Quotation drafted",
+        actorName,
+      },
+    });
+  });
+
+  return { quotationId, quotationCode };
+}
+
+export async function approveServiceQuotationRecordWithDelegate({
+  target,
+  actorName,
+}: {
+  target: ServiceQuotationTarget;
+  actorName: string;
+}) {
+  await prisma.$transaction(async (tx) => {
+    await tx.serviceQuotation.update({
+      where: { id: target.quotationId },
+      data: {
+        status: PrismaServiceBusinessQuoteStatus.APPROVED,
+        approvedAt: new Date(),
+      },
+    });
+
+    await tx.serviceRequest.update({
+      where: { id: target.requestId },
+      data: { status: PrismaServiceBusinessWorkflowStatus.QUOTATION_APPROVED },
+    });
+
+    if (target.jobId) {
+      await tx.serviceJob.update({
+        where: { id: target.jobId },
+        data: { status: PrismaServiceBusinessWorkflowStatus.QUOTATION_APPROVED },
+      });
+    }
+
+    await tx.serviceTimelineItem.create({
+      data: {
+        id: randomUUID(),
+        requestId: target.requestId,
+        label: "Quotation approved",
+        actorName,
+      },
+    });
+  });
+}
+
+export async function createServiceInvoiceRecordWithDelegate({
+  target,
+  quotationId,
+  total,
+  dueDate,
+  actorName,
+}: {
+  target: ServiceRequestTarget;
+  quotationId: string | null;
+  total: number;
+  dueDate: Date | null;
+  actorName: string;
+}) {
+  const invoiceId = randomUUID();
+  const invoiceCode = `INV-${Date.now().toString().slice(-8)}`;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.serviceInvoice.create({
+      data: {
+        id: invoiceId,
+        requestId: target.requestId,
+        quotationId,
+        invoiceCode,
+        status: PrismaServiceBusinessInvoiceStatus.ISSUED,
+        total: Math.round(total),
+        paidAmount: 0,
+        dueDate,
+        issuedAt: new Date(),
+      },
+    });
+
+    await tx.serviceRequest.update({
+      where: { id: target.requestId },
+      data: { status: PrismaServiceBusinessWorkflowStatus.INVOICED },
+    });
+
+    if (target.jobId) {
+      await tx.serviceJob.update({
+        where: { id: target.jobId },
+        data: { status: PrismaServiceBusinessWorkflowStatus.INVOICED },
+      });
+    }
+
+    await tx.serviceTimelineItem.create({
+      data: {
+        id: randomUUID(),
+        requestId: target.requestId,
+        label: "Invoice issued",
+        actorName,
+      },
+    });
+  });
+
+  return { invoiceId, invoiceCode };
+}
+
+export async function recordServiceInvoicePaymentRecordWithDelegate({
+  target,
+  paidAmount,
+  nextPaidAmount,
+  nextInvoiceStatus,
+  nextWorkflowStatus,
+  actorName,
+}: {
+  target: ServiceInvoiceTarget;
+  paidAmount: number;
+  nextPaidAmount: number;
+  nextInvoiceStatus: ServiceBusinessInvoiceStatus;
+  nextWorkflowStatus: ServiceBusinessWorkflowStatus;
+  actorName: string;
+}) {
+  await prisma.$transaction(async (tx) => {
+    await tx.serviceInvoice.update({
+      where: { id: target.invoiceId },
+      data: {
+        paidAmount: nextPaidAmount,
+        status: toPrismaInvoiceStatus(nextInvoiceStatus),
+        paidAt: nextInvoiceStatus === "paid" ? new Date() : undefined,
+      },
+    });
+
+    await tx.serviceRequest.update({
+      where: { id: target.requestId },
+      data: { status: toPrismaWorkflowStatus(nextWorkflowStatus) },
+    });
+
+    if (target.jobId) {
+      await tx.serviceJob.update({
+        where: { id: target.jobId },
+        data: { status: toPrismaWorkflowStatus(nextWorkflowStatus) },
+      });
+    }
+
+    await tx.serviceTimelineItem.create({
+      data: {
+        id: randomUUID(),
+        requestId: target.requestId,
+        label: `Payment recorded: ${Math.round(paidAmount)}`,
+        actorName,
+      },
+    });
   });
 }
