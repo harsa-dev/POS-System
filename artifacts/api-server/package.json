@@ -11,6 +11,7 @@
     "typecheck": "pnpm run generate && tsc -p tsconfig.json --noEmit",
     "typecheck:retail": "pnpm run generate && tsc -p tsconfig.retail.json --noEmit",
     "retail:db:apply": "prisma db execute --file prisma/migrations/202606140001_add_retail_core/migration.sql",
+    "retail:seed": "tsx ./scripts/seed-retail-demo-data.ts",
     "service:db:apply": "prisma db execute --file prisma/migrations/202606140002_add_service_business_core/migration.sql",
     "backfill:businesses": "node --env-file-if-exists=.env --import tsx ./scripts/backfill-business-tenant-bridge.ts",
     "backfill:inventory-business-scope": "node --env-file-if-exists=.env --import tsx ./scripts/backfill-inventory-business-scope.ts"
