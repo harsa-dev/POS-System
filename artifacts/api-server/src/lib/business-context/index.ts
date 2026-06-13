@@ -6,8 +6,10 @@ export type {
 
 export {
   createRestaurantBusinessContext,
+  getBusinessContextForRequest,
   getBusinessContextForUser,
   getRestaurantForUser,
+  requireBusinessContextForRequest,
   requireBusinessContextForUser,
   requireRestaurantForUser,
   type RestaurantBusinessContext,
@@ -19,5 +21,14 @@ export {
   createRestaurantScopeWhere,
   getLegacyRestaurantIdFromBusiness,
 } from "./business-scope.js";
+
+export {
+  BUSINESS_MODE_HEADER,
+  apiBusinessModes,
+  getRequestedBusinessMode,
+  normalizeRequestedBusinessMode,
+  requireBusinessMode,
+  type ApiBusinessMode,
+} from "./requested-business-mode.js";
 
 export { resolveBusinessIdFromRestaurant } from "./resolve-business-id.js";
