@@ -41,6 +41,7 @@ const RestaurantTablesWorkspace = lazy(() => import("@/app/workspace/restaurant/
 const RestaurantMenuWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-menu-workspace"));
 const RestaurantRecipesWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-recipes-workspace"));
 const RestaurantOrdersWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-orders-workspace"));
+const RawMaterialKandangWorkspace = lazy(() => import("@/app/workspace/raw-material/kandang/raw-material-kandang-workspace"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -172,7 +173,8 @@ function isProtectedAppPath(pathname: string) {
   return (
     pathname === ROUTES.DASHBOARD ||
     pathname.startsWith(`${ROUTES.DASHBOARD}/`) ||
-    pathname.startsWith("/workspace/")
+    pathname.startsWith("/workspace/") ||
+    pathname.startsWith("/v3/")
   );
 }
 
@@ -256,6 +258,7 @@ function ProtectedAppRoutes() {
           <Route path={ROUTES.WORKSPACE_RESTAURANT_RECIPES}><ModeProtectedRoute requiredMode="fnb"><RestaurantRecipesWorkspace /></ModeProtectedRoute></Route>
           <Route path={ROUTES.WORKSPACE_RESTAURANT_MENU}><ModeProtectedRoute requiredMode="fnb"><RestaurantMenuWorkspace /></ModeProtectedRoute></Route>
           <Route path={ROUTES.WORKSPACE_RESTAURANT_ORDERS}><ModeProtectedRoute requiredMode="fnb"><RestaurantOrdersWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_KANDANG}><RawMaterialKandangWorkspace /></Route>
           <Route path={ROUTES.PAYMENTS_SUCCESS}><PaymentSuccessPage /></Route>
           <Route path={ROUTES.PAYMENTS_ERROR}><PaymentErrorPage /></Route>
           <Route path="/dashboard/payments"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.PAYMENTS} /></ModeProtectedRoute></Route>

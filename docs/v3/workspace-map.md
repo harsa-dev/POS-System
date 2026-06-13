@@ -182,6 +182,7 @@ Recommended route direction:
 - `/v3/raw-material/weighing`
 - `/v3/raw-material/batches`
 - `/v3/raw-material/storage`
+- `/v3/raw-material/kandang` (preview foundation only)
 - `/v3/custom-business/workspaces`
 
 Old V2 routes should keep working until the matching V3 workspace is stable.

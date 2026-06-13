@@ -36,6 +36,8 @@ export const ROUTES = {
   WORKSPACE_RESTAURANT_MENU: "/workspace/restaurant/menu",
   WORKSPACE_RESTAURANT_RECIPES: "/workspace/restaurant/menu/recipes",
   WORKSPACE_RESTAURANT_ORDERS: "/workspace/restaurant/orders",
+
+  V3_RAW_MATERIAL_KANDANG: "/v3/raw-material/kandang",
 } as const;
 
 // ---------------------------------------------------------------------------
