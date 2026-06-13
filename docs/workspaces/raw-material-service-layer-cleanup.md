@@ -1,10 +1,10 @@
 # Raw Material Service Layer Cleanup
 
-Status: Phase 4A, Phase 4B, and Phase 4C implemented.
+Status: Phase 4 implemented.
 
 This document records Phase 4 of the Raw Material backend plan.
 
-Phase 4 is intentionally split into smaller subphases because Raw Material already has multiple production-backed service files. Rewriting every service boundary at once would be high risk and hard to validate.
+Phase 4 was intentionally split into smaller subphases because Raw Material already has multiple production-backed service files. Rewriting every service boundary at once would be high risk and hard to validate.
 
 ## Phase 4A - Stock movement repository split
 
@@ -21,18 +21,6 @@ Goal:
 
 ```txt
 Move stock movement persistence details out of the orchestration service.
-```
-
-Before this phase, `raw-material-stock-movement.service.ts` owned too many responsibilities:
-
-```txt
-permission checks
-input validation
-Prisma transaction orchestration
-raw SQL insert/list/find queries
-batch/storage loading
-stock invariant guards
-DTO mapping
 ```
 
 After this phase:
@@ -77,20 +65,6 @@ Keep processing status and quantity guards inside the service layer.
 Keep route behavior unchanged.
 ```
 
-Before this phase, `raw-material-processing-run.service.ts` owned:
-
-```txt
-permission checks
-query where construction
-run-number conflict lookup
-input batch lookup
-processing run lookup
-Prisma create/update/cancel operations
-status transition guard orchestration
-output quantity guard orchestration
-DTO mapping
-```
-
 After this phase:
 
 ```txt
@@ -98,25 +72,6 @@ raw-material-processing-run.repository.ts owns Prisma reads and writes.
 raw-material-processing-run.presenter.ts owns DTO mapping.
 raw-material-processing-run.dto.ts remains a compatibility re-export.
 raw-material-processing-run.service.ts owns permission checks, validation, workflow guards, and orchestration.
-```
-
-Repository exports:
-
-```txt
-listRawMaterialProcessingRunRows()
-findRawMaterialProcessingRunById()
-findRawMaterialProcessingRunNumberConflict()
-loadRawMaterialProcessingInputBatch()
-createRawMaterialProcessingRunRecord()
-updateRawMaterialProcessingRunRecord()
-cancelRawMaterialProcessingRunRecord()
-```
-
-Presenter exports:
-
-```txt
-RawMaterialProcessingRunWithBatch
-toRawMaterialProcessingRunDto()
 ```
 
 ## Phase 4C - Intake and batch repository/presenter split
@@ -144,19 +99,6 @@ Keep validation, quantity guards, and business invariant checks in the service l
 Keep route behavior unchanged.
 ```
 
-Before this phase, intake and batch services owned:
-
-```txt
-permission checks
-query construction
-reference/lot conflict lookups
-supplier/storage/intake lookups
-Prisma create/update/cancel operations
-quantity balance guards
-accepted-intake quantity guards
-DTO mapping
-```
-
 After this phase:
 
 ```txt
@@ -171,34 +113,48 @@ raw-material-batch.dto.ts remains a compatibility re-export.
 raw-material-batch.service.ts owns permission checks, validation, quantity guards, and orchestration.
 ```
 
-Intake repository exports:
+## Phase 4D - Supplier, storage, and pen repository split
+
+Status: implemented.
+
+Implemented files:
 
 ```txt
-rawMaterialIntakeInclude
-getRawMaterialIntakeWhere()
-findRawMaterialIntakeById()
-findRawMaterialIntakeReferenceConflict()
-findActiveRawMaterialSupplier()
-findActiveRawMaterialStorageLocation()
-listRawMaterialIntakeRows()
-createRawMaterialIntakeRecord()
-updateRawMaterialIntakeRecord()
-cancelRawMaterialIntakeRecord()
+artifacts/api-server/src/services/raw-material/raw-material-supplier.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-supplier.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-storage-location.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-storage-location.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-pen.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-pen.service.ts
 ```
 
-Batch repository exports:
+Goal:
 
 ```txt
-getRawMaterialBatchInclude()
-findRawMaterialBatchLotConflict()
-loadRawMaterialIntakeForBatch()
-loadRawMaterialStorageLocationForBatch()
-sumActiveRawMaterialBatchQuantityForIntake()
-listRawMaterialBatchRows()
-createRawMaterialBatchRecord()
-findRawMaterialBatchById()
-updateRawMaterialBatchRecord()
-deactivateRawMaterialBatchRecord()
+Move supplier, storage location, and kandang pen persistence details out of their orchestration services.
+Keep route behavior unchanged.
+Keep validation and domain guards in services.
+```
+
+After this phase:
+
+```txt
+raw-material-supplier.repository.ts owns supplier Prisma reads and writes.
+raw-material-supplier.service.ts owns permission checks, validation, conflict mapping, and orchestration.
+
+raw-material-storage-location.repository.ts owns storage Prisma reads and writes.
+raw-material-storage-location.service.ts owns permission checks, validation, storage capacity checks, conflict mapping, and orchestration.
+
+raw-material-pen.repository.ts owns kandang pen raw SQL reads and writes.
+raw-material-pen.service.ts owns permission checks, validation, feed batch guards, capacity guards, health guards, and orchestration.
+```
+
+Notes:
+
+```txt
+Supplier and storage still use their existing DTO mapper files.
+Pen still uses its existing DTO mapper file.
+Presenter extraction for these smaller surfaces can be done later only if it adds value.
 ```
 
 ## Behavior unchanged
@@ -236,45 +192,14 @@ PLANNED/RUNNING -> CANCELLED
 
 Intake and batch were split third because batch creation depends on intake accepted quantity and intake/batch traceability is central to Raw Material mode.
 
-## Remaining Phase 4 work
+Supplier, storage, and pen were split fourth because they are mostly reference/operational support surfaces. Pen was included here because its service still contained manual raw SQL persistence.
 
-Continue with:
+## Phase 4 completion
 
-```txt
-Phase 4D - supplier/storage/pen service split
-```
+Phase 4 is complete for the planned Raw Material service cleanup pass.
 
-Suggested next files:
+Next phase:
 
 ```txt
-raw-material-supplier.repository.ts
-raw-material-supplier.presenter.ts
-raw-material-storage-location.repository.ts
-raw-material-storage-location.presenter.ts
-raw-material-pen.repository.ts
-raw-material-pen.presenter.ts
-raw-material-supplier.service.ts
-raw-material-storage-location.service.ts
-raw-material-pen.service.ts
-```
-
-## Validation command
-
-Run locally:
-
-```bash
-pnpm --filter @workspace/api-server run generate
-pnpm --filter @workspace/api-server run build
-pnpm --filter @workspace/api-server run typecheck
-```
-
-Focus on errors from:
-
-```txt
-src/services/raw-material/raw-material-intake.repository.ts
-src/services/raw-material/raw-material-intake.presenter.ts
-src/services/raw-material/raw-material-intake.service.ts
-src/services/raw-material/raw-material-batch.repository.ts
-src/services/raw-material/raw-material-batch.presenter.ts
-src/services/raw-material/raw-material-batch.service.ts
+Phase 5 - Audit integration
 ```
