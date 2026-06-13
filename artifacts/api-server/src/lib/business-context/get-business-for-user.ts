@@ -50,6 +50,7 @@ export function createBusinessContext(
 ): ResolvedBusinessContext {
   return {
     businessId: business.id,
+    restaurantId: business.restaurant?.id ?? business.id,
     businessType: businessTypeMap[business.type],
     businessMode: businessModeMap[business.mode],
     businessName: business.name,
