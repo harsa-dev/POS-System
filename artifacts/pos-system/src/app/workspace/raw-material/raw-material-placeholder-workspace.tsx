@@ -6,6 +6,7 @@ import {
   Scale,
   Sprout,
   Truck,
+  type LucideIcon,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -16,145 +17,113 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { V3ModuleId } from "@/app/registry";
+import {
+  formatRawMaterialWeight,
+  getRawMaterialStorageUsagePercent,
+  rawMaterialApiContracts,
+  rawMaterialBatches,
+  rawMaterialIntakes,
+  rawMaterialKandangPens,
+  rawMaterialMetrics,
+  rawMaterialProcessingRuns,
+  rawMaterialStorageLocations,
+  rawMaterialSuppliers,
+  rawMaterialWeighings,
+  rawMaterialWorkspaceModules,
+  type RawMaterialWorkspaceModuleId,
+} from "@/features/raw-material/core-system";
 
-const rawMaterialWorkspaceMeta = {
-  intake: {
-    title: "Supplier Intake",
-    route: "/v3/raw-material/intake",
-    icon: Truck,
-    summary:
-      "Preview surface for supplier goods arrival, intake reference, source documents, and first stock checks.",
-    checks: [
-      "Supplier identity and source relation",
-      "Received quantity versus accepted quantity",
-      "Initial stock movement source mapping",
-      "Mode-aware inventory policy response",
-    ],
-  },
-  weighing: {
-    title: "Weighing",
-    route: "/v3/raw-material/weighing",
-    icon: Scale,
-    summary:
-      "Preview surface for gross, tare, net weight, weighing station notes, and batch linkage.",
-    checks: [
-      "Gross/tare/net calculation boundary",
-      "Weight unit consistency",
-      "Batch relation before stock mutation",
-      "Audit event shape for measurement changes",
-    ],
-  },
-  batches: {
-    title: "Batches",
-    route: "/v3/raw-material/batches",
-    icon: ClipboardList,
-    summary:
-      "Preview surface for batch identity, lot code, source relation, age, quality state, and movement history.",
-    checks: [
-      "Batch isolation per tenant",
-      "Lot number uniqueness strategy",
-      "Inventory movement back-reference",
-      "Expiry or quality status transitions",
-    ],
-  },
-  storage: {
-    title: "Storage",
-    route: "/v3/raw-material/storage",
-    icon: Boxes,
-    summary:
-      "Preview surface for warehouse/cold-storage locations, stock state, transfer, and capacity visibility.",
-    checks: [
-      "Storage location ownership scope",
-      "Transfer in/out movement direction",
-      "Low stock visibility by mode",
-      "Cold-storage metadata placeholder",
-    ],
-  },
-  processing: {
-    title: "Processing",
-    route: "/v3/raw-material/processing",
-    icon: Factory,
-    summary:
-      "Preview surface for raw-to-output transformation, yield tracking, byproduct notes, and production usage.",
-    checks: [
-      "Input/output yield model",
-      "Production usage stock reason",
-      "Finished good relation",
-      "Cost distribution placeholder",
-    ],
-  },
-  kandang: {
-    title: "Kandang",
-    route: "/v3/raw-material/kandang",
-    icon: Sprout,
-    summary:
-      "Preview surface for pen identity, capacity, livestock group state, feed relation, and operational events.",
-    checks: [
-      "Pen capacity and occupancy state",
-      "Feed/medicine usage relation",
-      "Livestock event log boundary",
-      "Supplier and batch traceability",
-    ],
-  },
-  suppliers: {
-    title: "Suppliers",
-    route: "/v3/raw-material/suppliers",
-    icon: PackageSearch,
-    summary:
-      "Preview surface for supplier identity, source quality, contact metadata, and intake source history.",
-    checks: [
-      "Supplier tenant isolation",
-      "Supplier to intake relation",
-      "Reusable partner/customer model conflict",
-      "Document attachment boundary",
-    ],
-  },
-} as const satisfies Partial<
-  Record<
-    V3ModuleId,
-    {
-      title: string;
-      route: string;
-      icon: typeof Boxes;
-      summary: string;
-      checks: readonly string[];
-    }
-  >
->;
+const moduleIcons: Record<RawMaterialWorkspaceModuleId, LucideIcon> = {
+  intake: Truck,
+  weighing: Scale,
+  batches: ClipboardList,
+  storage: Boxes,
+  processing: Factory,
+  kandang: Sprout,
+  suppliers: PackageSearch,
+};
+
+const qualityStatusTone = {
+  accepted: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  inspection: "border-amber-200 bg-amber-50 text-amber-700",
+  rejected: "border-rose-200 bg-rose-50 text-rose-700",
+} as const;
+
+const processStatusTone = {
+  planned: "border-neutral-200 bg-neutral-50 text-neutral-600",
+  running: "border-blue-200 bg-blue-50 text-blue-700",
+  completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+} as const;
+
+const healthStatusTone = {
+  stable: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  monitoring: "border-amber-200 bg-amber-50 text-amber-700",
+  critical: "border-rose-200 bg-rose-50 text-rose-700",
+} as const;
 
 type RawMaterialPlaceholderWorkspaceProps = {
-  moduleId: keyof typeof rawMaterialWorkspaceMeta;
+  moduleId: RawMaterialWorkspaceModuleId;
 };
+
+function getSupplierName(supplierId: string) {
+  return rawMaterialSuppliers.find((supplier) => supplier.id === supplierId)?.name ?? "Unknown supplier";
+}
+
+function getStorageLabel(storageId: string) {
+  const storage = rawMaterialStorageLocations.find((location) => location.id === storageId);
+
+  return storage ? `${storage.code} · ${storage.name}` : "Unassigned storage";
+}
+
+function getIntakeLabel(intakeId: string) {
+  const intake = rawMaterialIntakes.find((candidate) => candidate.id === intakeId);
+
+  return intake ? intake.referenceNumber : "Unknown intake";
+}
+
+function getBatchLabel(batchId: string) {
+  const batch = rawMaterialBatches.find((candidate) => candidate.id === batchId);
+
+  return batch ? batch.lotCode : "Unknown batch";
+}
 
 export default function RawMaterialPlaceholderWorkspace({
   moduleId,
 }: RawMaterialPlaceholderWorkspaceProps) {
-  const workspace = rawMaterialWorkspaceMeta[moduleId];
-  const Icon = workspace.icon;
+  const workspace = rawMaterialWorkspaceModules[moduleId];
+  const Icon = moduleIcons[moduleId];
+  const moduleContracts = rawMaterialApiContracts.filter(
+    (contract) => contract.moduleId === moduleId,
+  );
 
   return (
     <section className="space-y-6">
-      <div className="rounded-lg border border-dashed border-amber-300 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-amber-100 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="border-amber-300 text-amber-700">
-            Raw Material preview
+            Raw Material mode
           </Badge>
           <Badge variant="outline" className="border-neutral-300 text-neutral-600">
-            Tenant-safe bridge mode
+            Mock data only
+          </Badge>
+          <Badge variant="outline" className="border-rose-300 text-rose-700">
+            Schema untouched
+          </Badge>
+          <Badge variant="outline" className="border-blue-300 text-blue-700">
+            API contract ready
           </Badge>
         </div>
 
         <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-4xl space-y-3">
-            <h1 className="text-2xl font-bold text-neutral-950">
-              {workspace.title}
-            </h1>
-            <p className="text-sm leading-6 text-neutral-600">
-              {workspace.summary}
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-700">
+              {workspace.eyebrow}
             </p>
-            <p className="text-xs leading-5 text-neutral-500">
-              Route: <span className="font-semibold text-neutral-800">{workspace.route}</span>
+            <h1 className="text-2xl font-bold text-neutral-950">{workspace.title}</h1>
+            <p className="text-sm leading-6 text-neutral-600">{workspace.description}</p>
+            <p className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm leading-6 text-neutral-600">
+              <span className="font-semibold text-neutral-900">Operational goal:</span>{" "}
+              {workspace.operationalGoal}
             </p>
           </div>
 
@@ -162,24 +131,225 @@ export default function RawMaterialPlaceholderWorkspace({
             <Icon className="h-7 w-7" aria-hidden="true" />
           </div>
         </div>
-
-        <div className="mt-5 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-600">
-          This workspace intentionally exposes the raw-material navigation surface
-          without creating production records yet. It is meant for route, sidebar,
-          mode guard, API header, and tenant-scope testing before real livestock
-          or raw-material database models are added.
-        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {workspace.checks.map((check) => (
-          <Card key={check} className="rounded-lg bg-white">
-            <CardHeader>
-              <CardTitle className="text-base">Audit checkpoint</CardTitle>
-              <CardDescription>Preview validation point</CardDescription>
+        {rawMaterialMetrics.map((metric) => (
+          <Card key={metric.label} className="rounded-xl bg-white">
+            <CardHeader className="pb-2">
+              <CardDescription>{metric.label}</CardDescription>
+              <CardTitle className="text-2xl">{metric.value}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm leading-6 text-neutral-600">{check}</p>
+              <p className="text-sm leading-6 text-neutral-500">{metric.helper}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+        <Card className="rounded-xl bg-white">
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <CardTitle>Supplier intake queue</CardTitle>
+                <CardDescription>Local mock data for receiving, quality checks, and target storage.</CardDescription>
+              </div>
+              <Badge variant="outline">{rawMaterialIntakes.length} intakes</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-[820px] text-left text-sm">
+              <thead className="border-b text-xs uppercase tracking-[0.12em] text-neutral-400">
+                <tr>
+                  <th className="py-3 pr-4">Reference</th>
+                  <th className="py-3 pr-4">Material</th>
+                  <th className="py-3 pr-4">Supplier</th>
+                  <th className="py-3 pr-4">Accepted</th>
+                  <th className="py-3 pr-4">Rejected</th>
+                  <th className="py-3 pr-4">Storage</th>
+                  <th className="py-3 pr-4">Quality</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {rawMaterialIntakes.map((intake) => (
+                  <tr key={intake.id}>
+                    <td className="py-3 pr-4 font-medium text-neutral-950">{intake.referenceNumber}</td>
+                    <td className="py-3 pr-4 text-neutral-700">
+                      <div>{intake.materialName}</div>
+                      <div className="text-xs text-neutral-500">Received: {intake.receivedQuantity} {intake.unit}</div>
+                    </td>
+                    <td className="py-3 pr-4 text-neutral-700">{getSupplierName(intake.supplierId)}</td>
+                    <td className="py-3 pr-4 text-neutral-700">{intake.acceptedQuantity} {intake.unit}</td>
+                    <td className="py-3 pr-4 text-neutral-700">{intake.rejectedQuantity} {intake.unit}</td>
+                    <td className="py-3 pr-4 text-neutral-700">{getStorageLabel(intake.targetStorageId)}</td>
+                    <td className="py-3 pr-4">
+                      <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${qualityStatusTone[intake.qualityStatus]}`}>
+                        {intake.qualityStatus}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl bg-white">
+          <CardHeader>
+            <CardTitle>API contract for this module</CardTitle>
+            <CardDescription>Frontend contract only. No handler, Prisma call, or schema mutation yet.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {moduleContracts.map((contract) => (
+              <div key={contract.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{contract.method}</Badge>
+                  <Badge variant="outline" className="border-amber-200 text-amber-700">
+                    {contract.persistence}
+                  </Badge>
+                </div>
+                <p className="mt-2 font-mono text-xs text-neutral-700">{contract.path}</p>
+                <p className="mt-2 text-sm leading-6 text-neutral-600">{contract.purpose}</p>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">
+                  <span className="font-semibold text-neutral-700">Request:</span> {contract.requestShape}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-neutral-500">
+                  <span className="font-semibold text-neutral-700">Response:</span> {contract.responseShape}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="rounded-xl bg-white lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Batch traceability</CardTitle>
+            <CardDescription>Lot, source intake, remaining quantity, expiry, quality, and storage mapping.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2">
+            {rawMaterialBatches.map((batch) => (
+              <div key={batch.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-medium text-neutral-900">{batch.lotCode}</p>
+                  <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${qualityStatusTone[batch.qualityStatus]}`}>
+                    {batch.qualityStatus}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-neutral-600">{batch.materialName}</p>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">
+                  Source: {getIntakeLabel(batch.intakeId)} · Remaining: {formatRawMaterialWeight(batch.remainingKg)} / {formatRawMaterialWeight(batch.quantityKg)}
+                </p>
+                <p className="text-xs leading-5 text-neutral-500">
+                  Expiry: {batch.expiryDate} · {getStorageLabel(batch.storageId)}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl bg-white">
+          <CardHeader>
+            <CardTitle>Weighing records</CardTitle>
+            <CardDescription>Gross, tare, and net preview.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {rawMaterialWeighings.map((weighing) => (
+              <div key={weighing.id} className="rounded-lg border border-neutral-100 p-3">
+                <p className="font-medium text-neutral-900">{weighing.referenceNumber}</p>
+                <p className="mt-1 text-sm text-neutral-500">{weighing.stationName} · {weighing.operatorName}</p>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">
+                  Gross {formatRawMaterialWeight(weighing.grossKg)} · Tare {formatRawMaterialWeight(weighing.tareKg)} · Net {formatRawMaterialWeight(weighing.netKg)}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="rounded-xl bg-white">
+          <CardHeader>
+            <CardTitle>Storage capacity</CardTitle>
+            <CardDescription>Usage preview before transfer API exists.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {rawMaterialStorageLocations.map((location) => (
+              <div key={location.id} className="rounded-lg border border-neutral-100 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium text-neutral-900">{location.code}</p>
+                  <Badge variant="outline">{getRawMaterialStorageUsagePercent(location)}%</Badge>
+                </div>
+                <p className="mt-1 text-sm text-neutral-500">{location.name} · {location.type}</p>
+                <p className="mt-2 text-xs text-neutral-500">
+                  {formatRawMaterialWeight(location.usedKg)} used from {formatRawMaterialWeight(location.capacityKg)}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl bg-white">
+          <CardHeader>
+            <CardTitle>Processing runs</CardTitle>
+            <CardDescription>Input, output, byproduct, and yield preview.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {rawMaterialProcessingRuns.map((run) => (
+              <div key={run.id} className="rounded-lg border border-neutral-100 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-medium text-neutral-900">{run.runNumber}</p>
+                  <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${processStatusTone[run.status]}`}>
+                    {run.status}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-neutral-500">{run.outputName}</p>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">
+                  Input: {formatRawMaterialWeight(run.inputKg)} from {getBatchLabel(run.inputBatchId)}
+                </p>
+                <p className="text-xs leading-5 text-neutral-500">
+                  Output: {formatRawMaterialWeight(run.outputKg)} · Byproduct: {formatRawMaterialWeight(run.byproductKg)}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl bg-white">
+          <CardHeader>
+            <CardTitle>Kandang snapshot</CardTitle>
+            <CardDescription>Livestock support data without new tables.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {rawMaterialKandangPens.map((pen) => (
+              <div key={pen.id} className="rounded-lg border border-neutral-100 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-medium text-neutral-900">{pen.code}</p>
+                  <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${healthStatusTone[pen.healthStatus]}`}>
+                    {pen.healthStatus}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-neutral-500">{pen.flockName}</p>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">
+                  Occupancy: {pen.occupancy}/{pen.capacity} · Feed: {getBatchLabel(pen.feedBatchId)}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {workspace.checkpoints.map((checkpoint) => (
+          <Card key={checkpoint} className="rounded-xl bg-white">
+            <CardHeader>
+              <CardTitle className="text-base">Foundation checkpoint</CardTitle>
+              <CardDescription>Before API/schema integration</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm leading-6 text-neutral-600">{checkpoint}</p>
             </CardContent>
           </Card>
         ))}
