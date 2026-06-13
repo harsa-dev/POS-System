@@ -1,10 +1,18 @@
-import { Prisma, RawMaterialProcessingStatus, Role } from "@prisma/client";
+import { RawMaterialProcessingStatus, Role } from "@prisma/client";
 
 import type { BusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
-import { prisma } from "../../lib/prisma.js";
-import { toRawMaterialProcessingRunDto } from "./raw-material-processing-run.dto.js";
+import { toRawMaterialProcessingRunDto } from "./raw-material-processing-run.presenter.js";
+import {
+  cancelRawMaterialProcessingRunRecord,
+  createRawMaterialProcessingRunRecord,
+  findRawMaterialProcessingRunById,
+  findRawMaterialProcessingRunNumberConflict,
+  listRawMaterialProcessingRunRows,
+  loadRawMaterialProcessingInputBatch,
+  updateRawMaterialProcessingRunRecord,
+} from "./raw-material-processing-run.repository.js";
 import type {
   RawMaterialProcessingRunInput,
   RawMaterialProcessingRunQuery,
@@ -35,39 +43,15 @@ function assertCanManage(actor: RawMaterialActor) {
   appError(403, errorCodes.forbidden, "You do not have permission to manage raw material processing runs.");
 }
 
-function buildWhere(businessId: string, query: RawMaterialProcessingRunQuery): Prisma.RawMaterialProcessingRunWhereInput {
-  const search = query.search?.trim();
-
-  return {
-    businessId,
-    ...(query.inputBatchId ? { inputBatchId: query.inputBatchId } : {}),
-    ...(query.status ? { status: query.status } : {}),
-    ...(search
-      ? {
-          OR: [
-            { runNumber: { contains: search, mode: "insensitive" } },
-            { outputName: { contains: search, mode: "insensitive" } },
-            { notes: { contains: search, mode: "insensitive" } },
-            { inputBatch: { lotCode: { contains: search, mode: "insensitive" } } },
-            { inputBatch: { materialName: { contains: search, mode: "insensitive" } } },
-          ],
-        }
-      : {}),
-  };
-}
-
 async function assertRunNumberAvailable(params: {
   businessContext: BusinessContext;
   runNumber: string;
   excludeId?: string;
 }) {
-  const duplicate = await prisma.rawMaterialProcessingRun.findFirst({
-    where: {
-      businessId: params.businessContext.businessId,
-      runNumber: params.runNumber,
-      ...(params.excludeId ? { id: { not: params.excludeId } } : {}),
-    },
-    select: { id: true },
+  const duplicate = await findRawMaterialProcessingRunNumberConflict({
+    businessId: params.businessContext.businessId,
+    runNumber: params.runNumber,
+    excludeId: params.excludeId,
   });
 
   if (!duplicate) return;
@@ -77,17 +61,9 @@ async function assertRunNumberAvailable(params: {
 }
 
 async function loadInputBatchOrThrow(businessContext: BusinessContext, inputBatchId: string) {
-  const batch = await prisma.rawMaterialBatch.findFirst({
-    where: {
-      id: inputBatchId,
-      businessId: businessContext.businessId,
-    },
-    select: {
-      id: true,
-      remainingQuantity: true,
-      qualityStatus: true,
-      isActive: true,
-    },
+  const batch = await loadRawMaterialProcessingInputBatch({
+    businessId: businessContext.businessId,
+    inputBatchId,
   });
 
   if (!batch) appError(404, errorCodes.notFound, "Raw material input batch not found.");
@@ -97,12 +73,9 @@ async function loadInputBatchOrThrow(businessContext: BusinessContext, inputBatc
 }
 
 async function loadProcessingRunOrThrow(businessContext: BusinessContext, id: string) {
-  const run = await prisma.rawMaterialProcessingRun.findFirst({
-    where: {
-      id,
-      businessId: businessContext.businessId,
-    },
-    include: { inputBatch: true },
+  const run = await findRawMaterialProcessingRunById({
+    businessId: businessContext.businessId,
+    id,
   });
 
   if (!run) appError(404, errorCodes.notFound, "Raw material processing run not found.");
@@ -123,14 +96,15 @@ export async function listRawMaterialProcessingRuns(params: {
     ? (params.status.toUpperCase() as RawMaterialProcessingStatus)
     : params.status;
 
-  const runs = await prisma.rawMaterialProcessingRun.findMany({
-    where: buildWhere(businessContext.businessId, {
-      inputBatchId: params.inputBatchId,
-      status,
-      search: params.search,
-    }),
-    include: { inputBatch: true },
-    orderBy: [{ createdAt: "desc" }, { runNumber: "asc" }],
+  const query: RawMaterialProcessingRunQuery = {
+    inputBatchId: params.inputBatchId,
+    status,
+    search: params.search,
+  };
+
+  const runs = await listRawMaterialProcessingRunRows({
+    businessId: businessContext.businessId,
+    query,
   });
 
   return runs.map(toRawMaterialProcessingRunDto);
@@ -165,22 +139,19 @@ export async function createRawMaterialProcessingRun(params: {
     wasteQuantity: data.wasteQuantity,
   });
 
-  const run = await prisma.rawMaterialProcessingRun.create({
-    data: {
-      businessId: businessContext.businessId,
-      runNumber: data.runNumber,
-      inputBatchId: data.inputBatchId,
-      outputName: data.outputName,
-      inputQuantity: data.inputQuantity,
-      outputQuantity: data.outputQuantity,
-      byproductQuantity: data.byproductQuantity,
-      wasteQuantity: data.wasteQuantity,
-      status: nextStatus,
-      startedAt: data.startedAt,
-      completedAt: data.completedAt,
-      notes: data.notes,
-    },
-    include: { inputBatch: true },
+  const run = await createRawMaterialProcessingRunRecord({
+    businessId: businessContext.businessId,
+    runNumber: data.runNumber,
+    inputBatchId: data.inputBatchId,
+    outputName: data.outputName,
+    inputQuantity: data.inputQuantity,
+    outputQuantity: data.outputQuantity,
+    byproductQuantity: data.byproductQuantity,
+    wasteQuantity: data.wasteQuantity,
+    status: nextStatus,
+    startedAt: data.startedAt,
+    completedAt: data.completedAt,
+    notes: data.notes,
   });
 
   return toRawMaterialProcessingRunDto(run);
@@ -225,22 +196,22 @@ export async function updateRawMaterialProcessingRun(params: {
     appError(400, errorCodes.validationError, "Input quantity cannot exceed remaining batch quantity.");
   }
 
-  const updated = await prisma.rawMaterialProcessingRun.update({
-    where: { id: existing.id },
-    data: {
-      ...(data.runNumber ? { runNumber: data.runNumber } : {}),
-      ...(data.outputName ? { outputName: data.outputName } : {}),
-      inputBatch: { connect: { id: inputBatchId } },
-      inputQuantity,
-      outputQuantity,
-      byproductQuantity,
-      wasteQuantity,
-      status: nextStatus,
-      ...(input.startedAt !== undefined ? { startedAt: data.startedAt ?? null } : {}),
-      ...(input.completedAt !== undefined ? { completedAt: data.completedAt ?? null } : {}),
-      ...(input.notes !== undefined ? { notes: data.notes ?? null } : {}),
-    },
-    include: { inputBatch: true },
+  const updated = await updateRawMaterialProcessingRunRecord({
+    id: existing.id,
+    runNumber: data.runNumber,
+    inputBatchId,
+    outputName: data.outputName,
+    inputQuantity,
+    outputQuantity,
+    byproductQuantity,
+    wasteQuantity,
+    status: nextStatus,
+    startedAt: data.startedAt,
+    completedAt: data.completedAt,
+    notes: data.notes,
+    updateStartedAt: input.startedAt !== undefined,
+    updateCompletedAt: input.completedAt !== undefined,
+    updateNotes: input.notes !== undefined,
   });
 
   return toRawMaterialProcessingRunDto(updated);
@@ -260,11 +231,7 @@ export async function cancelRawMaterialProcessingRun(params: {
     nextStatus: RawMaterialProcessingStatus.CANCELLED,
   });
 
-  const updated = await prisma.rawMaterialProcessingRun.update({
-    where: { id: existing.id },
-    data: { status: RawMaterialProcessingStatus.CANCELLED },
-    include: { inputBatch: true },
-  });
+  const updated = await cancelRawMaterialProcessingRunRecord(existing.id);
 
   return toRawMaterialProcessingRunDto(updated);
 }
