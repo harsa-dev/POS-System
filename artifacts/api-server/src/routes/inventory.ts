@@ -3,7 +3,7 @@ import { Router } from "express";
 
 import { requireRole } from "../lib/auth.js";
 import { ALL_ROLES } from "../lib/constants.js";
-import { requireBusinessContextForUser } from "../lib/business-context/index.js";
+import { requireBusinessContextForRequest } from "../lib/business-context/index.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import { getInventoryModePolicy } from "../services/inventory/inventory.mode-policy.js";
@@ -31,7 +31,7 @@ router.get("/inventory-items", async (req, res) => {
     const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
 
-    const businessContext = await requireBusinessContextForUser(user);
+    const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await listInventoryItems({
       actor: getActor(user),
       businessContext,
@@ -48,7 +48,7 @@ router.post("/inventory-items", async (req, res) => {
     const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
 
-    const businessContext = await requireBusinessContextForUser(user);
+    const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await createInventoryItem({
       actor: getActor(user),
       businessContext,
@@ -70,7 +70,7 @@ router.patch("/inventory-items/:id", async (req, res) => {
     const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
 
-    const businessContext = await requireBusinessContextForUser(user);
+    const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await updateInventoryItem({
       actor: getActor(user),
       businessContext,
@@ -92,7 +92,7 @@ router.delete("/inventory-items/:id", async (req, res) => {
     const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
 
-    const businessContext = await requireBusinessContextForUser(user);
+    const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await deleteInventoryItem({
       actor: getActor(user),
       businessContext,
@@ -113,10 +113,11 @@ router.get("/inventory-capabilities", async (req, res) => {
     const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
 
-    const businessContext = await requireBusinessContextForUser(user);
+    const businessContext = await requireBusinessContextForRequest(req, user);
     const data = {
       businessId: businessContext.businessId,
       restaurantId: businessContext.restaurantId,
+      businessType: businessContext.businessType,
       businessMode: businessContext.businessMode,
       policy: getInventoryModePolicy(businessContext),
     };
@@ -132,7 +133,7 @@ router.get("/inventory-dashboard", async (req, res) => {
     const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
 
-    const businessContext = await requireBusinessContextForUser(user);
+    const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await getInventoryDashboard({
       actor: getActor(user),
       businessContext,
@@ -149,7 +150,7 @@ router.get("/inventory", async (req, res) => {
     const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
 
-    const businessContext = await requireBusinessContextForUser(user);
+    const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await listStockMovements({
       actor: getActor(user),
       businessContext,
@@ -168,7 +169,7 @@ router.post("/inventory", async (req, res) => {
     const user = await requireRole(req, res, ALL_ROLES);
     if (!user) return;
 
-    const businessContext = await requireBusinessContextForUser(user);
+    const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await createStockMovement({
       actor: getActor(user),
       businessContext,
