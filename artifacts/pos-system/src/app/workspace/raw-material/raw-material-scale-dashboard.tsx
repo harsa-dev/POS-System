@@ -1,4 +1,7 @@
+import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,6 +19,8 @@ type RawMaterialScaleDashboardProps = {
   profiles: readonly RawMaterialScaleProfile[];
   features: readonly RawMaterialScaleFeature[];
 };
+
+type ScaleFilterValue = RawMaterialBusinessScale | "all";
 
 const scaleTone: Record<RawMaterialBusinessScale, string> = {
   small: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -35,6 +40,13 @@ const statusTone: Record<RawMaterialScaleFeature["status"], string> = {
   "future-production": "border-blue-200 bg-blue-50 text-blue-700",
 };
 
+const scaleFilterOptions: readonly { label: string; value: ScaleFilterValue }[] = [
+  { label: "All scale", value: "all" },
+  { label: "Kecil", value: "small" },
+  { label: "Menengah", value: "medium" },
+  { label: "Factory", value: "factory" },
+];
+
 function countFeaturesByStatus(
   features: readonly RawMaterialScaleFeature[],
   status: RawMaterialScaleFeature["status"],
@@ -42,13 +54,34 @@ function countFeaturesByStatus(
   return features.filter((feature) => feature.status === status).length;
 }
 
+function filterProfilesByScale(
+  profiles: readonly RawMaterialScaleProfile[],
+  scaleFilter: ScaleFilterValue,
+) {
+  return scaleFilter === "all"
+    ? profiles
+    : profiles.filter((profile) => profile.scale === scaleFilter);
+}
+
+function filterFeaturesByScale(
+  features: readonly RawMaterialScaleFeature[],
+  scaleFilter: ScaleFilterValue,
+) {
+  return scaleFilter === "all"
+    ? features
+    : features.filter((feature) => feature.scale === scaleFilter);
+}
+
 export function RawMaterialScaleDashboard({
   profiles,
   features,
 }: RawMaterialScaleDashboardProps) {
-  const availableCount = countFeaturesByStatus(features, "available");
-  const newDummyCount = countFeaturesByStatus(features, "new-dummy");
-  const futureProductionCount = countFeaturesByStatus(features, "future-production");
+  const [scaleFilter, setScaleFilter] = useState<ScaleFilterValue>("all");
+  const visibleProfiles = filterProfilesByScale(profiles, scaleFilter);
+  const visibleFeatures = filterFeaturesByScale(features, scaleFilter);
+  const availableCount = countFeaturesByStatus(visibleFeatures, "available");
+  const newDummyCount = countFeaturesByStatus(visibleFeatures, "new-dummy");
+  const futureProductionCount = countFeaturesByStatus(visibleFeatures, "future-production");
 
   return (
     <Card className="rounded-xl bg-white">
@@ -66,11 +99,29 @@ export function RawMaterialScaleDashboard({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        <div className="flex flex-wrap gap-2 rounded-xl border border-neutral-100 bg-neutral-50 p-2">
+          {scaleFilterOptions.map((option) => {
+            const isSelected = scaleFilter === option.value;
+
+            return (
+              <Button
+                key={option.value}
+                type="button"
+                size="sm"
+                variant={isSelected ? "default" : "outline"}
+                onClick={() => setScaleFilter(option.value)}
+              >
+                {option.label}
+              </Button>
+            );
+          })}
+        </div>
+
         <div className="grid gap-3 md:grid-cols-3">
           <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
             <p className="text-sm text-neutral-500">Already covered</p>
             <p className="mt-1 text-2xl font-bold text-neutral-950">{availableCount}</p>
-            <p className="mt-1 text-xs leading-5 text-neutral-500">Existing workspace capabilities that already cover scale needs.</p>
+            <p className="mt-1 text-xs leading-5 text-neutral-500">Existing workspace capabilities that already cover selected scale needs.</p>
           </div>
           <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
             <p className="text-sm text-amber-700">New dummy dashboards</p>
@@ -85,7 +136,7 @@ export function RawMaterialScaleDashboard({
         </div>
 
         <div className="grid gap-3 lg:grid-cols-3">
-          {profiles.map((profile) => (
+          {visibleProfiles.map((profile) => (
             <div key={profile.scale} className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-semibold text-neutral-950">{profile.label}</h3>
@@ -110,8 +161,8 @@ export function RawMaterialScaleDashboard({
         </div>
 
         <div className="grid gap-3 xl:grid-cols-3">
-          {profiles.map((profile) => {
-            const scaleFeatures = features.filter((feature) => feature.scale === profile.scale);
+          {visibleProfiles.map((profile) => {
+            const scaleFeatures = visibleFeatures.filter((feature) => feature.scale === profile.scale);
 
             return (
               <div key={profile.scale} className="rounded-xl border border-neutral-100 bg-white p-4">
