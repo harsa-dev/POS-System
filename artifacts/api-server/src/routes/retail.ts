@@ -71,7 +71,8 @@ function isSalePreviewInput(value: unknown): value is RetailSalePreviewInput {
 }
 
 function isSaleCancellationInput(value: unknown): value is RetailSaleCancellationInput {
-  if (!value || typeof value !== "object") return true;
+  if (value === undefined || value === null) return true;
+  if (typeof value !== "object") return false;
   const candidate = value as { reason?: unknown };
   return candidate.reason === undefined || typeof candidate.reason === "string";
 }
