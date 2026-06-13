@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { FilePlus2, ReceiptText, X } from "lucide-react";
 
+import { ServiceBusinessActivityFeed } from "./service-business-activity-feed";
+import { getServicePreviewModalActivity } from "./service-business-activity-preview";
 import {
   calculateQuoteSubtotal,
   calculateQuoteTax,
@@ -56,10 +58,11 @@ export function ServiceBusinessPreviewModal({
   const baseSubtotal = selectedJob ? calculateQuoteSubtotal(selectedJob) : 0;
   const previewTax = selectedJob ? calculateQuoteTax(selectedJob) : 0;
   const previewTotal = selectedJob ? calculateQuoteTotal(selectedJob) : 0;
+  const activityEvents = getServicePreviewModalActivity(type, selectedJob);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-neutral-950/40 px-4 py-8">
-      <div className="w-full max-w-4xl rounded-3xl border border-neutral-200 bg-white p-5 shadow-xl">
+      <div className="w-full max-w-5xl rounded-3xl border border-neutral-200 bg-white p-5 shadow-xl">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-neutral-200 pb-4">
           <div className="flex gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neutral-950 text-white">
@@ -161,6 +164,14 @@ export function ServiceBusinessPreviewModal({
             />
           </div>
         )}
+
+        <div className="mt-5">
+          <ServiceBusinessActivityFeed
+            description="Local preview events that would become audit entries after backend support exists."
+            events={activityEvents}
+            title="Modal activity preview"
+          />
+        </div>
 
         <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-neutral-200 pt-4">
           <button
