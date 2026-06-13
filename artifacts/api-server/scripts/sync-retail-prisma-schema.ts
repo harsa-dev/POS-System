@@ -201,9 +201,15 @@ model RetailStockMovement {
   @@index([createdAt])
 }`;
 
-function insertBeforeClosingBrace(modelBlock: string, relations: string) {
+function insertRelations(modelBlock: string, relations: string) {
   if (modelBlock.includes(relations.split("\n")[0].trim())) {
     return modelBlock;
+  }
+
+  const firstBlockAttributeIndex = modelBlock.search(/\n\s*@@/);
+
+  if (firstBlockAttributeIndex >= 0) {
+    return `${modelBlock.slice(0, firstBlockAttributeIndex)}\n${relations}\n${modelBlock.slice(firstBlockAttributeIndex)}`;
   }
 
   return modelBlock.replace(/\n}/, `\n${relations}\n}`);
@@ -217,7 +223,7 @@ function patchModel(schema: string, modelName: string, relations: string) {
     throw new Error(`Could not find model ${modelName} in schema.prisma.`);
   }
 
-  const patchedModel = insertBeforeClosingBrace(modelMatch[0], relations);
+  const patchedModel = insertRelations(modelMatch[0], relations);
   return schema.replace(modelMatch[0], patchedModel);
 }
 
