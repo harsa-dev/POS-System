@@ -180,59 +180,62 @@ export async function findServiceWorkflowTargetWithDelegate(
 export async function loadServiceWorkflowReadinessWithDelegate(
   target: ServiceWorkflowTargetRow,
 ): Promise<ServiceWorkflowReadinessRow> {
-  const [costLineCount, billableCostCount, quotationCount, approvedQuotationCount, invoiceCount, paidInvoiceCount, checklistCount] =
-    await prisma.$transaction([
-      target.jobId
-        ? prisma.serviceCostLine.count({
-            where: {
-              jobId: target.jobId,
-            },
-          })
-        : Promise.resolve(0),
-      target.jobId
-        ? prisma.serviceCostLine.count({
-            where: {
-              jobId: target.jobId,
-              billable: true,
-              quantity: {
-                gt: 0,
-              },
-              unitCost: {
-                gt: 0,
-              },
-            },
-          })
-        : Promise.resolve(0),
-      prisma.serviceQuotation.count({
+  const costLineCount = target.jobId
+    ? await prisma.serviceCostLine.count({
         where: {
-          requestId: target.requestId,
+          jobId: target.jobId,
         },
-      }),
-      prisma.serviceQuotation.count({
+      })
+    : 0;
+
+  const billableCostCount = target.jobId
+    ? await prisma.serviceCostLine.count({
         where: {
-          requestId: target.requestId,
-          status: "APPROVED",
+          jobId: target.jobId,
+          billable: true,
+          quantity: {
+            gt: 0,
+          },
+          unitCost: {
+            gt: 0,
+          },
         },
-      }),
-      prisma.serviceInvoice.count({
+      })
+    : 0;
+
+  const quotationCount = await prisma.serviceQuotation.count({
+    where: {
+      requestId: target.requestId,
+    },
+  });
+
+  const approvedQuotationCount = await prisma.serviceQuotation.count({
+    where: {
+      requestId: target.requestId,
+      status: "APPROVED",
+    },
+  });
+
+  const invoiceCount = await prisma.serviceInvoice.count({
+    where: {
+      requestId: target.requestId,
+    },
+  });
+
+  const paidInvoiceCount = await prisma.serviceInvoice.count({
+    where: {
+      requestId: target.requestId,
+      status: "PAID",
+    },
+  });
+
+  const checklistCount = target.jobId
+    ? await prisma.serviceChecklistItem.count({
         where: {
-          requestId: target.requestId,
+          jobId: target.jobId,
         },
-      }),
-      prisma.serviceInvoice.count({
-        where: {
-          requestId: target.requestId,
-          status: "PAID",
-        },
-      }),
-      target.jobId
-        ? prisma.serviceChecklistItem.count({
-            where: {
-              jobId: target.jobId,
-            },
-          })
-        : Promise.resolve(0),
-    ]);
+      })
+    : 0;
 
   return {
     hasSummary: Boolean(target.summary?.trim()),
