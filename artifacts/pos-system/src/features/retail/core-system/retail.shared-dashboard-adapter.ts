@@ -32,7 +32,12 @@ export type RetailSharedDashboardId =
   | "shift-reports"
   | "team-management"
   | "employee-performance"
-  | "approvals";
+  | "approvals"
+  | "audit-controls"
+  | "roster-overview"
+  | "employee-attendance"
+  | "employee-contracts"
+  | "payroll";
 
 export type RetailSharedMetric = Readonly<{
   label: string;
@@ -66,13 +71,14 @@ const varianceSessions = retailStockCountSessions.filter((session) => session.st
 const customersModule = retailGrowthModules.find((module) => module.id === "customers-loyalty");
 const returnsModule = retailGrowthModules.find((module) => module.id === "returns-exchanges");
 const staffModule = retailGrowthModules.find((module) => module.id === "staff-shifts");
+const auditModule = retailGrowthModules.find((module) => module.id === "audit-controls");
 
 function fallbackRows(label: string): readonly RetailSharedRow[] {
   return [
     {
-      title: `${label} bridge ready`,
-      primary: "Retail core mock data is available for this shared dashboard.",
-      secondary: "API and Prisma schema are still intentionally untouched.",
+      title: `${label} retail mode placeholder`,
+      primary: "Retail core mock data is available, but this shared dashboard is not the active retail surface.",
+      secondary: "The original shared component is intentionally not rendered in retail mode.",
       status: "planned",
     },
   ];
@@ -140,11 +146,26 @@ function getApprovalRows(): readonly RetailSharedRow[] {
   }));
 }
 
+function getSkippedRows(label: string, replacement: string): readonly RetailSharedRow[] {
+  return [
+    {
+      title: `${label} is not called in retail mode`,
+      primary: `Retail mode uses ${replacement} instead of the generic shared dashboard component.`,
+      secondary: "The original dashboard remains available for other business modes.",
+      status: "planned",
+    },
+  ];
+}
+
+const staffMetrics = staffModule?.metrics ?? [
+  { label: "Retail staff", value: "Mock", helper: "Retail staff shift context" },
+];
+
 const contexts: Record<RetailSharedDashboardId, RetailSharedDashboardContext> = {
   overview: {
     id: "overview",
-    title: "Retail overview bridge",
-    description: "Retail mode injects sales, stock, register, promo, and readiness signals into the shared overview dashboard.",
+    title: "Retail overview",
+    description: "Retail mode replaces the generic overview with cashier, inventory, customer, promo, and readiness signals.",
     metrics: [
       { label: "Retail revenue", value: formatRetailCurrency(revenue), helper: "From retail mock transactions" },
       { label: "Readiness", value: `${retailReadinessScore.score}/100`, helper: `${retailReadinessScore.grade} grade mock control score` },
@@ -156,115 +177,157 @@ const contexts: Record<RetailSharedDashboardId, RetailSharedDashboardContext> = 
       secondary: `${signal.recommendation} · ${signal.estimatedImpact}`,
       status: signal.area === "Inventory" || signal.area === "Branch control" ? "review" : "planned",
     })),
-    bridgeNote: "Use this as the retail executive context above the existing shared overview.",
+    bridgeNote: "Generic business overview is not rendered for retail mode; this retail-specific summary is used instead.",
   },
   sales: {
     id: "sales",
-    title: "Retail sales bridge",
-    description: "Retail cashier transactions are mapped into the shared sales analytics surface with revenue, margin, discount, and basket context.",
+    title: "Retail sales analytics",
+    description: "Retail cashier transactions are mapped into a retail-specific sales view with revenue, margin, discount, and basket context.",
     metrics: [
       { label: "Revenue", value: formatRetailCurrency(revenue), helper: `${paidTransactions.length} paid mock transactions` },
       { label: "Gross profit", value: formatRetailCurrency(grossProfit), helper: `${margin}% margin preview` },
       { label: "Average basket", value: formatRetailCurrency(retailDailyReport.averageBasket), helper: "Mock basket average" },
     ],
     rows: getSalesRows(),
-    bridgeNote: "Real shared analytics API remains untouched; this panel only proves retail core data can feed the shared concept.",
+    bridgeNote: "Shared sales dashboard is replaced in retail mode so restaurant/service charts are not called.",
   },
   customers: {
     id: "customers",
-    title: "Retail customers bridge",
-    description: "Customer and loyalty mock data is surfaced beside the shared customers and partners dashboard.",
+    title: "Retail customers and loyalty",
+    description: "Retail mode uses customer loyalty, repeat purchase, member points, and return history instead of the generic customer-partner surface.",
     metrics: customersModule?.metrics ?? [],
     rows: customersModule?.rows ?? fallbackRows("Customers"),
-    bridgeNote: "This keeps loyalty as retail-specific mock context before customer tables exist.",
+    bridgeNote: "Generic partner management is not rendered; retail loyalty context is shown instead.",
   },
   inventory: {
     id: "inventory",
-    title: "Retail inventory bridge",
-    description: "Retail products, reorder points, shelf locations, receiving, and stock count sessions are mapped into the shared inventory view.",
+    title: "Retail inventory control",
+    description: "Retail mode uses SKU, barcode, reorder point, shelf, receiving, and stock count context instead of the generic inventory dashboard.",
     metrics: [
       { label: "Active SKU", value: String(retailProducts.length), helper: "Retail mock catalog" },
       { label: "Stock alerts", value: String(stockAlerts.length), helper: "Below reorder point or empty" },
       { label: "Risk value", value: formatRetailCurrency(retailInventoryRiskReport.reduce((total, item) => total + item.estimatedRestockCost, 0)), helper: "Estimated restock cost" },
     ],
     rows: getInventoryRows(),
-    bridgeNote: "Inventory dashboard now has a retail-specific SKU, shelf, and reorder context without schema work.",
+    bridgeNote: "Retail inventory replaces the shared inventory dashboard to avoid non-retail material/recipe logic.",
   },
   cashflow: {
     id: "cashflow",
-    title: "Retail cashflow bridge",
-    description: "Retail register, payment, receiving cost, and refund planning signals are exposed to the shared cashflow dashboard.",
+    title: "Retail cashflow and register control",
+    description: "Retail mode keeps cashflow, but focuses it on register variance, payments, receiving cost, and refund exposure.",
     metrics: [
       { label: "Cash variance", value: formatRetailCurrency(retailDailyReport.registerVariance), helper: "Expected cash vs drawer" },
       { label: "Discount total", value: formatRetailCurrency(retailDailyReport.discountTotal), helper: "Retail transaction discount" },
       { label: "Pending PO", value: String(pendingReceivings.length), helper: "Receiving cost still open" },
     ],
     rows: getCashflowRows(),
-    bridgeNote: "Cashflow still uses mock values, but the retail register and PO cost concepts are now visible.",
+    bridgeNote: "Cashflow is relevant for retail, but the original shared component is replaced by retail register context.",
   },
   "financial-reports": {
     id: "financial-reports",
-    title: "Retail financial report bridge",
-    description: "Retail sales, COGS preview, tax-included amount, and stock risk value are wired into the financial reporting context.",
+    title: "Retail financial reports",
+    description: "Retail mode financial reporting focuses on net sales, COGS preview, tax included, margin, and stock risk value.",
     metrics: [
       { label: "Net sales", value: formatRetailCurrency(revenue), helper: "After retail discounts" },
       { label: "Tax included", value: formatRetailCurrency(retailDailyReport.taxIncluded), helper: "Included tax preview" },
       { label: "Gross margin", value: `${margin}%`, helper: "Mock price minus cost" },
     ],
     rows: getProductMarginRows(),
-    bridgeNote: "Financial reports can now preview retail margin shape before accounting export exists.",
+    bridgeNote: "Generic financial reports are replaced with retail margin and stock-risk context.",
   },
   "invoice-generator": {
     id: "invoice-generator",
-    title: "Retail invoice bridge",
-    description: "Retail supplier purchases and customer receipts are mapped as invoice-ready mock rows for the shared invoice generator.",
+    title: "Retail receipts and supplier billing",
+    description: "Retail mode does not call the full generic invoice generator. It uses receipt preview and supplier PO billing readiness instead.",
     metrics: [
       { label: "Supplier PO", value: String(retailReceivings.length), helper: "Purchase references available" },
       { label: "Receipts", value: String(retailTransactions.length), helper: "Customer receipt references" },
       { label: "Open receiving", value: String(pendingReceivings.length), helper: "Not ready for final supplier invoice" },
     ],
     rows: [...getSupplierRows(), ...getSalesRows().slice(0, 2)],
-    bridgeNote: "This prepares retail invoice surfaces without creating real invoice records.",
+    bridgeNote: "The shared invoice generator is not rendered for retail mode; retail uses receipts and supplier billing mock context.",
   },
   "shift-reports": {
     id: "shift-reports",
-    title: "Retail shift report bridge",
-    description: "Retail register summary and cashier transaction rows are mapped into the shared cashier shift reporting concept.",
-    metrics: staffModule?.metrics ?? [],
+    title: "Retail shift reports",
+    description: "Retail mode uses register closing, cashier responsibility, transaction count, variance, and shelf tasks.",
+    metrics: staffMetrics,
     rows: staffModule?.rows ?? fallbackRows("Shift reports"),
-    bridgeNote: "Retail shift context is separated from restaurant staff flow but visible in the shared dashboard.",
+    bridgeNote: "Restaurant shift reports are not rendered; retail cashier shift context replaces them.",
   },
   "team-management": {
     id: "team-management",
-    title: "Retail team bridge",
-    description: "Retail staff mock shifts, register responsibility, and shelf tasks are shown beside the shared team management dashboard.",
-    metrics: staffModule?.metrics ?? [],
+    title: "Retail staff and task board",
+    description: "Retail mode keeps only lightweight staff responsibility: register owner, shelf task, receiving task, and manager review.",
+    metrics: staffMetrics,
     rows: staffModule?.rows ?? fallbackRows("Team management"),
-    bridgeNote: "This is retail accountability context only; no HR schema was changed.",
+    bridgeNote: "The full HR team-management component is not called in retail mode.",
   },
   "employee-performance": {
     id: "employee-performance",
-    title: "Retail employee performance bridge",
-    description: "Retail cashier sales, register variance, and shelf task signals are available for shared employee performance review.",
+    title: "Retail cashier performance",
+    description: "Retail mode uses cashier sales, register variance, void/refund review, and stock-count accountability instead of full employee KPI review.",
     metrics: [
       { label: "Cashier", value: retailRegisterSummary.cashierName, helper: retailRegisterSummary.shiftCode },
       { label: "Transactions", value: String(paidTransactions.length), helper: "Paid retail receipts" },
       { label: "Variance checks", value: String(varianceSessions.length), helper: "Stock count sessions needing attention" },
     ],
     rows: staffModule?.rows ?? fallbackRows("Employee performance"),
-    bridgeNote: "Performance remains mock-only and should not become payroll logic yet.",
+    bridgeNote: "Full workforce performance is not rendered; retail cashier performance context replaces it.",
   },
   approvals: {
     id: "approvals",
-    title: "Retail approval bridge",
-    description: "Retail manager queue, return review, stock variance, and price control signals are surfaced in shared approvals.",
+    title: "Retail approvals",
+    description: "Retail mode approval is limited to returns, stock variance, price/promo control, and command-center action review.",
     metrics: [
       { label: "Manager queue", value: String(retailManagerReviewQueue.length), helper: "Mock retail review cards" },
       { label: "Returns", value: returnsModule?.metrics[0]?.value ?? "0", helper: "Pending return review" },
       { label: "Command actions", value: String(retailCommandActions.length), helper: "Owner action queue" },
     ],
     rows: getApprovalRows(),
-    bridgeNote: "Approvals are visible only as mock review context; no mutation or audit write exists yet.",
+    bridgeNote: "Shared approvals are replaced by retail manager review context.",
+  },
+  "audit-controls": {
+    id: "audit-controls",
+    title: "Retail control review",
+    description: "Retail mode uses control review for voids, returns, stock variance, promo margin, and cash variance instead of generic audit log rendering.",
+    metrics: auditModule?.metrics ?? [
+      { label: "Control queue", value: String(retailCommandActions.length), helper: "Retail command actions" },
+    ],
+    rows: auditModule?.rows ?? getApprovalRows(),
+    bridgeNote: "Generic audit log is not called in retail mode; retail control review is shown instead.",
+  },
+  "roster-overview": {
+    id: "roster-overview",
+    title: "Retail shift coverage",
+    description: "Retail mode does not need the generic roster planner yet. It uses cashier/register shift coverage from the retail staff module.",
+    metrics: staffMetrics,
+    rows: staffModule?.rows ?? fallbackRows("Roster overview"),
+    bridgeNote: "Shared roster overview is replaced by retail shift coverage mock data.",
+  },
+  "employee-attendance": {
+    id: "employee-attendance",
+    title: "Attendance skipped for retail mode",
+    description: "Retail mode currently tracks register shift ownership only. Full attendance tracking is not part of the retail mock scope yet.",
+    metrics: staffMetrics,
+    rows: getSkippedRows("Employee attendance", "Retail Staff & Shifts"),
+    bridgeNote: "The original attendance dashboard is intentionally not rendered in retail mode.",
+  },
+  "employee-contracts": {
+    id: "employee-contracts",
+    title: "Contracts skipped for retail mode",
+    description: "Retail mode does not need contract lifecycle management in the current mock foundation.",
+    metrics: staffMetrics,
+    rows: getSkippedRows("Employee contracts", "Retail Staff & Shifts"),
+    bridgeNote: "The original contracts dashboard remains available for other modes, but is not called for retail.",
+  },
+  payroll: {
+    id: "payroll",
+    title: "Payroll skipped for retail mode",
+    description: "Retail mode does not need payroll preview in the current mock foundation. Register variance and shift closing are enough for now.",
+    metrics: staffMetrics,
+    rows: getSkippedRows("Payroll", "Retail Shift Reports"),
+    bridgeNote: "The payroll dashboard is intentionally not rendered for retail mode.",
   },
 };
 
