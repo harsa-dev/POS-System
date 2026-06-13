@@ -20,6 +20,7 @@ import {
   parseServiceBusinessWorkflowStatus,
   requireBodyObject,
 } from "../features/service-business/service-business.validators.js";
+import { writeServiceBusinessAuditLog } from "../features/service-business/service-business.audit.js";
 import { requireBusinessContextForUser } from "../lib/business-context/index.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
@@ -134,6 +135,21 @@ router.patch("/custom-business/service/jobs/:id/guarded-status", async (req, res
       nextStatus,
       actorName: user.name ?? "System",
       note,
+    });
+
+    await writeServiceBusinessAuditLog({
+      businessId: businessContext.businessId,
+      userId: user.id,
+      action: "UPDATE",
+      entityType: "ServiceJob",
+      entityId: target.jobId ?? target.requestId,
+      changes: {
+        requestCode: target.requestCode,
+        from: target.currentStatus,
+        to: nextStatus,
+        note: note || null,
+        unmetRequirements: preview.unmetRequirements.length,
+      },
     });
 
     return successResponse(res, {
