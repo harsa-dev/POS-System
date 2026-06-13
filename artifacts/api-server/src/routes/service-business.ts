@@ -1,8 +1,6 @@
 import { Router, type Request, type Response } from "express";
 
-import { requireRole } from "../lib/auth.js";
 import { requireBusinessContextForUser } from "../lib/business-context/index.js";
-import { ALL_ROLES } from "../lib/constants.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
@@ -20,6 +18,11 @@ import {
   type ServiceBusinessResult,
 } from "../features/service-business/service-business.crud.service.js";
 import {
+  SERVICE_BUSINESS_PERMISSIONS,
+  requireServiceBusinessPermission,
+  type ServiceBusinessPermission,
+} from "../features/service-business/service-business.permissions.js";
+import {
   presentServiceBusinessMutation,
   presentServiceJobList,
   presentServiceWorkspace,
@@ -32,8 +35,12 @@ import { requireBodyObject } from "../features/service-business/service-business
 
 const router = Router();
 
-async function getServiceRequestContext(req: Request, res: Response) {
-  const user = await requireRole(req, res, ALL_ROLES);
+async function getServiceRequestContext(
+  req: Request,
+  res: Response,
+  permission: ServiceBusinessPermission,
+) {
+  const user = await requireServiceBusinessPermission(req, res, permission);
   if (!user) return null;
 
   const businessContext = await requireBusinessContextForUser(user);
@@ -74,7 +81,7 @@ function readBodyOrError(reqBody: unknown, res: Response) {
 
 router.get("/custom-business/service/workspace", async (req, res) => {
   try {
-    const context = await getServiceRequestContext(req, res);
+    const context = await getServiceRequestContext(req, res, SERVICE_BUSINESS_PERMISSIONS.view);
     if (!context) return;
 
     const jobs = await getServiceBusinessWorkspace(context.businessId);
@@ -89,7 +96,7 @@ router.get("/custom-business/service/workspace", async (req, res) => {
 
 router.get("/custom-business/service/jobs", async (req, res) => {
   try {
-    const context = await getServiceRequestContext(req, res);
+    const context = await getServiceRequestContext(req, res, SERVICE_BUSINESS_PERMISSIONS.view);
     if (!context) return;
 
     const jobs = await listServiceBusinessJobs(context.businessId, req.query as ServiceBusinessListQuery);
@@ -103,7 +110,11 @@ router.get("/custom-business/service/jobs", async (req, res) => {
 
 router.post("/custom-business/service/requests", async (req, res) => {
   try {
-    const context = await getServiceRequestContext(req, res);
+    const context = await getServiceRequestContext(
+      req,
+      res,
+      SERVICE_BUSINESS_PERMISSIONS.requestCreate,
+    );
     if (!context) return;
 
     const body = readBodyOrError(req.body, res);
@@ -123,7 +134,11 @@ router.post("/custom-business/service/requests", async (req, res) => {
 
 router.patch("/custom-business/service/jobs/:id/status", async (req, res) => {
   try {
-    const context = await getServiceRequestContext(req, res);
+    const context = await getServiceRequestContext(
+      req,
+      res,
+      SERVICE_BUSINESS_PERMISSIONS.jobStatusUpdate,
+    );
     if (!context) return;
 
     const body = readBodyOrError(req.body, res);
@@ -144,7 +159,7 @@ router.patch("/custom-business/service/jobs/:id/status", async (req, res) => {
 
 router.post("/custom-business/service/jobs/:id/cost-lines", async (req, res) => {
   try {
-    const context = await getServiceRequestContext(req, res);
+    const context = await getServiceRequestContext(req, res, SERVICE_BUSINESS_PERMISSIONS.costCreate);
     if (!context) return;
 
     const body = readBodyOrError(req.body, res);
@@ -164,7 +179,7 @@ router.post("/custom-business/service/jobs/:id/cost-lines", async (req, res) => 
 
 router.post("/custom-business/service/quotations", async (req, res) => {
   try {
-    const context = await getServiceRequestContext(req, res);
+    const context = await getServiceRequestContext(req, res, SERVICE_BUSINESS_PERMISSIONS.quoteCreate);
     if (!context) return;
 
     const body = readBodyOrError(req.body, res);
@@ -184,7 +199,7 @@ router.post("/custom-business/service/quotations", async (req, res) => {
 
 router.patch("/custom-business/service/quotations/:id/approve", async (req, res) => {
   try {
-    const context = await getServiceRequestContext(req, res);
+    const context = await getServiceRequestContext(req, res, SERVICE_BUSINESS_PERMISSIONS.quoteApprove);
     if (!context) return;
 
     const result = await approveServiceBusinessQuotation({
@@ -201,7 +216,7 @@ router.patch("/custom-business/service/quotations/:id/approve", async (req, res)
 
 router.post("/custom-business/service/invoices", async (req, res) => {
   try {
-    const context = await getServiceRequestContext(req, res);
+    const context = await getServiceRequestContext(req, res, SERVICE_BUSINESS_PERMISSIONS.invoiceCreate);
     if (!context) return;
 
     const body = readBodyOrError(req.body, res);
@@ -221,7 +236,11 @@ router.post("/custom-business/service/invoices", async (req, res) => {
 
 router.patch("/custom-business/service/invoices/:id/payment", async (req, res) => {
   try {
-    const context = await getServiceRequestContext(req, res);
+    const context = await getServiceRequestContext(
+      req,
+      res,
+      SERVICE_BUSINESS_PERMISSIONS.invoicePaymentRecord,
+    );
     if (!context) return;
 
     const body = readBodyOrError(req.body, res);
