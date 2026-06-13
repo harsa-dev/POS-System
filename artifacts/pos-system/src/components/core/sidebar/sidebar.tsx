@@ -43,7 +43,6 @@ type MenuItem = {
   href: string;
   label: string;
   icon: ElementType;
-  roles: string[];
 };
 
 type MenuGroup = {
@@ -122,7 +121,9 @@ function createModeAwareMenuGroups(
   const groups = new Map<string, MenuItem[]>();
 
   for (const item of getSidebarItemsForRuntimeMode(currentMode)) {
-    if (!item.requiredRoles.includes(role as never)) continue;
+    const allowedRoles = [...item.requiredRoles];
+
+    if (!allowedRoles.includes(role)) continue;
 
     const groupItems = groups.get(item.group) ?? [];
 
@@ -130,7 +131,6 @@ function createModeAwareMenuGroups(
       href: item.routePath,
       label: item.label,
       icon: getRegistrySidebarIcon(item.moduleId),
-      roles: [...item.requiredRoles],
     });
 
     groups.set(item.group, groupItems);
