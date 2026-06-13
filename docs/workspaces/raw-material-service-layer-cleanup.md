@@ -1,6 +1,6 @@
 # Raw Material Service Layer Cleanup
 
-Status: Phase 4A and Phase 4B implemented.
+Status: Phase 4A, Phase 4B, and Phase 4C implemented.
 
 This document records Phase 4 of the Raw Material backend plan.
 
@@ -119,6 +119,88 @@ RawMaterialProcessingRunWithBatch
 toRawMaterialProcessingRunDto()
 ```
 
+## Phase 4C - Intake and batch repository/presenter split
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/api-server/src/services/raw-material/raw-material-intake.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-intake.presenter.ts
+artifacts/api-server/src/services/raw-material/raw-material-intake.dto.ts
+artifacts/api-server/src/services/raw-material/raw-material-intake.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-batch.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-batch.presenter.ts
+artifacts/api-server/src/services/raw-material/raw-material-batch.dto.ts
+artifacts/api-server/src/services/raw-material/raw-material-batch.service.ts
+```
+
+Goal:
+
+```txt
+Move intake and batch persistence/presentation details out of their orchestration services.
+Keep validation, quantity guards, and business invariant checks in the service layer.
+Keep route behavior unchanged.
+```
+
+Before this phase, intake and batch services owned:
+
+```txt
+permission checks
+query construction
+reference/lot conflict lookups
+supplier/storage/intake lookups
+Prisma create/update/cancel operations
+quantity balance guards
+accepted-intake quantity guards
+DTO mapping
+```
+
+After this phase:
+
+```txt
+raw-material-intake.repository.ts owns intake Prisma reads and writes.
+raw-material-intake.presenter.ts owns intake DTO mapping.
+raw-material-intake.dto.ts remains a compatibility re-export.
+raw-material-intake.service.ts owns permission checks, validation, business guards, and orchestration.
+
+raw-material-batch.repository.ts owns batch Prisma reads and writes.
+raw-material-batch.presenter.ts owns batch DTO mapping.
+raw-material-batch.dto.ts remains a compatibility re-export.
+raw-material-batch.service.ts owns permission checks, validation, quantity guards, and orchestration.
+```
+
+Intake repository exports:
+
+```txt
+rawMaterialIntakeInclude
+getRawMaterialIntakeWhere()
+findRawMaterialIntakeById()
+findRawMaterialIntakeReferenceConflict()
+findActiveRawMaterialSupplier()
+findActiveRawMaterialStorageLocation()
+listRawMaterialIntakeRows()
+createRawMaterialIntakeRecord()
+updateRawMaterialIntakeRecord()
+cancelRawMaterialIntakeRecord()
+```
+
+Batch repository exports:
+
+```txt
+getRawMaterialBatchInclude()
+findRawMaterialBatchLotConflict()
+loadRawMaterialIntakeForBatch()
+loadRawMaterialStorageLocationForBatch()
+sumActiveRawMaterialBatchQuantityForIntake()
+listRawMaterialBatchRows()
+createRawMaterialBatchRecord()
+findRawMaterialBatchById()
+updateRawMaterialBatchRecord()
+deactivateRawMaterialBatchRecord()
+```
+
 ## Behavior unchanged
 
 These phases do not change:
@@ -152,25 +234,28 @@ PLANNED -> RUNNING -> COMPLETED
 PLANNED/RUNNING -> CANCELLED
 ```
 
+Intake and batch were split third because batch creation depends on intake accepted quantity and intake/batch traceability is central to Raw Material mode.
+
 ## Remaining Phase 4 work
 
-Phase 4C should split intake and batch persistence/presentation boundaries.
+Continue with:
+
+```txt
+Phase 4D - supplier/storage/pen service split
+```
 
 Suggested next files:
 
 ```txt
-raw-material-intake.repository.ts
-raw-material-intake.presenter.ts
-raw-material-batch.repository.ts
-raw-material-batch.presenter.ts
-raw-material-intake.service.ts
-raw-material-batch.service.ts
-```
-
-Then continue with:
-
-```txt
-Phase 4D - supplier/storage/pen service split
+raw-material-supplier.repository.ts
+raw-material-supplier.presenter.ts
+raw-material-storage-location.repository.ts
+raw-material-storage-location.presenter.ts
+raw-material-pen.repository.ts
+raw-material-pen.presenter.ts
+raw-material-supplier.service.ts
+raw-material-storage-location.service.ts
+raw-material-pen.service.ts
 ```
 
 ## Validation command
@@ -186,9 +271,10 @@ pnpm --filter @workspace/api-server run typecheck
 Focus on errors from:
 
 ```txt
-src/services/raw-material/raw-material-stock-movement.repository.ts
-src/services/raw-material/raw-material-stock-movement.service.ts
-src/services/raw-material/raw-material-processing-run.repository.ts
-src/services/raw-material/raw-material-processing-run.presenter.ts
-src/services/raw-material/raw-material-processing-run.service.ts
+src/services/raw-material/raw-material-intake.repository.ts
+src/services/raw-material/raw-material-intake.presenter.ts
+src/services/raw-material/raw-material-intake.service.ts
+src/services/raw-material/raw-material-batch.repository.ts
+src/services/raw-material/raw-material-batch.presenter.ts
+src/services/raw-material/raw-material-batch.service.ts
 ```
