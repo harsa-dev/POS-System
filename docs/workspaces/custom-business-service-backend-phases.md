@@ -201,37 +201,30 @@ Main files:
 
 ## Phase 6 - Shared dashboard integration from backend
 
-Status: planned
+Status: implemented
 
-Current shared dashboard bridge still reads frontend mock service jobs.
+Implemented:
 
-Next:
+- Added backend summary service for Service Business shared dashboards.
+- Added `GET /api/custom-business/service/summary` guarded by the Service Business view permission.
+- Summary returns service job count, active job count, high-priority job count, approved quotes, issued invoices, quote total, invoice total, pending collection, paid amount, collection rates, workflow distribution, invoice distribution, and latest job metadata.
+- Frontend API contract now includes `ServiceBusinessSummaryResponse`.
+- Frontend API client now exposes `serviceBusinessApi.getSummary()`.
+- Shared dashboard bridge now reads backend summary first and falls back to local mock data only when the API is unavailable.
+- No new migration was added in this phase.
 
-- Add backend summary endpoint.
-- Return service job count, quote total, invoice total, pending collection, and workflow distribution.
-- Wire shared dashboard bridge to API data instead of mock data.
+Main files:
 
-Candidate endpoint:
+- `artifacts/api-server/src/features/service-business/service-business.summary.ts`
+- `artifacts/api-server/src/routes/service-business.ts`
+- `artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts`
+- `artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts`
+- `artifacts/pos-system/src/features/shared/service-business/service-business-shared-dashboard-bridge.tsx`
+
+Endpoint:
 
 - `GET /api/custom-business/service/summary`
 
 ## Phase 7 - Prisma schema delegate cleanup
 
 Status: planned
-
-Current implementation uses SQL migration plus Prisma raw SQL because schema rewrite was intentionally avoided during the first database phase.
-
-Next:
-
-- Add generated Prisma models after schema is stable.
-- Replace raw SQL repository methods gradually with Prisma delegates where useful.
-- Keep raw SQL only for complex reporting queries.
-
-## Safety constraints
-
-Do not change these unless explicitly planned:
-
-- Restaurant workflow.
-- Retail workflow.
-- Raw material workflow.
-- Business mode selector activation.
