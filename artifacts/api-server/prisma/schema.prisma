@@ -1,13 +1,429 @@
-generator client {
-  provider = "prisma-client-js"
-}
+generator client { provider = "prisma-client-js" }
 
-datasource db {
-  provider = "postgresql"
-}
+datasource db { provider = "postgresql" }
 
 model User {
   id String @id @default(cuid())
+  name String
   email String @unique
   passwordHash String
+  role Role @default(STAFF)
+  businessId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive Boolean @default(true)
+  business Business? @relation("BusinessEmployees", fields: [businessId], references: [id])
+  ownedBusinesses Business[] @relation("BusinessOwner")
+  sessions Session[]
+  shifts Shift[]
+  attendances Attendance[]
+  auditLogs AuditLog[]
+  stockMovements StockMovement[] @relation("StockMovementActor")
+  cashflowEntries CashflowEntry[] @relation("CashflowEntryCreator")
+  @@index([businessId])
+  @@index([role])
 }
+
+model Session {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  userId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Business {
+  id String @id @default(cuid())
+  name String
+  type BusinessType @default(RESTAURANT)
+  mode BusinessMode @default(RESTAURANT)
+  ownerId String
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner User @relation("BusinessOwner", fields: [ownerId], references: [id])
+  employees User[] @relation("BusinessEmployees")
+  restaurant Restaurant?
+  categories Category[]
+  menuItems MenuItem[]
+  inventoryItems InventoryItem[] @relation("BusinessInventoryItems")
+  orders Order[]
+  invoices Invoice[]
+  stockMovements StockMovement[] @relation("BusinessStockMovements")
+  cashflowEntries CashflowEntry[] @relation("BusinessCashflowEntries")
+  tables DiningTable[]
+  shifts Shift[]
+  attendances Attendance[]
+  attendanceSetting AttendanceSetting?
+  auditLogs AuditLog[]
+  @@index([ownerId])
+  @@index([type])
+  @@index([mode])
+  @@index([isActive])
+}
+
+model Restaurant {
+  id String @id @default(cuid())
+  businessId String @unique
+  address String?
+  phone String?
+  taxRate Int @default(0)
+  serviceRate Int @default(0)
+  logoUrl String?
+  autoPrint Boolean @default(false)
+  currency String @default("IDR")
+  orderPrefix String @default("ORD")
+  receiptFooter String? @default("Thank you for your order.")
+  timezone String @default("Asia/Jakarta")
+  cardEnabled Boolean @default(false)
+  cashEnabled Boolean @default(true)
+  midtransEnabled Boolean @default(false)
+  qrisEnabled Boolean @default(false)
+  transferEnabled Boolean @default(false)
+  midtransServerKey String?
+  midtransClientKey String?
+  createdAt DateTime @default(now())
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id String @id @default(cuid())
+  name String
+  businessId String
+  createdAt DateTime @default(now())
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  menuItems MenuItem[]
+  @@unique([businessId, name])
+  @@index([businessId])
+}
+
+model MenuItem {
+  id String @id @default(cuid())
+  name String
+  price Int
+  imageUrl String?
+  businessId String
+  categoryId String?
+  description String?
+  isAvailable Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+  recipes Recipe[]
+  @@index([businessId])
+  @@index([categoryId])
+  @@index([isAvailable])
+}
+
+model InventoryItem {
+  id String @id @default(cuid())
+  name String
+  sku String?
+  type InventoryType
+  unit InventoryUnit
+  currentStock Float @default(0)
+  minimumStock Float @default(0)
+  costPerUnit Int @default(0)
+  businessId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  business Business @relation("BusinessInventoryItems", fields: [businessId], references: [id], onDelete: Cascade)
+  movements StockMovement[]
+  recipes Recipe[]
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@index([sku])
+  @@index([type])
+  @@index([currentStock])
+  @@index([minimumStock])
+}
+
+model Recipe {
+  id String @id @default(cuid())
+  menuItemId String
+  inventoryItemId String
+  quantityNeeded Float
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  @@unique([menuItemId, inventoryItemId])
+}
+
+model Order {
+  id String @id @default(cuid())
+  orderNumber Int
+  subtotal Int
+  taxAmount Int
+  serviceAmount Int
+  total Int
+  paymentMethod String
+  amountPaid Int
+  changeAmount Int
+  status OrderStatus @default(PENDING_PAYMENT)
+  inventoryDeducted Boolean @default(false)
+  businessId String
+  shiftId String?
+  tableId String?
+  type OrderType @default(TAKEAWAY)
+  cancelReason String?
+  cancelledAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  shift Shift? @relation(fields: [shiftId], references: [id])
+  table DiningTable? @relation(fields: [tableId], references: [id])
+  items OrderItem[]
+  payment Payment?
+  @@unique([businessId, orderNumber])
+  @@index([businessId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([paymentMethod])
+}
+
+model Payment {
+  id String @id @default(cuid())
+  orderId String @unique
+  provider String
+  method String
+  status PaymentStatus @default(PENDING)
+  externalId String?
+  paymentUrl String?
+  qrString String?
+  vaNumber String?
+  paidAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  @@index([status])
+  @@index([method])
+  @@index([provider])
+}
+
+model Invoice {
+  id String @id @default(cuid())
+  businessId String
+  invoiceNumber String
+  invoiceDate DateTime
+  dueDate DateTime?
+  status InvoiceStatus @default(DRAFT)
+  businessName String
+  businessEmail String?
+  businessPhone String?
+  businessAddress String?
+  customerName String
+  customerPhone String?
+  customerAddress String?
+  notes String?
+  discountType InvoiceDiscountType @default(PERCENTAGE)
+  discountValue Float @default(0)
+  subtotal Int @default(0)
+  discountAmount Int @default(0)
+  grandTotal Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cancelledAt DateTime?
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  items InvoiceItem[]
+  @@unique([businessId, invoiceNumber])
+  @@index([businessId])
+  @@index([status])
+  @@index([invoiceDate])
+  @@index([createdAt])
+}
+
+model InvoiceItem {
+  id String @id @default(cuid())
+  invoiceId String
+  description String
+  quantity Float
+  unitPrice Int
+  lineTotal Int
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  @@index([invoiceId])
+}
+
+model OrderItem {
+  id String @id @default(cuid())
+  orderId String
+  menuItemId String
+  quantity Int
+  price Int
+  subtotal Int
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+  @@index([orderId])
+  @@index([menuItemId])
+}
+
+model StockMovement {
+  id String @id @default(cuid())
+  inventoryItemId String
+  businessId String
+  actorId String?
+  type StockMovementType
+  quantity Float
+  previousStock Float?
+  newStock Float?
+  unitCostSnapshot Int?
+  sourceType StockMovementSource?
+  sourceId String?
+  note String?
+  reason StockMovementReason?
+  createdAt DateTime @default(now())
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  business Business @relation("BusinessStockMovements", fields: [businessId], references: [id], onDelete: Cascade)
+  actor User? @relation("StockMovementActor", fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([businessId])
+  @@index([inventoryItemId])
+  @@index([actorId])
+  @@index([sourceType])
+  @@index([sourceId])
+  @@index([reason])
+  @@index([createdAt])
+  @@index([type])
+}
+
+model CashflowEntry {
+  id String @id @default(cuid())
+  businessId String
+  sourceType CashflowSourceType
+  sourceId String?
+  idempotencyKey String?
+  account CashflowAccount
+  type CashflowEntryType
+  status CashflowEntryStatus @default(POSTED)
+  category String
+  counterpartyName String?
+  description String?
+  amount Int
+  occurredAt DateTime
+  postedAt DateTime?
+  voidedAt DateTime?
+  createdById String?
+  metadata Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  business Business @relation("BusinessCashflowEntries", fields: [businessId], references: [id], onDelete: Cascade)
+  createdBy User? @relation("CashflowEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  @@unique([businessId, idempotencyKey])
+  @@index([businessId])
+  @@index([businessId, occurredAt])
+  @@index([businessId, type])
+  @@index([businessId, status])
+  @@index([businessId, sourceType])
+  @@index([businessId, account])
+  @@index([sourceType, sourceId])
+  @@index([createdById])
+}
+
+model DiningTable {
+  id String @id @default(cuid())
+  name String
+  capacity Int @default(2)
+  status TableStatus @default(AVAILABLE)
+  isActive Boolean @default(true)
+  businessId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orders Order[]
+  @@index([businessId])
+  @@index([status])
+  @@index([isActive])
+}
+
+model Shift {
+  id String @id @default(cuid())
+  userId String
+  businessId String
+  status ShiftStatus @default(OPEN)
+  openingCash Int @default(0)
+  closingCash Int?
+  expectedCash Int @default(0)
+  cashDifference Int?
+  openedAt DateTime @default(now())
+  closedAt DateTime?
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+  orders Order[]
+  @@index([businessId])
+  @@index([status])
+  @@index([openedAt])
+}
+
+model Attendance {
+  id String @id @default(cuid())
+  userId String
+  businessId String
+  clockInAt DateTime
+  clockOutAt DateTime?
+  workDurationMinutes Int @default(0)
+  overtimeMinutes Int @default(0)
+  note String?
+  status AttendanceStatus @default(PRESENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([businessId])
+  @@index([status])
+}
+
+model AttendanceSetting {
+  id String @id @default(cuid())
+  businessId String @unique
+  workStartHour Int @default(9)
+  workStartMinute Int @default(0)
+  lateTolerance Int @default(15)
+  overtimeAfterMinutes Int @default(480)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Permission { id String @id @default(cuid()) key String @unique description String? rolePermissions RolePermission[] }
+model RolePermission { id String @id @default(cuid()) role Role permissionId String permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade) @@unique([role, permissionId], name: "role_permissionId") }
+
+model AuditLog {
+  id String @id @default(cuid())
+  businessId String
+  userId String
+  action AuditAction
+  entityType String
+  entityId String
+  changes Json?
+  createdAt DateTime @default(now())
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([businessId])
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+enum Role { OWNER MANAGER ADMIN OPERATOR STAFF VIEWER }
+enum InventoryType { INGREDIENT PACKAGING EQUIPMENT PRODUCT RAW_MATERIAL FINISHED_GOOD SUPPLY TOOL SPARE_PART FEED MEDICINE }
+enum InventoryUnit { PCS GRAM KILOGRAM LITER ML PACK BOTTLE BOX CARTON SACK ROLL SET PAIR DOSE TABLET CAPSULE VIAL CAN }
+enum StockMovementType { IN OUT ADJUSTMENT }
+enum PaymentStatus { PENDING PAID FAILED EXPIRED }
+enum InvoiceStatus { DRAFT SENT PAID CANCELLED }
+enum InvoiceDiscountType { PERCENTAGE FIXED }
+enum OrderStatus { PENDING_PAYMENT PAID PREPARING READY SERVED COMPLETED CANCELLED }
+enum AuditAction { CREATE UPDATE DELETE }
+enum OrderType { DINE_IN TAKEAWAY }
+enum TableStatus { AVAILABLE OCCUPIED RESERVED CLEANING INACTIVE }
+enum ShiftStatus { OPEN CLOSED }
+enum AttendanceStatus { PRESENT LATE ABSENT LEAVE }
+enum StockMovementReason { PURCHASE RECIPE_USAGE WASTE EXPIRED MANUAL_ADJUSTMENT DAMAGED RETURN OPENING_STOCK STOCK_COUNT CORRECTION TRANSFER_IN TRANSFER_OUT PRODUCTION_USAGE SERVICE_USAGE LIVESTOCK_USAGE IMPORT }
+enum StockMovementSource { MANUAL ORDER RECIPE PURCHASE WASTE RETURN TRANSFER STOCK_COUNT IMPORT SYSTEM }
+enum CashflowEntryType { INCOME EXPENSE TRANSFER_IN TRANSFER_OUT ADJUSTMENT }
+enum CashflowEntryStatus { PENDING POSTED VOIDED }
+enum CashflowAccount { CASH BANK QRIS CARD TRANSFER OTHER }
+enum CashflowSourceType { ORDER_PAYMENT PAYMENT_WEBHOOK SHIFT_CLOSE INVOICE MANUAL INVENTORY_PURCHASE REFUND SYSTEM }
+enum BusinessType { RESTAURANT RETAIL SERVICE LIVESTOCK }
+enum BusinessMode { RESTAURANT RETAIL SERVICE LIVESTOCK }
