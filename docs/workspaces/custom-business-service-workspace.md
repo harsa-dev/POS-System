@@ -15,6 +15,11 @@ artifacts/pos-system/src/app/workspace/custom-business/custom-business-service-w
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-layout.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-ui.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/use-service-business-workspace.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-header.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-view-types.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-empty-state.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-placeholder-panel.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-metric-cards.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workflow-pipeline.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-job-list.tsx
@@ -70,6 +75,10 @@ The workspace now contains hard-coded examples for:
 - configuration draft
 - permission map draft
 - API contract draft
+- search and filter controls
+- tabbed read-only sections
+- empty state
+- API placeholder that throws until backend exists
 
 This is not production data. It is intentionally a shape preview so the UI, workflow, and future schema direction are easier to reason about.
 
@@ -81,14 +90,37 @@ The main layout is now only a composition layer:
 ServiceBusinessWorkspaceLayout
 ├── useServiceBusinessWorkspace
 ├── ServiceBusinessMetricCards
+├── ServiceBusinessWorkspaceHeader
 ├── ServiceBusinessWorkflowPipeline
 ├── ServiceBusinessJobList
 │   └── ServiceBusinessJobCard
+├── ServiceBusinessPlaceholderPanel
 ├── ServiceBusinessPricingModulesPanel
 └── ServiceBusinessConfigReadinessPanel
 ```
 
 This keeps future API migration focused in `use-service-business-workspace.ts` instead of forcing a rewrite of the whole layout.
+
+## Mock interactions
+
+Current mock interactions:
+
+- search by request code, title, customer, customer segment, category, or assignee
+- filter by service status
+- filter by priority
+- reset filters
+- tab switch between overview, jobs, quotations, invoices, and config
+- disabled action buttons for future request and quotation creation
+
+## API placeholder
+
+The file below exists only as a future API seam:
+
+```txt
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
+```
+
+Every function intentionally throws `not implemented` because backend routes are not ready yet.
 
 ## Manual App route patch
 
