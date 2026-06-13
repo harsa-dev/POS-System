@@ -23,12 +23,9 @@ import {
   rawMaterialApiContracts,
   rawMaterialBatches,
   rawMaterialIntakes,
-  rawMaterialKandangPens,
-  rawMaterialMetrics,
-  rawMaterialProcessingRuns,
+  rawMaterialMockService,
   rawMaterialStorageLocations,
   rawMaterialSuppliers,
-  rawMaterialWeighings,
   rawMaterialWorkspaceModules,
   type RawMaterialWorkspaceModuleId,
 } from "@/features/raw-material/core-system";
@@ -95,6 +92,14 @@ export default function RawMaterialPlaceholderWorkspace({
   const moduleContracts = rawMaterialApiContracts.filter(
     (contract) => contract.moduleId === moduleId,
   );
+  const readiness = rawMaterialMockService.getContractReadiness(moduleId);
+  const metricsEnvelope = rawMaterialMockService.getMetrics();
+  const intakesEnvelope = rawMaterialMockService.listIntakes();
+  const batchesEnvelope = rawMaterialMockService.listBatches();
+  const weighingsEnvelope = rawMaterialMockService.listWeighings();
+  const storageEnvelope = rawMaterialMockService.listStorageLocations();
+  const processingEnvelope = rawMaterialMockService.listProcessingRuns();
+  const kandangEnvelope = rawMaterialMockService.listKandangPens();
 
   return (
     <section className="space-y-6">
@@ -134,7 +139,7 @@ export default function RawMaterialPlaceholderWorkspace({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {rawMaterialMetrics.map((metric) => (
+        {metricsEnvelope.data.map((metric) => (
           <Card key={metric.label} className="rounded-xl bg-white">
             <CardHeader className="pb-2">
               <CardDescription>{metric.label}</CardDescription>
@@ -153,9 +158,9 @@ export default function RawMaterialPlaceholderWorkspace({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle>Supplier intake queue</CardTitle>
-                <CardDescription>Local mock data for receiving, quality checks, and target storage.</CardDescription>
+                <CardDescription>Local mock service data for receiving, quality checks, and target storage.</CardDescription>
               </div>
-              <Badge variant="outline">{rawMaterialIntakes.length} intakes</Badge>
+              <Badge variant="outline">{intakesEnvelope.meta.total} intakes</Badge>
             </div>
           </CardHeader>
           <CardContent className="overflow-x-auto">
@@ -172,7 +177,7 @@ export default function RawMaterialPlaceholderWorkspace({
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
-                {rawMaterialIntakes.map((intake) => (
+                {intakesEnvelope.data.map((intake) => (
                   <tr key={intake.id}>
                     <td className="py-3 pr-4 font-medium text-neutral-950">{intake.referenceNumber}</td>
                     <td className="py-3 pr-4 text-neutral-700">
@@ -195,32 +200,64 @@ export default function RawMaterialPlaceholderWorkspace({
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl bg-white">
-          <CardHeader>
-            <CardTitle>API contract for this module</CardTitle>
-            <CardDescription>Frontend contract only. No handler, Prisma call, or schema mutation yet.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {moduleContracts.map((contract) => (
-              <div key={contract.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">{contract.method}</Badge>
-                  <Badge variant="outline" className="border-amber-200 text-amber-700">
-                    {contract.persistence}
-                  </Badge>
-                </div>
-                <p className="mt-2 font-mono text-xs text-neutral-700">{contract.path}</p>
-                <p className="mt-2 text-sm leading-6 text-neutral-600">{contract.purpose}</p>
-                <p className="mt-2 text-xs leading-5 text-neutral-500">
-                  <span className="font-semibold text-neutral-700">Request:</span> {contract.requestShape}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-neutral-500">
-                  <span className="font-semibold text-neutral-700">Response:</span> {contract.responseShape}
-                </p>
+        <div className="space-y-4">
+          <Card className="rounded-xl bg-white">
+            <CardHeader>
+              <CardTitle>Mock service readiness</CardTitle>
+              <CardDescription>Generated from API contract metadata. Still zero schema mutation.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 text-sm text-neutral-600">
+              <div className="flex items-center justify-between rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+                <span>Readiness</span>
+                <Badge variant="outline">{readiness.readinessLabel}</Badge>
               </div>
-            ))}
-          </CardContent>
-        </Card>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-lg border border-neutral-100 p-3">
+                  <p className="text-lg font-bold text-neutral-950">{readiness.totalContracts}</p>
+                  <p className="text-xs text-neutral-500">contracts</p>
+                </div>
+                <div className="rounded-lg border border-neutral-100 p-3">
+                  <p className="text-lg font-bold text-neutral-950">{readiness.mockOnlyContracts}</p>
+                  <p className="text-xs text-neutral-500">mock</p>
+                </div>
+                <div className="rounded-lg border border-neutral-100 p-3">
+                  <p className="text-lg font-bold text-neutral-950">{readiness.futureDbContracts}</p>
+                  <p className="text-xs text-neutral-500">future DB</p>
+                </div>
+              </div>
+              <p className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+                Service source: {metricsEnvelope.meta.source}. Schema touched: {String(metricsEnvelope.meta.schemaTouched)}.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-xl bg-white">
+            <CardHeader>
+              <CardTitle>API contract for this module</CardTitle>
+              <CardDescription>Frontend contract only. No handler, Prisma call, or schema mutation yet.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {moduleContracts.map((contract) => (
+                <div key={contract.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{contract.method}</Badge>
+                    <Badge variant="outline" className="border-amber-200 text-amber-700">
+                      {contract.persistence}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 font-mono text-xs text-neutral-700">{contract.path}</p>
+                  <p className="mt-2 text-sm leading-6 text-neutral-600">{contract.purpose}</p>
+                  <p className="mt-2 text-xs leading-5 text-neutral-500">
+                    <span className="font-semibold text-neutral-700">Request:</span> {contract.requestShape}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-neutral-500">
+                    <span className="font-semibold text-neutral-700">Response:</span> {contract.responseShape}
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -230,7 +267,7 @@ export default function RawMaterialPlaceholderWorkspace({
             <CardDescription>Lot, source intake, remaining quantity, expiry, quality, and storage mapping.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
-            {rawMaterialBatches.map((batch) => (
+            {batchesEnvelope.data.map((batch) => (
               <div key={batch.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="font-medium text-neutral-900">{batch.lotCode}</p>
@@ -256,7 +293,7 @@ export default function RawMaterialPlaceholderWorkspace({
             <CardDescription>Gross, tare, and net preview.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {rawMaterialWeighings.map((weighing) => (
+            {weighingsEnvelope.data.map((weighing) => (
               <div key={weighing.id} className="rounded-lg border border-neutral-100 p-3">
                 <p className="font-medium text-neutral-900">{weighing.referenceNumber}</p>
                 <p className="mt-1 text-sm text-neutral-500">{weighing.stationName} · {weighing.operatorName}</p>
@@ -276,7 +313,7 @@ export default function RawMaterialPlaceholderWorkspace({
             <CardDescription>Usage preview before transfer API exists.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {rawMaterialStorageLocations.map((location) => (
+            {storageEnvelope.data.map((location) => (
               <div key={location.id} className="rounded-lg border border-neutral-100 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium text-neutral-900">{location.code}</p>
@@ -297,7 +334,7 @@ export default function RawMaterialPlaceholderWorkspace({
             <CardDescription>Input, output, byproduct, and yield preview.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {rawMaterialProcessingRuns.map((run) => (
+            {processingEnvelope.data.map((run) => (
               <div key={run.id} className="rounded-lg border border-neutral-100 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="font-medium text-neutral-900">{run.runNumber}</p>
@@ -323,7 +360,7 @@ export default function RawMaterialPlaceholderWorkspace({
             <CardDescription>Livestock support data without new tables.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {rawMaterialKandangPens.map((pen) => (
+            {kandangEnvelope.data.map((pen) => (
               <div key={pen.id} className="rounded-lg border border-neutral-100 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="font-medium text-neutral-900">{pen.code}</p>
