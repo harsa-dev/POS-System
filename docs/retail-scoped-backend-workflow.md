@@ -73,3 +73,17 @@ POST /api/retail/sales/checkout
 ```
 
 If `products` returns an empty array, the Retail tables exist but no RetailProduct rows have been seeded yet.
+
+## Pending Retail-Only Follow Up
+
+Keep the next commits scoped to Retail only:
+
+```txt
+1. add a small demo seed workflow for RetailSupplier and RetailProduct
+2. wire Retail catalog UI to GET /api/retail/products with mock fallback
+3. wire Retail cashier checkout to POST /api/retail/sales/checkout with mock fallback
+4. add Retail endpoint coverage to the OpenAPI spec/client
+5. sync schema.prisma models after the raw repository is proven stable
+```
+
+Do not fix non-retail typecheck failures inside this track unless they block `typecheck:retail` or the Retail build path directly.
