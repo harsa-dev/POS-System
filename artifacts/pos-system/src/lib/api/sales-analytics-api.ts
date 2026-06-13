@@ -4,6 +4,18 @@ export const salesAnalyticsBases = ["paid"] as const;
 
 export const salesAnalyticsExportFormats = ["json", "csv"] as const;
 
+export const salesAnalyticsSortKeys = [
+  "date",
+  "productName",
+  "quantity",
+  "totalRevenue",
+  "grossProfit",
+  "margin",
+  "paymentStatus",
+] as const;
+
+export const salesAnalyticsSortDirections = ["asc", "desc"] as const;
+
 export type SalesAnalyticsBasis = (typeof salesAnalyticsBases)[number];
 
 export type SalesAnalyticsExportFormat =
@@ -16,6 +28,11 @@ export type SalesAnalyticsOrderStatus =
   | "SERVED"
   | "COMPLETED";
 
+export type SalesAnalyticsSortKey = (typeof salesAnalyticsSortKeys)[number];
+
+export type SalesAnalyticsSortDirection =
+  (typeof salesAnalyticsSortDirections)[number];
+
 export type SalesAnalyticsQuery = {
   from?: string;
   to?: string;
@@ -25,7 +42,10 @@ export type SalesAnalyticsQuery = {
   paymentMethod?: string;
   orderStatus?: SalesAnalyticsOrderStatus;
   q?: string;
-  limit?: number;
+  page?: number;
+  pageSize?: number;
+  sortBy?: SalesAnalyticsSortKey;
+  sortDirection?: SalesAnalyticsSortDirection;
 };
 
 export type SalesAnalyticsExportQuery = SalesAnalyticsQuery & {
@@ -42,6 +62,13 @@ export type SalesAnalyticsFilterOptionsDto = {
   categories: SalesAnalyticsFilterOptionDto[];
   paymentMethods: SalesAnalyticsFilterOptionDto[];
   orderStatuses: SalesAnalyticsFilterOptionDto[];
+};
+
+export type SalesAnalyticsPaginationDto = {
+  page: number;
+  pageSize: number;
+  totalRows: number;
+  totalPages: number;
 };
 
 export type SalesAnalyticsPeriodDto = {
@@ -113,6 +140,7 @@ export type SalesAnalyticsDto = {
   busyHours: SalesAnalyticsDataPointDto[];
   bestSellingProducts: SalesAnalyticsDataPointDto[];
   sourceHealth: SalesAnalyticsSourceHealthDto;
+  pagination: SalesAnalyticsPaginationDto;
 };
 
 export type SalesAnalyticsExportFileDto = {
@@ -191,8 +219,13 @@ export function buildSalesAnalyticsQueryString(params?: SalesAnalyticsExportQuer
   if (params?.paymentMethod) searchParams.set("paymentMethod", params.paymentMethod);
   if (params?.orderStatus) searchParams.set("orderStatus", params.orderStatus);
   if (params?.q) searchParams.set("q", params.q);
+  if (params?.page !== undefined) searchParams.set("page", String(params.page));
+  if (params?.pageSize !== undefined) searchParams.set("pageSize", String(params.pageSize));
+  if (params?.sortBy) searchParams.set("sortBy", params.sortBy);
+  if (params?.sortDirection) {
+    searchParams.set("sortDirection", params.sortDirection);
+  }
   if (params?.format) searchParams.set("format", params.format);
-  if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
 
   const query = searchParams.toString();
 
