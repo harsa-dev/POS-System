@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { ServiceBusinessActionRail } from "./service-business-action-rail";
 import { ServiceBusinessActivityFeed } from "./service-business-activity-feed";
 import { getServiceBusinessActivityPreview } from "./service-business-activity-preview";
+import { ServiceBusinessInsightPanel } from "./service-business-insight-panel";
 import { mapServiceJobToViewModel } from "./service-business-view-model";
 import {
   getServicePriorityTone,
@@ -82,6 +83,10 @@ export function ServiceBusinessJobDetailPanel({
           </div>
 
           <ServiceBusinessActionRail job={job} />
+        </div>
+
+        <div className="mt-5">
+          <ServiceBusinessInsightPanel job={job} />
         </div>
 
         <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
