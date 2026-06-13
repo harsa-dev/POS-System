@@ -9,6 +9,7 @@ import { successResponse } from "../lib/responses/success-response.js";
 import {
   createRawMaterialProcessingRun,
   listRawMaterialProcessingRuns,
+  updateRawMaterialProcessingRun,
 } from "../services/raw-material/index.js";
 
 const router = Router();
@@ -48,6 +49,23 @@ router.post("/raw-material/processing-runs", async (req, res) => {
       input: req.body ?? {},
     });
     return successResponse(res, { data, status: 201, message: "Raw material processing run created." });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.patch("/raw-material/processing-runs/:id", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await updateRawMaterialProcessingRun({
+      actor: getActor(user),
+      businessContext,
+      id: req.params.id,
+      input: req.body ?? {},
+    });
+    return successResponse(res, { data, message: "Raw material processing run updated." });
   } catch (error) {
     return handleApiError(res, error);
   }
