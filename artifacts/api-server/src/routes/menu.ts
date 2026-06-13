@@ -15,7 +15,7 @@ async function getBusinessId(user: { id: string; role: any; businessId: string |
 router.get("/menu-items", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_AND_KITCHEN_ROLES);
-    if (!user) return;
+    if (!user) return undefined;
     const businessId = await getBusinessId(user);
     const includeUnavailable = req.query.includeUnavailable === "true";
     const menuItems = await prisma.menuItem.findMany({
@@ -23,7 +23,7 @@ router.get("/menu-items", async (req, res) => {
       include: { category: true, recipes: { include: { inventoryItem: true } } },
       orderBy: { createdAt: "desc" },
     });
-    res.json({ success: true, data: menuItems });
+    return res.json({ success: true, data: menuItems });
   } catch (error) {
     return handleApiError(res, error);
   }
@@ -32,7 +32,7 @@ router.get("/menu-items", async (req, res) => {
 router.post("/menu-items", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
-    if (!user) return;
+    if (!user) return undefined;
     const businessId = await getBusinessId(user);
     const { name, description, price, imageUrl, categoryId, isAvailable } = req.body ?? {};
     if (!name || price === undefined) return void res.status(400).json({ success: false, message: "Name and price are required" });
@@ -44,7 +44,7 @@ router.post("/menu-items", async (req, res) => {
       await tx.auditLog.create({ data: { businessId, userId: user.id, action: "CREATE", entityType: "MenuItem", entityId: created.id, changes: { name: created.name, price: created.price } } });
       return created;
     });
-    res.status(201).json({ success: true, data: menuItem });
+    return res.status(201).json({ success: true, data: menuItem });
   } catch (error) {
     return handleApiError(res, error);
   }
@@ -53,7 +53,7 @@ router.post("/menu-items", async (req, res) => {
 router.patch("/menu-items/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
-    if (!user) return;
+    if (!user) return undefined;
     const businessId = await getBusinessId(user);
     const { id } = req.params;
     const existing = await prisma.menuItem.findFirst({ where: { id, businessId }, include: { _count: { select: { recipes: true } } } });
@@ -65,7 +65,7 @@ router.patch("/menu-items/:id", async (req, res) => {
       data: { ...(name !== undefined ? { name } : {}), ...(description !== undefined ? { description: description || null } : {}), ...(price !== undefined ? { price: Number(price) } : {}), ...(imageUrl !== undefined ? { imageUrl: imageUrl || null } : {}), ...(categoryId !== undefined ? { categoryId: categoryId || null } : {}), ...(isAvailable !== undefined ? { isAvailable } : {}) },
       include: { category: true },
     });
-    res.json({ success: true, data: menuItem });
+    return res.json({ success: true, data: menuItem });
   } catch (error) {
     return handleApiError(res, error);
   }
@@ -74,7 +74,7 @@ router.patch("/menu-items/:id", async (req, res) => {
 router.delete("/menu-items/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
-    if (!user) return;
+    if (!user) return undefined;
     const businessId = await getBusinessId(user);
     const { id } = req.params;
     const existing = await prisma.menuItem.findFirst({ where: { id, businessId } });
@@ -84,7 +84,7 @@ router.delete("/menu-items/:id", async (req, res) => {
       await tx.auditLog.create({ data: { businessId, userId: user.id, action: "DELETE", entityType: "MenuItem", entityId: archived.id, changes: { isAvailable: false } } });
       return archived;
     });
-    res.json({ success: true, message: "Menu item archived", data: menuItem });
+    return res.json({ success: true, message: "Menu item archived", data: menuItem });
   } catch (error) {
     return handleApiError(res, error);
   }
@@ -93,10 +93,10 @@ router.delete("/menu-items/:id", async (req, res) => {
 router.get("/categories", async (req, res) => {
   try {
     const user = await requireRole(req, res, POS_ROLES);
-    if (!user) return;
+    if (!user) return undefined;
     const businessId = await getBusinessId(user);
     const categories = await prisma.category.findMany({ where: { businessId }, orderBy: { createdAt: "desc" } });
-    res.json({ success: true, data: categories });
+    return res.json({ success: true, data: categories });
   } catch (error) {
     return handleApiError(res, error);
   }
@@ -105,12 +105,12 @@ router.get("/categories", async (req, res) => {
 router.post("/categories", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
-    if (!user) return;
+    if (!user) return undefined;
     const businessId = await getBusinessId(user);
     const name = String(req.body?.name ?? "").trim();
     if (!name) return void res.status(400).json({ success: false, message: "Category name is required" });
     const category = await prisma.category.create({ data: { name, businessId } });
-    res.status(201).json({ success: true, data: category });
+    return res.status(201).json({ success: true, data: category });
   } catch (error) {
     return handleApiError(res, error);
   }
@@ -119,7 +119,7 @@ router.post("/categories", async (req, res) => {
 router.patch("/categories/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
-    if (!user) return;
+    if (!user) return undefined;
     const businessId = await getBusinessId(user);
     const { id } = req.params;
     const name = String(req.body?.name ?? "").trim();
@@ -127,7 +127,7 @@ router.patch("/categories/:id", async (req, res) => {
     const existing = await prisma.category.findFirst({ where: { id, businessId } });
     if (!existing) return void res.status(404).json({ success: false, message: "Category not found" });
     const category = await prisma.category.update({ where: { id }, data: { name } });
-    res.json({ success: true, data: category });
+    return res.json({ success: true, data: category });
   } catch (error) {
     return handleApiError(res, error);
   }
@@ -136,14 +136,14 @@ router.patch("/categories/:id", async (req, res) => {
 router.delete("/categories/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
-    if (!user) return;
+    if (!user) return undefined;
     const businessId = await getBusinessId(user);
     const { id } = req.params;
     const existing = await prisma.category.findFirst({ where: { id, businessId }, include: { menuItems: { select: { id: true }, take: 1 } } });
     if (!existing) return void res.status(404).json({ success: false, message: "Category not found" });
     if (existing.menuItems.length > 0) return void res.status(400).json({ success: false, message: "Category is still used by menu items." });
     await prisma.category.delete({ where: { id } });
-    res.json({ success: true, message: "Category deleted" });
+    return res.json({ success: true, message: "Category deleted" });
   } catch (error) {
     return handleApiError(res, error);
   }
