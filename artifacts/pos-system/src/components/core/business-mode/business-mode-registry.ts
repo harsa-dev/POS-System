@@ -148,7 +148,8 @@ export function isBusinessModeSelectable(mode: BusinessModeId): boolean {
 }
 
 export function normalizeBusinessModeId(
-  value: unknown,\): BusinessModeId | null {
+  value: unknown,
+): BusinessModeId | null {
   if (isBusinessModeId(value)) return value;
 
   return null;
