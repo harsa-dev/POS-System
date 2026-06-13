@@ -193,6 +193,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RetailCheckoutResponse"
+  /retail/sales/{id}/cancel:
+    post:
+      operationId: retailCancelSale
+      tags: [retail]
+      summary: Cancel Retail sale and post reversal workflow
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetailSaleCancellationInput"
+      responses:
+        "200":
+          description: Retail sale cancelled or cancellation blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailSaleCancellationResponse"
+        "409":
+          description: Retail sale cancellation rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailSaleCancellationResponse"
   /retail/returns/preview:
     post:
       operationId: retailPreviewReturn
@@ -287,6 +316,10 @@ components:
           items:
             $ref: "#/components/schemas/RetailLineInput"
       required: [paymentMethod, lines]
+    RetailSaleCancellationInput:
+      type: object
+      properties:
+        reason: { type: string }
     RetailReturnInput:
       type: object
       properties:
@@ -338,6 +371,14 @@ components:
         message: { type: string }
       required: [success, data]
     RetailCheckoutResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/RetailObject"
+        message: { type: string }
+      required: [success, data]
+    RetailSaleCancellationResponse:
       type: object
       properties:
         success: { type: boolean }
