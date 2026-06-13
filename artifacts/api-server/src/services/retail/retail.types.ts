@@ -2,6 +2,15 @@ export type RetailStockStatus = "in-stock" | "low-stock" | "out-of-stock";
 export type RetailCheckoutPaymentMethod = "cash" | "qris" | "card" | "transfer";
 export type RetailReturnReason = "damaged" | "wrong-item" | "customer-changed-mind" | "expired" | "other";
 
+export type RetailActor = {
+  id: string;
+  role: string;
+};
+
+export type RetailBusinessScope = {
+  businessId: string;
+};
+
 export type RetailProductDto = {
   id: string;
   sku: string;
@@ -16,7 +25,7 @@ export type RetailProductDto = {
   currentStock: number;
   reorderPoint: number;
   shelfLocation: string;
-  supplierId: string;
+  supplierId: string | null;
   status: RetailStockStatus;
 };
 
@@ -44,6 +53,7 @@ export type RetailSaleLinePreviewDto = {
   name: string;
   quantity: number;
   unitPrice: number;
+  cost: number;
   subtotal: number;
   discountAmount: number;
   taxIncluded: number;
@@ -72,6 +82,15 @@ export type RetailMockCheckoutDto = RetailSalePreviewDto & {
   nextBackendStep: string;
 };
 
+export type RetailPersistedCheckoutDto = Omit<RetailSalePreviewDto, "persisted"> & {
+  persisted: true;
+  saleId: string;
+  receiptNumber: string;
+  paymentId: string;
+  stockMovementIds: string[];
+  createdAt: string;
+};
+
 export type RetailInventoryRiskDto = {
   productId: string;
   sku: string;
@@ -80,7 +99,7 @@ export type RetailInventoryRiskDto = {
   reorderPoint: number;
   suggestedOrderQty: number;
   estimatedCost: number;
-  supplierId: string;
+  supplierId: string | null;
 };
 
 export type RetailReceivingQueueDto = {
@@ -120,7 +139,7 @@ export type RetailReturnPreviewDto = {
 
 export type RetailDashboardDto = {
   mode: "retail";
-  persistence: "mock-only";
+  persistence: "mock-only" | "prisma";
   summary: {
     activeSku: number;
     todayRevenue: number;
@@ -133,7 +152,8 @@ export type RetailDashboardDto = {
     canScanBarcode: boolean;
     canPreviewSale: boolean;
     canMockCheckout: boolean;
-    writesDatabase: false;
+    canPersistCheckout: boolean;
+    writesDatabase: boolean;
   };
 };
 
