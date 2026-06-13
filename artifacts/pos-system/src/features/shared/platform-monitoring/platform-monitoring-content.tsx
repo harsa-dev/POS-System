@@ -1,3 +1,4 @@
+import { AdminRoleOperationsBoard } from "./admin-role-operations-board";
 import { DevMonitoringDashboard } from "./dev-monitoring-dashboard";
 import { DevMonitoringDeepDive } from "./dev-monitoring-deep-dive";
 import { InternalMonitoringControlRoom } from "./internal-monitoring-control-room";
@@ -14,6 +15,7 @@ export function PlatformMonitoringContent() {
       <InternalMonitoringControlRoom />
       <InternalScaleReadinessBoard />
       <InternalProductionReadinessBoard />
+      <AdminRoleOperationsBoard />
     </>
   );
 }
