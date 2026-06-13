@@ -114,3 +114,41 @@ export type RawMaterialApiContract = Readonly<{
   responseShape: string;
   persistence: "mock-only" | "future-db";
 }>;
+
+export type RawMaterialApiEnvelope<TData> = Readonly<{
+  success: true;
+  data: TData;
+  meta: {
+    source: "mock";
+    schemaTouched: false;
+    generatedAt: string;
+    total?: number;
+  };
+}>;
+
+export type RawMaterialIntakeQuery = Readonly<{
+  supplierId?: string;
+  qualityStatus?: RawMaterialQualityStatus;
+  search?: string;
+}>;
+
+export type RawMaterialBatchQuery = Readonly<{
+  storageId?: string;
+  qualityStatus?: RawMaterialQualityStatus;
+  search?: string;
+}>;
+
+export type RawMaterialSupplierQuery = Readonly<{
+  category?: RawMaterialSupplier["category"];
+  search?: string;
+}>;
+
+export type RawMaterialContractReadiness = Readonly<{
+  moduleId: RawMaterialWorkspaceModuleId;
+  totalContracts: number;
+  mockOnlyContracts: number;
+  futureDbContracts: number;
+  hasReadContract: boolean;
+  hasWriteContract: boolean;
+  readinessLabel: "preview-only" | "read-ready" | "write-planned";
+}>;
