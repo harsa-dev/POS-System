@@ -173,13 +173,15 @@ Expected:
 3. Edit customer, segment, category, title, priority, and summary fields.
 4. Confirm payload preview updates locally.
 5. Confirm submit button is disabled.
-6. Close the modal.
+6. Confirm modal activity preview is visible.
+7. Close the modal.
 
 Expected:
 
 - no API call runs
 - no job is added to the list
 - no data persists after closing
+- activity events are display-only
 
 ### Draft quotation preview
 
@@ -189,13 +191,27 @@ Expected:
 4. Edit discount, tax rate, and target margin fields.
 5. Confirm payload preview updates locally.
 6. Confirm submit button is disabled.
-7. Close the modal.
+7. Confirm modal activity preview references selected job context.
+8. Close the modal.
 
 Expected:
 
 - no API call runs
 - selected job data is not mutated
 - no quotation is created
+- activity events are display-only
+
+## Activity preview checks
+
+For a selected job detail panel:
+
+- Activity preview appears below execution checklist.
+- Event count is visible.
+- Timeline events from the selected job appear.
+- System preview events appear for status and priority.
+- Next-action preview events appear when the status has a next transition.
+- Activity preview does not persist data.
+- Activity preview does not call API functions.
 
 ## Action rail checks
 
