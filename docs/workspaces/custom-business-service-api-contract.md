@@ -20,6 +20,7 @@ custom-business.service.job.status.update
 custom-business.service.quote.create
 custom-business.service.quote.approve
 custom-business.service.invoice.create
+custom-business.service.invoice.payment.record
 custom-business.service.config.manage
 ```
 
@@ -28,6 +29,31 @@ Frontend draft file:
 ```txt
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-permissions.ts
 ```
+
+## Status transition draft
+
+Frontend transition draft file:
+
+```txt
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-status-transitions.ts
+```
+
+Current mock transition map:
+
+```txt
+REQUEST_INTAKE      -> JOB_PLANNING
+JOB_PLANNING        -> QUOTATION_DRAFT
+QUOTATION_DRAFT     -> QUOTATION_APPROVED
+QUOTATION_APPROVED  -> IN_PROGRESS
+IN_PROGRESS         -> READY_FOR_REVIEW
+READY_FOR_REVIEW    -> DELIVERED
+DELIVERED           -> INVOICED
+INVOICED            -> PAID
+PAID                -> CLOSED
+CLOSED              -> terminal
+```
+
+The frontend action rail uses this map to show disabled next actions. Backend must still validate all transitions later. The UI map is a preview, not a source of truth.
 
 ## Endpoints later
 
@@ -80,7 +106,7 @@ Body candidates:
 - status
 - note
 
-Must validate status transitions.
+Must validate status transitions against the backend transition service.
 
 ### POST /api/custom-business/service/jobs/:id/cost-lines
 
