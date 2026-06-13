@@ -52,6 +52,7 @@ model Business {
   invoices Invoice[]
   stockMovements StockMovement[] @relation("BusinessStockMovements")
   cashflowEntries CashflowEntry[] @relation("BusinessCashflowEntries")
+  rawMaterialSuppliers RawMaterialSupplier[]
   tables DiningTable[]
   shifts Shift[]
   attendances Attendance[]
@@ -258,6 +259,29 @@ model OrderItem {
   @@index([menuItemId])
 }
 
+model RawMaterialSupplier {
+  id String @id @default(cuid())
+  businessId String
+  name String
+  contactPerson String?
+  phone String?
+  email String?
+  address String?
+  category RawMaterialSupplierCategory @default(RAW_GOODS)
+  reliabilityScore Int @default(0)
+  leadTimeDays Int @default(0)
+  isActive Boolean @default(true)
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@index([category])
+  @@index([isActive])
+  @@index([reliabilityScore])
+}
+
 model StockMovement {
   id String @id @default(cuid())
   inventoryItemId String
@@ -409,6 +433,7 @@ model AuditLog {
 enum Role { OWNER MANAGER ADMIN OPERATOR STAFF VIEWER }
 enum InventoryType { INGREDIENT PACKAGING EQUIPMENT PRODUCT RAW_MATERIAL FINISHED_GOOD SUPPLY TOOL SPARE_PART FEED MEDICINE }
 enum InventoryUnit { PCS GRAM KILOGRAM LITER ML PACK BOTTLE BOX CARTON SACK ROLL SET PAIR DOSE TABLET CAPSULE VIAL CAN }
+enum RawMaterialSupplierCategory { FEED LIVESTOCK PACKAGING RAW_GOODS }
 enum StockMovementType { IN OUT ADJUSTMENT }
 enum PaymentStatus { PENDING PAID FAILED EXPIRED }
 enum InvoiceStatus { DRAFT SENT PAID CANCELLED }
@@ -425,5 +450,5 @@ enum CashflowEntryType { INCOME EXPENSE TRANSFER_IN TRANSFER_OUT ADJUSTMENT }
 enum CashflowEntryStatus { PENDING POSTED VOIDED }
 enum CashflowAccount { CASH BANK QRIS CARD TRANSFER OTHER }
 enum CashflowSourceType { ORDER_PAYMENT PAYMENT_WEBHOOK SHIFT_CLOSE INVOICE MANUAL INVENTORY_PURCHASE REFUND SYSTEM }
-enum BusinessType { RESTAURANT RETAIL SERVICE LIVESTOCK }
-enum BusinessMode { RESTAURANT RETAIL SERVICE LIVESTOCK }
+enum BusinessType { RESTAURANT RETAIL SERVICE LIVESTOCK RAW_MATERIAL }
+enum BusinessMode { RESTAURANT RETAIL SERVICE LIVESTOCK RAW_MATERIAL }
