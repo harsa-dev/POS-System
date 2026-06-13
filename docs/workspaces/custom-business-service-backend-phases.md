@@ -221,10 +221,44 @@ Main files:
 - `artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts`
 - `artifacts/pos-system/src/features/shared/service-business/service-business-shared-dashboard-bridge.tsx`
 
-Endpoint:
+## Phase 7 - Prisma delegate cleanup
 
-- `GET /api/custom-business/service/summary`
+Status: partially implemented
 
-## Phase 7 - Prisma schema delegate cleanup
+Phase 7A implemented:
 
-Status: planned
+- Added a Prisma schema fragment for Service Business tables and enums.
+- The fragment maps existing SQL migration objects into Prisma model names.
+- No new migration was added.
+- Active `schema.prisma` was not rewritten through the connector because this phase must be validated immediately with `prisma validate` / `prisma generate` locally.
+
+Main files:
+
+- `artifacts/api-server/prisma/schema-service-business.fragment.prisma`
+- `docs/workspaces/custom-business-service-prisma-delegate-cleanup.md`
+
+Mapped tables:
+
+- `service_requests` -> `ServiceRequest`
+- `service_jobs` -> `ServiceJob`
+- `service_cost_lines` -> `ServiceCostLine`
+- `service_quotations` -> `ServiceQuotation`
+- `service_invoices` -> `ServiceInvoice`
+- `service_checklist_items` -> `ServiceChecklistItem`
+- `service_timeline_items` -> `ServiceTimelineItem`
+
+Mapped enums:
+
+- `service_business_workflow_status` -> `ServiceBusinessWorkflowStatus`
+- `service_business_priority` -> `ServiceBusinessPriority`
+- `service_business_cost_category` -> `ServiceBusinessCostCategory`
+- `service_business_quote_status` -> `ServiceBusinessQuoteStatus`
+- `service_business_invoice_status` -> `ServiceBusinessInvoiceStatus`
+
+Phase 7B target:
+
+- Append the fragment into `prisma/schema.prisma` locally.
+- Add `Business` relation fields for Service Business tables.
+- Run `pnpm --filter @workspace/api-server run generate`.
+- Run API server typecheck/build.
+- Only then replace raw SQL repository calls with generated Prisma delegates incrementally.
