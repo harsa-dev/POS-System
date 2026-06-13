@@ -1,0 +1,46 @@
+import type { Request, Response } from "express";
+import type { Role } from "../../lib/auth.js";
+
+import { requireRole } from "../../lib/auth.js";
+
+export const SERVICE_BUSINESS_PERMISSIONS = {
+  view: "custom-business.service.view",
+  requestCreate: "custom-business.service.request.create",
+  jobStatusUpdate: "custom-business.service.job.status.update",
+  costCreate: "custom-business.service.cost.create",
+  quoteCreate: "custom-business.service.quote.create",
+  quoteApprove: "custom-business.service.quote.approve",
+  invoiceCreate: "custom-business.service.invoice.create",
+  invoicePaymentRecord: "custom-business.service.invoice.payment.record",
+} as const;
+
+export type ServiceBusinessPermission =
+  (typeof SERVICE_BUSINESS_PERMISSIONS)[keyof typeof SERVICE_BUSINESS_PERMISSIONS];
+
+const VIEW_ROLES = ["OWNER", "MANAGER", "ADMIN", "OPERATOR", "STAFF", "VIEWER"] as const satisfies readonly Role[];
+const OPERATE_ROLES = ["OWNER", "MANAGER", "ADMIN", "OPERATOR", "STAFF"] as const satisfies readonly Role[];
+const BILLING_ROLES = ["OWNER", "MANAGER", "ADMIN", "OPERATOR"] as const satisfies readonly Role[];
+const APPROVAL_ROLES = ["OWNER", "MANAGER", "ADMIN"] as const satisfies readonly Role[];
+
+const SERVICE_BUSINESS_PERMISSION_ROLES = {
+  [SERVICE_BUSINESS_PERMISSIONS.view]: VIEW_ROLES,
+  [SERVICE_BUSINESS_PERMISSIONS.requestCreate]: OPERATE_ROLES,
+  [SERVICE_BUSINESS_PERMISSIONS.jobStatusUpdate]: OPERATE_ROLES,
+  [SERVICE_BUSINESS_PERMISSIONS.costCreate]: OPERATE_ROLES,
+  [SERVICE_BUSINESS_PERMISSIONS.quoteCreate]: BILLING_ROLES,
+  [SERVICE_BUSINESS_PERMISSIONS.quoteApprove]: APPROVAL_ROLES,
+  [SERVICE_BUSINESS_PERMISSIONS.invoiceCreate]: BILLING_ROLES,
+  [SERVICE_BUSINESS_PERMISSIONS.invoicePaymentRecord]: BILLING_ROLES,
+} as const satisfies Record<ServiceBusinessPermission, readonly Role[]>;
+
+export function getServiceBusinessPermissionRoles(permission: ServiceBusinessPermission) {
+  return [...SERVICE_BUSINESS_PERMISSION_ROLES[permission]];
+}
+
+export async function requireServiceBusinessPermission(
+  req: Request,
+  res: Response,
+  permission: ServiceBusinessPermission,
+) {
+  return requireRole(req, res, getServiceBusinessPermissionRoles(permission));
+}
