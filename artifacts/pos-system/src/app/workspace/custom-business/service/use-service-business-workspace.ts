@@ -37,6 +37,9 @@ export function useServiceBusinessWorkspace() {
     useState<ServiceBusinessPriorityFilter>("all");
   const [activeTab, setActiveTab] =
     useState<ServiceBusinessWorkspaceTab>("overview");
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(
+    serviceJobs[0]?.id ?? null,
+  );
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -77,6 +80,15 @@ export function useServiceBusinessWorkspace() {
     [],
   );
 
+  const selectedJob = useMemo(() => {
+    if (filteredJobs.length === 0) return null;
+    return (
+      filteredJobs.find((job) => job.id === selectedJobId) ??
+      filteredJobs[0] ??
+      null
+    );
+  }, [filteredJobs, selectedJobId]);
+
   function resetFilters() {
     setSearchQuery("");
     setStatusFilter("all");
@@ -98,9 +110,12 @@ export function useServiceBusinessWorkspace() {
     readinessChecks,
     resetFilters,
     searchQuery,
+    selectedJob,
+    selectedJobId: selectedJob?.id ?? null,
     setActiveTab,
     setPriorityFilter,
     setSearchQuery,
+    setSelectedJobId,
     setStatusFilter,
     statusFilter,
   };
