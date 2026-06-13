@@ -1,4 +1,39 @@
-import { prisma } from "../src/lib/prisma.js";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+function loadEnvFile() {
+  const envPath = resolve(process.cwd(), ".env");
+
+  if (!existsSync(envPath)) {
+    return;
+  }
+
+  const content = readFileSync(envPath, "utf8");
+
+  for (const line of content.split(/\r?\n/)) {
+    const trimmed = line.trim();
+
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    const separatorIndex = trimmed.indexOf("=");
+
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const rawValue = trimmed.slice(separatorIndex + 1).trim();
+    const value = rawValue.replace(/^['"]|['"]$/g, "");
+
+    process.env[key] ??= value;
+  }
+}
+
+loadEnvFile();
+
+const { prisma } = await import("../src/lib/prisma.js");
 
 type SupplierSeed = {
   id: string;
