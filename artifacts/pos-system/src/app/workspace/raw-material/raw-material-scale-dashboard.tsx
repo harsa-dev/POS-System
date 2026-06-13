@@ -12,6 +12,7 @@ import {
 import type {
   RawMaterialBusinessScale,
   RawMaterialScaleFeature,
+  RawMaterialScaleFeatureStatus,
   RawMaterialScaleProfile,
 } from "@/features/raw-material/core-system";
 
@@ -28,13 +29,13 @@ const scaleTone: Record<RawMaterialBusinessScale, string> = {
   factory: "border-blue-200 bg-blue-50 text-blue-700",
 };
 
-const statusLabel: Record<RawMaterialScaleFeature["status"], string> = {
+const statusLabel: Record<RawMaterialScaleFeatureStatus, string> = {
   available: "already covered",
   "new-dummy": "new dummy dashboard",
   "future-production": "future production",
 };
 
-const statusTone: Record<RawMaterialScaleFeature["status"], string> = {
+const statusTone: Record<RawMaterialScaleFeatureStatus, string> = {
   available: "border-emerald-200 bg-emerald-50 text-emerald-700",
   "new-dummy": "border-amber-200 bg-amber-50 text-amber-700",
   "future-production": "border-blue-200 bg-blue-50 text-blue-700",
@@ -47,11 +48,29 @@ const scaleFilterOptions: readonly { label: string; value: ScaleFilterValue }[] 
   { label: "Factory", value: "factory" },
 ];
 
+const displayStatusOverride: Record<string, RawMaterialScaleFeatureStatus> = {
+  "rmsf-medium-003": "available",
+  "rmsf-factory-001": "future-production",
+  "rmsf-factory-002": "future-production",
+  "rmsf-factory-003": "future-production",
+  "rmsf-factory-004": "future-production",
+};
+
+const statusReason: Record<RawMaterialScaleFeatureStatus, string> = {
+  available: "Covered by the current mock workspace, but still needs production-grade persistence later.",
+  "new-dummy": "Safe to show now as frontend-only portfolio scope without database commitment.",
+  "future-production": "Needs real schema, API, permission, audit, or background-job design before implementation.",
+};
+
+function getFeatureDisplayStatus(feature: RawMaterialScaleFeature): RawMaterialScaleFeatureStatus {
+  return displayStatusOverride[feature.id] ?? feature.status;
+}
+
 function countFeaturesByStatus(
   features: readonly RawMaterialScaleFeature[],
-  status: RawMaterialScaleFeature["status"],
+  status: RawMaterialScaleFeatureStatus,
 ) {
-  return features.filter((feature) => feature.status === status).length;
+  return features.filter((feature) => getFeatureDisplayStatus(feature) === status).length;
 }
 
 function filterProfilesByScale(
@@ -173,24 +192,31 @@ export function RawMaterialScaleDashboard({
                   </Badge>
                 </div>
                 <div className="space-y-3">
-                  {scaleFeatures.map((feature) => (
-                    <div key={feature.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-medium text-neutral-900">{feature.title}</p>
-                        <Badge variant="outline" className={statusTone[feature.status]}>
-                          {statusLabel[feature.status]}
-                        </Badge>
+                  {scaleFeatures.map((feature) => {
+                    const displayStatus = getFeatureDisplayStatus(feature);
+
+                    return (
+                      <div key={feature.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="font-medium text-neutral-900">{feature.title}</p>
+                          <Badge variant="outline" className={statusTone[displayStatus]}>
+                            {statusLabel[displayStatus]}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-400">
+                          {feature.dashboardArea}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-neutral-600">{feature.purpose}</p>
+                        <p className="mt-2 rounded-lg border border-amber-100 bg-amber-50 p-2 text-xs leading-5 text-amber-800">
+                          {feature.whyItMatters}
+                        </p>
+                        <p className="mt-2 rounded-lg border border-neutral-100 bg-white p-2 text-xs leading-5 text-neutral-600">
+                          {statusReason[displayStatus]}
+                        </p>
+                        <p className="mt-2 text-xs font-semibold text-neutral-700">Mock metric: {feature.dummyMetric}</p>
                       </div>
-                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-400">
-                        {feature.dashboardArea}
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-neutral-600">{feature.purpose}</p>
-                      <p className="mt-2 rounded-lg border border-amber-100 bg-amber-50 p-2 text-xs leading-5 text-amber-800">
-                        {feature.whyItMatters}
-                      </p>
-                      <p className="mt-2 text-xs font-semibold text-neutral-700">Mock metric: {feature.dummyMetric}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
