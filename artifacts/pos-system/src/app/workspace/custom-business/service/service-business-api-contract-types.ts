@@ -77,8 +77,35 @@ export type RecordServiceInvoicePaymentInput = {
   note?: string;
 };
 
+export type ServiceBusinessTransitionRequirement = {
+  id: string;
+  label: string;
+  isMet: boolean;
+  missingReason?: string;
+};
+
+export type ServiceBusinessTransitionPreviewResponse = {
+  requestId: string;
+  requestCode: string;
+  jobId: string | null;
+  currentStatus: ServiceBusinessWorkflowStatus;
+  nextStatus: ServiceBusinessWorkflowStatus;
+  allowedNextStatuses: readonly ServiceBusinessWorkflowStatus[];
+  isAllowedTransition: boolean;
+  canTransition: boolean;
+  requirements: readonly ServiceBusinessTransitionRequirement[];
+  unmetRequirements: readonly ServiceBusinessTransitionRequirement[];
+};
+
+export type ServiceBusinessWorkflowResponse = {
+  statuses: readonly ServiceBusinessWorkflowStatus[];
+  transitions: Record<ServiceBusinessWorkflowStatus, readonly ServiceBusinessWorkflowStatus[]>;
+  source: "api-server-prisma-sql-workflow-guard";
+};
+
 export type ServiceBusinessMutationPreviewResponse = {
   success: boolean;
   message: string;
   job?: ServiceBusinessJob;
+  transition?: ServiceBusinessTransitionPreviewResponse;
 };
