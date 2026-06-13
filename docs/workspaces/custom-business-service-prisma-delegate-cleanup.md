@@ -1,6 +1,6 @@
 # Custom Business Service Prisma Delegate Cleanup
 
-Status: Phase 7E implemented  
+Status: Phase 7F implemented  
 Scope: Business Mode Service / Custom Business Service  
 Branch: main
 
@@ -24,7 +24,7 @@ The active schema file is:
 artifacts/api-server/prisma/schema.prisma
 ```
 
-It now includes these Service Business models:
+It includes these Service Business models:
 
 ```txt
 ServiceRequest
@@ -115,20 +115,11 @@ loadServiceBusinessSummaryJobs(businessId)
 
 from the delegate repository instead of using the raw SQL `loadServiceJobs` path.
 
-Updated files:
-
-```txt
-artifacts/api-server/src/features/service-business/service-business.summary.ts
-artifacts/api-server/src/features/service-business/service-business.repository.ts
-```
-
 The summary response source identifies this path as:
 
 ```txt
 api-server-prisma-delegate-summary
 ```
-
-The guarded status write transaction still uses explicit SQL for now.
 
 ## Phase 7D and 7E implemented
 
@@ -138,7 +129,7 @@ A delegate-backed write helper exists at:
 artifacts/api-server/src/features/service-business/service-business.delegate-writes.repository.ts
 ```
 
-The write paths moved to generated Prisma delegates are now:
+The CRUD and billing write paths moved to generated Prisma delegates are:
 
 ```txt
 createServiceRequestRecordWithDelegate(...)
@@ -149,7 +140,7 @@ createServiceInvoiceRecordWithDelegate(...)
 recordServiceInvoicePaymentRecordWithDelegate(...)
 ```
 
-The public CRUD repository still keeps stable exported names:
+The public CRUD repository keeps stable exported names:
 
 ```txt
 createServiceRequestRecord(...)
@@ -160,7 +151,7 @@ createServiceInvoiceRecord(...)
 recordServiceInvoicePaymentRecord(...)
 ```
 
-Those functions now delegate to Prisma write helpers instead of writing raw SQL directly.
+Those functions delegate to Prisma write helpers instead of writing raw SQL directly.
 
 The CRUD repository is now a thin storage facade at:
 
@@ -170,27 +161,49 @@ artifacts/api-server/src/features/service-business/service-business.crud.reposit
 
 It owns target lookup and stable exports, while actual Prisma write implementation lives in the delegate write helper.
 
+## Phase 7F implemented
+
+The guarded workflow status transition write path now uses generated Prisma delegates too.
+
+The remaining transition helper is:
+
+```txt
+updateServiceWorkflowStatusWithDelegate(...)
+```
+
+It updates these records in a Prisma transaction:
+
+```txt
+ServiceRequest.status
+ServiceJob.status
+ServiceJob.startedAt
+ServiceJob.completedAt
+ServiceTimelineItem
+```
+
+The public workflow repository now delegates both reads and writes:
+
+```txt
+artifacts/api-server/src/features/service-business/service-business.repository.ts
+```
+
+Current facade responsibilities:
+
+```txt
+findServiceWorkflowTarget(...)        -> delegate read repository
+loadServiceWorkflowReadiness(...)     -> delegate read repository
+updateServiceWorkflowStatus(...)      -> delegate write repository
+```
+
 ## Current raw SQL boundary
 
-The remaining raw SQL boundary is intentionally limited to the guarded workflow status transition transaction:
+Service Business core CRUD, billing, summary, and workflow paths no longer have a known raw SQL dependency in the dedicated Service Business repositories.
 
-```txt
-artifacts/api-server/src/features/service-business/service-business.repository.ts::updateServiceWorkflowStatus
-```
+Keep a local verification pass before declaring the full API server clean, because global typecheck still has unrelated non-service errors.
 
-Recommended next order:
+## Local validation status
 
-```txt
-1. Run generate/build/typecheck after Phase 7E.
-2. If service-business stays clean, move updateServiceWorkflowStatus to Prisma delegate transaction.
-3. Remove raw SQL import needs from service-business.repository.ts after the workflow write is migrated.
-```
-
-Keep transaction boundaries explicit when replacing raw SQL multi-step writes.
-
-## Validation result from local run
-
-Latest local report before Phase 7E:
+Recent local result shared during cleanup:
 
 ```txt
 pnpm --filter @workspace/api-server run generate -> passed
@@ -198,7 +211,17 @@ pnpm --filter @workspace/api-server run build    -> passed
 pnpm --filter @workspace/api-server run typecheck -> failed outside service-business files
 ```
 
-The typecheck errors reported were in misc, raw-material, inventory, order stock movement, financial reports, and sales analytics files. No service-business file was reported in that run.
+Known non-service typecheck failures were previously in:
+
+```txt
+src/routes/misc.ts
+src/routes/raw-material-pens.ts
+src/routes/raw-material.ts
+src/services/financial-reports/report-audit.ts
+src/services/inventory/inventory.service.ts
+src/services/orders/transition-order-status.service.ts
+src/services/sales-analytics/sales-analytics.service.ts
+```
 
 ## Validation commands
 
@@ -206,12 +229,22 @@ Run from the repository root:
 
 ```bash
 pnpm --filter @workspace/api-server run generate
-pnpm --filter @workspace/api-server run typecheck
 pnpm --filter @workspace/api-server run build
+pnpm --filter @workspace/api-server run typecheck
 ```
 
-If `generate` fails with a relation error around `Business.serviceTimelineItems`, remove that field from `model Business`. The timeline relation does not have a direct `business_id` column.
+A Service Business cleanup should be considered safe when errors do not come from:
 
-## No migration rule
+```txt
+src/features/service-business
+src/routes/service-business.ts
+src/routes/service-business-workflow.ts
+```
 
-Do not create a new migration just for this cleanup phase unless Prisma validation proves the active schema cannot map the existing SQL migration.
+## Safety constraints
+
+Do not add migrations for this cleanup unless a future phase changes the actual database shape.
+
+Do not add `Business.serviceTimelineItems` without a migration that adds `business_id` to `service_timeline_items`.
+
+Do not alter Restaurant, Retail, Raw Material, or mode-selector behavior as part of this cleanup.
