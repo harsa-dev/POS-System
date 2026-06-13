@@ -1,10 +1,19 @@
-import type { Prisma, RawMaterialIntakeStatus } from "@prisma/client";
+import type { RawMaterialIntakeStatus } from "@prisma/client";
 
 import type { BusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
-import { prisma } from "../../lib/prisma.js";
-import { toRawMaterialIntakeDto } from "./raw-material-intake.dto.js";
+import { toRawMaterialIntakeDto } from "./raw-material-intake.presenter.js";
+import {
+  cancelRawMaterialIntakeRecord,
+  createRawMaterialIntakeRecord,
+  findActiveRawMaterialStorageLocation,
+  findActiveRawMaterialSupplier,
+  findRawMaterialIntakeById,
+  findRawMaterialIntakeReferenceConflict,
+  listRawMaterialIntakeRows,
+  updateRawMaterialIntakeRecord,
+} from "./raw-material-intake.repository.js";
 import type { RawMaterialActor } from "./raw-material-intake.types.js";
 import {
   parseIntakeNonNegativeNumber,
@@ -16,12 +25,8 @@ import {
   parseRawMaterialUnit,
 } from "./raw-material-intake.validation.js";
 
-type IntakeMutationInput = Record<string, unknown>;
 
-const intakeInclude = {
-  supplier: { select: { id: true, name: true } },
-  targetStorageLocation: { select: { id: true, code: true } },
-} satisfies Prisma.RawMaterialIntakeInclude;
+type IntakeMutationInput = Record<string, unknown>;
 
 function assertCanManageRawMaterialIntake(actor: RawMaterialActor) {
   if (["OWNER", "MANAGER", "ADMIN", "OPERATOR"].includes(actor.role)) return;
@@ -43,18 +48,8 @@ function assertCanViewRawMaterialIntake(actor: RawMaterialActor) {
   });
 }
 
-function getIntakeWhere(businessContext: BusinessContext, id: string) {
-  return {
-    id,
-    businessId: businessContext.businessId,
-  } satisfies Prisma.RawMaterialIntakeWhereInput;
-}
-
 async function loadIntakeOrThrow(businessContext: BusinessContext, id: string) {
-  const intake = await prisma.rawMaterialIntake.findFirst({
-    where: getIntakeWhere(businessContext, id),
-    include: intakeInclude,
-  });
+  const intake = await findRawMaterialIntakeById(businessContext, id);
 
   if (!intake) {
     throw new AppError({
@@ -72,14 +67,7 @@ async function assertReferenceAvailable(params: {
   referenceNumber: string;
   excludeId?: string;
 }) {
-  const duplicate = await prisma.rawMaterialIntake.findFirst({
-    where: {
-      businessId: params.businessContext.businessId,
-      referenceNumber: params.referenceNumber,
-      ...(params.excludeId ? { id: { not: params.excludeId } } : {}),
-    },
-    select: { id: true },
-  });
+  const duplicate = await findRawMaterialIntakeReferenceConflict(params);
 
   if (!duplicate) return;
 
@@ -92,14 +80,7 @@ async function assertReferenceAvailable(params: {
 }
 
 async function assertSupplierUsable(businessContext: BusinessContext, supplierId: string) {
-  const supplier = await prisma.rawMaterialSupplier.findFirst({
-    where: {
-      id: supplierId,
-      businessId: businessContext.businessId,
-      isActive: true,
-    },
-    select: { id: true },
-  });
+  const supplier = await findActiveRawMaterialSupplier(businessContext, supplierId);
 
   if (supplier) return;
 
@@ -115,14 +96,10 @@ async function assertStorageUsable(
   businessContext: BusinessContext,
   targetStorageLocationId: string,
 ) {
-  const storageLocation = await prisma.rawMaterialStorageLocation.findFirst({
-    where: {
-      id: targetStorageLocationId,
-      businessId: businessContext.businessId,
-      isActive: true,
-    },
-    select: { id: true },
-  });
+  const storageLocation = await findActiveRawMaterialStorageLocation(
+    businessContext,
+    targetStorageLocationId,
+  );
 
   if (storageLocation) return;
 
@@ -233,26 +210,13 @@ export async function listRawMaterialIntakes(params: {
 
   assertCanViewRawMaterialIntake(actor);
 
-  const trimmedSearch = search?.trim();
   const normalizedStatus = status ? parseRawMaterialIntakeStatus(status) : undefined;
-  const intakes = await prisma.rawMaterialIntake.findMany({
-    where: {
-      businessId: businessContext.businessId,
-      ...(normalizedStatus ? { qualityStatus: normalizedStatus } : {}),
-      ...(supplierId ? { supplierId } : {}),
-      ...(targetStorageLocationId ? { targetStorageLocationId } : {}),
-      ...(trimmedSearch
-        ? {
-            OR: [
-              { referenceNumber: { contains: trimmedSearch, mode: "insensitive" } },
-              { materialName: { contains: trimmedSearch, mode: "insensitive" } },
-              { notes: { contains: trimmedSearch, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-    },
-    include: intakeInclude,
-    orderBy: [{ receivedAt: "desc" }, { createdAt: "desc" }],
+  const intakes = await listRawMaterialIntakeRows({
+    businessContext,
+    status: normalizedStatus,
+    supplierId,
+    targetStorageLocationId,
+    search,
   });
 
   return intakes.map(toRawMaterialIntakeDto);
@@ -272,23 +236,7 @@ export async function createRawMaterialIntake(params: {
   await assertSupplierUsable(businessContext, payload.supplierId);
   await assertStorageUsable(businessContext, payload.targetStorageLocationId);
 
-  const intake = await prisma.rawMaterialIntake.create({
-    data: {
-      businessId: businessContext.businessId,
-      referenceNumber: payload.referenceNumber,
-      supplierId: payload.supplierId,
-      targetStorageLocationId: payload.targetStorageLocationId,
-      materialName: payload.materialName,
-      unit: payload.unit,
-      receivedQuantity: payload.receivedQuantity,
-      acceptedQuantity: payload.acceptedQuantity,
-      rejectedQuantity: payload.rejectedQuantity,
-      qualityStatus: payload.qualityStatus,
-      receivedAt: payload.receivedAt,
-      notes: payload.notes,
-    },
-    include: intakeInclude,
-  });
+  const intake = await createRawMaterialIntakeRecord(businessContext, payload);
 
   return toRawMaterialIntakeDto(intake);
 }
@@ -313,23 +261,7 @@ export async function updateRawMaterialIntake(params: {
   await assertSupplierUsable(businessContext, payload.supplierId);
   await assertStorageUsable(businessContext, payload.targetStorageLocationId);
 
-  const intake = await prisma.rawMaterialIntake.update({
-    where: { id },
-    data: {
-      referenceNumber: payload.referenceNumber,
-      supplierId: payload.supplierId,
-      targetStorageLocationId: payload.targetStorageLocationId,
-      materialName: payload.materialName,
-      unit: payload.unit,
-      receivedQuantity: payload.receivedQuantity,
-      acceptedQuantity: payload.acceptedQuantity,
-      rejectedQuantity: payload.rejectedQuantity,
-      qualityStatus: payload.qualityStatus,
-      receivedAt: payload.receivedAt,
-      notes: payload.notes,
-    },
-    include: intakeInclude,
-  });
+  const intake = await updateRawMaterialIntakeRecord(id, payload);
 
   return toRawMaterialIntakeDto(intake);
 }
@@ -344,11 +276,7 @@ export async function cancelRawMaterialIntake(params: {
   assertCanManageRawMaterialIntake(actor);
   await loadIntakeOrThrow(businessContext, id);
 
-  const intake = await prisma.rawMaterialIntake.update({
-    where: { id },
-    data: { qualityStatus: "CANCELLED" },
-    include: intakeInclude,
-  });
+  const intake = await cancelRawMaterialIntakeRecord(id);
 
   return toRawMaterialIntakeDto(intake);
 }
