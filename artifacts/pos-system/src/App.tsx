@@ -27,6 +27,11 @@ const TablesPage           = lazy(() => import("@/pages/dashboard/tables"));
 const KDSPage              = lazy(() => import("@/pages/dashboard/kds"));
 const BusinessOverviewPage = lazy(() => import("@/pages/dashboard/overview"));
 const InternalMonitoringPage = lazy(() => import("@/pages/dashboard/platform-monitoring"));
+const AdminRoleConsolePage = lazy(() => import("@/pages/dashboard/admin-role-console"));
+const BillingOperationsConsolePage = lazy(() => import("@/pages/dashboard/billing-operations-console"));
+const OperatorSupportConsolePage = lazy(() => import("@/pages/dashboard/operator-support-console"));
+const AdminActionAuditConsolePage = lazy(() => import("@/pages/dashboard/admin-action-audit-console"));
+const ApprovalControlConsolePage = lazy(() => import("@/pages/dashboard/approval-control-console"));
 const AnalyticsPage        = lazy(() => import("@/pages/dashboard/analytics"));
 const CustomersPage        = lazy(() => import("@/pages/dashboard/customers"));
 const CashflowPage         = lazy(() => import("@/pages/dashboard/cashflow"));
@@ -317,6 +322,11 @@ function ProtectedAppRoutes() {
           <Route path={ROUTES.KDS}><ModeProtectedRoute requiredMode="restaurant"><KDSPage /></ModeProtectedRoute></Route>
           <Route path={ROUTES.BUSINESS_OVERVIEW}><BusinessOverviewPage /></Route>
           <Route path={ROUTES.INTERNAL_MONITORING}><InternalMonitoringPage /></Route>
+          <Route path={ROUTES.ADMIN_ROLE_CONSOLE}><AdminRoleConsolePage /></Route>
+          <Route path={ROUTES.BILLING_OPERATIONS_CONSOLE}><BillingOperationsConsolePage /></Route>
+          <Route path={ROUTES.OPERATOR_SUPPORT_CONSOLE}><OperatorSupportConsolePage /></Route>
+          <Route path={ROUTES.ADMIN_ACTION_AUDIT_CONSOLE}><AdminActionAuditConsolePage /></Route>
+          <Route path={ROUTES.APPROVAL_CONTROL_CONSOLE}><ApprovalControlConsolePage /></Route>
           <Route path={ROUTES.ANALYTICS}><AnalyticsPage /></Route>
           <Route path={ROUTES.CUSTOMERS}><CustomersPage /></Route>
           <Route path={ROUTES.CASHFLOW}><CashflowPage /></Route>

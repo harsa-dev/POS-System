@@ -6,6 +6,10 @@ export const ROUTES = {
   LOGIN: "/login",
   REGISTER: "/register",
   SELECT_MODE: "/select-mode",
+  PRIVACY: "/privacy",
+  TERMS: "/terms",
+  SECURITY: "/security",
+  COOKIES: "/cookies",
 
   DASHBOARD: "/dashboard",
 
@@ -21,6 +25,11 @@ export const ROUTES = {
 
   BUSINESS_OVERVIEW: "/dashboard/overview",
   INTERNAL_MONITORING: "/dashboard/internal-monitoring",
+  ADMIN_ROLE_CONSOLE: "/dashboard/internal/admin-role-console",
+  BILLING_OPERATIONS_CONSOLE: "/dashboard/internal/billing-operations-console",
+  OPERATOR_SUPPORT_CONSOLE: "/dashboard/internal/operator-support-console",
+  ADMIN_ACTION_AUDIT_CONSOLE: "/dashboard/internal/admin-action-audit-console",
+  APPROVAL_CONTROL_CONSOLE: "/dashboard/internal/approval-control-console",
   ANALYTICS: "/dashboard/analytics",
   CUSTOMERS: "/dashboard/customers",
   CASHFLOW: "/dashboard/cashflow",
