@@ -1,5 +1,10 @@
 import { CustomersPartnersDashboard } from "@/features/shared/customers";
+import { RetailSharedDashboardBridge } from "@/features/shared/retail-bridge";
 
 export default function CustomersPage() {
-  return <CustomersPartnersDashboard />;
+  return (
+    <RetailSharedDashboardBridge dashboardId="customers">
+      <CustomersPartnersDashboard />
+    </RetailSharedDashboardBridge>
+  );
 }
