@@ -10,3 +10,7 @@ export * from "./raw-material-supplier.dto.js";
 export * from "./raw-material-supplier.service.js";
 export * from "./raw-material-supplier.types.js";
 export * from "./raw-material-supplier.validation.js";
+export * from "./raw-material-weighing.dto.js";
+export * from "./raw-material-weighing.service.js";
+export * from "./raw-material-weighing.types.js";
+export * from "./raw-material-weighing.validation.js";
