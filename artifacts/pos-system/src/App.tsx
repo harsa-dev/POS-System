@@ -42,7 +42,7 @@ const RestaurantTablesWorkspace = lazy(() => import("@/app/workspace/restaurant/
 const RestaurantMenuWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-menu-workspace"));
 const RestaurantRecipesWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-recipes-workspace"));
 const RestaurantOrdersWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-orders-workspace"));
-const RawMaterialKandangWorkspace = lazy(() => import("@/app/workspace/raw-material/kandang/raw-material-kandang-workspace"));
+const RawMaterialPlaceholderWorkspace = lazy(() => import("@/app/workspace/raw-material/raw-material-placeholder-workspace"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -255,7 +255,13 @@ function ProtectedAppRoutes() {
           <Route path={ROUTES.WORKSPACE_RESTAURANT_RECIPES}><ModeProtectedRoute requiredMode="restaurant"><RestaurantRecipesWorkspace /></ModeProtectedRoute></Route>
           <Route path={ROUTES.WORKSPACE_RESTAURANT_MENU}><ModeProtectedRoute requiredMode="restaurant"><RestaurantMenuWorkspace /></ModeProtectedRoute></Route>
           <Route path={ROUTES.WORKSPACE_RESTAURANT_ORDERS}><ModeProtectedRoute requiredMode="restaurant"><RestaurantOrdersWorkspace /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.V3_RAW_MATERIAL_KANDANG}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialKandangWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_INTAKE}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="intake" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_WEIGHING}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="weighing" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_BATCHES}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="batches" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_STORAGE}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="storage" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_PROCESSING}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="processing" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_KANDANG}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="kandang" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_SUPPLIERS}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="suppliers" /></ModeProtectedRoute></Route>
           <Route path={ROUTES.PAYMENTS_SUCCESS}><PaymentSuccessPage /></Route>
           <Route path={ROUTES.PAYMENTS_ERROR}><PaymentErrorPage /></Route>
           <Route path="/dashboard/payments"><ModeProtectedRoute requiredMode="restaurant"><Redirect to={ROUTES.PAYMENTS} /></ModeProtectedRoute></Route>
