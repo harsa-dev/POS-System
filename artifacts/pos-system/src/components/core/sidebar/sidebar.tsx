@@ -121,7 +121,7 @@ function createModeAwareMenuGroups(
   const groups = new Map<string, MenuItem[]>();
 
   for (const item of getSidebarItemsForRuntimeMode(currentMode)) {
-    const allowedRoles = [...item.requiredRoles];
+    const allowedRoles: readonly string[] = item.requiredRoles;
 
     if (!allowedRoles.includes(role)) continue;
 
