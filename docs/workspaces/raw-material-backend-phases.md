@@ -208,20 +208,75 @@ DTO mapping
 
 ### Phase 4B - Processing run repository/presenter split
 
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/api-server/src/services/raw-material/raw-material-processing-run.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-processing-run.presenter.ts
+artifacts/api-server/src/services/raw-material/raw-material-processing-run.dto.ts
+artifacts/api-server/src/services/raw-material/raw-material-processing-run.service.ts
+docs/workspaces/raw-material-service-layer-cleanup.md
+```
+
+Scope:
+
+```txt
+Move processing run persistence helpers into a repository.
+Move processing run DTO mapping into a presenter.
+Keep processing run service as the orchestration and guard layer.
+Keep schema, migration, route path, and response contract unchanged.
+```
+
+Repository now owns:
+
+```txt
+list processing run rows
+find processing run by id
+find run-number conflicts
+load input batch for mutation
+create processing run row
+update processing run row
+cancel processing run row
+```
+
+Presenter now owns:
+
+```txt
+RawMaterialProcessingRunWithBatch
+toRawMaterialProcessingRunDto()
+```
+
+Service now owns:
+
+```txt
+role assertion
+input validation
+input batch not-found mapping
+run-number conflict mapping
+processing transition guard orchestration
+processing output/input guard orchestration
+```
+
+### Phase 4C - Intake and batch service split
+
 Status: next.
 
 Suggested files:
 
 ```txt
-raw-material-processing-run.repository.ts
-raw-material-processing-run.presenter.ts
-raw-material-processing-run.service.ts
+raw-material-intake.repository.ts
+raw-material-intake.presenter.ts
+raw-material-batch.repository.ts
+raw-material-batch.presenter.ts
+raw-material-intake.service.ts
+raw-material-batch.service.ts
 ```
 
-Priority order after 4B:
+Priority order after 4C:
 
 ```txt
-Phase 4C - intake and batch service split
 Phase 4D - supplier/storage/pen service split
 ```
 
@@ -339,8 +394,8 @@ Do not change restaurant/service-business workflows while doing raw material wor
 
 ## Current recommended next action
 
-Continue with Phase 4B:
+Continue with Phase 4C:
 
 ```txt
-Processing run repository/presenter split.
+Intake and batch service split.
 ```
