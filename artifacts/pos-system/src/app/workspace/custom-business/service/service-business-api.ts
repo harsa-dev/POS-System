@@ -1,3 +1,5 @@
+import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
+
 import type {
   AddServiceCostLineInput,
   ApproveServiceQuotationInput,
@@ -12,52 +14,122 @@ import type {
 } from "./service-business-api-contract-types";
 import type { ServiceBusinessJob } from "./service-business-workspace-types";
 
-function notImplemented(methodName: string): never {
-  throw new Error(
-    `${methodName} is not implemented yet. Service Business mode is still using mocked frontend data.`,
-  );
+const SERVICE_BUSINESS_API_BASE = "/api/custom-business/service";
+
+type ServiceBusinessEnvelope<TData> = ApiEnvelope<TData> & {
+  data: TData;
+};
+
+function buildQueryString(query?: ListServiceBusinessJobsQuery) {
+  if (!query) return "";
+
+  const params = new URLSearchParams();
+
+  Object.entries(query).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    params.set(key, String(value));
+  });
+
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : "";
+}
+
+async function unwrapData<TData>(request: Promise<ServiceBusinessEnvelope<TData>>) {
+  const response = await request;
+  return response.data;
 }
 
 export const serviceBusinessApi = {
   getWorkspace(): Promise<ServiceBusinessWorkspaceResponse> {
-    return notImplemented("serviceBusinessApi.getWorkspace");
+    return unwrapData(
+      apiClient.get<ServiceBusinessEnvelope<ServiceBusinessWorkspaceResponse>>(
+        `${SERVICE_BUSINESS_API_BASE}/workspace`,
+      ),
+    );
   },
-  listJobs(_query?: ListServiceBusinessJobsQuery): Promise<readonly ServiceBusinessJob[]> {
-    return notImplemented("serviceBusinessApi.listJobs");
+
+  listJobs(query?: ListServiceBusinessJobsQuery): Promise<readonly ServiceBusinessJob[]> {
+    return unwrapData(
+      apiClient.get<ServiceBusinessEnvelope<readonly ServiceBusinessJob[]>>(
+        `${SERVICE_BUSINESS_API_BASE}/jobs${buildQueryString(query)}`,
+      ),
+    );
   },
+
   createRequest(
-    _input: CreateServiceRequestInput,
+    input: CreateServiceRequestInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return notImplemented("serviceBusinessApi.createRequest");
+    return unwrapData(
+      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
+        `${SERVICE_BUSINESS_API_BASE}/requests`,
+        { json: input },
+      ),
+    );
   },
+
   updateJobStatus(
-    _input: UpdateServiceJobStatusInput,
+    input: UpdateServiceJobStatusInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return notImplemented("serviceBusinessApi.updateJobStatus");
+    return unwrapData(
+      apiClient.patch<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
+        `${SERVICE_BUSINESS_API_BASE}/jobs/${input.jobId}/status`,
+        { json: input },
+      ),
+    );
   },
+
   addCostLine(
-    _input: AddServiceCostLineInput,
+    input: AddServiceCostLineInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return notImplemented("serviceBusinessApi.addCostLine");
+    return unwrapData(
+      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
+        `${SERVICE_BUSINESS_API_BASE}/jobs/${input.jobId}/cost-lines`,
+        { json: input },
+      ),
+    );
   },
+
   createQuotation(
-    _input: CreateServiceQuotationInput,
+    input: CreateServiceQuotationInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return notImplemented("serviceBusinessApi.createQuotation");
+    return unwrapData(
+      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
+        `${SERVICE_BUSINESS_API_BASE}/quotations`,
+        { json: input },
+      ),
+    );
   },
+
   approveQuotation(
-    _input: ApproveServiceQuotationInput,
+    input: ApproveServiceQuotationInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return notImplemented("serviceBusinessApi.approveQuotation");
+    return unwrapData(
+      apiClient.patch<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
+        `${SERVICE_BUSINESS_API_BASE}/quotations/${input.quotationId}/approve`,
+        { json: input },
+      ),
+    );
   },
+
   createInvoice(
-    _input: CreateServiceInvoiceInput,
+    input: CreateServiceInvoiceInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return notImplemented("serviceBusinessApi.createInvoice");
+    return unwrapData(
+      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
+        `${SERVICE_BUSINESS_API_BASE}/invoices`,
+        { json: input },
+      ),
+    );
   },
+
   recordInvoicePayment(
-    _input: RecordServiceInvoicePaymentInput,
+    input: RecordServiceInvoicePaymentInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return notImplemented("serviceBusinessApi.recordInvoicePayment");
+    return unwrapData(
+      apiClient.patch<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
+        `${SERVICE_BUSINESS_API_BASE}/invoices/${input.invoiceId}/payment`,
+        { json: input },
+      ),
+    );
   },
 } as const;
