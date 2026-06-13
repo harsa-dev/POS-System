@@ -62,7 +62,6 @@ model Business {
   stockMovements              StockMovement[]              @relation("BusinessStockMovements")
   cashflowEntries             CashflowEntry[]              @relation("BusinessCashflowEntries")
   serviceRequests             ServiceRequest[]
-  serviceTimelineItems        ServiceTimelineItem[]
   rawMaterialSuppliers        RawMaterialSupplier[]
   rawMaterialStorageLocations RawMaterialStorageLocation[]
   rawMaterialIntakes          RawMaterialIntake[]
