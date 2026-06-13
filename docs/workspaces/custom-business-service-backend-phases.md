@@ -227,38 +227,33 @@ Status: partially implemented
 
 Phase 7A implemented:
 
-- Added a Prisma schema fragment for Service Business tables and enums.
-- The fragment maps existing SQL migration objects into Prisma model names.
+- Active `schema.prisma` now contains Service Business models and enums for the existing SQL tables.
+- `Business` directly relates to `ServiceRequest[]` only.
+- `ServiceTimelineItem` remains related through `ServiceRequest.timeline`; no direct `Business.serviceTimelineItems` relation should be added unless a new migration adds `business_id` to `service_timeline_items`.
 - No new migration was added.
-- Active `schema.prisma` was not rewritten through the connector because this phase must be validated immediately with `prisma validate` / `prisma generate` locally.
+
+Phase 7B started:
+
+- Added `service-business.delegate.repository.ts` as the first generated-delegate repository.
+- The shared dashboard summary read path now uses `prisma.serviceRequest.findMany(...)` instead of the raw SQL `loadServiceJobs` path.
+- `service-business.summary.ts` now reports `source: api-server-prisma-delegate-summary`.
+- CRUD/write repositories remain raw SQL until transaction boundaries are moved safely.
 
 Main files:
 
-- `artifacts/api-server/prisma/schema-service-business.fragment.prisma`
+- `artifacts/api-server/prisma/schema.prisma`
+- `artifacts/api-server/src/features/service-business/service-business.delegate.repository.ts`
+- `artifacts/api-server/src/features/service-business/service-business.summary.ts`
 - `docs/workspaces/custom-business-service-prisma-delegate-cleanup.md`
 
-Mapped tables:
+Remaining Phase 7B target:
 
-- `service_requests` -> `ServiceRequest`
-- `service_jobs` -> `ServiceJob`
-- `service_cost_lines` -> `ServiceCostLine`
-- `service_quotations` -> `ServiceQuotation`
-- `service_invoices` -> `ServiceInvoice`
-- `service_checklist_items` -> `ServiceChecklistItem`
-- `service_timeline_items` -> `ServiceTimelineItem`
+- Replace read-only workflow lookups with delegates.
+- Replace simple writes with delegates after `prisma generate` and typecheck pass.
+- Keep multi-step writes and workflow transactions explicit.
 
-Mapped enums:
+Validation:
 
-- `service_business_workflow_status` -> `ServiceBusinessWorkflowStatus`
-- `service_business_priority` -> `ServiceBusinessPriority`
-- `service_business_cost_category` -> `ServiceBusinessCostCategory`
-- `service_business_quote_status` -> `ServiceBusinessQuoteStatus`
-- `service_business_invoice_status` -> `ServiceBusinessInvoiceStatus`
-
-Phase 7B target:
-
-- Append the fragment into `prisma/schema.prisma` locally.
-- Add `Business` relation fields for Service Business tables.
-- Run `pnpm --filter @workspace/api-server run generate`.
-- Run API server typecheck/build.
-- Only then replace raw SQL repository calls with generated Prisma delegates incrementally.
+- `pnpm --filter @workspace/api-server run generate`
+- `pnpm --filter @workspace/api-server run typecheck`
+- `pnpm --filter @workspace/api-server run build`
