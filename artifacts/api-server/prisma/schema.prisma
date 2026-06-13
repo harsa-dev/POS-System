@@ -61,6 +61,8 @@ model Business {
   invoices                    Invoice[]
   stockMovements              StockMovement[]              @relation("BusinessStockMovements")
   cashflowEntries             CashflowEntry[]              @relation("BusinessCashflowEntries")
+  serviceRequests             ServiceRequest[]
+  serviceTimelineItems        ServiceTimelineItem[]
   rawMaterialSuppliers        RawMaterialSupplier[]
   rawMaterialStorageLocations RawMaterialStorageLocation[]
   rawMaterialIntakes          RawMaterialIntake[]
@@ -575,6 +577,165 @@ model StockMovement {
   @@index([source, sourceId])
 }
 
+model ServiceRequest {
+  id              String                        @id
+  businessId      String                        @map("business_id")
+  requestCode     String                        @map("request_code")
+  customerName    String                        @map("customer_name")
+  customerSegment String                        @default("General Service") @map("customer_segment")
+  serviceCategory String                        @map("service_category")
+  title           String
+  summary         String?
+  status          ServiceBusinessWorkflowStatus @default(REQUEST_INTAKE)
+  priority        ServiceBusinessPriority       @default(NORMAL)
+  dueDate         DateTime?                     @map("due_date")
+  assignedTo      String?                       @map("assigned_to")
+  createdAt       DateTime                      @default(now()) @map("created_at")
+  updatedAt       DateTime                      @updatedAt @map("updated_at")
+
+  business  Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  jobs      ServiceJob[]
+  quotes    ServiceQuotation[]
+  invoices  ServiceInvoice[]
+  timeline  ServiceTimelineItem[]
+
+  @@unique([businessId, requestCode])
+  @@index([businessId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([createdAt])
+  @@map("service_requests")
+}
+
+model ServiceJob {
+  id          String                        @id
+  requestId   String                        @map("request_id")
+  title       String
+  assignedTo  String?                       @map("assigned_to")
+  status      ServiceBusinessWorkflowStatus @default(REQUEST_INTAKE)
+  startedAt   DateTime?                     @map("started_at")
+  completedAt DateTime?                     @map("completed_at")
+  createdAt   DateTime                      @default(now()) @map("created_at")
+  updatedAt   DateTime                      @updatedAt @map("updated_at")
+
+  request        ServiceRequest         @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  costLines      ServiceCostLine[]
+  quotes         ServiceQuotation[]
+  checklistItems ServiceChecklistItem[]
+
+  @@index([requestId])
+  @@index([status])
+  @@index([assignedTo])
+  @@index([createdAt])
+  @@map("service_jobs")
+}
+
+model ServiceCostLine {
+  id        String                      @id
+  jobId     String                      @map("job_id")
+  label     String
+  category  ServiceBusinessCostCategory
+  quantity  Float                       @default(1)
+  unitLabel String                      @default("unit") @map("unit_label")
+  unitCost  Int                         @default(0) @map("unit_cost")
+  billable  Boolean                     @default(true)
+  createdAt DateTime                    @default(now()) @map("created_at")
+  updatedAt DateTime                    @updatedAt @map("updated_at")
+
+  job ServiceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([category])
+  @@index([billable])
+  @@map("service_cost_lines")
+}
+
+model ServiceQuotation {
+  id             String                     @id
+  requestId      String                     @map("request_id")
+  jobId          String?                    @map("job_id")
+  quotationCode  String                     @map("quotation_code")
+  status         ServiceBusinessQuoteStatus @default(DRAFT)
+  subtotal       Int                        @default(0)
+  discountAmount Int                        @default(0) @map("discount_amount")
+  taxRate        Float                      @default(0) @map("tax_rate")
+  taxAmount      Int                        @default(0) @map("tax_amount")
+  marginRate     Float                      @default(0) @map("margin_rate")
+  total          Int                        @default(0)
+  validUntil     DateTime?                  @map("valid_until")
+  approvedAt     DateTime?                  @map("approved_at")
+  createdAt      DateTime                   @default(now()) @map("created_at")
+  updatedAt      DateTime                   @updatedAt @map("updated_at")
+
+  request ServiceRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  job     ServiceJob?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  invoices ServiceInvoice[]
+
+  @@unique([requestId, quotationCode])
+  @@index([requestId])
+  @@index([jobId])
+  @@index([status])
+  @@index([validUntil])
+  @@map("service_quotations")
+}
+
+model ServiceInvoice {
+  id          String                       @id
+  requestId   String                       @map("request_id")
+  quotationId String?                      @map("quotation_id")
+  invoiceCode String                       @map("invoice_code")
+  status      ServiceBusinessInvoiceStatus @default(DRAFT)
+  total       Int                          @default(0)
+  paidAmount  Int                          @default(0) @map("paid_amount")
+  dueDate     DateTime?                    @map("due_date")
+  issuedAt    DateTime?                    @map("issued_at")
+  paidAt      DateTime?                    @map("paid_at")
+  createdAt   DateTime                     @default(now()) @map("created_at")
+  updatedAt   DateTime                     @updatedAt @map("updated_at")
+
+  request   ServiceRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  quotation ServiceQuotation?  @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+
+  @@unique([requestId, invoiceCode])
+  @@index([requestId])
+  @@index([quotationId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("service_invoices")
+}
+
+model ServiceChecklistItem {
+  id          String    @id
+  jobId       String    @map("job_id")
+  label       String
+  isDone      Boolean   @default(false) @map("is_done")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  job ServiceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([isDone])
+  @@map("service_checklist_items")
+}
+
+model ServiceTimelineItem {
+  id          String   @id
+  requestId   String   @map("request_id")
+  label       String
+  actorName   String   @default("System") @map("actor_name")
+  occurredAt  DateTime @default(now()) @map("occurred_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@index([occurredAt])
+  @@map("service_timeline_items")
+}
+
 model CashflowEntry {
   id          String              @id @default(cuid())
   businessId  String
@@ -950,6 +1111,62 @@ enum StockMovementSource {
   STOCK_COUNT
   IMPORT
   SYSTEM
+}
+
+enum ServiceBusinessWorkflowStatus {
+  REQUEST_INTAKE
+  JOB_PLANNING
+  QUOTATION_DRAFT
+  QUOTATION_APPROVED
+  IN_PROGRESS
+  READY_FOR_REVIEW
+  DELIVERED
+  INVOICED
+  PAID
+  CLOSED
+  CANCELLED
+  REJECTED
+
+  @@map("service_business_workflow_status")
+}
+
+enum ServiceBusinessPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+
+  @@map("service_business_priority")
+}
+
+enum ServiceBusinessCostCategory {
+  LABOR       @map("labor")
+  MATERIAL    @map("material")
+  OPERATIONAL @map("operational")
+  VENDOR      @map("vendor")
+
+  @@map("service_business_cost_category")
+}
+
+enum ServiceBusinessQuoteStatus {
+  DRAFT    @map("draft")
+  SENT     @map("sent")
+  APPROVED @map("approved")
+  REJECTED @map("rejected")
+  EXPIRED  @map("expired")
+
+  @@map("service_business_quote_status")
+}
+
+enum ServiceBusinessInvoiceStatus {
+  DRAFT     @map("draft")
+  ISSUED    @map("issued")
+  PARTIAL   @map("partial")
+  PAID      @map("paid")
+  OVERDUE   @map("overdue")
+  CANCELLED @map("cancelled")
+
+  @@map("service_business_invoice_status")
 }
 
 enum CashflowEntryType {
