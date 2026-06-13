@@ -3,7 +3,7 @@ import type { RawMaterialBatchQualityStatus, RawMaterialUnit } from "@prisma/cli
 export type RawMaterialBatchQuery = Readonly<{
   intakeId?: string;
   storageLocationId?: string;
-  qualityStatus?: RawMaterialBatchQualityStatus;
+  qualityStatus?: RawMaterialBatchQualityStatus | string;
   isActive?: boolean;
   search?: string;
 }>;
