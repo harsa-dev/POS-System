@@ -4,13 +4,13 @@ This document tracks implementation gaps after the Retail Phase 1-7F backend del
 
 ## Current assessment
 
-The Retail foundation is functional, but the implementation is not complete enough to call the mode production-ready. The missing work is mostly route exposure, frontend mutation UX, reversal workflows, generated-client consolidation, and scoped validation.
+The Retail foundation is functional, but the implementation is not complete enough to call the mode production-ready. The missing work is mostly reversal workflows, generated-client consolidation, scoped validation, migration baseline hardening, and permission policy hardening.
 
 ## Missing implementation list
 
 ```txt
 Phase 8A - Receiving status API route integration: implemented
-Phase 8B - Receiving status frontend action wiring: planned
+Phase 8B - Receiving status frontend action wiring: implemented
 Phase 8C - Return persistence + refund reversal workflow: planned
 Phase 8D - Sale cancellation + stock/cashflow reversal workflow: planned
 Phase 8E - Generated API client consolidation: planned
@@ -71,25 +71,42 @@ PATCH /api/retail/receiving/{id}/status { "status": "partial" }
 PATCH /api/retail/receiving/{id}/status { "status": "received" }
 ```
 
-## Phase 8B - Receiving status frontend action wiring: planned
+## Phase 8B - Receiving status frontend action wiring: implemented
 
-Goal:
+Implemented scope:
 
 ```txt
-Wire receiving queue UI buttons to useRetailUpdateReceivingStatus.
+- /v3/retail/receiving now renders an API-backed receiving workspace
+- Receiving queue loads from GET /api/retail/receiving
+- UI falls back to local mock receiving rows when API/auth/business mode is unavailable
+- Mock fallback is read-only and disables mutation buttons
+- Action buttons are shown from allowed status transitions
+- draft rows show Mark ordered
+- ordered rows show Mark partial and Mark received
+- partial rows show Mark received
+- received rows show final-status state and no mutation button
+- Action buttons call PATCH /api/retail/receiving/:id/status
+- UI shows per-action loading state
+- UI reloads the receiving queue after successful mutation
+- UI surfaces backend errors, including invalid transition 409 responses
 ```
 
-Scope:
+Primary files:
 
 ```txt
-- Add action buttons based on current receiving status
-- draft rows can show Mark Ordered
-- ordered rows can show Mark Partial and Mark Received
-- partial rows can show Mark Received
-- received rows should not show mutation buttons
-- Show loading state per receiving row
-- Refresh receiving queue after success
-- Surface 409 transition rejection clearly
+artifacts/pos-system/src/app/workspace/retail/retail-receiving-api-workspace.tsx
+artifacts/pos-system/src/app/workspace/retail/retail-workspace.tsx
+lib/api-client-react/src/generated/retail-receiving-status.ts
+```
+
+Validation examples:
+
+```txt
+Open /v3/retail/receiving
+Confirm the badge says Prisma API when authenticated in Retail mode
+Select a draft receiving row and click Mark ordered
+Select an ordered receiving row and click Mark partial or Mark received
+Confirm fallback mode disables action buttons
 ```
 
 ## Phase 8C - Return persistence + refund reversal workflow: planned
