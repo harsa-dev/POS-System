@@ -21,25 +21,23 @@ type RetailProductDelegateRow = Omit<RetailProductDto, "price" | "cost" | "taxRa
 
 type RetailSupplierDelegateRow = RetailSupplierDto;
 
-type RetailProductRow = Omit<RetailProductDto, "status"> & {
-  status: RetailProductDto["status"];
-};
-
-type RetailReceivingRow = {
+type RetailReceivingDelegateRow = {
   id: string;
   supplierId: string;
-  supplierName: string;
   status: RetailReceivingQueueDto["status"];
   expectedDate: Date;
-  totalCost: number;
-};
-
-type RetailReceivingItemRow = {
-  receivingId: string;
-  productId: string;
-  sku: string;
-  orderedQty: number;
-  receivedQty: number;
+  totalCost: DecimalLike;
+  supplier: {
+    name: string;
+  };
+  items: Array<{
+    productId: string;
+    orderedQty: number;
+    receivedQty: number;
+    product: {
+      sku: string;
+    };
+  }>;
 };
 
 type ProductLockRow = {
@@ -52,15 +50,21 @@ type ProductLockRow = {
 
 type RetailProductDelegate = {
   findMany(args: Record<string, unknown>): Promise<RetailProductDelegateRow[]>;
+  findFirst(args: Record<string, unknown>): Promise<RetailProductDelegateRow | null>;
 };
 
 type RetailSupplierDelegate = {
   findMany(args: Record<string, unknown>): Promise<RetailSupplierDelegateRow[]>;
 };
 
+type RetailReceivingDelegate = {
+  findMany(args: Record<string, unknown>): Promise<RetailReceivingDelegateRow[]>;
+};
+
 type RetailDelegateClient = typeof prisma & {
   retailProduct: RetailProductDelegate;
   retailSupplier: RetailSupplierDelegate;
+  retailReceiving: RetailReceivingDelegate;
 };
 
 const retailDb = prisma as unknown as RetailDelegateClient;
@@ -112,6 +116,23 @@ function toRetailProductDto(product: RetailProductDelegateRow): RetailProductDto
   };
 }
 
+const productDtoSelect = {
+  id: true,
+  sku: true,
+  barcode: true,
+  name: true,
+  brand: true,
+  category: true,
+  unit: true,
+  price: true,
+  cost: true,
+  taxRatePercent: true,
+  currentStock: true,
+  reorderPoint: true,
+  shelfLocation: true,
+  supplierId: true,
+};
+
 export const retailPrismaRepository = {
   async listProducts(scope) {
     const products = await retailDb.retailProduct.findMany({
@@ -122,22 +143,7 @@ export const retailPrismaRepository = {
       orderBy: {
         name: "asc",
       },
-      select: {
-        id: true,
-        sku: true,
-        barcode: true,
-        name: true,
-        brand: true,
-        category: true,
-        unit: true,
-        price: true,
-        cost: true,
-        taxRatePercent: true,
-        currentStock: true,
-        reorderPoint: true,
-        shelfLocation: true,
-        supplierId: true,
-      },
+      select: productDtoSelect,
     });
 
     return products.map(toRetailProductDto);
@@ -162,48 +168,51 @@ export const retailPrismaRepository = {
   },
 
   async listReceivingQueue(scope) {
-    const rows = await prisma.$queryRaw<RetailReceivingRow[]>(Prisma.sql`
-      SELECT
-        r."id",
-        r."supplierId",
-        s."name" AS "supplierName",
-        r."status",
-        r."expectedDate",
-        r."totalCost"
-      FROM "RetailReceiving" r
-      JOIN "RetailSupplier" s ON s."id" = r."supplierId"
-      WHERE r."businessId" = ${scope.businessId}
-      ORDER BY r."expectedDate" ASC
-    `);
+    const receivings = await retailDb.retailReceiving.findMany({
+      where: {
+        businessId: scope.businessId,
+      },
+      orderBy: {
+        expectedDate: "asc",
+      },
+      select: {
+        id: true,
+        supplierId: true,
+        status: true,
+        expectedDate: true,
+        totalCost: true,
+        supplier: {
+          select: {
+            name: true,
+          },
+        },
+        items: {
+          select: {
+            productId: true,
+            orderedQty: true,
+            receivedQty: true,
+            product: {
+              select: {
+                sku: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
-    if (rows.length === 0) return [];
-
-    const receivingIds = rows.map((row) => row.id);
-    const items = await prisma.$queryRaw<RetailReceivingItemRow[]>(Prisma.sql`
-      SELECT
-        i."receivingId",
-        i."productId",
-        p."sku",
-        i."orderedQty",
-        i."receivedQty"
-      FROM "RetailReceivingItem" i
-      JOIN "RetailProduct" p ON p."id" = i."productId"
-      WHERE i."receivingId" IN (${Prisma.join(receivingIds)})
-      ORDER BY p."sku" ASC
-    `);
-
-    return rows.map((row) => ({
-      id: row.id,
-      supplierId: row.supplierId,
-      supplierName: row.supplierName,
-      status: row.status,
-      expectedDate: row.expectedDate.toISOString(),
-      totalCost: row.totalCost,
-      items: items
-        .filter((item) => item.receivingId === row.id)
+    return receivings.map((receiving) => ({
+      id: receiving.id,
+      supplierId: receiving.supplierId,
+      supplierName: receiving.supplier.name,
+      status: receiving.status,
+      expectedDate: receiving.expectedDate.toISOString(),
+      totalCost: toNumber(receiving.totalCost),
+      items: [...receiving.items]
+        .sort((first, second) => first.product.sku.localeCompare(second.product.sku))
         .map((item) => ({
           productId: item.productId,
-          sku: item.sku,
+          sku: item.product.sku,
           orderedQty: item.orderedQty,
           receivedQty: item.receivedQty,
           missingQty: Math.max(item.orderedQty - item.receivedQty, 0),
@@ -212,68 +221,48 @@ export const retailPrismaRepository = {
   },
 
   async findProductById(scope, productId) {
-    const rows = await prisma.$queryRaw<RetailProductRow[]>(Prisma.sql`
-      SELECT
-        "id",
-        "sku",
-        "barcode",
-        "name",
-        "brand",
-        "category",
-        "unit",
-        "price",
-        "cost",
-        "taxRatePercent",
-        "currentStock",
-        "reorderPoint",
-        "shelfLocation",
-        "supplierId",
-        CASE
-          WHEN "currentStock" <= 0 THEN 'out-of-stock'
-          WHEN "currentStock" <= "reorderPoint" THEN 'low-stock'
-          ELSE 'in-stock'
-        END AS "status"
-      FROM "RetailProduct"
-      WHERE "businessId" = ${scope.businessId}
-        AND "id" = ${productId}
-        AND "isActive" = TRUE
-      LIMIT 1
-    `);
+    const product = await retailDb.retailProduct.findFirst({
+      where: {
+        businessId: scope.businessId,
+        id: productId,
+        isActive: true,
+      },
+      select: productDtoSelect,
+    });
 
-    return rows[0] ?? null;
+    return product ? toRetailProductDto(product) : null;
   },
 
   async findProductByCode(scope, code) {
-    const normalizedCode = code.trim().toLowerCase();
-    const rows = await prisma.$queryRaw<RetailProductRow[]>(Prisma.sql`
-      SELECT
-        "id",
-        "sku",
-        "barcode",
-        "name",
-        "brand",
-        "category",
-        "unit",
-        "price",
-        "cost",
-        "taxRatePercent",
-        "currentStock",
-        "reorderPoint",
-        "shelfLocation",
-        "supplierId",
-        CASE
-          WHEN "currentStock" <= 0 THEN 'out-of-stock'
-          WHEN "currentStock" <= "reorderPoint" THEN 'low-stock'
-          ELSE 'in-stock'
-        END AS "status"
-      FROM "RetailProduct"
-      WHERE "businessId" = ${scope.businessId}
-        AND "isActive" = TRUE
-        AND (LOWER("barcode") = ${normalizedCode} OR LOWER("sku") = ${normalizedCode})
-      LIMIT 1
-    `);
+    const normalizedCode = code.trim();
 
-    return rows[0] ?? null;
+    if (!normalizedCode) {
+      return null;
+    }
+
+    const product = await retailDb.retailProduct.findFirst({
+      where: {
+        businessId: scope.businessId,
+        isActive: true,
+        OR: [
+          {
+            barcode: {
+              equals: normalizedCode,
+              mode: "insensitive",
+            },
+          },
+          {
+            sku: {
+              equals: normalizedCode,
+              mode: "insensitive",
+            },
+          },
+        ],
+      },
+      select: productDtoSelect,
+    });
+
+    return product ? toRetailProductDto(product) : null;
   },
 
   async getInventoryRisks(scope) {
