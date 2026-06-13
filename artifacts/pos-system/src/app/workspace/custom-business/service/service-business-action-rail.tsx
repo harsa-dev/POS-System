@@ -1,5 +1,9 @@
-import { LockKeyhole, MoveRight } from "lucide-react";
+import { CheckCircle2, LockKeyhole, MoveRight, XCircle } from "lucide-react";
 
+import {
+  countMetTransitionRequirements,
+  getServiceTransitionRequirements,
+} from "./service-business-transition-requirements";
 import {
   getServiceTransitionActions,
   getServiceTransitionSummary,
@@ -27,27 +31,71 @@ export function ServiceBusinessActionRail({ job }: { job: ServiceBusinessJob }) 
 
       {actions.length > 0 ? (
         <div className="mt-4 space-y-3">
-          {actions.map((action) => (
-            <button
-              key={action.id}
-              disabled
-              type="button"
-              className="flex w-full cursor-not-allowed items-start justify-between gap-3 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-3 text-left"
-            >
-              <span>
-                <span className="block text-sm font-bold text-neutral-500">
-                  {action.label}
-                </span>
-                <span className="mt-1 block text-xs leading-5 text-neutral-400">
-                  Needs {action.requiredPermission}
-                </span>
-                <span className="mt-1 block text-xs leading-5 text-neutral-400">
-                  {action.disabledReason}
-                </span>
-              </span>
-              <MoveRight className="mt-1 h-4 w-4 shrink-0 text-neutral-400" />
-            </button>
-          ))}
+          {actions.map((action) => {
+            const requirements = getServiceTransitionRequirements(
+              job,
+              action.nextStatus,
+            );
+            const metCount = countMetTransitionRequirements(requirements);
+
+            return (
+              <div
+                key={action.id}
+                className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-3"
+              >
+                <button
+                  disabled
+                  type="button"
+                  className="flex w-full cursor-not-allowed items-start justify-between gap-3 text-left"
+                >
+                  <span>
+                    <span className="block text-sm font-bold text-neutral-500">
+                      {action.label}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-neutral-400">
+                      Needs {action.requiredPermission}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-neutral-400">
+                      {action.disabledReason}
+                    </span>
+                  </span>
+                  <MoveRight className="mt-1 h-4 w-4 shrink-0 text-neutral-400" />
+                </button>
+
+                {requirements.length > 0 ? (
+                  <div className="mt-3 border-t border-neutral-200 pt-3">
+                    <p className="text-xs font-bold text-neutral-500">
+                      Requirements: {metCount}/{requirements.length} met
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {requirements.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex gap-2 rounded-xl bg-white px-3 py-2 text-xs leading-5 text-neutral-600"
+                        >
+                          {item.isMet ? (
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                          ) : (
+                            <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                          )}
+                          <span>
+                            <span className="font-semibold text-neutral-800">
+                              {item.label}
+                            </span>
+                            {!item.isMet ? (
+                              <span className="mt-0.5 block text-neutral-500">
+                                {item.missingReason}
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="mt-4 flex gap-3 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-4 text-sm leading-6 text-neutral-500">
