@@ -1,5 +1,10 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { BriefcaseBusiness, Clock3, EyeOff, FileText, ReceiptText } from "lucide-react";
 
+import { serviceBusinessApi } from "@/app/workspace/custom-business/service/service-business-api";
+import type { ServiceBusinessSummaryResponse } from "@/app/workspace/custom-business/service/service-business-api-contract-types";
 import {
   calculateCollectionRate,
   calculateQuoteTotal,
@@ -24,9 +29,10 @@ export type ServiceBusinessSharedSnapshot = {
   approvedQuotes: number;
   issuedInvoices: number;
   latestStatusLabel: string;
+  sourceLabel: string;
 };
 
-export const serviceBusinessSharedSnapshot: ServiceBusinessSharedSnapshot = (() => {
+function createMockServiceBusinessSnapshot(): ServiceBusinessSharedSnapshot {
   const activeJobs = serviceJobs.filter((job) => job.status !== "CLOSED").length;
   const estimatedRevenue = serviceJobs.reduce(
     (total, job) => total + calculateQuoteTotal(job),
@@ -59,8 +65,25 @@ export const serviceBusinessSharedSnapshot: ServiceBusinessSharedSnapshot = (() 
     approvedQuotes,
     issuedInvoices,
     latestStatusLabel,
+    sourceLabel: "Mock fallback",
   };
-})();
+}
+
+function createApiServiceBusinessSnapshot(summary: ServiceBusinessSummaryResponse): ServiceBusinessSharedSnapshot {
+  return {
+    activeJobs: summary.totals.activeJobs,
+    estimatedRevenue: summary.money.quoteTotal,
+    pendingCollection: summary.money.pendingCollection,
+    averageCollectionRate: summary.collection.averageRate,
+    openPriorityJobs: summary.totals.highPriorityJobs,
+    approvedQuotes: summary.totals.approvedQuotes,
+    issuedInvoices: summary.totals.issuedInvoices,
+    latestStatusLabel: summary.latestJob?.statusLabel ?? "No service jobs",
+    sourceLabel: "Backend summary",
+  };
+}
+
+export const serviceBusinessSharedSnapshot: ServiceBusinessSharedSnapshot = createMockServiceBusinessSnapshot();
 
 export function ServiceBusinessSharedDashboardBridge({
   surface,
@@ -68,6 +91,27 @@ export function ServiceBusinessSharedDashboardBridge({
   surface: ServiceBusinessSharedSurface;
 }) {
   const surfaceConfig = getServiceBusinessSharedSurfaceConfig(surface);
+  const [snapshot, setSnapshot] = useState<ServiceBusinessSharedSnapshot>(serviceBusinessSharedSnapshot);
+  const isBackendSummary = snapshot.sourceLabel === "Backend summary";
+
+  useEffect(() => {
+    let isMounted = true;
+
+    serviceBusinessApi
+      .getSummary()
+      .then((summary) => {
+        if (!isMounted) return;
+        setSnapshot(createApiServiceBusinessSnapshot(summary));
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setSnapshot(serviceBusinessSharedSnapshot);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <section className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-card-foreground">
@@ -80,7 +124,9 @@ export function ServiceBusinessSharedDashboardBridge({
             <StatusPill tone={surfaceConfig.tone}>
               {surfaceConfig.relevance === "primary" ? "Primary" : "Supporting"}
             </StatusPill>
-            <StatusPill tone="slate">Frontend-only</StatusPill>
+            <StatusPill tone={isBackendSummary ? "green" : "slate"}>
+              {snapshot.sourceLabel}
+            </StatusPill>
             <StatusPill tone="slate">Custom Business locked</StatusPill>
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -88,8 +134,8 @@ export function ServiceBusinessSharedDashboardBridge({
           </p>
         </div>
         <p className="max-w-md text-xs leading-5 text-muted-foreground">
-          This bridge reads the Service / Custom Business mock workspace only. It does not
-          create backend routes, Prisma models, mutations, or selector activation.
+          This bridge reads the backend Service Business summary endpoint when available,
+          then falls back to the local mock snapshot if the API is unavailable.
         </p>
       </div>
 
@@ -97,30 +143,30 @@ export function ServiceBusinessSharedDashboardBridge({
         <StatCard
           icon={BriefcaseBusiness}
           label="Service jobs"
-          note={`${serviceBusinessSharedSnapshot.openPriorityJobs} high-priority mocked jobs`}
+          note={`${snapshot.openPriorityJobs} high-priority jobs`}
           tone="blue"
-          value={String(serviceBusinessSharedSnapshot.activeJobs)}
+          value={String(snapshot.activeJobs)}
         />
         <StatCard
           icon={FileText}
           label="Quote value"
-          note={`${serviceBusinessSharedSnapshot.approvedQuotes} approved quotes in mock data`}
+          note={`${snapshot.approvedQuotes} approved quotes`}
           tone="green"
-          value={formatServiceMoney(serviceBusinessSharedSnapshot.estimatedRevenue)}
+          value={formatServiceMoney(snapshot.estimatedRevenue)}
         />
         <StatCard
           icon={ReceiptText}
           label="Pending collection"
-          note={`${serviceBusinessSharedSnapshot.averageCollectionRate}% average collection rate`}
+          note={`${snapshot.averageCollectionRate}% average collection rate`}
           tone="amber"
-          value={formatServiceMoney(serviceBusinessSharedSnapshot.pendingCollection)}
+          value={formatServiceMoney(snapshot.pendingCollection)}
         />
         <StatCard
           icon={Clock3}
           label="Latest status"
-          note={`${serviceBusinessSharedSnapshot.issuedInvoices} issued or partial invoices`}
+          note={`${snapshot.issuedInvoices} issued or partial invoices`}
           tone="slate"
-          value={serviceBusinessSharedSnapshot.latestStatusLabel}
+          value={snapshot.latestStatusLabel}
         />
       </div>
 
