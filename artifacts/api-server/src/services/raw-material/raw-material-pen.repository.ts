@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { Prisma } from "@prisma/client";
+import { Prisma, type RawMaterialBatchQualityStatus } from "@prisma/client";
 
 import type { BusinessContext } from "../../lib/business-context/index.js";
 import { prisma } from "../../lib/prisma.js";
@@ -20,7 +20,7 @@ export type RawMaterialPenRecordPayload = Readonly<{
 export type RawMaterialPenFeedBatchGuardRow = Readonly<{
   id: string;
   isActive: boolean;
-  qualityStatus: "INSPECTION" | "ACCEPTED" | "REJECTED" | "QUARANTINED" | "EXPIRED";
+  qualityStatus: RawMaterialBatchQualityStatus;
   remainingQuantity: number;
 }>;
 
