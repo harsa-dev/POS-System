@@ -17,7 +17,6 @@ import {
 } from "./retail.mock-operations";
 import {
   retailCommandActions,
-  retailCommandMetrics,
   retailPlanningSignals,
 } from "./retail.command-center-mock-data";
 import { retailGrowthModules } from "./retail.growth-mock-data";
@@ -62,14 +61,12 @@ const paidTransactions = retailTransactions.filter((transaction) => transaction.
 const revenue = retailDailyReport.revenue;
 const grossProfit = retailDailyReport.grossProfit;
 const margin = revenue > 0 ? Math.round((grossProfit / revenue) * 100) : 0;
-const activePromotions = retailPromotions.filter((promotion) => promotion.isActive);
 const stockAlerts = retailProducts.filter((product) => product.stock <= product.reorderPoint);
 const pendingReceivings = retailReceivings.filter((receiving) => receiving.status !== "received");
-const varianceSessions = retailStockCountSessions.filter((session) => session.status !== "approved");
+const varianceSessions = retailStockCountSessions.filter((session) => session.status !== "completed");
 const customersModule = retailGrowthModules.find((module) => module.id === "customers-loyalty");
 const returnsModule = retailGrowthModules.find((module) => module.id === "returns-exchanges");
 const staffModule = retailGrowthModules.find((module) => module.id === "staff-shifts");
-const forecastingModule = retailGrowthModules.find((module) => module.id === "forecasting");
 
 function fallbackRows(label: string): readonly RetailSharedRow[] {
   return [
@@ -155,10 +152,10 @@ const contexts: Record<RetailSharedDashboardId, RetailSharedDashboardContext> = 
       { label: "Action queue", value: String(retailCommandActions.length), helper: "Owner decisions from command center" },
     ],
     rows: retailPlanningSignals.map((signal) => ({
-      title: signal.title,
-      primary: signal.summary,
-      secondary: signal.recommendation,
-      status: signal.impact === "high" ? "review" : "planned",
+      title: signal.area,
+      primary: signal.signal,
+      secondary: `${signal.recommendation} · ${signal.estimatedImpact}`,
+      status: signal.area === "Inventory" || signal.area === "Branch control" ? "review" : "planned",
     })),
     bridgeNote: "Use this as the retail executive context above the existing shared overview.",
   },
