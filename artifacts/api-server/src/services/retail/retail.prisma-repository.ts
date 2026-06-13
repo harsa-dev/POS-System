@@ -24,7 +24,7 @@ type RetailSupplierDelegateRow = RetailSupplierDto;
 type RetailReceivingDelegateRow = {
   id: string;
   supplierId: string;
-  status: RetailReceivingQueueDto["status"];
+  status: string;
   expectedDate: Date;
   totalCost: DecimalLike;
   supplier: {
@@ -114,6 +114,14 @@ function normalizePaymentAccount(method: string) {
 
 function toNumber(value: DecimalLike) {
   return typeof value === "number" ? value : Number(value.toString());
+}
+
+function normalizeReceivingStatus(value: string): RetailReceivingQueueDto["status"] {
+  if (value === "draft" || value === "ordered" || value === "partial" || value === "received") {
+    return value;
+  }
+
+  return "draft";
 }
 
 function getStockStatus(product: Pick<RetailProductDelegateRow, "currentStock" | "reorderPoint">): RetailProductDto["status"] {
@@ -231,7 +239,7 @@ export const retailPrismaRepository = {
       id: receiving.id,
       supplierId: receiving.supplierId,
       supplierName: receiving.supplier.name,
-      status: receiving.status,
+      status: normalizeReceivingStatus(receiving.status),
       expectedDate: receiving.expectedDate.toISOString(),
       totalCost: toNumber(receiving.totalCost),
       items: [...receiving.items]
