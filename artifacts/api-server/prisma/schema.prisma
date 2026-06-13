@@ -1,72 +1,80 @@
-generator client { 
-  provider = "prisma-client-js" 
-  }
+generator client {
+  provider = "prisma-client-js"
+}
 
-datasource db { 
-  provider = "postgresql" 
-  }
+datasource db {
+  provider = "postgresql"
+}
 
 model User {
-  id String @id @default(cuid())
-  name String
-  email String @unique
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
   passwordHash String
-  role Role @default(STAFF)
-  businessId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isActive Boolean @default(true)
-  business Business? @relation("BusinessEmployees", fields: [businessId], references: [id])
-  ownedBusinesses Business[] @relation("BusinessOwner")
-  sessions Session[]
-  shifts Shift[]
-  attendances Attendance[]
-  auditLogs AuditLog[]
-  stockMovements StockMovement[] @relation("StockMovementActor")
-  cashflowEntries CashflowEntry[] @relation("CashflowEntryCreator")
+  role         Role     @default(STAFF)
+  businessId   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  isActive     Boolean  @default(true)
+
+  business                  Business?                  @relation("BusinessEmployees", fields: [businessId], references: [id])
+  ownedBusinesses           Business[]                 @relation("BusinessOwner")
+  sessions                  Session[]
+  shifts                    Shift[]
+  attendances               Attendance[]
+  auditLogs                 AuditLog[]
+  stockMovements            StockMovement[]            @relation("StockMovementActor")
+  rawMaterialStockMovements RawMaterialStockMovement[] @relation("RawMaterialStockMovementActor")
+  cashflowEntries           CashflowEntry[]            @relation("CashflowEntryCreator")
+
   @@index([businessId])
   @@index([role])
 }
 
 model Session {
-  id String @id @default(cuid())
-  tokenHash String @unique
-  userId String
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
   expiresAt DateTime
   createdAt DateTime @default(now())
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Business {
-  id String @id @default(cuid())
-  name String
-  type BusinessType @default(RESTAURANT)
-  mode BusinessMode @default(RESTAURANT)
-  ownerId String
-  isActive Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  owner User @relation("BusinessOwner", fields: [ownerId], references: [id])
-  employees User[] @relation("BusinessEmployees")
-  restaurant Restaurant?
-  categories Category[]
-  menuItems MenuItem[]
-  inventoryItems InventoryItem[] @relation("BusinessInventoryItems")
-  orders Order[]
-  invoices Invoice[]
-  stockMovements StockMovement[] @relation("BusinessStockMovements")
-  cashflowEntries CashflowEntry[] @relation("BusinessCashflowEntries")
-  rawMaterialSuppliers RawMaterialSupplier[]
+  id        String       @id @default(cuid())
+  name      String
+  type      BusinessType @default(RESTAURANT)
+  mode      BusinessMode @default(RESTAURANT)
+  ownerId   String
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  owner                     User                         @relation("BusinessOwner", fields: [ownerId], references: [id])
+  employees                 User[]                       @relation("BusinessEmployees")
+  restaurant                Restaurant?
+  categories                Category[]
+  menuItems                 MenuItem[]
+  inventoryItems            InventoryItem[]              @relation("BusinessInventoryItems")
+  orders                    Order[]
+  invoices                  Invoice[]
+  stockMovements            StockMovement[]              @relation("BusinessStockMovements")
+  cashflowEntries           CashflowEntry[]              @relation("BusinessCashflowEntries")
+  rawMaterialSuppliers      RawMaterialSupplier[]
   rawMaterialStorageLocations RawMaterialStorageLocation[]
-  rawMaterialIntakes RawMaterialIntake[]
-  rawMaterialWeighings RawMaterialWeighing[]
-  rawMaterialBatches RawMaterialBatch[]
+  rawMaterialIntakes        RawMaterialIntake[]
+  rawMaterialWeighings      RawMaterialWeighing[]
+  rawMaterialBatches        RawMaterialBatch[]
   rawMaterialProcessingRuns RawMaterialProcessingRun[]
-  tables DiningTable[]
-  shifts Shift[]
-  attendances Attendance[]
-  attendanceSetting AttendanceSetting?
-  auditLogs AuditLog[]
+  rawMaterialKandangPens    RawMaterialKandangPen[]
+  rawMaterialStockMovements RawMaterialStockMovement[]
+  tables                    DiningTable[]
+  shifts                    Shift[]
+  attendances               Attendance[]
+  attendanceSetting         AttendanceSetting?
+  auditLogs                 AuditLog[]
+
   @@index([ownerId])
   @@index([type])
   @@index([mode])
@@ -74,75 +82,82 @@ model Business {
 }
 
 model Restaurant {
-  id String @id @default(cuid())
-  businessId String @unique
-  address String?
-  phone String?
-  taxRate Int @default(0)
-  serviceRate Int @default(0)
-  logoUrl String?
-  autoPrint Boolean @default(false)
-  currency String @default("IDR")
-  orderPrefix String @default("ORD")
-  receiptFooter String? @default("Thank you for your order.")
-  timezone String @default("Asia/Jakarta")
-  cardEnabled Boolean @default(false)
-  cashEnabled Boolean @default(true)
-  midtransEnabled Boolean @default(false)
-  qrisEnabled Boolean @default(false)
-  transferEnabled Boolean @default(false)
+  id                String   @id @default(cuid())
+  businessId        String   @unique
+  address           String?
+  phone             String?
+  taxRate           Int      @default(0)
+  serviceRate       Int      @default(0)
+  logoUrl           String?
+  autoPrint         Boolean  @default(false)
+  currency          String   @default("IDR")
+  orderPrefix       String   @default("ORD")
+  receiptFooter     String?  @default("Thank you for your order.")
+  timezone          String   @default("Asia/Jakarta")
+  cardEnabled       Boolean  @default(false)
+  cashEnabled       Boolean  @default(true)
+  midtransEnabled   Boolean  @default(false)
+  qrisEnabled       Boolean  @default(false)
+  transferEnabled   Boolean  @default(false)
   midtransServerKey String?
   midtransClientKey String?
-  createdAt DateTime @default(now())
+  createdAt         DateTime @default(now())
+
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }
 
 model Category {
-  id String @id @default(cuid())
-  name String
+  id         String   @id @default(cuid())
+  name       String
   businessId String
-  createdAt DateTime @default(now())
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   menuItems MenuItem[]
+
   @@unique([businessId, name])
   @@index([businessId])
 }
 
 model MenuItem {
-  id String @id @default(cuid())
-  name String
-  price Int
-  imageUrl String?
-  businessId String
-  categoryId String?
+  id          String   @id @default(cuid())
+  name        String
+  price       Int
+  imageUrl    String?
+  businessId  String
+  categoryId  String?
   description String?
-  isAvailable Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  category Category? @relation(fields: [categoryId], references: [id])
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category   Category?   @relation(fields: [categoryId], references: [id])
   orderItems OrderItem[]
-  recipes Recipe[]
+  recipes    Recipe[]
+
   @@index([businessId])
   @@index([categoryId])
   @@index([isAvailable])
 }
 
 model InventoryItem {
-  id String @id @default(cuid())
-  name String
-  sku String?
-  type InventoryType
-  unit InventoryUnit
-  currentStock Float @default(0)
-  minimumStock Float @default(0)
-  costPerUnit Int @default(0)
-  businessId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  business Business @relation("BusinessInventoryItems", fields: [businessId], references: [id], onDelete: Cascade)
+  id           String        @id @default(cuid())
+  name         String
+  sku          String?
+  type         InventoryType
+  unit         InventoryUnit
+  currentStock Float         @default(0)
+  minimumStock Float         @default(0)
+  costPerUnit  Int           @default(0)
+  businessId   String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  business  Business        @relation("BusinessInventoryItems", fields: [businessId], references: [id], onDelete: Cascade)
   movements StockMovement[]
-  recipes Recipe[]
+  recipes   Recipe[]
+
   @@unique([businessId, name])
   @@index([businessId])
   @@index([sku])
@@ -152,40 +167,44 @@ model InventoryItem {
 }
 
 model Recipe {
-  id String @id @default(cuid())
-  menuItemId String
+  id              String @id @default(cuid())
+  menuItemId      String
   inventoryItemId String
-  quantityNeeded Float
-  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  quantityNeeded  Float
+
+  menuItem      MenuItem      @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
   @@unique([menuItemId, inventoryItemId])
 }
 
 model Order {
-  id String @id @default(cuid())
-  orderNumber Int
-  subtotal Int
-  taxAmount Int
-  serviceAmount Int
-  total Int
-  paymentMethod String
-  amountPaid Int
-  changeAmount Int
-  status OrderStatus @default(PENDING_PAYMENT)
-  inventoryDeducted Boolean @default(false)
-  businessId String
-  shiftId String?
-  tableId String?
-  type OrderType @default(TAKEAWAY)
-  cancelReason String?
-  cancelledAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  shift Shift? @relation(fields: [shiftId], references: [id])
-  table DiningTable? @relation(fields: [tableId], references: [id])
-  items OrderItem[]
-  payment Payment?
+  id                String      @id @default(cuid())
+  orderNumber       Int
+  subtotal          Int
+  taxAmount         Int
+  serviceAmount     Int
+  total             Int
+  paymentMethod     String
+  amountPaid        Int
+  changeAmount      Int
+  status            OrderStatus @default(PENDING_PAYMENT)
+  inventoryDeducted Boolean     @default(false)
+  businessId        String
+  shiftId           String?
+  tableId           String?
+  type              OrderType   @default(TAKEAWAY)
+  cancelReason      String?
+  cancelledAt       DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  business Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  shift    Shift?       @relation(fields: [shiftId], references: [id])
+  table    DiningTable? @relation(fields: [tableId], references: [id])
+  items    OrderItem[]
+  payment  Payment?
+
   @@unique([businessId, orderNumber])
   @@index([businessId])
   @@index([status])
@@ -194,49 +213,53 @@ model Order {
 }
 
 model Payment {
-  id String @id @default(cuid())
-  orderId String @unique
-  provider String
-  method String
-  status PaymentStatus @default(PENDING)
-  externalId String?
-  paymentUrl String?
-  qrString String?
-  vaNumber String?
-  paidAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String        @id @default(cuid())
+  orderId     String        @unique
+  provider    String
+  method      String
+  status      PaymentStatus @default(PENDING)
+  externalId  String?
+  paymentUrl  String?
+  qrString    String?
+  vaNumber    String?
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
   @@index([status])
   @@index([method])
   @@index([provider])
 }
 
 model Invoice {
-  id String @id @default(cuid())
-  businessId String
-  invoiceNumber String
-  invoiceDate DateTime
-  dueDate DateTime?
-  status InvoiceStatus @default(DRAFT)
-  businessName String
-  businessEmail String?
-  businessPhone String?
+  id              String              @id @default(cuid())
+  businessId      String
+  invoiceNumber   String
+  invoiceDate     DateTime
+  dueDate         DateTime?
+  status          InvoiceStatus       @default(DRAFT)
+  businessName    String
+  businessEmail   String?
+  businessPhone   String?
   businessAddress String?
-  customerName String
-  customerPhone String?
+  customerName    String
+  customerPhone   String?
   customerAddress String?
-  notes String?
-  discountType InvoiceDiscountType @default(PERCENTAGE)
-  discountValue Float @default(0)
-  subtotal Int @default(0)
-  discountAmount Int @default(0)
-  grandTotal Int @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  cancelledAt DateTime?
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  items InvoiceItem[]
+  notes           String?
+  discountType    InvoiceDiscountType @default(PERCENTAGE)
+  discountValue   Float               @default(0)
+  subtotal        Int                 @default(0)
+  discountAmount  Int                 @default(0)
+  grandTotal      Int                 @default(0)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  cancelledAt     DateTime?
+
+  business Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  items    InvoiceItem[]
+
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
   @@index([status])
@@ -245,47 +268,51 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id String @id @default(cuid())
-  invoiceId String
+  id          String @id @default(cuid())
+  invoiceId   String
   description String
-  quantity Float
-  unitPrice Int
-  lineTotal Int
+  quantity    Float
+  unitPrice   Int
+  lineTotal   Int
+
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
   @@index([invoiceId])
 }
 
 model OrderItem {
-  id String @id @default(cuid())
-  orderId String
+  id         String @id @default(cuid())
+  orderId    String
   menuItemId String
-  quantity Int
-  price Int
-  subtotal Int
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  quantity   Int
+  price      Int
+  subtotal   Int
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+
   @@index([orderId])
   @@index([menuItemId])
 }
 
 model RawMaterialSupplier {
-  id String @id @default(cuid())
-  businessId String
-  name String
-  contactPerson String?
-  phone String?
-  email String?
-  address String?
-  category RawMaterialSupplierCategory @default(RAW_GOODS)
-  reliabilityScore Int @default(0)
-  leadTimeDays Int @default(0)
-  isActive Boolean @default(true)
-  notes String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String                      @id @default(cuid())
+  businessId       String
+  name             String
+  contactPerson    String?
+  phone            String?
+  email            String?
+  address          String?
+  category         RawMaterialSupplierCategory @default(RAW_GOODS)
+  reliabilityScore Int                         @default(0)
+  leadTimeDays     Int                         @default(0)
+  isActive         Boolean                     @default(true)
+  notes            String?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  intakes RawMaterialIntake[]
+  business Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  intakes  RawMaterialIntake[]
 
   @@unique([businessId, name])
   @@index([businessId])
@@ -295,22 +322,24 @@ model RawMaterialSupplier {
 }
 
 model RawMaterialStorageLocation {
-  id String @id @default(cuid())
-  businessId String
-  code String
-  name String
-  type RawMaterialStorageType @default(DRY)
-  capacityKg Float @default(0)
-  usedKg Float @default(0)
+  id                 String                 @id @default(cuid())
+  businessId         String
+  code               String
+  name               String
+  type               RawMaterialStorageType @default(DRY)
+  capacityKg         Float                  @default(0)
+  usedKg             Float                  @default(0)
   temperatureCelsius Float?
-  isActive Boolean @default(true)
-  notes String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive           Boolean                @default(true)
+  notes              String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  intakes RawMaterialIntake[]
-  batches RawMaterialBatch[]
+  business             Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  intakes              RawMaterialIntake[]
+  batches              RawMaterialBatch[]
+  sourceStockMovements RawMaterialStockMovement[] @relation("RawMaterialStockMovementSourceStorage")
+  targetStockMovements RawMaterialStockMovement[] @relation("RawMaterialStockMovementTargetStorage")
 
   @@unique([businessId, code])
   @@index([businessId])
@@ -321,27 +350,27 @@ model RawMaterialStorageLocation {
 }
 
 model RawMaterialIntake {
-  id String @id @default(cuid())
-  businessId String
-  referenceNumber String
-  supplierId String
+  id                      String                  @id @default(cuid())
+  businessId              String
+  referenceNumber         String
+  supplierId              String
   targetStorageLocationId String
-  materialName String
-  unit RawMaterialUnit @default(KG)
-  receivedQuantity Float
-  acceptedQuantity Float @default(0)
-  rejectedQuantity Float @default(0)
-  qualityStatus RawMaterialIntakeStatus @default(INSPECTION)
-  receivedAt DateTime @default(now())
-  notes String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  materialName            String
+  unit                    RawMaterialUnit         @default(KG)
+  receivedQuantity        Float
+  acceptedQuantity        Float                   @default(0)
+  rejectedQuantity        Float                   @default(0)
+  qualityStatus           RawMaterialIntakeStatus @default(INSPECTION)
+  receivedAt              DateTime                @default(now())
+  notes                   String?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  supplier RawMaterialSupplier @relation(fields: [supplierId], references: [id])
+  business              Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier              RawMaterialSupplier        @relation(fields: [supplierId], references: [id])
   targetStorageLocation RawMaterialStorageLocation @relation(fields: [targetStorageLocationId], references: [id])
-  weighings RawMaterialWeighing[]
-  batches RawMaterialBatch[]
+  weighings             RawMaterialWeighing[]
+  batches               RawMaterialBatch[]
 
   @@unique([businessId, referenceNumber])
   @@index([businessId])
@@ -353,22 +382,22 @@ model RawMaterialIntake {
 }
 
 model RawMaterialWeighing {
-  id String @id @default(cuid())
-  businessId String
+  id              String   @id @default(cuid())
+  businessId      String
   referenceNumber String
-  intakeId String
-  stationName String
-  grossKg Float
-  tareKg Float
-  netKg Float
-  operatorName String
-  measuredAt DateTime @default(now())
-  notes String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  intakeId        String
+  stationName     String
+  grossKg         Float
+  tareKg          Float
+  netKg           Float
+  operatorName    String
+  measuredAt      DateTime @default(now())
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  intake RawMaterialIntake @relation(fields: [intakeId], references: [id])
+  business Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  intake   RawMaterialIntake @relation(fields: [intakeId], references: [id])
 
   @@unique([businessId, referenceNumber])
   @@index([businessId])
@@ -380,26 +409,28 @@ model RawMaterialWeighing {
 }
 
 model RawMaterialBatch {
-  id String @id @default(cuid())
-  businessId String
-  lotCode String
-  intakeId String
+  id                String                        @id @default(cuid())
+  businessId        String
+  lotCode           String
+  intakeId          String
   storageLocationId String
-  materialName String
-  unit RawMaterialUnit @default(KG)
-  quantity Float
+  materialName      String
+  unit              RawMaterialUnit               @default(KG)
+  quantity          Float
   remainingQuantity Float
-  qualityStatus RawMaterialBatchQualityStatus @default(INSPECTION)
-  expiryDate DateTime?
-  isActive Boolean @default(true)
-  notes String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  qualityStatus     RawMaterialBatchQualityStatus @default(INSPECTION)
+  expiryDate        DateTime?
+  isActive          Boolean                       @default(true)
+  notes             String?
+  createdAt         DateTime                      @default(now())
+  updatedAt         DateTime                      @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  intake RawMaterialIntake @relation(fields: [intakeId], references: [id])
-  storageLocation RawMaterialStorageLocation @relation(fields: [storageLocationId], references: [id])
-  processingRuns RawMaterialProcessingRun[]
+  business          Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  intake            RawMaterialIntake          @relation(fields: [intakeId], references: [id])
+  storageLocation   RawMaterialStorageLocation @relation(fields: [storageLocationId], references: [id])
+  processingRuns    RawMaterialProcessingRun[]
+  kandangPens       RawMaterialKandangPen[]
+  stockMovements    RawMaterialStockMovement[]
 
   @@unique([businessId, lotCode])
   @@index([businessId])
@@ -412,23 +443,23 @@ model RawMaterialBatch {
 }
 
 model RawMaterialProcessingRun {
-  id String @id @default(cuid())
-  businessId String
-  runNumber String
-  inputBatchId String
-  outputName String
-  inputQuantity Float
-  outputQuantity Float @default(0)
-  byproductQuantity Float @default(0)
-  wasteQuantity Float @default(0)
-  status RawMaterialProcessingStatus @default(PLANNED)
-  startedAt DateTime?
-  completedAt DateTime?
-  notes String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String                      @id @default(cuid())
+  businessId        String
+  runNumber         String
+  inputBatchId      String
+  outputName        String
+  inputQuantity     Float
+  outputQuantity    Float                       @default(0)
+  byproductQuantity Float                       @default(0)
+  wasteQuantity     Float                       @default(0)
+  status            RawMaterialProcessingStatus @default(PLANNED)
+  startedAt         DateTime?
+  completedAt       DateTime?
+  notes             String?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   inputBatch RawMaterialBatch @relation(fields: [inputBatchId], references: [id])
 
   @@unique([businessId, runNumber])
@@ -440,21 +471,86 @@ model RawMaterialProcessingRun {
   @@index([outputName])
 }
 
+model RawMaterialKandangPen {
+  id           String                         @id @default(cuid())
+  businessId   String
+  code         String
+  flockName    String
+  capacity     Int                            @default(0)
+  occupancy    Int                            @default(0)
+  feedBatchId  String?
+  healthStatus RawMaterialKandangHealthStatus @default(STABLE)
+  isActive     Boolean                        @default(true)
+  notes        String?
+  createdAt    DateTime                       @default(now())
+  updatedAt    DateTime                       @updatedAt
+
+  business  Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  feedBatch RawMaterialBatch? @relation(fields: [feedBatchId], references: [id])
+
+  @@unique([businessId, code])
+  @@index([businessId])
+  @@index([feedBatchId])
+  @@index([healthStatus])
+  @@index([isActive])
+  @@index([flockName])
+}
+
+model RawMaterialStockMovement {
+  id                      String                         @id @default(cuid())
+  businessId              String
+  batchId                 String
+  sourceStorageLocationId String?
+  targetStorageLocationId String?
+  type                    RawMaterialStockMovementType
+  reason                  RawMaterialStockMovementReason @default(MANUAL_ADJUSTMENT)
+  source                  RawMaterialStockMovementSource @default(MANUAL)
+  sourceId                String?
+  quantity                Float
+  beforeQuantity          Float
+  afterQuantity           Float
+  note                    String?
+  createdById             String?
+  createdAt               DateTime                       @default(now())
+
+  business              Business                    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  batch                 RawMaterialBatch            @relation(fields: [batchId], references: [id])
+  sourceStorageLocation RawMaterialStorageLocation? @relation("RawMaterialStockMovementSourceStorage", fields: [sourceStorageLocationId], references: [id])
+  targetStorageLocation RawMaterialStorageLocation? @relation("RawMaterialStockMovementTargetStorage", fields: [targetStorageLocationId], references: [id])
+  createdBy             User?                       @relation("RawMaterialStockMovementActor", fields: [createdById], references: [id])
+
+  @@index([businessId])
+  @@index([batchId])
+  @@index([sourceStorageLocationId])
+  @@index([targetStorageLocationId])
+  @@index([type])
+  @@index([reason])
+  @@index([source])
+  @@index([sourceId])
+  @@index([createdAt])
+  @@index([businessId, type])
+  @@index([businessId, reason])
+  @@index([businessId, source])
+  @@index([source, sourceId])
+}
+
 model StockMovement {
-  id String @id @default(cuid())
+  id              String              @id @default(cuid())
   inventoryItemId String
-  businessId String
-  type StockMovementType
-  quantity Float
-  reason StockMovementReason @default(MANUAL_ADJUSTMENT)
-  source StockMovementSource @default(MANUAL)
-  sourceId String?
-  note String?
-  createdById String?
-  createdAt DateTime @default(now())
+  businessId      String
+  type            StockMovementType
+  quantity        Float
+  reason          StockMovementReason @default(MANUAL_ADJUSTMENT)
+  source          StockMovementSource @default(MANUAL)
+  sourceId        String?
+  note            String?
+  createdById     String?
+  createdAt       DateTime            @default(now())
+
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
-  business Business @relation("BusinessStockMovements", fields: [businessId], references: [id], onDelete: Cascade)
-  createdBy User? @relation("StockMovementActor", fields: [createdById], references: [id])
+  business      Business      @relation("BusinessStockMovements", fields: [businessId], references: [id], onDelete: Cascade)
+  createdBy     User?         @relation("StockMovementActor", fields: [createdById], references: [id])
+
   @@index([inventoryItemId])
   @@index([businessId])
   @@index([type])
@@ -468,23 +564,25 @@ model StockMovement {
 }
 
 model CashflowEntry {
-  id String @id @default(cuid())
-  businessId String
-  type CashflowEntryType
-  account CashflowAccount @default(CASH)
-  amount Int
-  status CashflowEntryStatus @default(POSTED)
-  occurredAt DateTime @default(now())
-  title String
+  id          String              @id @default(cuid())
+  businessId  String
+  type        CashflowEntryType
+  account     CashflowAccount     @default(CASH)
+  amount      Int
+  status      CashflowEntryStatus @default(POSTED)
+  occurredAt  DateTime            @default(now())
+  title       String
   description String?
-  sourceType CashflowSourceType @default(MANUAL)
-  sourceId String?
-  reference String?
+  sourceType  CashflowSourceType  @default(MANUAL)
+  sourceId    String?
+  reference   String?
   createdById String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  business Business @relation("BusinessCashflowEntries", fields: [businessId], references: [id], onDelete: Cascade)
-  createdBy User? @relation("CashflowEntryCreator", fields: [createdById], references: [id])
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  business  Business @relation("BusinessCashflowEntries", fields: [businessId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation("CashflowEntryCreator", fields: [createdById], references: [id])
+
   @@index([businessId])
   @@index([type])
   @@index([status])
@@ -500,95 +598,108 @@ model CashflowEntry {
 }
 
 model DiningTable {
-  id String @id @default(cuid())
-  name String
-  capacity Int @default(2)
-  status TableStatus @default(AVAILABLE)
-  isActive Boolean @default(true)
+  id         String      @id @default(cuid())
+  name       String
+  capacity   Int         @default(2)
+  status     TableStatus @default(AVAILABLE)
+  isActive   Boolean     @default(true)
   businessId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  orders Order[]
+  orders   Order[]
+
   @@index([businessId])
   @@index([status])
   @@index([isActive])
 }
 
 model Shift {
-  id String @id @default(cuid())
-  userId String
-  businessId String
-  status ShiftStatus @default(OPEN)
-  openingCash Int @default(0)
-  closingCash Int?
-  expectedCash Int @default(0)
+  id             String      @id @default(cuid())
+  userId         String
+  businessId     String
+  status         ShiftStatus @default(OPEN)
+  openingCash    Int         @default(0)
+  closingCash    Int?
+  expectedCash   Int         @default(0)
   cashDifference Int?
-  openedAt DateTime @default(now())
-  closedAt DateTime?
+  openedAt       DateTime    @default(now())
+  closedAt       DateTime?
+
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id])
-  orders Order[]
+  user     User     @relation(fields: [userId], references: [id])
+  orders   Order[]
+
   @@index([businessId])
   @@index([status])
   @@index([openedAt])
 }
 
 model Attendance {
-  id String @id @default(cuid())
-  userId String
-  businessId String
-  clockInAt DateTime
-  clockOutAt DateTime?
-  workDurationMinutes Int @default(0)
-  overtimeMinutes Int @default(0)
-  note String?
-  status AttendanceStatus @default(PRESENT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String           @id @default(cuid())
+  userId              String
+  businessId          String
+  clockInAt           DateTime
+  clockOutAt          DateTime?
+  workDurationMinutes Int              @default(0)
+  overtimeMinutes     Int              @default(0)
+  note                String?
+  status              AttendanceStatus @default(PRESENT)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([businessId])
   @@index([status])
 }
 
 model AttendanceSetting {
-  id String @id @default(cuid())
-  businessId String @unique
-  workStartHour Int @default(9)
-  workStartMinute Int @default(0)
-  lateTolerance Int @default(15)
-  overtimeAfterMinutes Int @default(480)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  businessId           String   @unique
+  workStartHour        Int      @default(9)
+  workStartMinute      Int      @default(0)
+  lateTolerance        Int      @default(15)
+  overtimeAfterMinutes Int      @default(480)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }
 
-model Permission { 
-  id String @id @default(cuid()) 
-  key String @unique 
-  description String? 
-  rolePermissions RolePermission[] 
-  }
+model Permission {
+  id              String           @id @default(cuid())
+  key             String           @unique
+  description     String?
+  rolePermissions RolePermission[]
+}
 
-model RolePermission { 
-  id String @id @default(cuid()) 
-  role Role permissionId String 
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade) @@unique([role, permissionId], name: "role_permissionId") 
-  }
+model RolePermission {
+  id           String     @id @default(cuid())
+  role         Role
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId], name: "role_permissionId")
+  @@index([permissionId])
+}
 
 model AuditLog {
-  id String @id @default(cuid())
+  id         String      @id @default(cuid())
   businessId String
-  userId String
-  action AuditAction
+  userId     String
+  action     AuditAction
   entityType String
-  entityId String
-  changes Json?
-  createdAt DateTime @default(now())
+  entityId   String
+  changes    Json?
+  createdAt  DateTime    @default(now())
+
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([businessId])
   @@index([userId])
   @@index([action])
@@ -596,239 +707,282 @@ model AuditLog {
   @@index([createdAt])
 }
 
-enum Role { 
-  OWNER 
-  MANAGER 
-  ADMIN 
-  OPERATOR 
-  STAFF 
-  VIEWER 
-  }
+enum Role {
+  OWNER
+  MANAGER
+  ADMIN
+  OPERATOR
+  STAFF
+  VIEWER
+}
 
-enum InventoryType { 
-  INGREDIENT 
-  PACKAGING 
-  EQUIPMENT 
-  PRODUCT 
-  RAW_MATERIAL 
-  FINISHED_GOOD 
-  SUPPLY 
-  TOOL 
-  SPARE_PART 
-  FEED 
-  MEDICINE 
-  }
+enum InventoryType {
+  INGREDIENT
+  PACKAGING
+  EQUIPMENT
+  PRODUCT
+  RAW_MATERIAL
+  FINISHED_GOOD
+  SUPPLY
+  TOOL
+  SPARE_PART
+  FEED
+  MEDICINE
+}
 
-enum InventoryUnit { 
-  PCS 
-  GRAM 
-  KILOGRAM 
-  LITER 
-  ML 
-  PACK 
-  BOTTLE 
-  BOX 
-  CARTON 
-  SACK 
-  ROLL 
-  SET 
-  PAIR 
-  DOSE 
-  TABLET 
-  CAPSULE 
-  VIAL 
-  CAN 
-  }
+enum InventoryUnit {
+  PCS
+  GRAM
+  KILOGRAM
+  LITER
+  ML
+  PACK
+  BOTTLE
+  BOX
+  CARTON
+  SACK
+  ROLL
+  SET
+  PAIR
+  DOSE
+  TABLET
+  CAPSULE
+  VIAL
+  CAN
+}
 
 enum RawMaterialSupplierCategory {
-   FEED 
-   LIVESTOCK 
-   PACKAGING 
-   RAW_GOODS 
-   }
+  FEED
+  LIVESTOCK
+  PACKAGING
+  RAW_GOODS
+}
 
-enum RawMaterialStorageType { 
-  DRY 
-  COLD 
-  OPEN_YARD 
-  KANDANG_SUPPORT 
-  }
+enum RawMaterialStorageType {
+  DRY
+  COLD
+  OPEN_YARD
+  KANDANG_SUPPORT
+}
 
-enum RawMaterialUnit { 
-  KG 
-  SACK 
-  CRATE 
-  HEAD 
-  LITER 
-  PCS }
+enum RawMaterialUnit {
+  KG
+  SACK
+  CRATE
+  HEAD
+  LITER
+  PCS
+}
 
-enum RawMaterialIntakeStatus { 
-  DRAFT 
-  INSPECTION 
-  ACCEPTED 
-  PARTIALLY_REJECTED 
-  REJECTED 
-  CANCELLED 
-  }
+enum RawMaterialIntakeStatus {
+  DRAFT
+  INSPECTION
+  ACCEPTED
+  PARTIALLY_REJECTED
+  REJECTED
+  CANCELLED
+}
 
-enum RawMaterialBatchQualityStatus { 
-  INSPECTION 
-  ACCEPTED 
-  REJECTED 
-  QUARANTINED 
-  }
+enum RawMaterialBatchQualityStatus {
+  INSPECTION
+  ACCEPTED
+  REJECTED
+  QUARANTINED
+}
 
-enum RawMaterialProcessingStatus { 
-  PLANNED 
-  RUNNING 
-  COMPLETED 
-  CANCELLED 
-  }
+enum RawMaterialProcessingStatus {
+  PLANNED
+  RUNNING
+  COMPLETED
+  CANCELLED
+}
 
-enum StockMovementType { 
-  IN 
-  OUT 
-  ADJUSTMENT 
-  }
+enum RawMaterialKandangHealthStatus {
+  STABLE
+  MONITORING
+  CRITICAL
+}
 
-enum PaymentStatus { 
-  PENDING 
-  PAID 
-  FAILED 
-  EXPIRED 
-  }
+enum RawMaterialStockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  TRANSFER_IN
+  TRANSFER_OUT
+  PRODUCTION_USAGE
+  WASTE
+  CORRECTION
+}
 
-enum InvoiceStatus { 
-  DRAFT 
-  SENT 
-  PAID 
-  CANCELLED 
-  }
+enum RawMaterialStockMovementReason {
+  PURCHASE
+  RECEIVING
+  MANUAL_ADJUSTMENT
+  STOCK_COUNT
+  CORRECTION
+  TRANSFER_IN
+  TRANSFER_OUT
+  PRODUCTION_USAGE
+  WASTE
+  DAMAGED
+  EXPIRED
+  RETURN
+}
 
-enum InvoiceDiscountType { 
-  PERCENTAGE 
-  FIXED 
-  }
+enum RawMaterialStockMovementSource {
+  MANUAL
+  INTAKE
+  BATCH
+  PROCESSING_RUN
+  TRANSFER
+  STOCK_COUNT
+  SYSTEM
+}
 
-enum OrderStatus { 
-  PENDING_PAYMENT 
-  PAID 
-  PREPARING 
-  READY 
-  SERVED 
-  COMPLETED 
-  CANCELLED 
-  }
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
 
-enum AuditAction { 
-  CREATE 
-  UPDATE 
-  DELETE 
-  }
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+}
 
-enum OrderType { 
-  DINE_IN 
-  TAKEAWAY 
-  }
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+}
 
-enum TableStatus { 
-  AVAILABLE 
-  OCCUPIED 
-  RESERVED 
-  CLEANING 
-  INACTIVE 
-  }
+enum InvoiceDiscountType {
+  PERCENTAGE
+  FIXED
+}
 
-enum ShiftStatus { 
-  OPEN 
-  CLOSED 
-  }
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PREPARING
+  READY
+  SERVED
+  COMPLETED
+  CANCELLED
+}
 
-enum AttendanceStatus { 
-  PRESENT 
-  LATE 
-  ABSENT 
-  LEAVE 
-  }
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
 
-enum StockMovementReason { 
-  PURCHASE 
-  RECIPE_USAGE 
-  WASTE 
-  EXPIRED 
-  MANUAL_ADJUSTMENT 
-  DAMAGED 
-  RETURN 
-  OPENING_STOCK 
-  STOCK_COUNT 
-  CORRECTION 
-  TRANSFER_IN 
-  TRANSFER_OUT 
-  PRODUCTION_USAGE 
-  SERVICE_USAGE 
-  LIVESTOCK_USAGE 
-  IMPORT 
-  }
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+}
 
-enum StockMovementSource { 
-  MANUAL 
-  ORDER 
-  RECIPE 
-  PURCHASE 
-  WASTE 
-  RETURN 
-  TRANSFER 
-  STOCK_COUNT 
-  IMPORT 
-  SYSTEM 
-  }
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  CLEANING
+  INACTIVE
+}
 
-enum CashflowEntryType { 
-  INCOME 
-  EXPENSE 
-  TRANSFER_IN 
-  TRANSFER_OUT 
-  ADJUSTMENT 
-  }
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
 
-enum CashflowEntryStatus { 
-  PENDING 
-  POSTED 
-  VOIDED 
-  }
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  LEAVE
+}
 
-enum CashflowAccount { 
-  CASH 
-  BANK 
-  QRIS 
-  CARD 
-  TRANSFER 
-  OTHER 
-  }
+enum StockMovementReason {
+  PURCHASE
+  RECIPE_USAGE
+  WASTE
+  EXPIRED
+  MANUAL_ADJUSTMENT
+  DAMAGED
+  RETURN
+  OPENING_STOCK
+  STOCK_COUNT
+  CORRECTION
+  TRANSFER_IN
+  TRANSFER_OUT
+  PRODUCTION_USAGE
+  SERVICE_USAGE
+  LIVESTOCK_USAGE
+  IMPORT
+}
 
-enum CashflowSourceType { 
-  ORDER_PAYMENT 
-  PAYMENT_WEBHOOK 
-  SHIFT_CLOSE 
-  INVOICE 
-  MANUAL 
-  INVENTORY_PURCHASE 
-  REFUND 
-  SYSTEM 
-  }
+enum StockMovementSource {
+  MANUAL
+  ORDER
+  RECIPE
+  PURCHASE
+  WASTE
+  RETURN
+  TRANSFER
+  STOCK_COUNT
+  IMPORT
+  SYSTEM
+}
 
-enum BusinessType { 
-  RESTAURANT 
-  RETAIL 
-  SERVICE 
-  LIVESTOCK 
-  RAW_MATERIAL 
-  }
+enum CashflowEntryType {
+  INCOME
+  EXPENSE
+  TRANSFER_IN
+  TRANSFER_OUT
+  ADJUSTMENT
+}
 
-enum BusinessMode { 
-  RESTAURANT 
-  RETAIL 
-  SERVICE 
-  LIVESTOCK 
-  RAW_MATERIAL 
-  }
+enum CashflowEntryStatus {
+  PENDING
+  POSTED
+  VOIDED
+}
+
+enum CashflowAccount {
+  CASH
+  BANK
+  QRIS
+  CARD
+  TRANSFER
+  OTHER
+}
+
+enum CashflowSourceType {
+  ORDER_PAYMENT
+  PAYMENT_WEBHOOK
+  SHIFT_CLOSE
+  INVOICE
+  MANUAL
+  INVENTORY_PURCHASE
+  REFUND
+  SYSTEM
+}
+
+enum BusinessType {
+  RESTAURANT
+  RETAIL
+  SERVICE
+  LIVESTOCK
+  RAW_MATERIAL
+}
+
+enum BusinessMode {
+  RESTAURANT
+  RETAIL
+  SERVICE
+  LIVESTOCK
+  RAW_MATERIAL
+}
