@@ -1,6 +1,6 @@
 # Custom Business Service Prisma Delegate Cleanup
 
-Status: Phase 7B started  
+Status: Phase 7B in progress  
 Scope: Business Mode Service / Custom Business Service  
 Branch: main
 
@@ -80,9 +80,9 @@ Business -> ServiceRequest[] -> ServiceTimelineItem[]
 
 This avoids Prisma validation error P1012 for a missing opposite relation field.
 
-## Phase 7B implemented in this pass
+## Phase 7B implemented so far
 
-A delegate-backed read repository was added at:
+A delegate-backed read repository exists at:
 
 ```txt
 artifacts/api-server/src/features/service-business/service-business.delegate.repository.ts
@@ -94,7 +94,7 @@ It uses generated Prisma delegates for the shared dashboard summary read path:
 prisma.serviceRequest.findMany(...)
 ```
 
-The summary service now calls:
+The summary service calls:
 
 ```txt
 loadServiceBusinessSummaryJobs(businessId)
@@ -108,31 +108,59 @@ Updated file:
 artifacts/api-server/src/features/service-business/service-business.summary.ts
 ```
 
-The summary response source now identifies this path as:
+The summary response source identifies this path as:
 
 ```txt
 api-server-prisma-delegate-summary
 ```
 
-## Remaining Phase 7B work
+Workflow read lookups also use generated Prisma delegates now:
 
-The following files still contain raw SQL and should be migrated gradually only after `prisma generate` passes locally:
+```txt
+findServiceWorkflowTargetWithDelegate(...)
+loadServiceWorkflowReadinessWithDelegate(...)
+```
+
+Those functions are called from:
+
+```txt
+artifacts/api-server/src/features/service-business/service-business.repository.ts
+```
+
+So the workflow preview and guarded status update read side no longer uses raw SQL for target lookup or readiness checks. The guarded status write transaction still uses explicit SQL for now.
+
+## Current raw SQL boundary
+
+The following write-heavy paths still intentionally use raw SQL:
 
 ```txt
 artifacts/api-server/src/features/service-business/service-business.crud.repository.ts
-artifacts/api-server/src/features/service-business/service-business.repository.ts
+artifacts/api-server/src/features/service-business/service-business.repository.ts::updateServiceWorkflowStatus
 ```
 
 Recommended next order:
 
 ```txt
-1. Read-only lookups: findServiceJob, findServiceWorkflowTarget, loadServiceWorkflowReadiness.
-2. Simple writes: createServiceCostLineRecord, createServiceQuotationRecord.
-3. Multi-step writes: createServiceRequestRecord, createServiceInvoiceRecord, recordServiceInvoicePaymentRecord.
-4. Workflow transaction: updateServiceWorkflowStatus.
+1. Simple writes: createServiceCostLineRecord, createServiceQuotationRecord.
+2. Approval/update writes: approveServiceQuotationRecord.
+3. Invoice writes: createServiceInvoiceRecord, recordServiceInvoicePaymentRecord.
+4. Request creation transaction: createServiceRequestRecord.
+5. Workflow transaction: updateServiceWorkflowStatus.
 ```
 
 Keep transaction boundaries explicit when replacing raw SQL multi-step writes.
+
+## Validation result from local run
+
+Latest local report:
+
+```txt
+pnpm --filter @workspace/api-server run generate -> passed
+pnpm --filter @workspace/api-server run build    -> passed
+pnpm --filter @workspace/api-server run typecheck -> failed outside service-business files
+```
+
+The typecheck errors reported were in misc, raw-material, inventory, order stock movement, financial reports, and sales analytics files. No service-business file was reported in that run.
 
 ## Validation commands
 
