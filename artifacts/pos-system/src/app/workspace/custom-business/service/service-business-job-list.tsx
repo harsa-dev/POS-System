@@ -4,8 +4,12 @@ import { ServiceSectionCard } from "./service-business-workspace-ui";
 
 export function ServiceBusinessJobList({
   jobs,
+  onSelectJob,
+  selectedJobId,
 }: {
   jobs: readonly ServiceBusinessJob[];
+  onSelectJob?: (jobId: string) => void;
+  selectedJobId?: string | null;
 }) {
   return (
     <ServiceSectionCard
@@ -14,7 +18,12 @@ export function ServiceBusinessJobList({
     >
       <div className="space-y-4">
         {jobs.map((job) => (
-          <ServiceBusinessJobCard key={job.id} job={job} />
+          <ServiceBusinessJobCard
+            key={job.id}
+            isSelected={selectedJobId === job.id}
+            job={job}
+            onSelect={onSelectJob}
+          />
         ))}
       </div>
     </ServiceSectionCard>
