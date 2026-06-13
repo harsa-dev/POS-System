@@ -70,8 +70,8 @@ export const inventoryModePolicies: Record<SharedInventoryBusinessMode, Inventor
   },
   livestock: {
     mode: "livestock",
-    label: "Livestock",
-    description: "Inventory policy for livestock stock.",
+    label: "Raw Material / Livestock",
+    description: "Inventory policy for raw-material and livestock stock.",
     allowedTypes: LIVESTOCK_INVENTORY_TYPES,
     allowedUnits: LIVESTOCK_INVENTORY_UNITS,
     allowedMovementReasons: LIVESTOCK_STOCK_MOVEMENT_REASONS,
@@ -86,8 +86,16 @@ export function normalizeInventoryBusinessMode(mode: string): SharedInventoryBus
   const normalized = mode.toLowerCase();
 
   if (normalized === "retail") return "retail";
-  if (normalized === "service") return "service";
-  if (normalized === "livestock") return "livestock";
+  if (normalized === "service" || normalized === "custom-business") return "service";
+  if (
+    normalized === "livestock" ||
+    normalized === "raw-material" ||
+    normalized === "raw_material" ||
+    normalized === "warehouse"
+  ) {
+    return "livestock";
+  }
+
   return "restaurant";
 }
 
