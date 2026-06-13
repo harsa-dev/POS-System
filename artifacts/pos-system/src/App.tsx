@@ -26,6 +26,7 @@ const RecipesPage          = lazy(() => import("@/pages/dashboard/recipes"));
 const TablesPage           = lazy(() => import("@/pages/dashboard/tables"));
 const KDSPage              = lazy(() => import("@/pages/dashboard/kds"));
 const BusinessOverviewPage = lazy(() => import("@/pages/dashboard/overview"));
+const InternalMonitoringPage = lazy(() => import("@/pages/dashboard/platform-monitoring"));
 const AnalyticsPage        = lazy(() => import("@/pages/dashboard/analytics"));
 const CustomersPage        = lazy(() => import("@/pages/dashboard/customers"));
 const CashflowPage         = lazy(() => import("@/pages/dashboard/cashflow"));
@@ -55,6 +56,11 @@ const RestaurantMenuWorkspace = lazy(() => import("@/app/workspace/restaurant/re
 const RestaurantRecipesWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-recipes-workspace"));
 const RestaurantOrdersWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-orders-workspace"));
 const RetailWorkspace = lazy(() => import("@/app/workspace/retail/retail-workspace"));
+const RetailGrowthWorkspace = lazy(() =>
+  import("@/app/workspace/retail/retail-growth-workspace").then((module) => ({
+    default: module.RetailGrowthWorkspace,
+  })),
+);
 const RawMaterialPlaceholderWorkspace = lazy(() => import("@/app/workspace/raw-material/raw-material-placeholder-workspace"));
 
 const queryClient = new QueryClient({
@@ -218,9 +224,7 @@ function InternalNavigationBoundary() {
       const targetElement =
         targetNode instanceof Element
           ? targetNode
-          : targetNode instanceof Node
-            ? targetNode.parentElement
-            : null;
+          : null;
       const anchor = targetElement?.closest("a[href]");
       if (!anchor) return;
 
@@ -285,6 +289,13 @@ function ProtectedAppRoutes() {
           <Route path="/v3/retail/stock-opname"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="stock-opname" /></ModeProtectedRoute></Route>
           <Route path="/v3/retail/shelf-management"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="shelf-management" /></ModeProtectedRoute></Route>
           <Route path="/v3/retail/promotions"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="promotions" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/customers-loyalty"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="customers-loyalty" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/returns-exchanges"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="returns-exchanges" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/staff-shifts"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="staff-shifts" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/multi-location"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="multi-location" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/omnichannel"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="omnichannel" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/forecasting"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="forecasting" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/audit-controls"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="audit-controls" /></ModeProtectedRoute></Route>
           <Route path={ROUTES.V3_RAW_MATERIAL_INTAKE}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="intake" /></ModeProtectedRoute></Route>
           <Route path={ROUTES.V3_RAW_MATERIAL_WEIGHING}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="weighing" /></ModeProtectedRoute></Route>
           <Route path={ROUTES.V3_RAW_MATERIAL_BATCHES}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="batches" /></ModeProtectedRoute></Route>
@@ -305,6 +316,7 @@ function ProtectedAppRoutes() {
           <Route path={ROUTES.TABLES}><ModeProtectedRoute requiredMode="restaurant"><TablesPage /></ModeProtectedRoute></Route>
           <Route path={ROUTES.KDS}><ModeProtectedRoute requiredMode="restaurant"><KDSPage /></ModeProtectedRoute></Route>
           <Route path={ROUTES.BUSINESS_OVERVIEW}><BusinessOverviewPage /></Route>
+          <Route path={ROUTES.INTERNAL_MONITORING}><InternalMonitoringPage /></Route>
           <Route path={ROUTES.ANALYTICS}><AnalyticsPage /></Route>
           <Route path={ROUTES.CUSTOMERS}><CustomersPage /></Route>
           <Route path={ROUTES.CASHFLOW}><CashflowPage /></Route>
