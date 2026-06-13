@@ -1,1 +1,5 @@
-export const ordersRoutePlaceholder = true;
+import { Router } from "express";
+
+const router = Router();
+
+export default router;
