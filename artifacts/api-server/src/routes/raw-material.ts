@@ -10,9 +10,13 @@ import { ALL_ROLES } from "../lib/constants.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import {
+  createRawMaterialStorageLocation,
   createRawMaterialSupplier,
+  deactivateRawMaterialStorageLocation,
   deactivateRawMaterialSupplier,
+  listRawMaterialStorageLocations,
   listRawMaterialSuppliers,
+  updateRawMaterialStorageLocation,
   updateRawMaterialSupplier,
 } from "../services/raw-material/index.js";
 
@@ -105,6 +109,90 @@ router.delete("/raw-material/suppliers/:id", async (req, res) => {
     return successResponse(res, {
       data,
       message: "Raw material supplier deactivated.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/raw-material/storage-locations", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await listRawMaterialStorageLocations({
+      actor: getActor(user),
+      businessContext,
+      includeInactive: req.query.includeInactive === "true",
+      search: typeof req.query.search === "string" ? req.query.search : undefined,
+    });
+
+    return successResponse(res, { data });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/raw-material/storage-locations", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await createRawMaterialStorageLocation({
+      actor: getActor(user),
+      businessContext,
+      input: req.body ?? {},
+    });
+
+    return successResponse(res, {
+      data,
+      status: 201,
+      message: "Raw material storage location created.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.patch("/raw-material/storage-locations/:id", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await updateRawMaterialStorageLocation({
+      actor: getActor(user),
+      businessContext,
+      id: req.params.id,
+      input: req.body ?? {},
+    });
+
+    return successResponse(res, {
+      data,
+      message: "Raw material storage location updated.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.delete("/raw-material/storage-locations/:id", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await deactivateRawMaterialStorageLocation({
+      actor: getActor(user),
+      businessContext,
+      id: req.params.id,
+    });
+
+    return successResponse(res, {
+      data,
+      message: "Raw material storage location deactivated.",
     });
   } catch (error) {
     return handleApiError(res, error);
