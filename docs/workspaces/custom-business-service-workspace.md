@@ -4,7 +4,7 @@
 
 This workspace defines the frontend blueprint for the future Service / Custom Business mode.
 
-The Service / Custom Business mode must not copy Restaurant / F&B order logic. Restaurant workflows are built around cart, table, kitchen, serving, and order status queues. Service businesses need request intake, job planning, costing, quotation, invoice, collection, and delivery evidence.
+The Service / Custom Business mode must not copy other operational workflows. Service businesses need request intake, job planning, costing, quotation, invoice, collection, checklist, timeline, and delivery evidence.
 
 ## Scope
 
@@ -13,6 +13,10 @@ Created files:
 ```txt
 artifacts/pos-system/src/app/workspace/custom-business/custom-business-service-workspace.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-layout.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-types.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-data.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workspace-domain.ts
+docs/workspaces/custom-business-service-data-plan.md
 ```
 
 Updated route constants:
@@ -41,6 +45,22 @@ This is correct for now because the backend does not yet have service-specific e
 - service invoice linkage
 - service-specific status transition
 
+## Current frontend preview
+
+The workspace now contains hard-coded examples for:
+
+- metric cards
+- service workflow pipeline
+- service job cards
+- cost line breakdown
+- quotation subtotal, discount, tax, total, and gross profit preview
+- invoice collection progress
+- checklist
+- timeline
+- configuration draft
+
+This is not production data. It is intentionally a shape preview so the UI, workflow, and future schema direction are easier to reason about.
+
 ## Manual App route patch
 
 The GitHub update tool blocked the automatic `App.tsx` patch, so apply this manually or through Codex.
@@ -63,7 +83,7 @@ Add the protected route near the other workspace routes:
 </Route>
 ```
 
-Keep `requiredMode="custom-business"`. Do not put this route under `restaurant` mode just to make it visible faster. That would be shortcut-driven architecture, which is a polite term for future suffering.
+Keep `requiredMode="custom-business"`. Do not put this route under another mode just to make it visible faster. That would be shortcut-driven architecture, which is a polite term for future suffering.
 
 ## Activation rules
 
@@ -99,7 +119,7 @@ REQUEST_INTAKE
 
 Cancellation / rejection paths should be designed separately.
 
-Do not reuse restaurant order statuses like `PREPARING`, `READY`, or `SERVED` for service jobs.
+Do not reuse non-service workflow statuses for service jobs.
 
 ## Validation checklist
 
@@ -113,7 +133,7 @@ pnpm --filter @workspace/pos-system run build
 
 Expected result after manual App route patch:
 
-- Existing Restaurant routes still work.
+- Existing active routes still work.
 - Service workspace file compiles.
 - Route constant resolves.
 - Direct service route stays protected by `custom-business` required mode.
