@@ -3,7 +3,6 @@ import {
   getRetailProductMarginPercent,
   getRetailTransactionTotal,
   retailProducts,
-  retailPromotions,
   retailReceivings,
   retailRegisterSummary,
   retailStockCountSessions,
