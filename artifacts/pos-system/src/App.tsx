@@ -12,6 +12,7 @@ import { ModeSelector } from "@/components/core/mode-selector";
 import {
   RouteGuard,
   getStoredBusinessMode,
+  getStoredBusinessModeEntryRoute,
   type BusinessMode,
 } from "@/components/core/route-guard";
 import { authApi } from "@/lib/api";
@@ -106,7 +107,7 @@ function ProtectedRoute({
   requiredMode,
 }: {
   children: React.ReactNode;
-  requiredMode?: "fnb";
+  requiredMode?: BusinessMode;
 }) {
   const { user, isLoading } = useAuth();
 
@@ -122,19 +123,19 @@ function ModeProtectedRoute({
   requiredMode,
 }: {
   children: React.ReactNode;
-  requiredMode?: "fnb";
+  requiredMode?: BusinessMode;
 }) {
   const currentMode = getStoredBusinessMode();
 
-  if (requiredMode && currentMode !== requiredMode) {
-    return <Redirect to={ROUTES.ANALYTICS} />;
+  if (!currentMode || (requiredMode && currentMode !== requiredMode)) {
+    return <Redirect to={ROUTES.SELECT_MODE} />;
   }
 
   return <>{children}</>;
 }
 
-function getBusinessModeEntryRoute(mode: BusinessMode | null) {
-  return mode === "fnb" ? ROUTES.WORKSPACE_RESTAURANT_POS : ROUTES.ANALYTICS;
+function getBusinessModeEntryRoute() {
+  return getStoredBusinessModeEntryRoute() ?? ROUTES.SELECT_MODE;
 }
 
 function ModeSelectionRoute() {
@@ -154,7 +155,7 @@ function ModeSelectionRoute() {
 }
 
 function DashboardEntryRedirect() {
-  return <Redirect to={getBusinessModeEntryRoute(getStoredBusinessMode())} />;
+  return <Redirect to={getBusinessModeEntryRoute()} />;
 }
 
 function PageFallback() {
@@ -237,45 +238,45 @@ function ProtectedAppRoutes() {
       <Suspense fallback={<PageFallback />}>
         <Switch>
           <Route path={ROUTES.DASHBOARD}><DashboardEntryRedirect /></Route>
-          <Route path="/dashboard/checkout"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.CHECKOUT} /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/checkout"><ModeProtectedRoute requiredMode="restaurant"><Redirect to={ROUTES.CHECKOUT} /></ModeProtectedRoute></Route>
           <Route path="/dashboard/orders/:id">
-            {(params) => <ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.ORDER_DETAIL(params.id)} /></ModeProtectedRoute>}
+            {(params) => <ModeProtectedRoute requiredMode="restaurant"><Redirect to={ROUTES.ORDER_DETAIL(params.id)} /></ModeProtectedRoute>}
           </Route>
-          <Route path="/dashboard/orders"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.ORDERS} /></ModeProtectedRoute></Route>
-          <Route path="/dashboard/menu"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.MENU} /></ModeProtectedRoute></Route>
-          <Route path="/dashboard/recipes"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.RECIPES} /></ModeProtectedRoute></Route>
-          <Route path="/dashboard/tables"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.TABLES} /></ModeProtectedRoute></Route>
-          <Route path="/dashboard/kds"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.KDS} /></ModeProtectedRoute></Route>
-          <Route path="/dashboard/serving"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.SERVING} /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.WORKSPACE_RESTAURANT_POS}><ModeProtectedRoute requiredMode="fnb"><RestaurantPosWorkspace /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.WORKSPACE_RESTAURANT_KITCHEN}><ModeProtectedRoute requiredMode="fnb"><RestaurantKitchenWorkspace /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.WORKSPACE_RESTAURANT_SERVING}><ModeProtectedRoute requiredMode="fnb"><RestaurantServingWorkspace /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.WORKSPACE_RESTAURANT_TABLES}><ModeProtectedRoute requiredMode="fnb"><RestaurantTablesWorkspace /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.WORKSPACE_RESTAURANT_RECIPES}><ModeProtectedRoute requiredMode="fnb"><RestaurantRecipesWorkspace /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.WORKSPACE_RESTAURANT_MENU}><ModeProtectedRoute requiredMode="fnb"><RestaurantMenuWorkspace /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.WORKSPACE_RESTAURANT_ORDERS}><ModeProtectedRoute requiredMode="fnb"><RestaurantOrdersWorkspace /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.V3_RAW_MATERIAL_KANDANG}><RawMaterialKandangWorkspace /></Route>
+          <Route path="/dashboard/orders"><ModeProtectedRoute requiredMode="restaurant"><Redirect to={ROUTES.ORDERS} /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/menu"><ModeProtectedRoute requiredMode="restaurant"><Redirect to={ROUTES.MENU} /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/recipes"><ModeProtectedRoute requiredMode="restaurant"><Redirect to={ROUTES.RECIPES} /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/tables"><ModeProtectedRoute requiredMode="restaurant"><Redirect to={ROUTES.TABLES} /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/kds"><ModeProtectedRoute requiredMode="restaurant"><Redirect to={ROUTES.KDS} /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/serving"><ModeProtectedRoute requiredMode="restaurant"><Redirect to={ROUTES.SERVING} /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_POS}><ModeProtectedRoute requiredMode="restaurant"><RestaurantPosWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_KITCHEN}><ModeProtectedRoute requiredMode="restaurant"><RestaurantKitchenWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_SERVING}><ModeProtectedRoute requiredMode="restaurant"><RestaurantServingWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_TABLES}><ModeProtectedRoute requiredMode="restaurant"><RestaurantTablesWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_RECIPES}><ModeProtectedRoute requiredMode="restaurant"><RestaurantRecipesWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_MENU}><ModeProtectedRoute requiredMode="restaurant"><RestaurantMenuWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.WORKSPACE_RESTAURANT_ORDERS}><ModeProtectedRoute requiredMode="restaurant"><RestaurantOrdersWorkspace /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_KANDANG}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialKandangWorkspace /></ModeProtectedRoute></Route>
           <Route path={ROUTES.PAYMENTS_SUCCESS}><PaymentSuccessPage /></Route>
           <Route path={ROUTES.PAYMENTS_ERROR}><PaymentErrorPage /></Route>
-          <Route path="/dashboard/payments"><ModeProtectedRoute requiredMode="fnb"><Redirect to={ROUTES.PAYMENTS} /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.CHECKOUT}><ModeProtectedRoute requiredMode="fnb"><CheckoutPage /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.ORDERS}><ModeProtectedRoute requiredMode="fnb"><OrdersPage /></ModeProtectedRoute></Route>
+          <Route path="/dashboard/payments"><ModeProtectedRoute requiredMode="restaurant"><Redirect to={ROUTES.PAYMENTS} /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.CHECKOUT}><ModeProtectedRoute requiredMode="restaurant"><CheckoutPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.ORDERS}><ModeProtectedRoute requiredMode="restaurant"><OrdersPage /></ModeProtectedRoute></Route>
           <Route path={`${ROUTES.ORDERS}/:id`}>
-            {(params) => <ModeProtectedRoute requiredMode="fnb"><OrderDetailPage id={params.id} /></ModeProtectedRoute>}
+            {(params) => <ModeProtectedRoute requiredMode="restaurant"><OrderDetailPage id={params.id} /></ModeProtectedRoute>}
           </Route>
-          <Route path={ROUTES.MENU}><ModeProtectedRoute requiredMode="fnb"><MenuPage /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.RECIPES}><ModeProtectedRoute requiredMode="fnb"><RecipesPage /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.TABLES}><ModeProtectedRoute requiredMode="fnb"><TablesPage /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.KDS}><ModeProtectedRoute requiredMode="fnb"><KDSPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.MENU}><ModeProtectedRoute requiredMode="restaurant"><MenuPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.RECIPES}><ModeProtectedRoute requiredMode="restaurant"><RecipesPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.TABLES}><ModeProtectedRoute requiredMode="restaurant"><TablesPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.KDS}><ModeProtectedRoute requiredMode="restaurant"><KDSPage /></ModeProtectedRoute></Route>
           <Route path={ROUTES.ANALYTICS}><AnalyticsPage /></Route>
           <Route path={ROUTES.CUSTOMERS}><CustomersPage /></Route>
           <Route path={ROUTES.CASHFLOW}><CashflowPage /></Route>
           <Route path={ROUTES.FINANCIAL_REPORTS}><FinancialReportsPage /></Route>
           <Route path={ROUTES.INVOICE_GENERATOR}><InvoiceGeneratorPage /></Route>
           <Route path={ROUTES.CASHIER_SHIFT_REPORTS}><CashierShiftReportsPage /></Route>
-          <Route path={ROUTES.PAYMENTS}><ModeProtectedRoute requiredMode="fnb"><PaymentsPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.PAYMENTS}><ModeProtectedRoute requiredMode="restaurant"><PaymentsPage /></ModeProtectedRoute></Route>
           <Route path={ROUTES.INVENTORY}><InventoryPage /></Route>
-          <Route path={ROUTES.SERVING}><ModeProtectedRoute requiredMode="fnb"><ServingPage /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.SERVING}><ModeProtectedRoute requiredMode="restaurant"><ServingPage /></ModeProtectedRoute></Route>
           <Route>
             <div className="flex min-h-[40vh] items-center justify-center">
               <h1 className="text-2xl font-bold">404 - Page Not Found</h1>
