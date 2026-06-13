@@ -12,6 +12,7 @@ import {
   toSalesTransactionDto,
 } from "./sales-analytics.dto.js";
 import {
+  getSalesAnalyticsAccess,
   requireSalesAnalyticsExport,
   requireSalesAnalyticsView,
 } from "./sales-analytics.permissions.js";
@@ -28,6 +29,7 @@ import {
   listSalesTransactionRows,
 } from "./repository.js";
 import type {
+  SalesAnalyticsAccessDto,
   SalesAnalyticsActor,
   SalesAnalyticsDto,
   SalesAnalyticsExportFileDto,
@@ -81,6 +83,43 @@ function hasScopedCogsFilter(query: SalesAnalyticsQuery) {
       query.orderStatus ||
       query.q,
   );
+}
+
+function applySalesAnalyticsAccess(
+  report: Omit<SalesAnalyticsDto, "access">,
+  access: SalesAnalyticsAccessDto,
+): SalesAnalyticsDto {
+  if (access.canViewProfit) {
+    return {
+      ...report,
+      access,
+    };
+  }
+
+  return {
+    ...report,
+    summary: {
+      ...report.summary,
+      cogs: null,
+      grossProfit: null,
+      margin: null,
+      netProfit: null,
+    },
+    rows: report.rows.map((row) => ({
+      ...row,
+      cogs: null,
+      grossProfit: null,
+      margin: null,
+    })),
+    sourceHealth: {
+      ...report.sourceHealth,
+      warnings: [
+        ...report.sourceHealth.warnings,
+        "Profit metrics are hidden for your analytics role.",
+      ],
+    },
+    access,
+  };
 }
 
 function toDateLabel(date: Date) {
@@ -347,6 +386,7 @@ export async function getSalesAnalytics(params: {
 }): Promise<SalesAnalyticsDto> {
   requireSalesAnalyticsView(params.actor.role);
 
+  const access = getSalesAnalyticsAccess(params.actor.role);
   const restaurantId = params.businessContext.restaurantId;
 
   const [
@@ -389,7 +429,7 @@ export async function getSalesAnalytics(params: {
     );
   }
 
-  return {
+  const report = {
     period: toSalesAnalyticsPeriodDto(params.query.from, params.query.to),
     basis: params.query.basis,
     generatedAt: new Date().toISOString(),
@@ -409,7 +449,9 @@ export async function getSalesAnalytics(params: {
       pageSize: params.query.pageSize,
       totalRows: Number(totalRows?.totalRows ?? 0),
     }),
-  };
+  } satisfies Omit<SalesAnalyticsDto, "access">;
+
+  return applySalesAnalyticsAccess(report, access);
 }
 
 export async function getSalesAnalyticsFilterOptions(params: {

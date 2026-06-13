@@ -74,6 +74,8 @@ export type V3PermissionKey =
   | "inventory.manage"
   | "payments.manage"
   | "analytics.view"
+  | "analytics.operational-view"
+  | "analytics.profit-view"
   | "audit.view"
   | "employees.manage"
   | "attendance.manage"

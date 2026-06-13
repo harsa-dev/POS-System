@@ -84,7 +84,7 @@ export const coreModules: readonly V3ModuleMetadata[] = [
   {
     id: "analytics",
     label: "Sales Analytics",
-    description: "Shared analytics dashboard metadata for sales and operational summaries.",
+    description: "Shared analytics dashboard metadata for sales, operational summaries, and role-scoped profit visibility.",
     layer: "core",
     status: "active",
     supportedModes: allModes,
@@ -93,7 +93,7 @@ export const coreModules: readonly V3ModuleMetadata[] = [
     sidebarVisible: true,
     sidebarOrder: 10,
     workspaceOrder: 10,
-    requiredPermissions: ["analytics.view"],
+    requiredPermissions: ["analytics.operational-view"],
     featureFlags: [],
     dependencies: ["auth", "permissions"],
   },

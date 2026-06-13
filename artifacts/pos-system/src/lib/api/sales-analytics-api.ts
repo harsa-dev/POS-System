@@ -81,10 +81,10 @@ export type SalesAnalyticsSummaryDto = {
   grossRevenue: number;
   totalDiscount: number;
   totalRevenue: number;
-  cogs: number;
-  grossProfit: number;
-  margin: number;
-  netProfit: number;
+  cogs: number | null;
+  grossProfit: number | null;
+  margin: number | null;
+  netProfit: number | null;
   quantity: number;
   transactionCount: number;
   orderCount: number;
@@ -105,9 +105,9 @@ export type SalesTransactionDto = {
   grossRevenue: number;
   discount: number;
   totalRevenue: number;
-  cogs: number;
-  grossProfit: number;
-  margin: number;
+  cogs: number | null;
+  grossProfit: number | null;
+  margin: number | null;
   paymentMethod: string;
   paymentStatus: string;
   orderStatus: string;
@@ -131,6 +131,12 @@ export type SalesAnalyticsSourceHealthDto = {
   warnings: string[];
 };
 
+export type SalesAnalyticsAccessDto = {
+  canViewOperational: boolean;
+  canViewProfit: boolean;
+  canExport: boolean;
+};
+
 export type SalesAnalyticsDto = {
   period: SalesAnalyticsPeriodDto;
   basis: SalesAnalyticsBasis;
@@ -142,6 +148,7 @@ export type SalesAnalyticsDto = {
   bestSellingProducts: SalesAnalyticsDataPointDto[];
   sourceHealth: SalesAnalyticsSourceHealthDto;
   pagination: SalesAnalyticsPaginationDto;
+  access: SalesAnalyticsAccessDto;
 };
 
 export type SalesAnalyticsExportFileDto = {

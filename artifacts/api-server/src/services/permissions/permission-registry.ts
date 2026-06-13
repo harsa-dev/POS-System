@@ -32,6 +32,8 @@ export const permissionKeys = {
   shared: {
     analytics: {
       view: "shared.analytics.view",
+      operationalView: "shared.analytics.operational-view",
+      profitView: "shared.analytics.profit-view",
       export: "shared.analytics.export",
     },
     inventory: {
@@ -89,6 +91,8 @@ export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
     permissionKeys.restaurant.tables.update,
 
     permissionKeys.shared.analytics.view,
+    permissionKeys.shared.analytics.operationalView,
+    permissionKeys.shared.analytics.profitView,
     permissionKeys.shared.analytics.export,
 
     permissionKeys.shared.inventory.view,
@@ -130,6 +134,8 @@ export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
     permissionKeys.restaurant.tables.update,
 
     permissionKeys.shared.analytics.view,
+    permissionKeys.shared.analytics.operationalView,
+    permissionKeys.shared.analytics.profitView,
     permissionKeys.shared.analytics.export,
 
     permissionKeys.shared.inventory.view,
@@ -158,6 +164,9 @@ export const rolePermissionMap: Record<Role, readonly PermissionKey[]> = {
 
     permissionKeys.restaurant.payments.view,
     permissionKeys.restaurant.payments.create,
+
+    permissionKeys.shared.analytics.view,
+    permissionKeys.shared.analytics.operationalView,
 
     permissionKeys.shared.cashflow.view,
     permissionKeys.shared.cashflow.sync,

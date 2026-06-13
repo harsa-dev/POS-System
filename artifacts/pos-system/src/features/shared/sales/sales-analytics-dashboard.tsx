@@ -123,6 +123,18 @@ function formatStatusLabel(value: string) {
     .join(" ");
 }
 
+function formatMaybeCurrency(value: number | null | undefined) {
+  if (value === null || value === undefined) return "Restricted";
+
+  return formatCurrency(value);
+}
+
+function formatMaybePercentage(value: number | null | undefined) {
+  if (value === null || value === undefined) return "Restricted";
+
+  return `${value.toFixed(1)}%`;
+}
+
 function getStatusTone(status: string): DashboardTone {
   const normalized = status.toUpperCase();
 
@@ -464,6 +476,23 @@ export function SalesAnalyticsDashboard() {
 
   const rows = report?.rows ?? [];
   const summary = report?.summary ?? emptySummary;
+  const access = report?.access ?? {
+    canViewOperational: false,
+    canViewProfit: false,
+    canExport: false,
+  };
+  const canViewProfit = access.canViewProfit;
+  const canExportReport = access.canExport;
+
+  const visibleSortableKeys = useMemo(
+    () =>
+      canViewProfit
+        ? [...salesAnalyticsSortKeys]
+        : salesAnalyticsSortKeys.filter(
+            (key) => key !== "grossProfit" && key !== "margin",
+          ),
+    [canViewProfit],
+  );
 
   const productOptions = useMemo(
     () => [
@@ -513,29 +542,32 @@ export function SalesAnalyticsDashboard() {
     setRefreshToken((value) => value + 1);
   }, []);
 
-  const handleSortChange = useCallback((nextSortBy: string) => {
-    if (!salesAnalyticsSortKeys.includes(nextSortBy as SalesAnalyticsSortKey)) {
-      return;
-    }
-
-    const typedSortBy = nextSortBy as SalesAnalyticsSortKey;
-
-    setPage(1);
-    setSortBy((currentSortBy) => {
-      if (currentSortBy === typedSortBy) {
-        setSortDirection((currentDirection) =>
-          currentDirection === "asc" ? "desc" : "asc",
-        );
-        return currentSortBy;
+  const handleSortChange = useCallback(
+    (nextSortBy: string) => {
+      if (!visibleSortableKeys.includes(nextSortBy as SalesAnalyticsSortKey)) {
+        return;
       }
 
-      setSortDirection("desc");
-      return typedSortBy;
-    });
-  }, []);
+      const typedSortBy = nextSortBy as SalesAnalyticsSortKey;
+
+      setPage(1);
+      setSortBy((currentSortBy) => {
+        if (currentSortBy === typedSortBy) {
+          setSortDirection((currentDirection) =>
+            currentDirection === "asc" ? "desc" : "asc",
+          );
+          return currentSortBy;
+        }
+
+        setSortDirection("desc");
+        return typedSortBy;
+      });
+    },
+    [visibleSortableKeys],
+  );
 
   const handleExport = useCallback(async () => {
-    if (!report) return;
+    if (!report || !canExportReport) return;
 
     setIsExporting(true);
     setExportErrorMessage(null);
@@ -556,7 +588,7 @@ export function SalesAnalyticsDashboard() {
     } finally {
       setIsExporting(false);
     }
-  }, [query, report]);
+  }, [canExportReport, query, report]);
 
   const salesColumns: DataTableColumn<SalesTransactionDto>[] = [
     {
@@ -616,19 +648,29 @@ export function SalesAnalyticsDashboard() {
       sortable: true,
       cell: (row) => <span className="font-medium">{formatCurrency(row.totalRevenue)}</span>,
     },
-    { key: "cogs", header: "COGS / HPP", cell: (row) => formatCurrency(row.cogs) },
-    {
-      key: "grossProfit",
-      header: "Gross Profit",
-      sortable: true,
-      cell: (row) => <span className="font-medium">{formatCurrency(row.grossProfit)}</span>,
-    },
-    {
-      key: "margin",
-      header: "Margin",
-      sortable: true,
-      cell: (row) => `${row.margin.toFixed(1)}%`,
-    },
+    ...(canViewProfit
+      ? ([
+          {
+            key: "cogs",
+            header: "COGS / HPP",
+            cell: (row) => formatMaybeCurrency(row.cogs),
+          },
+          {
+            key: "grossProfit",
+            header: "Gross Profit",
+            sortable: true,
+            cell: (row) => (
+              <span className="font-medium">{formatMaybeCurrency(row.grossProfit)}</span>
+            ),
+          },
+          {
+            key: "margin",
+            header: "Margin",
+            sortable: true,
+            cell: (row) => formatMaybePercentage(row.margin),
+          },
+        ] satisfies DataTableColumn<SalesTransactionDto>[])
+      : []),
     {
       key: "actions",
       header: "Actions",
@@ -656,7 +698,7 @@ export function SalesAnalyticsDashboard() {
   return (
     <DashboardShell
       title="Sales Analytics"
-      description="Track revenue, profit, receivables, COGS, product performance, and marketing insight from backend POS sales data."
+      description="Track role-scoped backend sales analytics, operational summaries, product performance, and profit metrics when permitted."
     >
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <StatCard
@@ -673,20 +715,41 @@ export function SalesAnalyticsDashboard() {
           icon={TrendingUp}
           tone="green"
         />
-        <StatCard
-          label="Margin"
-          value={`${summary.margin.toFixed(1)}%`}
-          note="Revenue minus COGS"
-          icon={BarChart3}
-          tone="amber"
-        />
-        <StatCard
-          label="Net Profit"
-          value={formatCurrency(summary.netProfit)}
-          note="Backend-calculated gross profit"
-          icon={Banknote}
-          tone="rose"
-        />
+        {canViewProfit ? (
+          <>
+            <StatCard
+              label="Margin"
+              value={formatMaybePercentage(summary.margin)}
+              note="Revenue minus COGS"
+              icon={BarChart3}
+              tone="amber"
+            />
+            <StatCard
+              label="Net Profit"
+              value={formatMaybeCurrency(summary.netProfit)}
+              note="Backend-calculated gross profit"
+              icon={Banknote}
+              tone="rose"
+            />
+          </>
+        ) : (
+          <>
+            <StatCard
+              label="Transactions"
+              value={formatNumber(summary.transactionCount)}
+              note="Operational analytics view"
+              icon={BarChart3}
+              tone="amber"
+            />
+            <StatCard
+              label="Average Order Value"
+              value={formatCurrency(summary.averageOrderValue)}
+              note="Profit metrics are restricted"
+              icon={Banknote}
+              tone="rose"
+            />
+          </>
+        )}
         <StatCard
           label="Total Quantity Sold"
           value={formatNumber(summary.quantity)}
@@ -750,8 +813,17 @@ export function SalesAnalyticsDashboard() {
               >
                 Add Data
               </DashboardActionButton>
-              <DashboardActionButton icon={Eye} onClick={() => setMode("Sales Table")}>
-                View Profit
+              <DashboardActionButton
+                icon={Eye}
+                onClick={() => setMode("Sales Table")}
+                disabled={!canViewProfit}
+                title={
+                  canViewProfit
+                    ? undefined
+                    : "Profit metrics are restricted for your analytics role."
+                }
+              >
+                {canViewProfit ? "View Profit" : "Profit Restricted"}
               </DashboardActionButton>
               <DashboardActionButton
                 icon={Megaphone}
@@ -772,7 +844,12 @@ export function SalesAnalyticsDashboard() {
               <DashboardActionButton
                 icon={Download}
                 onClick={handleExport}
-                disabled={!report || isLoading || isExporting}
+                disabled={!report || !canExportReport || isLoading || isExporting}
+                title={
+                  canExportReport
+                    ? undefined
+                    : "Export is restricted to profit analytics roles."
+                }
               >
                 {isExporting ? "Exporting..." : "Export CSV"}
               </DashboardActionButton>
@@ -872,7 +949,7 @@ export function SalesAnalyticsDashboard() {
             columns={salesColumns}
             data={rows}
             getRowKey={(row) => row.id}
-            minWidth={1680}
+            minWidth={canViewProfit ? 1680 : 1380}
             emptyMessage={
               isLoading
                 ? "Loading backend sales rows..."
@@ -894,7 +971,7 @@ export function SalesAnalyticsDashboard() {
               sortBy,
               sortDirection,
               onSortChange: handleSortChange,
-              sortableKeys: [...salesAnalyticsSortKeys],
+              sortableKeys: visibleSortableKeys,
             }}
           />
         </DashboardPanel>

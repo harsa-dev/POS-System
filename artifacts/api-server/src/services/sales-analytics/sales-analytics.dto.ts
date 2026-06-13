@@ -33,10 +33,7 @@ function safeMargin(profit: number, revenue: number) {
   return roundRatio((profit / revenue) * 100);
 }
 
-export function toSalesAnalyticsPeriodDto(
-  from: Date,
-  to: Date,
-): SalesAnalyticsPeriodDto {
+export function toSalesAnalyticsPeriodDto(from: Date, to: Date): SalesAnalyticsPeriodDto {
   const fromIso = from.toISOString();
   const toIso = to.toISOString();
 
@@ -71,15 +68,12 @@ export function toSalesAnalyticsSummaryDto(params: {
     quantity,
     transactionCount,
     orderCount,
-    averageOrderValue:
-      orderCount > 0 ? roundCurrency(totalRevenue / orderCount) : 0,
+    averageOrderValue: orderCount > 0 ? roundCurrency(totalRevenue / orderCount) : 0,
     receivables: roundCurrency(params.receivables ?? 0),
   };
 }
 
-export function toSalesAnalyticsDataPoint(
-  row: SalesTrendRow,
-): SalesAnalyticsDataPointDto {
+export function toSalesAnalyticsDataPoint(row: SalesTrendRow): SalesAnalyticsDataPointDto {
   const revenue = roundCurrency(toNumber(row.revenue));
   const quantity = toNumber(row.quantity);
   const orderCount = toNumber(row.orderCount);
@@ -114,10 +108,7 @@ export function toSalesTransactionDto(
 ): SalesTransactionDto {
   const totalRevenue = roundCurrency(row.totalRevenue);
   const orderSubtotal = row.orderSubtotal > 0 ? row.orderSubtotal : totalRevenue;
-  const allocatedCogs =
-    orderSubtotal > 0
-      ? roundCurrency(orderCogs * (totalRevenue / orderSubtotal))
-      : 0;
+  const allocatedCogs = orderSubtotal > 0 ? roundCurrency(orderCogs * (totalRevenue / orderSubtotal)) : 0;
   const grossProfit = totalRevenue - allocatedCogs;
 
   return {
@@ -151,32 +142,20 @@ export function toSalesAnalyticsSourceHealthDto(
     paidPayments: toNumber(row?.paidPayments),
     stockMovements: toNumber(row?.stockMovements),
     ordersWithoutPayment: toNumber(row?.ordersWithoutPayment),
-    stockMovementsMissingCostSnapshot: toNumber(
-      row?.stockMovementsMissingCostSnapshot,
-    ),
-    stockMovementsWithoutOrderSource: toNumber(
-      row?.stockMovementsWithoutOrderSource,
-    ),
+    stockMovementsMissingCostSnapshot: toNumber(row?.stockMovementsMissingCostSnapshot),
+    stockMovementsWithoutOrderSource: toNumber(row?.stockMovementsWithoutOrderSource),
   };
 
   const warnings: string[] = [];
-  if (
-    healthWithoutWarnings.paidOrders > 0 &&
-    healthWithoutWarnings.orderItems === 0
-  ) {
+  if (healthWithoutWarnings.paidOrders > 0 && healthWithoutWarnings.orderItems === 0) {
     warnings.push("Paid orders exist without order item rows.");
   }
-
   if (healthWithoutWarnings.ordersWithoutPayment > 0) {
     warnings.push("Some paid lifecycle orders have no paid payment row.");
   }
-
   if (healthWithoutWarnings.stockMovementsMissingCostSnapshot > 0) {
-    warnings.push(
-      "Some stock movements are missing cost snapshots, so COGS may be understated.",
-    );
+    warnings.push("Some stock movements are missing cost snapshots, so COGS may be understated.");
   }
-
   if (healthWithoutWarnings.stockMovementsWithoutOrderSource > 0) {
     warnings.push(
       "Some recipe usage stock movements are not linked to orders, so allocated COGS may be understated.",
