@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "../../lib/prisma.js";
@@ -141,7 +143,7 @@ export async function updateRetailReceivingStatusWithDelegate(
           "changes",
           "createdAt"
         ) VALUES (
-          ${crypto.randomUUID()},
+          ${randomUUID()},
           ${input.scope.businessId},
           ${input.actor.id},
           'UPDATE',
