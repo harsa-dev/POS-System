@@ -19,6 +19,8 @@ const legacyBusinessModeMap = {
   warehouse: "raw-material",
 } as const satisfies Record<string, BusinessModeId>;
 
+type LegacyBusinessModeId = keyof typeof legacyBusinessModeMap;
+
 type NormalizedBusinessMode = Readonly<{
   mode: BusinessModeId | null;
   wasLegacy: boolean;
@@ -42,6 +44,10 @@ function getBrowserWindow(): Window | null {
   return window;
 }
 
+function isLegacyBusinessModeId(value: string): value is LegacyBusinessModeId {
+  return Object.prototype.hasOwnProperty.call(legacyBusinessModeMap, value);
+}
+
 function normalizeStoredBusinessMode(value: string | null): NormalizedBusinessMode {
   const normalizedMode = normalizeBusinessModeId(value);
 
@@ -52,7 +58,7 @@ function normalizeStoredBusinessMode(value: string | null): NormalizedBusinessMo
     };
   }
 
-  if (value && value in legacyBusinessModeMap) {
+  if (value && isLegacyBusinessModeId(value)) {
     return {
       mode: legacyBusinessModeMap[value],
       wasLegacy: true,
