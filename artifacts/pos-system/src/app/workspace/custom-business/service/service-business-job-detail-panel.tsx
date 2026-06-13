@@ -1,6 +1,8 @@
 import { X } from "lucide-react";
 
 import { ServiceBusinessActionRail } from "./service-business-action-rail";
+import { ServiceBusinessActivityFeed } from "./service-business-activity-feed";
+import { getServiceBusinessActivityPreview } from "./service-business-activity-preview";
 import { mapServiceJobToViewModel } from "./service-business-view-model";
 import {
   getServicePriorityTone,
@@ -19,6 +21,7 @@ export function ServiceBusinessJobDetailPanel({
   if (!job) return null;
 
   const viewModel = mapServiceJobToViewModel(job);
+  const activityEvents = getServiceBusinessActivityPreview(job);
 
   return (
     <ServiceSectionCard
@@ -127,6 +130,10 @@ export function ServiceBusinessJobDetailPanel({
               </li>
             ))}
           </ul>
+        </div>
+
+        <div className="mt-5">
+          <ServiceBusinessActivityFeed events={activityEvents} />
         </div>
       </div>
     </ServiceSectionCard>
