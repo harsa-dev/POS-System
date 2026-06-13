@@ -1,3 +1,5 @@
+import "./sync-retail-prisma-schema.ts";
+
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -82,7 +84,7 @@ function patchModel(schema: string, modelName: string, relations: string) {
   const modelMatch = schema.match(modelPattern);
 
   if (!modelMatch) {
-    throw new Error(`Could not find model ${modelName} in schema.prisma.`);
+    throw new Error(`Could not find model ${modelName} in schema.prisma. The base Retail schema sync should have created it first.`);
   }
 
   const patchedModel = insertRelations(modelMatch[0], relations);
@@ -95,7 +97,7 @@ function patchReturnModels(schema: string) {
   }
 
   if (!schema.includes("model RetailStockMovement")) {
-    throw new Error("Could not find RetailStockMovement insertion point. Run retail:schema:sync base model sync first.");
+    throw new Error("Could not find RetailStockMovement insertion point. Run the base Retail schema sync first.");
   }
 
   return schema.replace("model RetailStockMovement", `${RETURN_MODELS}\n\nmodel RetailStockMovement`);
