@@ -25,6 +25,7 @@ const RecipesPage          = lazy(() => import("@/pages/dashboard/recipes"));
 const TablesPage           = lazy(() => import("@/pages/dashboard/tables"));
 const KDSPage              = lazy(() => import("@/pages/dashboard/kds"));
 const BusinessOverviewPage = lazy(() => import("@/pages/dashboard/overview"));
+const InternalMonitoringPage = lazy(() => import("@/pages/dashboard/platform-monitoring"));
 const AnalyticsPage        = lazy(() => import("@/pages/dashboard/analytics"));
 const CustomersPage        = lazy(() => import("@/pages/dashboard/customers"));
 const CashflowPage         = lazy(() => import("@/pages/dashboard/cashflow"));
@@ -304,6 +305,7 @@ function ProtectedAppRoutes() {
           <Route path={ROUTES.TABLES}><ModeProtectedRoute requiredMode="restaurant"><TablesPage /></ModeProtectedRoute></Route>
           <Route path={ROUTES.KDS}><ModeProtectedRoute requiredMode="restaurant"><KDSPage /></ModeProtectedRoute></Route>
           <Route path={ROUTES.BUSINESS_OVERVIEW}><BusinessOverviewPage /></Route>
+          <Route path={ROUTES.INTERNAL_MONITORING}><InternalMonitoringPage /></Route>
           <Route path={ROUTES.ANALYTICS}><AnalyticsPage /></Route>
           <Route path={ROUTES.CUSTOMERS}><CustomersPage /></Route>
           <Route path={ROUTES.CASHFLOW}><CashflowPage /></Route>
