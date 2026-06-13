@@ -5,6 +5,8 @@ export type BusinessMode = "restaurant" | "retail" | "service" | "livestock" | "
 export type BusinessContext<TBusiness = unknown> = {
   /** Generic tenant/business scope used by every business mode. */
   businessId: string;
+  /** Legacy restaurant-scoped services still read this while migrating to businessId. */
+  restaurantId: string;
   businessType: BusinessType;
   businessMode: BusinessMode;
   businessName: string;
