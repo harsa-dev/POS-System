@@ -14,6 +14,8 @@ import {
   type RetailGrowthRow,
 } from "@/features/retail/core-system";
 
+import { RetailCommandCenterPanel } from "./retail-command-center-panel";
+
 const rowTone: Record<RetailGrowthRow["status"], string> = {
   healthy: "border-emerald-200 bg-emerald-50 text-emerald-700",
   review: "border-amber-200 bg-amber-50 text-amber-700",
@@ -64,6 +66,8 @@ export function RetailGrowthWorkspace({ moduleId }: RetailGrowthWorkspaceProps) 
           </p>
         </div>
       </div>
+
+      <RetailCommandCenterPanel />
 
       <div className="grid gap-4 md:grid-cols-3">
         {module.metrics.map((metric) => (
