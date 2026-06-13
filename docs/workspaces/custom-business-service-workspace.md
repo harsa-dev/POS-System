@@ -20,6 +20,7 @@ artifacts/pos-system/src/app/workspace/custom-business/service/service-business-
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-empty-state.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-placeholder-panel.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-view-model.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-status-transitions.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-transition-requirements.ts
@@ -37,6 +38,7 @@ artifacts/pos-system/src/app/workspace/custom-business/service/service-business-
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-permissions.ts
 docs/workspaces/custom-business-service-data-plan.md
 docs/workspaces/custom-business-service-api-contract.md
+docs/workspaces/custom-business-service-test-plan.md
 ```
 
 Updated route constants:
@@ -83,7 +85,8 @@ The workspace now contains hard-coded examples for:
 - timeline
 - configuration draft
 - permission map draft
-- API contract draft
+- typed API contract draft
+- test plan draft
 - search and filter controls
 - tabbed read-only sections
 - empty state
@@ -173,15 +176,35 @@ Examples:
 
 These checks are UI preview only. Backend validation must still enforce the real rules later.
 
-## API placeholder
+## API placeholder and contract types
 
-The file below exists only as a future API seam:
+The files below exist only as future API seams:
 
 ```txt
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts
 ```
 
-Every function intentionally throws `not implemented` because backend routes are not ready yet.
+Every API function intentionally throws `not implemented` because backend routes are not ready yet. The signatures are typed so the future backend contract has a target shape.
+
+## Test plan
+
+Manual test plan:
+
+```txt
+docs/workspaces/custom-business-service-test-plan.md
+```
+
+The test plan covers:
+
+- build checks
+- search and filter behavior
+- tab behavior
+- selected job detail behavior
+- action rail behavior
+- transition requirement preview
+- API placeholder behavior
+- scope safety checks
 
 ## Manual App route patch
 
