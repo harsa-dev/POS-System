@@ -101,7 +101,9 @@ export function assertRawMaterialProcessingStatusTransition(params: {
   currentStatus: RawMaterialProcessingStatus;
   nextStatus: RawMaterialProcessingStatus;
 }) {
-  if (processingTransitions[params.currentStatus].includes(params.nextStatus)) return;
+  const allowedStatuses = processingTransitions[params.currentStatus] as readonly RawMaterialProcessingStatus[];
+
+  if (allowedStatuses.includes(params.nextStatus)) return;
 
   rawMaterialWorkflowError("Invalid raw material processing status transition.", params);
 }
