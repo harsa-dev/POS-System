@@ -1,5 +1,11 @@
-import { EmployeeContractsDashboard } from "@/features/shared/workforce-operations/workforce-operations-dashboards";
+import * as WorkforceExtras from "@/features/shared/workforce-operations/workforce-operation-extras";
+import * as WorkforceDashboards from "@/features/shared/workforce-operations/workforce-operations-dashboards";
 
 export default function EmployeeContractsPage() {
-  return <EmployeeContractsDashboard />;
+  return (
+    <>
+      <WorkforceDashboards.EmployeeContractsDashboard />
+      <WorkforceExtras.EmployeeContractsExtras />
+    </>
+  );
 }
