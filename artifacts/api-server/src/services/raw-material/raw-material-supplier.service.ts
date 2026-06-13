@@ -67,7 +67,7 @@ async function assertSupplierNameAvailable(params: {
   const duplicate = await prisma.rawMaterialSupplier.findFirst({
     where: {
       businessId: params.businessContext.businessId,
-      name,
+      name: params.name,
       ...(params.excludeId ? { id: { not: params.excludeId } } : {}),
     },
     select: { id: true },
@@ -79,7 +79,7 @@ async function assertSupplierNameAvailable(params: {
     statusCode: 409,
     code: errorCodes.conflict,
     message: "Raw material supplier name already exists.",
-    details: { name },
+    details: { name: params.name },
   });
 }
 
