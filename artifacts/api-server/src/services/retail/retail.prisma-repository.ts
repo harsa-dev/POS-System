@@ -11,6 +11,16 @@ import type {
   RetailSupplierDto,
 } from "./retail.types.js";
 
+type DecimalLike = number | string | { toString(): string };
+
+type RetailProductDelegateRow = Omit<RetailProductDto, "price" | "cost" | "taxRatePercent" | "status"> & {
+  price: DecimalLike;
+  cost: DecimalLike;
+  taxRatePercent: DecimalLike;
+};
+
+type RetailSupplierDelegateRow = RetailSupplierDto;
+
 type RetailProductRow = Omit<RetailProductDto, "status"> & {
   status: RetailProductDto["status"];
 };
@@ -40,6 +50,21 @@ type ProductLockRow = {
   currentStock: number;
 };
 
+type RetailProductDelegate = {
+  findMany(args: Record<string, unknown>): Promise<RetailProductDelegateRow[]>;
+};
+
+type RetailSupplierDelegate = {
+  findMany(args: Record<string, unknown>): Promise<RetailSupplierDelegateRow[]>;
+};
+
+type RetailDelegateClient = typeof prisma & {
+  retailProduct: RetailProductDelegate;
+  retailSupplier: RetailSupplierDelegate;
+};
+
+const retailDb = prisma as unknown as RetailDelegateClient;
+
 function createId() {
   return randomUUID();
 }
@@ -57,44 +82,83 @@ function normalizePaymentAccount(method: string) {
   return ["CASH", "QRIS", "CARD", "TRANSFER"].includes(upper) ? upper : "OTHER";
 }
 
+function toNumber(value: DecimalLike) {
+  return typeof value === "number" ? value : Number(value.toString());
+}
+
+function getStockStatus(product: Pick<RetailProductDelegateRow, "currentStock" | "reorderPoint">): RetailProductDto["status"] {
+  if (product.currentStock <= 0) return "out-of-stock";
+  if (product.currentStock <= product.reorderPoint) return "low-stock";
+  return "in-stock";
+}
+
+function toRetailProductDto(product: RetailProductDelegateRow): RetailProductDto {
+  return {
+    id: product.id,
+    sku: product.sku,
+    barcode: product.barcode,
+    name: product.name,
+    brand: product.brand,
+    category: product.category,
+    unit: product.unit,
+    price: toNumber(product.price),
+    cost: toNumber(product.cost),
+    taxRatePercent: toNumber(product.taxRatePercent),
+    currentStock: product.currentStock,
+    reorderPoint: product.reorderPoint,
+    shelfLocation: product.shelfLocation,
+    supplierId: product.supplierId,
+    status: getStockStatus(product),
+  };
+}
+
 export const retailPrismaRepository = {
   async listProducts(scope) {
-    return prisma.$queryRaw<RetailProductRow[]>(Prisma.sql`
-      SELECT
-        "id",
-        "sku",
-        "barcode",
-        "name",
-        "brand",
-        "category",
-        "unit",
-        "price",
-        "cost",
-        "taxRatePercent",
-        "currentStock",
-        "reorderPoint",
-        "shelfLocation",
-        "supplierId",
-        CASE
-          WHEN "currentStock" <= 0 THEN 'out-of-stock'
-          WHEN "currentStock" <= "reorderPoint" THEN 'low-stock'
-          ELSE 'in-stock'
-        END AS "status"
-      FROM "RetailProduct"
-      WHERE "businessId" = ${scope.businessId}
-        AND "isActive" = TRUE
-      ORDER BY "name" ASC
-    `);
+    const products = await retailDb.retailProduct.findMany({
+      where: {
+        businessId: scope.businessId,
+        isActive: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+      select: {
+        id: true,
+        sku: true,
+        barcode: true,
+        name: true,
+        brand: true,
+        category: true,
+        unit: true,
+        price: true,
+        cost: true,
+        taxRatePercent: true,
+        currentStock: true,
+        reorderPoint: true,
+        shelfLocation: true,
+        supplierId: true,
+      },
+    });
+
+    return products.map(toRetailProductDto);
   },
 
   async listSuppliers(scope) {
-    return prisma.$queryRaw<RetailSupplierDto[]>(Prisma.sql`
-      SELECT "id", "name", "leadTimeDays", "reliabilityScore"
-      FROM "RetailSupplier"
-      WHERE "businessId" = ${scope.businessId}
-        AND "isActive" = TRUE
-      ORDER BY "name" ASC
-    `);
+    return retailDb.retailSupplier.findMany({
+      where: {
+        businessId: scope.businessId,
+        isActive: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+      select: {
+        id: true,
+        name: true,
+        leadTimeDays: true,
+        reliabilityScore: true,
+      },
+    });
   },
 
   async listReceivingQueue(scope) {
@@ -213,22 +277,46 @@ export const retailPrismaRepository = {
   },
 
   async getInventoryRisks(scope) {
-    return prisma.$queryRaw<RetailInventoryRiskDto[]>(Prisma.sql`
-      SELECT
-        "id" AS "productId",
-        "sku",
-        "name",
-        "currentStock",
-        "reorderPoint",
-        GREATEST(("reorderPoint" * 2) - "currentStock", "reorderPoint") AS "suggestedOrderQty",
-        GREATEST(("reorderPoint" * 2) - "currentStock", "reorderPoint") * "cost" AS "estimatedCost",
-        "supplierId"
-      FROM "RetailProduct"
-      WHERE "businessId" = ${scope.businessId}
-        AND "isActive" = TRUE
-        AND "currentStock" <= "reorderPoint"
-      ORDER BY "currentStock" ASC, "name" ASC
-    `);
+    const products = await retailDb.retailProduct.findMany({
+      where: {
+        businessId: scope.businessId,
+        isActive: true,
+      },
+      orderBy: [
+        {
+          currentStock: "asc",
+        },
+        {
+          name: "asc",
+        },
+      ],
+      select: {
+        id: true,
+        sku: true,
+        name: true,
+        cost: true,
+        currentStock: true,
+        reorderPoint: true,
+        supplierId: true,
+      },
+    });
+
+    return products
+      .filter((product) => product.currentStock <= product.reorderPoint)
+      .map<RetailInventoryRiskDto>((product) => {
+        const suggestedOrderQty = Math.max(product.reorderPoint * 2 - product.currentStock, product.reorderPoint);
+
+        return {
+          productId: product.id,
+          sku: product.sku,
+          name: product.name,
+          currentStock: product.currentStock,
+          reorderPoint: product.reorderPoint,
+          suggestedOrderQty,
+          estimatedCost: suggestedOrderQty * toNumber(product.cost),
+          supplierId: product.supplierId,
+        };
+      });
   },
 
   async createSale(input: RetailCreateSaleInput): Promise<RetailPersistedCheckoutDto> {
