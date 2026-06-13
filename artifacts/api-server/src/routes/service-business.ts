@@ -18,6 +18,7 @@ import {
   updateServiceBusinessStatusDirect,
   type ServiceBusinessResult,
 } from "../features/service-business/service-business.crud.service.js";
+import { getServiceBusinessDashboardSummary } from "../features/service-business/service-business.summary.js";
 import {
   SERVICE_BUSINESS_PERMISSIONS,
   requireServiceBusinessPermission,
@@ -142,6 +143,21 @@ router.get("/custom-business/service/jobs", async (req, res) => {
     const presented = presentServiceJobList(jobs);
 
     return successResponse(res, presented);
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/custom-business/service/summary", async (req, res) => {
+  try {
+    const context = await getServiceRequestContext(req, res, SERVICE_BUSINESS_PERMISSIONS.view);
+    if (!context) return;
+
+    const summary = await getServiceBusinessDashboardSummary(context.businessId);
+
+    return successResponse(res, {
+      data: summary,
+    });
   } catch (error) {
     return handleApiError(res, error);
   }
