@@ -152,3 +152,27 @@ export type RawMaterialContractReadiness = Readonly<{
   hasWriteContract: boolean;
   readinessLabel: "preview-only" | "read-ready" | "write-planned";
 }>;
+
+export type RawMaterialBusinessScale = "small" | "medium" | "factory";
+
+export type RawMaterialScaleFeatureStatus = "available" | "new-dummy" | "future-production";
+
+export type RawMaterialScaleFeature = Readonly<{
+  id: string;
+  scale: RawMaterialBusinessScale;
+  title: string;
+  dashboardArea: string;
+  purpose: string;
+  whyItMatters: string;
+  status: RawMaterialScaleFeatureStatus;
+  dummyMetric: string;
+}>;
+
+export type RawMaterialScaleProfile = Readonly<{
+  scale: RawMaterialBusinessScale;
+  label: string;
+  businessShape: string;
+  operatingStyle: string;
+  mustHaveFocus: readonly string[];
+  dashboardGoal: string;
+}>;
