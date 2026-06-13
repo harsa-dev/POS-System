@@ -96,12 +96,23 @@ function getSkippedRows(label: string, replacement: string): RetailSharedDashboa
   ];
 }
 
+function getPreviewProductIds(input: RetailSalePreviewInput) {
+  return new Set(input.lines.map((line) => line.productId).filter(Boolean));
+}
+
 async function previewSale(scope: RetailBusinessScope, input: RetailSalePreviewInput): Promise<RetailSalePreviewDto> {
   const blockedReasons: string[] = [];
   const lines: RetailSaleLinePreviewDto[] = [];
+  const requestedProductIds = getPreviewProductIds(input);
+  const products = await retailRepository.listProducts(scope);
+  const productById = new Map(
+    products
+      .filter((product) => requestedProductIds.has(product.id))
+      .map((product) => [product.id, product]),
+  );
 
   for (const line of input.lines) {
-    const product = await retailRepository.findProductById(scope, line.productId);
+    const product = productById.get(line.productId);
 
     if (!product) {
       blockedReasons.push(`Product ${line.productId} was not found.`);
