@@ -5,21 +5,22 @@ export type {
 } from "./business-context.types.js";
 
 export {
-  createRestaurantBusinessContext,
+  createBusinessContext,
   getBusinessContextForRequest,
   getBusinessContextForUser,
-  getRestaurantForUser,
+  getBusinessForUser,
   requireBusinessContextForRequest,
   requireBusinessContextForUser,
-  requireRestaurantForUser,
-  type RestaurantBusinessContext,
-  type RestaurantScopedUser,
-} from "./get-restaurant-for-user.js";
+  requireBusinessForUser,
+  type BusinessScopedUser,
+  type BusinessWithModeProfile,
+  type ResolvedBusinessContext,
+} from "./get-business-for-user.js";
 
 export {
-  createRestaurantIdWhere,
-  createRestaurantScopeWhere,
-  getLegacyRestaurantIdFromBusiness,
+  createBusinessIdWhere,
+  createBusinessScopeWhere,
+  getBusinessIdFromScope,
 } from "./business-scope.js";
 
 export {
@@ -30,5 +31,3 @@ export {
   requireBusinessMode,
   type ApiBusinessMode,
 } from "./requested-business-mode.js";
-
-export { resolveBusinessIdFromRestaurant } from "./resolve-business-id.js";
