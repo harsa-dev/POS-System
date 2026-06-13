@@ -1,11 +1,13 @@
 import type { Role } from "@prisma/client";
 import { Router } from "express";
 
-import { requireRole } from "../lib/auth.js";
 import { requireBusinessContextForRequest, requireBusinessMode } from "../lib/business-context/index.js";
-import { ALL_ROLES } from "../lib/constants.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { successResponse } from "../lib/responses/success-response.js";
+import {
+  RAW_MATERIAL_PERMISSIONS,
+  requireRawMaterialPermission,
+} from "../services/raw-material/raw-material.permissions.js";
 import {
   cancelRawMaterialProcessingRun,
   createRawMaterialProcessingRun,
@@ -23,7 +25,7 @@ function getActor(user: { id: string; role: Role }) {
 
 router.get("/raw-material/processing-runs", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.view);
     if (!user) return;
     const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await listRawMaterialProcessingRuns({
@@ -41,7 +43,7 @@ router.get("/raw-material/processing-runs", async (req, res) => {
 
 router.post("/raw-material/processing-runs", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.processingManage);
     if (!user) return;
     const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await createRawMaterialProcessingRun({
@@ -57,7 +59,7 @@ router.post("/raw-material/processing-runs", async (req, res) => {
 
 router.patch("/raw-material/processing-runs/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.processingManage);
     if (!user) return;
     const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await updateRawMaterialProcessingRun({
@@ -74,7 +76,7 @@ router.patch("/raw-material/processing-runs/:id", async (req, res) => {
 
 router.post("/raw-material/processing-runs/:id/cancel", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.processingManage);
     if (!user) return;
     const businessContext = await requireBusinessContextForRequest(req, user);
     const data = await cancelRawMaterialProcessingRun({
