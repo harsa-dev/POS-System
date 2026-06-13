@@ -36,7 +36,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RetailObjectResponse"
+                $ref: "#/components/schemas/RetailDashboardResponse"
   /retail/products:
     get:
       operationId: retailListProducts
@@ -79,7 +79,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RetailObjectResponse"
+                $ref: "#/components/schemas/RetailBarcodeLookupResponse"
   /retail/inventory/risks:
     get:
       operationId: retailGetInventoryRisks
@@ -91,7 +91,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RetailArrayResponse"
+                $ref: "#/components/schemas/RetailInventoryRisksResponse"
   /retail/receiving:
     get:
       operationId: retailGetReceivingQueue
@@ -103,7 +103,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RetailArrayResponse"
+                $ref: "#/components/schemas/RetailReceivingQueueResponse"
   /retail/shared-dashboard/{dashboardId}:
     get:
       operationId: retailGetSharedDashboard
@@ -121,7 +121,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RetailObjectResponse"
+                $ref: "#/components/schemas/RetailSharedDashboardResponse"
   /retail/sales/preview:
     post:
       operationId: retailPreviewSale
@@ -132,14 +132,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RetailSaleInput"
+              $ref: "#/components/schemas/RetailSalePreviewInput"
       responses:
         "200":
           description: Retail sale preview
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RetailObjectResponse"
+                $ref: "#/components/schemas/RetailSalePreviewResponse"
   /retail/sales/checkout:
     post:
       operationId: retailCheckoutSale
@@ -150,20 +150,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RetailCheckoutInput"
+              $ref: "#/components/schemas/RetailSaleCheckoutInput"
       responses:
         "201":
           description: Retail sale persisted
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RetailObjectResponse"
+                $ref: "#/components/schemas/RetailCheckoutResponse"
         "409":
           description: Retail sale rejected
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RetailObjectResponse"
+                $ref: "#/components/schemas/RetailCheckoutResponse"
 components:
   schemas:
     HealthStatus:
@@ -190,7 +190,7 @@ components:
         quantity: { type: number }
         discountPercent: { type: number }
       required: [productId, quantity]
-    RetailSaleInput:
+    RetailSalePreviewInput:
       type: object
       properties:
         lines:
@@ -200,7 +200,7 @@ components:
         paymentMethod:
           $ref: "#/components/schemas/RetailPaymentMethod"
       required: [lines]
-    RetailCheckoutInput:
+    RetailSaleCheckoutInput:
       type: object
       properties:
         paymentMethod:
@@ -210,26 +210,13 @@ components:
           items:
             $ref: "#/components/schemas/RetailLineInput"
       required: [paymentMethod, lines]
-    RetailObjectResponse:
+    RetailObject:
       type: object
-      properties:
-        success: { type: boolean }
-        data:
-          type: object
-          additionalProperties: true
-        message: { type: string }
-      required: [success, data]
-    RetailArrayResponse:
-      type: object
-      properties:
-        success: { type: boolean }
-        data:
-          type: array
-          items:
-            type: object
-            additionalProperties: true
-        message: { type: string }
-      required: [success, data]
+      additionalProperties: true
+    RetailArray:
+      type: array
+      items:
+        $ref: "#/components/schemas/RetailObject"
     RetailProductListResponse:
       type: object
       properties:
@@ -238,5 +225,61 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RetailProduct"
+        message: { type: string }
+      required: [success, data]
+    RetailDashboardResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/RetailObject"
+        message: { type: string }
+      required: [success, data]
+    RetailSalePreviewResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/RetailObject"
+        message: { type: string }
+      required: [success, data]
+    RetailCheckoutResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/RetailObject"
+        message: { type: string }
+      required: [success, data]
+    RetailBarcodeLookupResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/RetailObject"
+        message: { type: string }
+      required: [success, data]
+    RetailInventoryRisksResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/RetailArray"
+        message: { type: string }
+      required: [success, data]
+    RetailReceivingQueueResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/RetailArray"
+        message: { type: string }
+      required: [success, data]
+    RetailSharedDashboardResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/RetailObject"
         message: { type: string }
       required: [success, data]
