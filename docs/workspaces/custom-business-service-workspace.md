@@ -22,6 +22,8 @@ artifacts/pos-system/src/app/workspace/custom-business/service/service-business-
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-preview-modal.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-activity-preview.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-activity-feed.tsx
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-insight-engine.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-insight-panel.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-view-model.ts
@@ -72,6 +74,7 @@ This is correct for now because the backend does not yet have service-specific e
 - service invoice linkage
 - service-specific status transition
 - audit log / activity stream persistence
+- operational insight scoring
 
 ## Current frontend preview
 
@@ -85,6 +88,7 @@ The workspace now contains hard-coded examples for:
 - local-only request preview modal
 - local-only quotation preview modal
 - service activity / audit preview feed
+- service insight / readiness preview panel
 - status transition map draft
 - transition requirement preview
 - cost line breakdown
@@ -119,6 +123,7 @@ ServiceBusinessWorkspaceLayout
 │   └── ServiceBusinessJobCard
 ├── ServiceBusinessJobDetailPanel
 │   ├── ServiceBusinessActionRail
+│   ├── ServiceBusinessInsightPanel
 │   └── ServiceBusinessActivityFeed
 ├── ServiceBusinessPlaceholderPanel
 ├── ServiceBusinessPricingModulesPanel
@@ -144,6 +149,7 @@ Current mock interactions:
 - preview next status actions based on the selected job status
 - preview transition requirements for each next action
 - preview service job activity events
+- preview service job readiness and risk scoring
 - open request preview modal
 - open quotation preview modal
 - edit local-only preview fields
@@ -184,6 +190,36 @@ The activity feed combines:
 - modal preview events for request and quotation draft forms
 
 These are display-only events. They are not audit logs and should not be treated as persisted records until backend support exists.
+
+## Service insight preview
+
+The files below contain frontend-only operational insight scoring:
+
+```txt
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-insight-engine.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-insight-panel.tsx
+```
+
+The insight panel calculates:
+
+- readiness score
+- risk score
+- next action requirement score
+- collection score
+- gross profit rate
+- positive, warning, and critical signals
+
+Current signal sources:
+
+- priority level
+- missing cost base
+- missing quote total
+- negative or low gross profit
+- incomplete collection
+- incomplete next-action requirements
+- missing checklist
+
+These scores are display-only. They are not persisted, not used for authorization, and not a backend source of truth.
 
 ## View model adapter
 
@@ -256,6 +292,7 @@ The test plan covers:
 - selected job detail behavior
 - preview modal behavior
 - activity preview behavior
+- service insight behavior
 - action rail behavior
 - transition requirement preview
 - API placeholder behavior
@@ -316,8 +353,9 @@ Before activation, implement:
 7. permission enforcement for `custom-business.*`
 8. API contracts and frontend API client methods
 9. audit log / activity stream persistence
-10. test data / seed data
-11. typecheck and build validation
+10. service insight scoring persistence or backend recomputation strategy
+11. test data / seed data
+12. typecheck and build validation
 
 ## Expected service workflow
 
