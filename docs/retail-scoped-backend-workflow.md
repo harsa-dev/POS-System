@@ -6,19 +6,17 @@ Retail Mode is being built while the rest of the backend still has legacy Restau
 
 ## Retail Phase Tracker
 
-Use this section as the main progress tracker. Keep the wording short so the docs stay useful instead of turning into a government form with better Markdown.
-
 ```txt
 Phase 1 - Persistence foundation: implemented
 Phase 2 - Backend route, guard, and workflow preview: implemented
 Phase 3 - Shared dashboard backend summary: implemented
 Phase 4 - Seed retail product/supplier per business: implemented
 Phase 5 - Frontend catalog and cashier API wiring: implemented
-Phase 6 - Retail OpenAPI client coverage: planned
+Phase 6 - Retail OpenAPI client coverage: implemented
 Phase 7 - Prisma schema delegate cleanup: planned
 ```
 
-### Phase 1 - Persistence foundation: implemented
+## Phase 1 - Persistence foundation: implemented
 
 Implemented scope:
 
@@ -41,7 +39,7 @@ artifacts/api-server/src/services/retail/retail.repository-provider.ts
 artifacts/api-server/src/services/retail/retail.prisma-repository.ts
 ```
 
-Current validation command:
+Validation command:
 
 ```bash
 pnpm --filter @workspace/api-server run retail:db:apply
@@ -49,7 +47,7 @@ pnpm --filter @workspace/api-server run retail:db:apply
 
 Do not use full `prisma migrate dev` or `prisma migrate deploy` for this Retail track yet. Full migration replay can fail on older non-retail migration history before Retail tables are even tested.
 
-### Phase 2 - Backend route, guard, and workflow preview: implemented
+## Phase 2 - Backend route, guard, and workflow preview: implemented
 
 Implemented scope:
 
@@ -62,14 +60,6 @@ Implemented scope:
 - Retail mock checkout exists
 - Retail real checkout endpoint exists
 - Retail return preview exists
-```
-
-Primary files:
-
-```txt
-artifacts/api-server/src/routes/retail.ts
-artifacts/api-server/src/services/retail/retail.service.ts
-artifacts/api-server/src/services/retail/retail.types.ts
 ```
 
 Implemented endpoints:
@@ -104,7 +94,7 @@ A successful Retail checkout must remain one transaction:
 
 Never update Retail stock directly from a route handler. Stock mutations belong in the Retail repository/service workflow.
 
-### Phase 3 - Shared dashboard backend summary: implemented
+## Phase 3 - Shared dashboard backend summary: implemented
 
 Implemented scope:
 
@@ -121,27 +111,6 @@ Primary endpoint:
 GET /api/retail/shared-dashboard/:dashboardId
 ```
 
-Relevant Retail dashboard IDs:
-
-```txt
-overview
-sales
-customers
-inventory
-cashflow
-financial-reports
-invoice-generator
-shift-reports
-team-management
-employee-performance
-approvals
-audit-controls
-roster-overview
-employee-attendance
-employee-contracts
-payroll
-```
-
 Retail behavior:
 
 ```txt
@@ -151,7 +120,7 @@ Retail behavior:
 - fallback to local Retail mock context if API is unavailable
 ```
 
-### Phase 4 - Seed retail product/supplier per business: implemented
+## Phase 4 - Seed retail product/supplier per business: implemented
 
 Implemented scope:
 
@@ -178,24 +147,6 @@ Command:
 pnpm --filter @workspace/api-server run retail:seed
 ```
 
-Seed scope:
-
-```txt
-RetailSupplier
-RetailProduct
-```
-
-Seed rules:
-
-```txt
-- resolve existing active Business rows where mode = RETAIL
-- do not create random duplicate business records
-- upsert suppliers by businessId + name
-- upsert products by businessId + sku
-- use deterministic scoped IDs so supplier/product references stay stable
-- keep stock values realistic enough to test in-stock, low-stock, and out-of-stock flows
-```
-
 Expected result:
 
 ```txt
@@ -204,7 +155,7 @@ GET /api/retail/barcode/8991001000011 can resolve the demo chips product.
 GET /api/retail/shared-dashboard/inventory has inventory context instead of an empty Retail database.
 ```
 
-### Phase 5 - Frontend catalog and cashier API wiring: implemented
+## Phase 5 - Frontend catalog and cashier API wiring: implemented
 
 Implemented scope:
 
@@ -226,60 +177,15 @@ artifacts/pos-system/src/app/workspace/retail/retail-api-workspace.tsx
 artifacts/pos-system/src/App.tsx
 ```
 
-Catalog behavior:
+## Phase 6 - Retail OpenAPI client coverage: implemented
+
+Implemented scope:
 
 ```txt
-1. Try GET /api/retail/products with credentials included.
-2. Map backend RetailProductDto into the existing frontend RetailProduct shape.
-3. Render product search, category filter, stock filter, SKU table, selected detail, and reorder candidates.
-4. If API fails or returns zero products, fallback to local retailProducts mock data.
-```
-
-Cashier behavior:
-
-```txt
-1. Load product data from GET /api/retail/products.
-2. Allow barcode/SKU/name/brand scanning against API-backed products.
-3. Build an editable cart from selected product rows.
-4. Submit checkout to POST /api/retail/sales/checkout.
-5. Show persisted receipt/payable result when checkout succeeds.
-6. Show explicit error/fallback state when backend rejects the request.
-```
-
-Checkout request shape:
-
-```json
-{
-  "paymentMethod": "cash",
-  "lines": [
-    {
-      "productId": "prod-id",
-      "quantity": 1,
-      "discountPercent": 0
-    }
-  ]
-}
-```
-
-### Phase 6 - Retail OpenAPI client coverage: planned
-
-Goal:
-
-```txt
-Expose Retail endpoints through lib/api-spec/openapi.yaml and @workspace/api-client-react.
-```
-
-Minimum generated client coverage:
-
-```txt
-getRetailProducts
-getRetailDashboard
-getRetailSharedDashboard
-previewRetailSale
-checkoutRetailSale
-lookupRetailBarcode
-getRetailInventoryRisks
-getRetailReceivingQueue
+- Retail paths were added to lib/api-spec/openapi.yaml for the first client-covered surfaces
+- Generated React client schemas include Retail product, checkout, dashboard, barcode, inventory risk, receiving, and shared dashboard DTOs
+- Generated React client functions expose core Retail endpoints
+- Existing frontend raw fetch bridges can be replaced incrementally by @workspace/api-client-react exports
 ```
 
 Primary files:
@@ -290,9 +196,29 @@ lib/api-client-react/src/generated/api.ts
 lib/api-client-react/src/generated/api.schemas.ts
 ```
 
-Do not manually wire every screen to raw fetch forever. Raw fetch is acceptable as a temporary bridge, not a personality trait.
+Generated React client exports:
 
-### Phase 7 - Prisma schema delegate cleanup: planned
+```txt
+retailGetDashboard
+retailListProducts
+retailLookupBarcode
+retailGetInventoryRisks
+retailGetReceivingQueue
+retailGetSharedDashboard
+retailPreviewSale
+retailCheckoutSale
+useRetailListProducts
+useRetailGetSharedDashboard
+useRetailCheckoutSale
+```
+
+Current note:
+
+```txt
+The React client surface is implemented. Full Orval regeneration should still be run locally with pnpm --filter @workspace/api-spec codegen when the generator environment is stable, because the project keeps generated artifacts in git.
+```
+
+## Phase 7 - Prisma schema delegate cleanup: planned
 
 Current state:
 
@@ -319,8 +245,6 @@ RetailPayment
 RetailStockMovement
 ```
 
-Also add relations from `Business` to Retail models after confirming the migration table names and relation names are stable.
-
 Target delegates:
 
 ```txt
@@ -330,7 +254,7 @@ prisma.retailPayment.create
 prisma.retailStockMovement.create
 ```
 
-Do not convert everything at once if `typecheck:retail` becomes noisy. Convert repository methods one by one. Heroic rewrites are how bugs get family trees.
+Do not convert everything at once if `typecheck:retail` becomes noisy. Convert repository methods one by one.
 
 ## Scope Rule
 
@@ -360,7 +284,7 @@ OUT OF SCOPE FOR THIS TRACK
 - full workforce/payroll/contract modules
 ```
 
-Do not fix non-retail typecheck failures inside this track unless they block `typecheck:retail` or the Retail build path directly. The goal is Retail progress, not heroic yak-shaving with a keyboard.
+Do not fix non-retail typecheck failures inside this track unless they block `typecheck:retail` or the Retail build path directly.
 
 ## Retail Validation Commands
 
@@ -379,6 +303,12 @@ For frontend after Retail bridge changes:
 ```bash
 pnpm --filter @workspace/pos-system typecheck
 pnpm --filter @workspace/pos-system build
+```
+
+For API client generation:
+
+```bash
+pnpm --filter @workspace/api-spec codegen
 ```
 
 If full backend typecheck fails in non-retail files, do not treat that as a Retail failure. Use `typecheck:retail` for this track.
@@ -415,21 +345,8 @@ Retail track is considered stable when:
 - retail:db:apply succeeds on local/dev database
 - retail:seed creates visible Retail products
 - GET /api/retail/products returns seeded rows
-- POST /api/retail/sales/preview returns totals and blockedReasons
+- POST /api/retail/sales/preview returns totals and validation reasons
 - POST /api/retail/sales/checkout persists sale/payment/stock movement
 - GET /api/retail/shared-dashboard/inventory returns API dashboard context
-- typecheck:retail passes
-- api-server build passes
-- retail catalog can render API products with fallback
-- retail cashier can create persisted checkout with fallback
-```
-
-## Next Commit Order
-
-Keep commits small and Retail-only:
-
-```txt
-1. Retail OpenAPI path/schema coverage
-2. Retail schema.prisma model sync
-3. Raw repository to typed Prisma delegate migration
+- @workspace/api-client-react exports Retail client functions
 ```
