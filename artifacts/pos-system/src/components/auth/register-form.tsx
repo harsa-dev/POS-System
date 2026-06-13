@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { ArrowRight, Chrome, LockKeyhole, Mail, Sparkles, Store, UserRound } from "lucide-react";
+import { ArrowRight, Chrome, LockKeyhole, Mail, ShieldCheck, Sparkles, Store, UserRound } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -11,6 +11,13 @@ import { authApi, getApiErrorMessage } from "@/lib/api";
 const GOOGLE_DUMMY_NAME = "Google Demo Owner";
 const GOOGLE_DUMMY_EMAIL = "google.owner@test.com";
 const GOOGLE_DUMMY_PASSWORD = "password123";
+
+const infoLinks = [
+  { label: "Privacy", href: ROUTES.PRIVACY },
+  { label: "Terms", href: ROUTES.TERMS },
+  { label: "Security", href: ROUTES.SECURITY },
+  { label: "Cookies", href: ROUTES.COOKIES },
+];
 
 export function RegisterForm() {
   const [, setLocation] = useLocation();
@@ -147,6 +154,10 @@ export function RegisterForm() {
           </label>
         </div>
 
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-500">
+          Dummy info pages tersedia untuk review portfolio: Privacy, Terms, Security, dan Cookies.
+        </div>
+
         <button
           type="submit"
           disabled={isLoading}
@@ -162,6 +173,14 @@ export function RegisterForm() {
             Sign in
           </Link>
         </p>
+
+        <div className="mt-6 flex flex-wrap justify-center gap-2 border-t border-slate-200 pt-5">
+          {infoLinks.map((link) => (
+            <Link key={link.href} href={link.href} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200">
+              {link.label}
+            </Link>
+          ))}
+        </div>
       </form>
 
       <aside className="relative hidden min-h-[640px] overflow-hidden bg-slate-950 p-8 text-white md:block">
@@ -189,15 +208,18 @@ export function RegisterForm() {
               </h1>
 
               <p className="max-w-md text-sm leading-6 text-white/65">
-                Register ini masih sederhana, tapi flow-nya sudah disiapkan untuk business root, bukan restaurant root. Karena kita sedang membangun sistem, bukan warung string `restaurantId` berkostum SaaS.
+                Register ini masih sederhana, tapi flow-nya sudah disiapkan untuk business root, bukan restaurant root. Karena kita sedang membangun sistem, bukan warung string restaurantId berkostum SaaS.
               </p>
             </div>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/10 p-5">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/45">Next auth upgrade</p>
-            <p className="mt-3 text-sm leading-6 text-white/75">
-              Dummy Google button sekarang cuma flow UI. OAuth asli nanti butuh provider config, callback route, dan backend token verification.
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+              <ShieldCheck className="h-4 w-4 text-emerald-300" />
+              Auth info layer ready
+            </div>
+            <p className="text-sm leading-6 text-white/75">
+              Dummy Google button dan dummy info pages sudah tersedia. Nanti tinggal diganti provider asli, bukan bongkar UI lagi dari nol.
             </p>
           </div>
         </div>
