@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "wouter";
 import {
   Building2,
   CheckCircle2,
@@ -36,6 +37,7 @@ function getModeButtonLabel(mode: BusinessModeConfig) {
 }
 
 export function BusinessModeSwitcher() {
+  const [, setLocation] = useLocation();
   const [activeModeId, setActiveModeId] = useState<BusinessModeId>(() =>
     getCurrentBusinessMode(),
   );
@@ -62,7 +64,10 @@ export function BusinessModeSwitcher() {
 
     if (!isChanged) {
       setActiveModeId(getCurrentBusinessMode());
+      return;
     }
+
+    setLocation(mode.route);
   }
 
   return (
