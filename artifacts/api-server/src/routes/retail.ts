@@ -54,7 +54,10 @@ router.get("/retail/products", (req, res) => {
   return successResponse(res, {
     data,
     meta: {
-      total: data.length,
+      pagination: {
+        limit: data.length,
+        totalItems: data.length,
+      },
     },
   });
 });
@@ -138,7 +141,7 @@ router.post("/retail/sales/mock-checkout", (req, res) => {
   const data = retailService.mockCheckout(req.body);
 
   return successResponse(res, {
-    status: data.canCheckout ? 201 : 409,
+    status: data.canCheckout ? 201 : 200,
     data,
     message: data.canCheckout
       ? "Mock checkout created. No database mutation was executed."
