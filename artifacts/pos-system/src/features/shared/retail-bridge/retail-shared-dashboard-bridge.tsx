@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
   getCurrentBusinessMode,
@@ -6,9 +6,12 @@ import {
 } from "@/components/core/business-mode/business-mode-storage";
 import {
   getRetailSharedDashboardContext,
+  type RetailSharedDashboardContext,
   type RetailSharedDashboardId,
   type RetailSharedRow,
 } from "@/features/retail/core-system";
+
+import { fetchRetailSharedDashboardContext } from "./retail-shared-dashboard-api";
 
 function getStatusClass(status: RetailSharedRow["status"]) {
   if (status === "healthy") return "border-emerald-200 bg-emerald-50 text-emerald-700";
@@ -37,7 +40,35 @@ export function RetailSharedDashboardBridge({
   children: ReactNode;
 }) {
   const isRetailMode = useIsRetailMode();
-  const context = getRetailSharedDashboardContext(dashboardId);
+  const localContext = useMemo(() => getRetailSharedDashboardContext(dashboardId), [dashboardId]);
+  const [apiContext, setApiContext] = useState<RetailSharedDashboardContext | null>(null);
+  const [apiState, setApiState] = useState<"idle" | "loading" | "ready" | "fallback">("idle");
+  const context = apiContext ?? localContext;
+
+  useEffect(() => {
+    if (!isRetailMode) {
+      setApiContext(null);
+      setApiState("idle");
+      return;
+    }
+
+    const controller = new AbortController();
+    setApiState("loading");
+
+    fetchRetailSharedDashboardContext(dashboardId, controller.signal)
+      .then((data) => {
+        setApiContext(data);
+        setApiState("ready");
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setApiContext(null);
+          setApiState("fallback");
+        }
+      });
+
+    return () => controller.abort();
+  }, [dashboardId, isRetailMode]);
 
   if (!isRetailMode) {
     return <>{children}</>;
@@ -57,7 +88,7 @@ export function RetailSharedDashboardBridge({
             </p>
           </div>
           <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-            Mock data only
+            {apiState === "ready" ? "Prisma API" : apiState === "loading" ? "Loading API" : "Mock fallback"}
           </div>
         </div>
 
