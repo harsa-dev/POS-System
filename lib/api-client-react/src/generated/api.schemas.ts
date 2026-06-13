@@ -4,6 +4,7 @@ export interface HealthStatus {
 
 export type RetailStockStatus = "in-stock" | "low-stock" | "out-of-stock";
 export type RetailPaymentMethod = "cash" | "qris" | "card" | "transfer";
+export type RetailReturnReason = "damaged" | "wrong-item" | "customer-changed-mind" | "expired" | "other";
 export type RetailReceivingStatus = "draft" | "ordered" | "partial" | "received";
 export type RetailSharedDashboardId =
   | "overview"
@@ -57,6 +58,12 @@ export interface RetailSaleCheckoutInput {
   lines: RetailSaleLineInput[];
 }
 
+export interface RetailReturnInput {
+  originalReceiptNumber?: string;
+  reason: RetailReturnReason;
+  lines: RetailSaleLineInput[];
+}
+
 export interface RetailReceivingStatusUpdateInput {
   status: RetailReceivingStatus;
 }
@@ -98,6 +105,34 @@ export interface RetailCheckoutResult extends Omit<RetailSalePreview, "persisted
   stockMovementIds: string[];
   createdAt: string;
 }
+
+export interface RetailReturnPreview {
+  persisted: false;
+  requiresManagerReview: boolean;
+  estimatedRefund: number;
+  restockableLines: Array<{
+    productId: string;
+    sku: string;
+    quantity: number;
+    restockable: boolean;
+  }>;
+  reviewReasons: string[];
+}
+
+export interface RetailReturnResult extends Omit<RetailReturnPreview, "persisted"> {
+  persisted: true;
+  returnId: string;
+  returnNumber: string;
+  saleId: string;
+  originalReceiptNumber: string;
+  refundAmount: number;
+  restockedQuantity: number;
+  stockMovementIds: string[];
+  cashflowEntryId: string;
+  createdAt: string;
+}
+
+export type RetailReturnResponseData = RetailReturnPreview | RetailReturnResult;
 
 export interface RetailBarcodeLookup {
   found: boolean;
@@ -183,6 +218,7 @@ export type RetailProductListResponse = ApiSuccessResponse<RetailProduct[]>;
 export type RetailDashboardResponse = ApiSuccessResponse<RetailDashboard>;
 export type RetailSalePreviewResponse = ApiSuccessResponse<RetailSalePreview>;
 export type RetailCheckoutResponse = ApiSuccessResponse<RetailCheckoutResult>;
+export type RetailReturnResponse = ApiSuccessResponse<RetailReturnResponseData>;
 export type RetailBarcodeLookupResponse = ApiSuccessResponse<RetailBarcodeLookup>;
 export type RetailInventoryRisksResponse = ApiSuccessResponse<RetailInventoryRisk[]>;
 export type RetailReceivingQueueResponse = ApiSuccessResponse<RetailReceivingQueueItem[]>;
