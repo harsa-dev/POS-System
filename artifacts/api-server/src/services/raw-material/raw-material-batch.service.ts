@@ -1,7 +1,7 @@
 import { Prisma, RawMaterialBatchQualityStatus, RawMaterialIntakeStatus, Role } from "@prisma/client";
 
 import { prisma } from "../../lib/prisma";
-import type { AuthenticatedUser } from "../../types/auth";
+import type { BusinessScopedUser as AuthenticatedUser } from "../../lib/auth.js";
 import { toRawMaterialBatchDto } from "./raw-material-batch.dto";
 import type { RawMaterialBatchPayload, RawMaterialBatchQuery } from "./raw-material-batch.types";
 import {
