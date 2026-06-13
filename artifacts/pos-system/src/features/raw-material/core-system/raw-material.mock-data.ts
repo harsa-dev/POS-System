@@ -5,6 +5,8 @@ import type {
   RawMaterialMetric,
   RawMaterialModuleMetadata,
   RawMaterialProcessingRun,
+  RawMaterialScaleFeature,
+  RawMaterialScaleProfile,
   RawMaterialStorageLocation,
   RawMaterialSupplier,
   RawMaterialWeighing,
@@ -204,6 +206,136 @@ export const rawMaterialKandangPens: readonly RawMaterialKandangPen[] = [
   },
 ];
 
+export const rawMaterialScaleProfiles: readonly RawMaterialScaleProfile[] = [
+  {
+    scale: "small",
+    label: "Kandang kecil",
+    businessShape: "1-2 kandang, pencatatan harian masih sederhana, keputusan banyak dari owner langsung.",
+    operatingStyle: "Manual-first with simple reminders",
+    mustHaveFocus: ["daily feed log", "basic pen condition", "low stock reminder", "supplier contact list"],
+    dashboardGoal: "Bikin owner tahu hari ini harus beli apa, pakai batch mana, dan kandang mana yang perlu dicek.",
+  },
+  {
+    scale: "medium",
+    label: "Kandang menengah",
+    businessShape: "Beberapa kandang, mulai ada operator, supplier lebih dari satu, dan stok harus bisa diaudit sederhana.",
+    operatingStyle: "Operational control with alerts",
+    mustHaveFocus: ["reorder point", "batch traceability", "feed usage trend", "supplier reliability"],
+    dashboardGoal: "Bikin manager bisa lihat stok kritis, konsumsi pakan, batch aktif, dan performa supplier tanpa buka 12 spreadsheet.",
+  },
+  {
+    scale: "factory",
+    label: "Pabrik / operasi besar",
+    businessShape: "Multi-site, batch besar, planning produksi, QC, audit, supplier score, dan integrasi finance/warehouse.",
+    operatingStyle: "MRP/MES-style planning and traceability",
+    mustHaveFocus: ["material requirement planning", "quality hold", "multi-site transfer", "production schedule", "audit readiness"],
+    dashboardGoal: "Bikin planning material, kualitas, transfer, dan produksi bisa dilacak dari supplier sampai output.",
+  },
+];
+
+export const rawMaterialScaleFeatures: readonly RawMaterialScaleFeature[] = [
+  {
+    id: "rmsf-small-001",
+    scale: "small",
+    title: "Daily feed usage log",
+    dashboardArea: "Kandang daily control",
+    purpose: "Catat pemakaian pakan per kandang per hari tanpa modul produksi besar.",
+    whyItMatters: "Skala kecil butuh tahu stok cukup sampai kapan sebelum uang habis buat beli mendadak.",
+    status: "new-dummy",
+    dummyMetric: "2 kandang logged today",
+  },
+  {
+    id: "rmsf-small-002",
+    scale: "small",
+    title: "Simple reorder reminder",
+    dashboardArea: "Owner action list",
+    purpose: "Tampilkan bahan yang mendekati batas beli ulang.",
+    whyItMatters: "Lebih murah diingatkan dashboard daripada panik karena pakan habis jam 8 malam.",
+    status: "new-dummy",
+    dummyMetric: "1 item below 7-day cover",
+  },
+  {
+    id: "rmsf-small-003",
+    scale: "small",
+    title: "Pen condition checklist",
+    dashboardArea: "Kandang daily control",
+    purpose: "Checklist kondisi kandang, kepadatan, air, dan kebersihan secara ringkas.",
+    whyItMatters: "Usaha kecil tidak butuh ERP dulu, butuh kebiasaan catat yang tidak bikin owner menyerah.",
+    status: "new-dummy",
+    dummyMetric: "4/5 checks completed",
+  },
+  {
+    id: "rmsf-medium-001",
+    scale: "medium",
+    title: "Feed usage trend",
+    dashboardArea: "Consumption analytics",
+    purpose: "Bandingkan pemakaian pakan antar kandang dan antar batch.",
+    whyItMatters: "Begitu kandang bertambah, feeling owner mulai kalah dari angka. Tragis, tapi wajar.",
+    status: "new-dummy",
+    dummyMetric: "+6.4% vs last week",
+  },
+  {
+    id: "rmsf-medium-002",
+    scale: "medium",
+    title: "Reorder point board",
+    dashboardArea: "Procurement planning",
+    purpose: "Hitung item yang harus dibeli berdasarkan lead time dan stok berjalan.",
+    whyItMatters: "Supplier punya lead time. Ayam tidak peduli alasan procurement telat.",
+    status: "new-dummy",
+    dummyMetric: "3 purchase suggestions",
+  },
+  {
+    id: "rmsf-medium-003",
+    scale: "medium",
+    title: "Supplier reliability watch",
+    dashboardArea: "Supplier control",
+    purpose: "Pantau ketepatan supplier, penerimaan ditolak, dan keterlambatan.",
+    whyItMatters: "Supplier murah tapi sering telat itu bukan murah, itu cicilan masalah.",
+    status: "new-dummy",
+    dummyMetric: "91% average reliability",
+  },
+  {
+    id: "rmsf-factory-001",
+    scale: "factory",
+    title: "Material requirement planning preview",
+    dashboardArea: "MRP planning",
+    purpose: "Preview kebutuhan bahan dari rencana produksi dan stok saat ini.",
+    whyItMatters: "Operasi besar harus tahu apa, berapa, dan kapan material dibutuhkan sebelum produksi tersedak.",
+    status: "new-dummy",
+    dummyMetric: "12.4 tons planned demand",
+  },
+  {
+    id: "rmsf-factory-002",
+    scale: "factory",
+    title: "Quality hold queue",
+    dashboardArea: "Quality control",
+    purpose: "Pisahkan batch yang belum boleh dipakai karena masih menunggu review kualitas.",
+    whyItMatters: "Di pabrik, batch bermasalah bukan cuma masalah stok, tapi masalah audit dan reputasi.",
+    status: "new-dummy",
+    dummyMetric: "2 lots on hold",
+  },
+  {
+    id: "rmsf-factory-003",
+    scale: "factory",
+    title: "Multi-site transfer planning",
+    dashboardArea: "Warehouse network",
+    purpose: "Preview perpindahan material antar lokasi sebelum transfer resmi dibuat.",
+    whyItMatters: "Satu gudang penuh dan gudang lain kosong adalah komedi mahal bernama poor planning.",
+    status: "new-dummy",
+    dummyMetric: "4 transfer candidates",
+  },
+  {
+    id: "rmsf-factory-004",
+    scale: "factory",
+    title: "Production schedule readiness",
+    dashboardArea: "Factory execution",
+    purpose: "Tampilkan apakah jadwal produksi siap dari sisi bahan, storage, dan quality status.",
+    whyItMatters: "Jadwal produksi tanpa readiness material itu cuma kalender yang terlalu percaya diri.",
+    status: "new-dummy",
+    dummyMetric: "78% ready for next run",
+  },
+];
+
 export const rawMaterialWorkspaceModules: Record<
   RawMaterialWorkspaceModuleId,
   RawMaterialModuleMetadata
@@ -262,46 +394,46 @@ export const rawMaterialWorkspaceModules: Record<
   },
   processing: {
     id: "processing",
-    title: "Processing & Yield",
-    eyebrow: "Raw to output transformation",
-    description: "Mock processing workspace for input batch, output item, input weight, output weight, byproduct, and processing status.",
-    operationalGoal: "Test yield and transformation concepts before production and cost distribution tables exist.",
+    title: "Processing Runs",
+    eyebrow: "Raw to output preview",
+    description: "Mock processing workspace for planned/running/completed runs, input batch reference, output quantity, and extra material visibility.",
+    operationalGoal: "Shape the processing contract before work orders, material issue, and finished output tables are introduced.",
     checkpoints: [
-      "Input batch relation is mock-only",
-      "Output and byproduct quantities are visible",
-      "Yield can be calculated locally",
-      "No finished-good inventory is created yet",
+      "Processing run references input batch",
+      "Input and output quantities are separated",
+      "Run status is visible",
+      "No finished goods write exists yet",
     ],
   },
   kandang: {
     id: "kandang",
-    title: "Kandang Operations",
-    eyebrow: "Livestock support view",
-    description: "Mock kandang workspace for pen capacity, occupancy, flock, feed batch linkage, and simple health state visibility.",
-    operationalGoal: "Prepare poultry-specific raw material mode without forcing schema changes into the POS core.",
+    title: "Kandang Support",
+    eyebrow: "Pen and feed batch visibility",
+    description: "Mock kandang workspace for pen code, flock name, capacity, occupancy, feed batch linkage, and condition status.",
+    operationalGoal: "Preview poultry-operation support data before animal-event, feed-consumption, and pen-history models exist.",
     checkpoints: [
       "Pen capacity and occupancy are visible",
-      "Feed batch relation is mock-only",
-      "Health state can be scanned quickly",
-      "No livestock event table exists yet",
+      "Feed batch links back to raw-material batch",
+      "Condition status is shown as a high-level operational signal",
+      "No animal event table exists yet",
     ],
   },
   suppliers: {
     id: "suppliers",
-    title: "Raw Material Suppliers",
-    eyebrow: "Source quality control",
-    description: "Mock supplier workspace for source category, contact data, lead time, reliability score, and intake relation planning.",
-    operationalGoal: "Define supplier UI before deciding whether to reuse partner/customer models or add raw-material-specific tables.",
+    title: "Supplier Control",
+    eyebrow: "Source reliability",
+    description: "Mock supplier workspace for category, lead time, contact person, and reliability score visibility.",
+    operationalGoal: "Validate supplier monitoring before procurement, purchase order, and supplier scorecard tables are added.",
     checkpoints: [
-      "Supplier category is raw-material specific",
-      "Reliability score is display-only",
-      "Lead time is ready for purchase planning later",
-      "No partner schema is changed yet",
+      "Supplier category is visible",
+      "Lead time is available for future reorder planning",
+      "Reliability score is mock-only",
+      "No purchase order table exists yet",
     ],
   },
 };
 
-function formatCurrency(value: number) {
+export function formatRawMaterialCurrency(value: number) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
@@ -309,57 +441,50 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-function formatWeight(value: number) {
-  return `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(value)} kg`;
+export function formatRawMaterialWeight(value: number) {
+  return `${new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 1,
+  }).format(value)} kg`;
 }
 
-const acceptedKgToday = rawMaterialIntakes.reduce(
-  (total, intake) => total + (intake.unit === "kg" ? intake.acceptedQuantity : 0),
-  0,
-);
+export function getRawMaterialStorageUsagePercent(location: RawMaterialStorageLocation) {
+  if (location.capacityKg <= 0) {
+    return 0;
+  }
 
-const averageStorageUsage = Math.round(
-  rawMaterialStorageLocations.reduce(
-    (total, location) => total + location.usedKg / location.capacityKg,
-    0,
-  ) / rawMaterialStorageLocations.length * 100,
-);
-
-const runningProcessCount = rawMaterialProcessingRuns.filter(
-  (run) => run.status === "running",
-).length;
+  return Math.round((location.usedKg / location.capacityKg) * 100);
+}
 
 export const rawMaterialMetrics: readonly RawMaterialMetric[] = [
   {
     label: "Accepted today",
-    value: formatWeight(acceptedKgToday),
-    helper: "Calculated from local mock intake rows",
+    value: formatRawMaterialWeight(
+      rawMaterialIntakes.reduce((total, intake) => {
+        if (intake.unit !== "kg") {
+          return total;
+        }
+
+        return total + intake.acceptedQuantity;
+      }, 0),
+    ),
+    helper: "Accepted raw-material quantity from mock intake records.",
   },
   {
     label: "Active batches",
     value: String(rawMaterialBatches.length),
-    helper: "Mock lots ready for traceability UI",
+    helper: "Traceable lots prepared for future stock movement logic.",
   },
   {
     label: "Storage usage",
-    value: `${averageStorageUsage}%`,
-    helper: "Average capacity usage across mock locations",
+    value: `${Math.round(
+      rawMaterialStorageLocations.reduce((total, location) => total + getRawMaterialStorageUsagePercent(location), 0) /
+        rawMaterialStorageLocations.length,
+    )}%`,
+    helper: "Average mock storage utilization across configured locations.",
   },
   {
     label: "Running process",
-    value: String(runningProcessCount),
-    helper: "Frontend-only processing state",
+    value: String(rawMaterialProcessingRuns.filter((run) => run.status === "running").length),
+    helper: "Processing previews that are not completed yet.",
   },
 ];
-
-export function formatRawMaterialCurrency(value: number) {
-  return formatCurrency(value);
-}
-
-export function formatRawMaterialWeight(value: number) {
-  return formatWeight(value);
-}
-
-export function getRawMaterialStorageUsagePercent(location: RawMaterialStorageLocation) {
-  return Math.round((location.usedKg / location.capacityKg) * 100);
-}
