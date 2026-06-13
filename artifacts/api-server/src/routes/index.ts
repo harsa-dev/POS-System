@@ -15,24 +15,26 @@ import invoicesRouter from "./invoices.js";
 import miscBusinessRouter from "./misc-business.js";
 import miscRouter from "./misc.js";
 import eventsRouter from "./events.js";
+import { requireBusinessMode } from "../lib/business-context/index.js";
 
 const router: IRouter = Router();
+const restaurantModeOnly = requireBusinessMode(["restaurant"]);
 
 router.use(healthRouter);
 router.use(authRouter);
-router.use(menuRouter);
-router.use(ordersStatusRouter);
-router.use(ordersRouter);
-router.use(tablesRouter);
+router.use(restaurantModeOnly, menuRouter);
+router.use(restaurantModeOnly, ordersStatusRouter);
+router.use(restaurantModeOnly, ordersRouter);
+router.use(restaurantModeOnly, tablesRouter);
 router.use(inventoryRouter);
 router.use(cashflowRouter);
 router.use(reportsRouter);
 router.use(salesAnalyticsRouter);
-router.use(shiftsRouter);
-router.use(paymentsRouter);
+router.use(restaurantModeOnly, shiftsRouter);
+router.use(restaurantModeOnly, paymentsRouter);
 router.use(invoicesRouter);
-router.use(miscBusinessRouter);
-router.use(miscRouter);
-router.use(eventsRouter);
+router.use(restaurantModeOnly, miscBusinessRouter);
+router.use(restaurantModeOnly, miscRouter);
+router.use(restaurantModeOnly, eventsRouter);
 
 export default router;
