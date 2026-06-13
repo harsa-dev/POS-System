@@ -6,6 +6,10 @@ import {
   updateServiceWorkflowStatus,
 } from "../features/service-business/service-business.repository.js";
 import {
+  SERVICE_BUSINESS_PERMISSIONS,
+  requireServiceBusinessPermission,
+} from "../features/service-business/service-business.permissions.js";
+import {
   presentServiceStatusMutation,
   presentServiceTransitionPreview,
   presentServiceWorkflowStatuses,
@@ -16,9 +20,7 @@ import {
   parseServiceBusinessWorkflowStatus,
   requireBodyObject,
 } from "../features/service-business/service-business.validators.js";
-import { requireRole } from "../lib/auth.js";
 import { requireBusinessContextForUser } from "../lib/business-context/index.js";
-import { ALL_ROLES } from "../lib/constants.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
@@ -28,7 +30,7 @@ const router = Router();
 
 router.get("/custom-business/service/workflow/statuses", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireServiceBusinessPermission(req, res, SERVICE_BUSINESS_PERMISSIONS.view);
     if (!user) return;
 
     await requireBusinessContextForUser(user);
@@ -43,7 +45,7 @@ router.get("/custom-business/service/workflow/statuses", async (req, res) => {
 
 router.get("/custom-business/service/jobs/:id/transition-preview", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireServiceBusinessPermission(req, res, SERVICE_BUSINESS_PERMISSIONS.view);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForUser(user);
@@ -79,7 +81,11 @@ router.get("/custom-business/service/jobs/:id/transition-preview", async (req, r
 
 router.patch("/custom-business/service/jobs/:id/guarded-status", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireServiceBusinessPermission(
+      req,
+      res,
+      SERVICE_BUSINESS_PERMISSIONS.jobStatusUpdate,
+    );
     if (!user) return;
 
     const businessContext = await requireBusinessContextForUser(user);
