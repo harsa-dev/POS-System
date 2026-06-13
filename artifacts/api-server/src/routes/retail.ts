@@ -14,12 +14,35 @@ import type {
   RetailBusinessScope,
   RetailReturnPreviewInput,
   RetailSalePreviewInput,
+  RetailSharedDashboardId,
 } from "../services/retail/retail.types.js";
 
 const router: IRouter = Router();
+const retailSharedDashboardIds = new Set<string>([
+  "overview",
+  "sales",
+  "customers",
+  "inventory",
+  "cashflow",
+  "financial-reports",
+  "invoice-generator",
+  "shift-reports",
+  "team-management",
+  "employee-performance",
+  "approvals",
+  "audit-controls",
+  "roster-overview",
+  "employee-attendance",
+  "employee-contracts",
+  "payroll",
+]);
 
 function getStringQuery(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function isRetailSharedDashboardId(value: string): value is RetailSharedDashboardId {
+  return retailSharedDashboardIds.has(value);
 }
 
 function isSalePreviewInput(value: unknown): value is RetailSalePreviewInput {
@@ -82,6 +105,27 @@ router.get("/retail/dashboard", async (req, res) => {
 
     return successResponse(res, {
       data: await retailService.getDashboard(context.scope),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/retail/shared-dashboard/:dashboardId", async (req, res) => {
+  try {
+    const context = await getRetailRequestContext(req, res);
+    if (!context) return;
+
+    if (!isRetailSharedDashboardId(req.params.dashboardId)) {
+      return errorResponse(res, {
+        status: 404,
+        code: errorCodes.notFound,
+        message: "Retail shared dashboard context was not found.",
+      });
+    }
+
+    return successResponse(res, {
+      data: await retailService.getSharedDashboard(context.scope, req.params.dashboardId),
     });
   } catch (error) {
     return handleApiError(res, error);
