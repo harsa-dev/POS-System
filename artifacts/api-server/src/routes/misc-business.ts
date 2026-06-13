@@ -4,7 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { getCurrentUser, requireRole } from "../lib/auth.js";
 import { MANAGEMENT_ROLES } from "../lib/constants.js";
 import {
-  createRestaurantScopeWhere,
+  createBusinessScopeWhere,
   requireBusinessContextForUser,
 } from "../lib/business-context/index.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
@@ -28,7 +28,7 @@ function parsePositiveQuantity(value: unknown) {
   return Number.isFinite(quantity) && quantity > 0 ? quantity : null;
 }
 
-router.get("/restaurants", async (_req, res) => {
+router.get("/businesses", async (_req, res) => {
   return successResponse(res, { data: null });
 });
 
@@ -40,7 +40,7 @@ router.get("/recipes", async (req, res) => {
     const businessContext = await requireBusinessContextForUser(user);
 
     const recipes = await prisma.recipe.findMany({
-      where: { menuItem: createRestaurantScopeWhere(businessContext) },
+      where: { menuItem: createBusinessScopeWhere(businessContext) },
       include: { menuItem: true, inventoryItem: true },
       orderBy: { menuItem: { name: "asc" } },
     });
@@ -82,13 +82,13 @@ router.post("/recipes", async (req, res) => {
 
     const [menuItem, inventoryItem] = await Promise.all([
       prisma.menuItem.findFirst({
-        where: { id: menuItemId, ...createRestaurantScopeWhere(businessContext) },
+        where: { id: menuItemId, ...createBusinessScopeWhere(businessContext) },
         select: { id: true },
       }),
       prisma.inventoryItem.findFirst({
         where: {
           id: inventoryItemId,
-          ...createRestaurantScopeWhere(businessContext),
+          ...createBusinessScopeWhere(businessContext),
         },
         select: { id: true },
       }),
@@ -159,7 +159,7 @@ router.patch("/recipes/:id", async (req, res) => {
     }
 
     const recipe = await prisma.recipe.findFirst({
-      where: { id, menuItem: createRestaurantScopeWhere(businessContext) },
+      where: { id, menuItem: createBusinessScopeWhere(businessContext) },
     });
 
     if (!recipe) {
@@ -174,7 +174,7 @@ router.patch("/recipes/:id", async (req, res) => {
       const inventoryItem = await prisma.inventoryItem.findFirst({
         where: {
           id: inventoryItemId,
-          ...createRestaurantScopeWhere(businessContext),
+          ...createBusinessScopeWhere(businessContext),
         },
         select: { id: true },
       });
@@ -232,7 +232,7 @@ router.delete("/recipes/:id", async (req, res) => {
     const { id } = req.params;
 
     const recipe = await prisma.recipe.findFirst({
-      where: { id, menuItem: createRestaurantScopeWhere(businessContext) },
+      where: { id, menuItem: createBusinessScopeWhere(businessContext) },
       include: { menuItem: true },
     });
 
@@ -248,7 +248,7 @@ router.delete("/recipes/:id", async (req, res) => {
       where: {
         menuItemId: recipe.menuItemId,
         order: {
-          ...createRestaurantScopeWhere(businessContext),
+          ...createBusinessScopeWhere(businessContext),
           status: { notIn: TERMINAL_ORDER_STATUSES },
         },
       },
@@ -303,7 +303,7 @@ router.get("/payments", async (req, res) => {
     const businessContext = await requireBusinessContextForUser(user);
 
     const payments = await prisma.payment.findMany({
-      where: { order: createRestaurantScopeWhere(businessContext) },
+      where: { order: createBusinessScopeWhere(businessContext) },
       include: { order: true },
       orderBy: { createdAt: "desc" },
     });
