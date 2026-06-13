@@ -11,7 +11,6 @@ import type { RawMaterialActor } from "./raw-material-supplier.types.js";
 import type {
   RawMaterialAdjustmentInput,
   RawMaterialProcessingConsumptionInput,
-  RawMaterialStockMovementDto,
   RawMaterialStockMovementQuery,
   RawMaterialStockMovementReason,
   RawMaterialStockMovementRow,
