@@ -2,8 +2,8 @@ import { Redirect } from "wouter";
 
 import { DashboardShell } from "@/components/core/app-shell/dashboard-shell";
 import { ROUTES } from "@/constants/routes";
-import type { BusinessMode } from "./business-mode";
-import { getStoredBusinessMode } from "./business-mode";
+import type { BusinessModeId } from "../business-mode/business-mode.types";
+import { readBusinessModeStorage, repairBusinessModeStorage } from "../business-mode/business-mode-storage";
 
 type RouteGuardUser = {
   name: string;
@@ -14,7 +14,7 @@ type RouteGuardProps = {
   user: RouteGuardUser | null;
   isLoading: boolean;
   children: React.ReactNode;
-  requiredMode?: BusinessMode;
+  requiredMode?: BusinessModeId;
   withShell?: boolean;
 };
 
@@ -35,10 +35,19 @@ export function RouteGuard({
 
   if (!user) return <Redirect to={ROUTES.LOGIN} />;
 
-  const currentMode = getStoredBusinessMode();
+  const businessModeState = readBusinessModeStorage();
 
-  if (!currentMode) return <Redirect to={ROUTES.SELECT_MODE} />;
-  if (requiredMode && currentMode !== requiredMode) return <Redirect to={ROUTES.ANALYTICS} />;
+  if (businessModeState.wasLegacy) {
+    repairBusinessModeStorage("route-guard");
+  }
+
+  if (!businessModeState.storedValue || businessModeState.wasFallback) {
+    return <Redirect to={ROUTES.SELECT_MODE} />;
+  }
+
+  if (requiredMode && businessModeState.mode !== requiredMode) {
+    return <Redirect to={ROUTES.SELECT_MODE} />;
+  }
 
   if (!withShell) return <>{children}</>;
 
@@ -48,4 +57,3 @@ export function RouteGuard({
     </DashboardShell>
   );
 }
-
