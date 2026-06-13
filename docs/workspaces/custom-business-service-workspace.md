@@ -39,6 +39,8 @@ artifacts/pos-system/src/app/workspace/custom-business/service/service-business-
 docs/workspaces/custom-business-service-data-plan.md
 docs/workspaces/custom-business-service-api-contract.md
 docs/workspaces/custom-business-service-test-plan.md
+docs/workspaces/custom-business-service-sync-plan.md
+docs/workspaces/custom-business-service-codex-sync-prompt.md
 ```
 
 Updated route constants:
@@ -87,6 +89,8 @@ The workspace now contains hard-coded examples for:
 - permission map draft
 - typed API contract draft
 - test plan draft
+- sync plan draft
+- Codex sync prompt
 - search and filter controls
 - tabbed read-only sections
 - empty state
@@ -205,6 +209,22 @@ The test plan covers:
 - transition requirement preview
 - API placeholder behavior
 - scope safety checks
+
+## Sync plan and Codex prompt
+
+Sync plan:
+
+```txt
+docs/workspaces/custom-business-service-sync-plan.md
+```
+
+Codex prompt:
+
+```txt
+docs/workspaces/custom-business-service-codex-sync-prompt.md
+```
+
+Use these before opening or merging a PR because this branch is diverged from `main`.
 
 ## Manual App route patch
 
