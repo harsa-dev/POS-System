@@ -10,6 +10,11 @@ import { toRawMaterialPenDto } from "./raw-material-pen.dto.js";
 import type { RawMaterialPenHealthStatus, RawMaterialPenInput, RawMaterialPenQuery, RawMaterialPenRow } from "./raw-material-pen.types.js";
 import type { RawMaterialActor } from "./raw-material-supplier.types.js";
 import { validateRawMaterialPenInput } from "./raw-material-pen.validation.js";
+import {
+  assertRawMaterialFeedBatchAllowed,
+  assertRawMaterialKandangCapacity,
+  assertRawMaterialKandangHealthCanBeSet,
+} from "./raw-material.workflow.js";
 
 const viewRoles = new Set<Role>([Role.OWNER, Role.MANAGER, Role.ADMIN, Role.OPERATOR, Role.STAFF, Role.VIEWER]);
 const manageRoles = new Set<Role>([Role.OWNER, Role.MANAGER, Role.ADMIN, Role.OPERATOR]);
@@ -53,15 +58,20 @@ async function assertFeedBatchAllowed(businessContext: BusinessContext, feedBatc
     where: {
       id: feedBatchId,
       businessId: businessContext.businessId,
-      isActive: true,
-      qualityStatus: "ACCEPTED",
     },
-    select: { id: true },
+    select: {
+      id: true,
+      isActive: true,
+      qualityStatus: true,
+      remainingQuantity: true,
+    },
   });
 
   if (!batch) {
-    appError(400, errorCodes.validationError, "Feed batch must be active, accepted, and belong to this business.");
+    appError(400, errorCodes.validationError, "Feed batch must belong to this business.");
   }
+
+  assertRawMaterialFeedBatchAllowed(batch);
 }
 
 async function loadPenOrThrow(businessContext: BusinessContext, id: string) {
@@ -154,7 +164,11 @@ export async function createRawMaterialPen(params: {
 
   const capacity = data.capacity ?? 0;
   const occupancy = data.occupancy ?? 0;
-  if (occupancy > capacity) appError(400, errorCodes.validationError, "occupancy cannot exceed capacity.");
+  const healthStatus = data.healthStatus ?? "STABLE";
+  const isActive = data.isActive ?? true;
+
+  assertRawMaterialKandangCapacity({ capacity, occupancy });
+  assertRawMaterialKandangHealthCanBeSet({ isActive, healthStatus });
 
   await assertCodeAvailable({ businessContext, code: data.code });
   await assertFeedBatchAllowed(businessContext, data.feedBatchId);
@@ -181,8 +195,8 @@ export async function createRawMaterialPen(params: {
       ${capacity},
       ${occupancy},
       ${data.feedBatchId},
-      ${(data.healthStatus ?? "STABLE")}::"RawMaterialKandangHealthStatus",
-      ${data.isActive ?? true},
+      ${healthStatus}::"RawMaterialKandangHealthStatus",
+      ${isActive},
       ${data.notes},
       CURRENT_TIMESTAMP
     )
@@ -211,7 +225,8 @@ export async function updateRawMaterialPen(params: {
   const isActive = data.isActive ?? existing.isActive;
   const notes = input.notes !== undefined ? data.notes : existing.notes;
 
-  if (occupancy > capacity) appError(400, errorCodes.validationError, "occupancy cannot exceed capacity.");
+  assertRawMaterialKandangCapacity({ capacity, occupancy });
+  assertRawMaterialKandangHealthCanBeSet({ isActive, healthStatus });
   if (code !== existing.code) await assertCodeAvailable({ businessContext, code, excludeId: id });
   await assertFeedBatchAllowed(businessContext, feedBatchId);
 
