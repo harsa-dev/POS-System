@@ -58,6 +58,10 @@ export interface RetailSaleCheckoutInput {
   lines: RetailSaleLineInput[];
 }
 
+export interface RetailSaleCancellationInput {
+  reason?: string;
+}
+
 export interface RetailReturnInput {
   originalReceiptNumber?: string;
   reason: RetailReturnReason;
@@ -104,6 +108,18 @@ export interface RetailCheckoutResult extends Omit<RetailSalePreview, "persisted
   paymentId: string;
   stockMovementIds: string[];
   createdAt: string;
+}
+
+export interface RetailSaleCancellationResult {
+  cancelled: boolean;
+  saleId: string;
+  receiptNumber: string;
+  refundAmount: number;
+  restockedQuantity: number;
+  stockMovementIds: string[];
+  cashflowEntryId?: string;
+  blockedReasons: string[];
+  createdAt?: string;
 }
 
 export interface RetailReturnPreview {
@@ -218,6 +234,7 @@ export type RetailProductListResponse = ApiSuccessResponse<RetailProduct[]>;
 export type RetailDashboardResponse = ApiSuccessResponse<RetailDashboard>;
 export type RetailSalePreviewResponse = ApiSuccessResponse<RetailSalePreview>;
 export type RetailCheckoutResponse = ApiSuccessResponse<RetailCheckoutResult>;
+export type RetailSaleCancellationResponse = ApiSuccessResponse<RetailSaleCancellationResult>;
 export type RetailReturnResponse = ApiSuccessResponse<RetailReturnResponseData>;
 export type RetailBarcodeLookupResponse = ApiSuccessResponse<RetailBarcodeLookup>;
 export type RetailInventoryRisksResponse = ApiSuccessResponse<RetailInventoryRisk[]>;
