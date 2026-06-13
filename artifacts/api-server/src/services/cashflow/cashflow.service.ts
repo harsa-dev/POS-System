@@ -37,12 +37,6 @@ import {
   parseCreateCashflowEntryInput,
 } from "./cashflow.validation.js";
 
-function writableBusinessId(businessContext: BusinessContext) {
-  return businessContext.businessId !== businessContext.restaurantId
-    ? businessContext.businessId
-    : null;
-}
-
 function getPostedAt(status: "PENDING" | "POSTED" | "VOIDED") {
   return status === "POSTED" ? new Date() : null;
 }
@@ -63,9 +57,10 @@ export async function listCashflowEntries(params: {
 }) {
   requireCashflowView(params.actor.role);
 
+  const businessId = params.businessContext.businessId;
   const [entries, totalItems] = await Promise.all([
-    listCashflowEntryRecords(prisma, params.businessContext.restaurantId, params.query),
-    countCashflowEntryRecords(prisma, params.businessContext.restaurantId, params.query),
+    listCashflowEntryRecords(prisma, businessId, params.query),
+    countCashflowEntryRecords(prisma, businessId, params.query),
   ]);
   const totalPages = Math.max(1, Math.ceil(totalItems / params.query.limit));
 
@@ -89,23 +84,14 @@ export async function getCashflowDashboard(params: {
 }): Promise<CashflowDashboardDto> {
   requireCashflowView(params.actor.role);
 
+  const businessId = params.businessContext.businessId;
   const [summary, trend, incomeSources, expenseSources, recentEntries] =
     await Promise.all([
-      getCashflowSummary(prisma, params.businessContext.restaurantId, params.query),
-      getCashflowTrend(prisma, params.businessContext.restaurantId, params.query),
-      getCashflowCategorySummary(
-        prisma,
-        params.businessContext.restaurantId,
-        params.query,
-        "income"
-      ),
-      getCashflowCategorySummary(
-        prisma,
-        params.businessContext.restaurantId,
-        params.query,
-        "expense"
-      ),
-      listCashflowEntryRecords(prisma, params.businessContext.restaurantId, {
+      getCashflowSummary(prisma, businessId, params.query),
+      getCashflowTrend(prisma, businessId, params.query),
+      getCashflowCategorySummary(prisma, businessId, params.query, "income"),
+      getCashflowCategorySummary(prisma, businessId, params.query, "expense"),
+      listCashflowEntryRecords(prisma, businessId, {
         ...params.query,
         page: 1,
         limit: 10,
@@ -139,8 +125,7 @@ export async function createManualCashflowEntry(params: {
   return prisma.$transaction(async (tx) => {
     const entry = await createCashflowEntryRecord(tx, {
       id: randomUUID(),
-      businessId: writableBusinessId(params.businessContext),
-      restaurantId: params.businessContext.restaurantId,
+      businessId: params.businessContext.businessId,
       sourceType: "MANUAL",
       sourceId: null,
       idempotencyKey: null,
@@ -154,9 +139,7 @@ export async function createManualCashflowEntry(params: {
       occurredAt: parsed.occurredAt,
       postedAt: getPostedAt(parsed.status),
       createdById: params.actor.id,
-      metadata: {
-        createdFrom: "manual-entry",
-      },
+      metadata: { createdFrom: "manual-entry" },
     });
 
     if (!entry) {
@@ -169,7 +152,7 @@ export async function createManualCashflowEntry(params: {
 
     await tx.auditLog.create({
       data: {
-        restaurantId: params.businessContext.restaurantId,
+        businessId: params.businessContext.businessId,
         userId: params.actor.id,
         action: "CREATE",
         entityType: "CashflowEntry",
@@ -195,14 +178,10 @@ export async function syncOrderPaymentToCashflow(params: {
 }) {
   requireCashflowSync(params.actor.role);
 
+  const businessId = params.businessContext.businessId;
   const order = await prisma.order.findFirst({
-    where: {
-      id: params.orderId,
-      restaurantId: params.businessContext.restaurantId,
-    },
-    include: {
-      payment: true,
-    },
+    where: { id: params.orderId, businessId },
+    include: { payment: true },
   });
 
   if (!order) {
@@ -231,8 +210,7 @@ export async function syncOrderPaymentToCashflow(params: {
   return prisma.$transaction(async (tx) => {
     const created = await createCashflowEntryRecord(tx, {
       id: randomUUID(),
-      businessId: writableBusinessId(params.businessContext),
-      restaurantId: params.businessContext.restaurantId,
+      businessId,
       sourceType: "ORDER_PAYMENT",
       sourceId: order.id,
       idempotencyKey,
@@ -257,11 +235,7 @@ export async function syncOrderPaymentToCashflow(params: {
 
     const entry =
       created ??
-      (await findCashflowEntryByIdempotencyKey(
-        tx,
-        params.businessContext.restaurantId,
-        idempotencyKey
-      ));
+      (await findCashflowEntryByIdempotencyKey(tx, businessId, idempotencyKey));
 
     if (!entry) {
       throw new AppError({
@@ -274,7 +248,7 @@ export async function syncOrderPaymentToCashflow(params: {
     if (created) {
       await tx.auditLog.create({
         data: {
-          restaurantId: params.businessContext.restaurantId,
+          businessId,
           userId: params.actor.id,
           action: "CREATE",
           entityType: "CashflowEntry",
@@ -300,11 +274,9 @@ export async function syncShiftCloseToCashflow(params: {
 }) {
   requireCashflowSync(params.actor.role);
 
+  const businessId = params.businessContext.businessId;
   const shift = await prisma.shift.findFirst({
-    where: {
-      id: params.shiftId,
-      restaurantId: params.businessContext.restaurantId,
-    },
+    where: { id: params.shiftId, businessId },
   });
 
   if (!shift) {
@@ -330,8 +302,7 @@ export async function syncShiftCloseToCashflow(params: {
   return prisma.$transaction(async (tx) => {
     const created = await createCashflowEntryRecord(tx, {
       id: randomUUID(),
-      businessId: writableBusinessId(params.businessContext),
-      restaurantId: params.businessContext.restaurantId,
+      businessId,
       sourceType: "SHIFT_CLOSE",
       sourceId: shift.id,
       idempotencyKey,
@@ -356,11 +327,7 @@ export async function syncShiftCloseToCashflow(params: {
 
     const entry =
       created ??
-      (await findCashflowEntryByIdempotencyKey(
-        tx,
-        params.businessContext.restaurantId,
-        idempotencyKey
-      ));
+      (await findCashflowEntryByIdempotencyKey(tx, businessId, idempotencyKey));
 
     if (!entry) {
       throw new AppError({
@@ -373,7 +340,7 @@ export async function syncShiftCloseToCashflow(params: {
     if (created) {
       await tx.auditLog.create({
         data: {
-          restaurantId: params.businessContext.restaurantId,
+          businessId,
           userId: params.actor.id,
           action: "CREATE",
           entityType: "CashflowEntry",
@@ -399,12 +366,10 @@ export async function voidCashflowEntry(params: {
 }) {
   requireCashflowVoid(params.actor.role);
 
+  const businessId = params.businessContext.businessId;
+
   return prisma.$transaction(async (tx) => {
-    const existing = await findCashflowEntryById(
-      tx,
-      params.businessContext.restaurantId,
-      params.id
-    );
+    const existing = await findCashflowEntryById(tx, businessId, params.id);
 
     if (!existing) {
       throw new AppError({
@@ -416,11 +381,7 @@ export async function voidCashflowEntry(params: {
 
     assertEntryCanBeVoided(existing.status);
 
-    const updated = await voidCashflowEntryRecord(
-      tx,
-      params.businessContext.restaurantId,
-      params.id
-    );
+    const updated = await voidCashflowEntryRecord(tx, businessId, params.id);
 
     if (!updated) {
       throw new AppError({
@@ -432,7 +393,7 @@ export async function voidCashflowEntry(params: {
 
     await tx.auditLog.create({
       data: {
-        restaurantId: params.businessContext.restaurantId,
+        businessId,
         userId: params.actor.id,
         action: "UPDATE",
         entityType: "CashflowEntry",

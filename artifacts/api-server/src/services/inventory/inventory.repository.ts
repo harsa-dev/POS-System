@@ -1,15 +1,15 @@
 import type { BusinessContext } from "../../lib/business-context/business-context.types.js";
 
-export function inventoryRestaurantScope(businessContext: BusinessContext) {
-  return { restaurantId: businessContext.restaurantId };
+export function inventoryBusinessScope(businessContext: BusinessContext) {
+  return { businessId: businessContext.businessId };
 }
 
 export function inventoryItemScopedWhere(
   businessContext: BusinessContext,
-  id: string
+  id: string,
 ) {
   return {
     id,
-    ...inventoryRestaurantScope(businessContext),
+    ...inventoryBusinessScope(businessContext),
   };
 }

@@ -1,15 +1,18 @@
-import { Router } from "express";
 import { OrderStatus } from "@prisma/client";
+import { Router } from "express";
+
+import { requireRole } from "../lib/auth.js";
+import { requireBusinessContextForUser } from "../lib/business-context/index.js";
+import { MANAGEMENT_ROLES, OWNER_ONLY } from "../lib/constants.js";
+import { errorCodes } from "../lib/errors/error-codes.js";
+import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { prisma } from "../lib/prisma.js";
-import { requireRole, getCurrentUser, getRestaurantForUser } from "../lib/auth.js";
-import { MANAGEMENT_ROLES, OWNER_ONLY, ERR } from "../lib/constants.js";
+import { errorResponse } from "../lib/responses/error-response.js";
+import { successResponse } from "../lib/responses/success-response.js";
 
 const router = Router();
 
-const TERMINAL_ORDER_STATUSES: OrderStatus[] = [
-  OrderStatus.COMPLETED,
-  OrderStatus.CANCELLED,
-];
+const TERMINAL_ORDER_STATUSES: OrderStatus[] = [OrderStatus.COMPLETED, OrderStatus.CANCELLED];
 
 function cleanOptionalString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -20,16 +23,22 @@ function parsePositiveQuantity(value: unknown) {
   return Number.isFinite(quantity) && quantity > 0 ? quantity : null;
 }
 
-// Settings
 router.get("/settings", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    res.json({ success: true, data: restaurant });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch settings" });
+    const businessContext = await requireBusinessContextForUser(user);
+    return successResponse(res, {
+      data: {
+        ...businessContext.business.restaurant,
+        businessId: businessContext.businessId,
+        name: businessContext.businessName,
+        type: businessContext.businessType,
+        mode: businessContext.businessMode,
+      },
+    });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -37,58 +46,100 @@ router.patch("/settings", async (req, res) => {
   try {
     const user = await requireRole(req, res, OWNER_ONLY);
     if (!user) return;
-    const restaurant = await prisma.restaurant.findFirst({ where: { ownerId: user.id } });
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
+
+    const businessContext = await requireBusinessContextForUser(user);
     const body = req.body ?? {};
-    const updated = await prisma.restaurant.update({
-      where: { id: restaurant.id },
-      data: {
-        name: String(body.name ?? restaurant.name).trim(),
-        address: body.address ? String(body.address).trim() : null,
-        phone: body.phone ? String(body.phone).trim() : null,
-        logoUrl: body.logoUrl ? String(body.logoUrl).trim() : null,
-        taxRate: Number(body.taxRate ?? restaurant.taxRate),
-        serviceRate: Number(body.serviceRate ?? restaurant.serviceRate),
-        currency: String(body.currency ?? restaurant.currency).toUpperCase(),
-        timezone: String(body.timezone ?? restaurant.timezone),
-        receiptFooter: String(body.receiptFooter ?? restaurant.receiptFooter ?? ""),
-        autoPrint: Boolean(body.autoPrint ?? restaurant.autoPrint),
-        orderPrefix: String(body.orderPrefix ?? restaurant.orderPrefix).toUpperCase(),
-        cashEnabled: body.cashEnabled ?? restaurant.cashEnabled,
-        qrisEnabled: body.qrisEnabled ?? restaurant.qrisEnabled,
-        cardEnabled: body.cardEnabled ?? restaurant.cardEnabled,
-        transferEnabled: body.transferEnabled ?? restaurant.transferEnabled,
-        midtransEnabled: body.midtransEnabled ?? restaurant.midtransEnabled,
-        midtransServerKey: body.midtransServerKey ? String(body.midtransServerKey) : null,
-        midtransClientKey: body.midtransClientKey ? String(body.midtransClientKey) : null,
-      },
+    const name = cleanOptionalString(body.name);
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const business = name
+        ? await tx.business.update({ where: { id: businessContext.businessId }, data: { name } })
+        : businessContext.business;
+
+      const restaurant = await tx.restaurant.upsert({
+        where: { businessId: businessContext.businessId },
+        create: {
+          businessId: businessContext.businessId,
+          address: cleanOptionalString(body.address) || null,
+          phone: cleanOptionalString(body.phone) || null,
+          logoUrl: cleanOptionalString(body.logoUrl) || null,
+          taxRate: Number(body.taxRate ?? 0),
+          serviceRate: Number(body.serviceRate ?? 0),
+          currency: String(body.currency ?? "IDR").toUpperCase(),
+          timezone: String(body.timezone ?? "Asia/Jakarta"),
+          receiptFooter: String(body.receiptFooter ?? ""),
+          autoPrint: Boolean(body.autoPrint ?? false),
+          orderPrefix: String(body.orderPrefix ?? "ORD").toUpperCase(),
+          cashEnabled: Boolean(body.cashEnabled ?? true),
+          qrisEnabled: Boolean(body.qrisEnabled ?? false),
+          cardEnabled: Boolean(body.cardEnabled ?? false),
+          transferEnabled: Boolean(body.transferEnabled ?? false),
+          midtransEnabled: Boolean(body.midtransEnabled ?? false),
+          midtransServerKey: cleanOptionalString(body.midtransServerKey) || null,
+          midtransClientKey: cleanOptionalString(body.midtransClientKey) || null,
+        },
+        update: {
+          address: body.address !== undefined ? cleanOptionalString(body.address) || null : undefined,
+          phone: body.phone !== undefined ? cleanOptionalString(body.phone) || null : undefined,
+          logoUrl: body.logoUrl !== undefined ? cleanOptionalString(body.logoUrl) || null : undefined,
+          taxRate: body.taxRate !== undefined ? Number(body.taxRate) : undefined,
+          serviceRate: body.serviceRate !== undefined ? Number(body.serviceRate) : undefined,
+          currency: body.currency !== undefined ? String(body.currency).toUpperCase() : undefined,
+          timezone: body.timezone !== undefined ? String(body.timezone) : undefined,
+          receiptFooter: body.receiptFooter !== undefined ? String(body.receiptFooter) : undefined,
+          autoPrint: body.autoPrint !== undefined ? Boolean(body.autoPrint) : undefined,
+          orderPrefix: body.orderPrefix !== undefined ? String(body.orderPrefix).toUpperCase() : undefined,
+          cashEnabled: body.cashEnabled !== undefined ? Boolean(body.cashEnabled) : undefined,
+          qrisEnabled: body.qrisEnabled !== undefined ? Boolean(body.qrisEnabled) : undefined,
+          cardEnabled: body.cardEnabled !== undefined ? Boolean(body.cardEnabled) : undefined,
+          transferEnabled: body.transferEnabled !== undefined ? Boolean(body.transferEnabled) : undefined,
+          midtransEnabled: body.midtransEnabled !== undefined ? Boolean(body.midtransEnabled) : undefined,
+          midtransServerKey: body.midtransServerKey !== undefined ? cleanOptionalString(body.midtransServerKey) || null : undefined,
+          midtransClientKey: body.midtransClientKey !== undefined ? cleanOptionalString(body.midtransClientKey) || null : undefined,
+        },
+      });
+
+      return { ...restaurant, businessId: business.id, name: business.name };
     });
-    res.json({ success: true, data: updated });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to update settings" });
+
+    return successResponse(res, { data: updated });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
-// Restaurants
 router.get("/restaurants", async (req, res) => {
-  res.json({ success: true });
+  try {
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
+    if (!user) return;
+    const businessContext = await requireBusinessContextForUser(user);
+    return successResponse(res, {
+      data: {
+        businessId: businessContext.businessId,
+        name: businessContext.businessName,
+        type: businessContext.businessType,
+        mode: businessContext.businessMode,
+        restaurant: businessContext.business.restaurant,
+      },
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
 });
 
-// Recipes
 router.get("/recipes", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
+    const businessContext = await requireBusinessContextForUser(user);
     const recipes = await prisma.recipe.findMany({
-      where: { menuItem: { restaurantId: restaurant.id } },
+      where: { menuItem: { businessId: businessContext.businessId } },
       include: { menuItem: true, inventoryItem: true },
       orderBy: { menuItem: { name: "asc" } },
     });
-    res.json({ success: true, data: recipes });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch recipes" });
+    return successResponse(res, { data: recipes });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -96,39 +147,37 @@ router.post("/recipes", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
+    const businessContext = await requireBusinessContextForUser(user);
     const menuItemId = cleanOptionalString(req.body?.menuItemId);
     const inventoryItemId = cleanOptionalString(req.body?.inventoryItemId);
-    const { quantityNeeded } = req.body ?? {};
-    if (!menuItemId || !inventoryItemId || quantityNeeded === undefined)
-      return void res.status(400).json({ success: false, message: "menuItemId, inventoryItemId, quantityNeeded required" });
-    const quantity = parsePositiveQuantity(quantityNeeded);
-    if (quantity === null)
-      return void res.status(400).json({ success: false, message: "quantityNeeded must be a positive number" });
+    const quantity = parsePositiveQuantity(req.body?.quantityNeeded);
+
+    if (!menuItemId || !inventoryItemId || quantity === null) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "menuItemId, inventoryItemId, and positive quantityNeeded are required.",
+      });
+    }
+
     const [menuItem, inventoryItem] = await Promise.all([
-      prisma.menuItem.findFirst({
-        where: { id: menuItemId, restaurantId: restaurant.id },
-        select: { id: true },
-      }),
-      prisma.inventoryItem.findFirst({
-        where: { id: inventoryItemId, restaurantId: restaurant.id },
-        select: { id: true },
-      }),
+      prisma.menuItem.findFirst({ where: { id: menuItemId, businessId: businessContext.businessId }, select: { id: true } }),
+      prisma.inventoryItem.findFirst({ where: { id: inventoryItemId, businessId: businessContext.businessId }, select: { id: true } }),
     ]);
-    if (!menuItem)
-      return void res.status(404).json({ success: false, message: "Menu item not found" });
-    if (!inventoryItem)
-      return void res.status(404).json({ success: false, message: "Inventory item not found" });
+
+    if (!menuItem) return errorResponse(res, { status: 404, code: errorCodes.notFound, message: "Menu item not found." });
+    if (!inventoryItem) return errorResponse(res, { status: 404, code: errorCodes.inventoryItemNotFound, message: "Inventory item not found." });
+
     const recipe = await prisma.recipe.upsert({
       where: { menuItemId_inventoryItemId: { menuItemId, inventoryItemId } },
       create: { menuItemId, inventoryItemId, quantityNeeded: quantity },
       update: { quantityNeeded: quantity },
       include: { menuItem: true, inventoryItem: true },
     });
-    res.status(201).json({ success: true, data: recipe });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to create recipe" });
+
+    return successResponse(res, { data: recipe, status: 201 });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -136,55 +185,41 @@ router.patch("/recipes/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    const { id } = req.params;
+    const businessContext = await requireBusinessContextForUser(user);
+    const id = String(req.params.id ?? "").trim();
     const inventoryItemId = cleanOptionalString(req.body?.inventoryItemId);
-    const { quantityNeeded } = req.body ?? {};
-    if (!inventoryItemId && quantityNeeded === undefined)
-      return void res.status(400).json({ success: false, message: "inventoryItemId or quantityNeeded required" });
-    let quantity: number | undefined;
-    if (quantityNeeded !== undefined) {
-      const parsedQuantity = parsePositiveQuantity(quantityNeeded);
-      if (parsedQuantity === null)
-        return void res.status(400).json({ success: false, message: "quantityNeeded must be a positive number" });
-      quantity = parsedQuantity;
+    const quantity = req.body?.quantityNeeded === undefined ? undefined : parsePositiveQuantity(req.body.quantityNeeded);
+
+    if (!inventoryItemId && quantity === undefined) {
+      return errorResponse(res, { status: 400, code: errorCodes.validationError, message: "inventoryItemId or quantityNeeded is required." });
     }
-    const recipe = await prisma.recipe.findFirst({
-      where: { id, menuItem: { restaurantId: restaurant.id } },
-    });
-    if (!recipe) return void res.status(404).json({ success: false, message: "Recipe not found" });
+    if (quantity === null) {
+      return errorResponse(res, { status: 400, code: errorCodes.validationError, message: "quantityNeeded must be a positive number." });
+    }
+
+    const recipe = await prisma.recipe.findFirst({ where: { id, menuItem: { businessId: businessContext.businessId } } });
+    if (!recipe) return errorResponse(res, { status: 404, code: errorCodes.notFound, message: "Recipe not found." });
+
     if (inventoryItemId) {
       const inventoryItem = await prisma.inventoryItem.findFirst({
-        where: { id: inventoryItemId, restaurantId: restaurant.id },
+        where: { id: inventoryItemId, businessId: businessContext.businessId },
         select: { id: true },
       });
-      if (!inventoryItem)
-        return void res.status(404).json({ success: false, message: "Inventory item not found" });
-      const duplicateRecipe = await prisma.recipe.findFirst({
-        where: {
-          id: { not: id },
-          menuItemId: recipe.menuItemId,
-          inventoryItemId,
-        },
-        select: { id: true },
-      });
-      if (duplicateRecipe)
-        return void res.status(400).json({ success: false, message: "Recipe ingredient already exists for this menu item" });
+      if (!inventoryItem) return errorResponse(res, { status: 404, code: errorCodes.inventoryItemNotFound, message: "Inventory item not found." });
     }
+
     const updated = await prisma.recipe.update({
       where: { id },
       data: {
-        ...(inventoryItemId
-          ? { inventoryItem: { connect: { id: inventoryItemId } } }
-          : {}),
+        ...(inventoryItemId ? { inventoryItem: { connect: { id: inventoryItemId } } } : {}),
         ...(quantity !== undefined ? { quantityNeeded: quantity } : {}),
       },
       include: { menuItem: true, inventoryItem: true },
     });
-    res.json({ success: true, data: updated });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to update recipe" });
+
+    return successResponse(res, { data: updated });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 
@@ -192,64 +227,34 @@ router.delete("/recipes/:id", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
     if (!user) return;
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    const { id } = req.params;
+    const businessContext = await requireBusinessContextForUser(user);
+    const id = String(req.params.id ?? "").trim();
+
     const recipe = await prisma.recipe.findFirst({
-      where: { id, menuItem: { restaurantId: restaurant.id } },
+      where: { id, menuItem: { businessId: businessContext.businessId } },
       include: { menuItem: true },
     });
-    if (!recipe) return void res.status(404).json({ success: false, message: "Recipe not found" });
+    if (!recipe) return errorResponse(res, { status: 404, code: errorCodes.notFound, message: "Recipe not found." });
+
     const activeOrderItem = await prisma.orderItem.findFirst({
       where: {
         menuItemId: recipe.menuItemId,
-        order: {
-          restaurantId: restaurant.id,
-          status: { notIn: TERMINAL_ORDER_STATUSES },
-        },
+        order: { businessId: businessContext.businessId, status: { notIn: TERMINAL_ORDER_STATUSES } },
       },
-      select: {
-        id: true,
-        order: { select: { orderNumber: true, status: true } },
-      },
+      select: { id: true },
     });
-    if (activeOrderItem)
-      return void res.status(400).json({
-        success: false,
-        message:
-          "This ingredient cannot be removed while active orders for this menu item exist.",
+    if (activeOrderItem) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "This ingredient cannot be removed while active orders for this menu item exist.",
       });
-    const recipeCount = await prisma.recipe.count({
-      where: { menuItemId: recipe.menuItemId },
-    });
-    if (recipe.menuItem.isAvailable && recipeCount <= 1)
-      return void res.status(400).json({
-        success: false,
-        message:
-          "Cannot remove the last ingredient while this menu item is available. Make the menu item unavailable first.",
-      });
-    await prisma.recipe.delete({ where: { id } });
-    res.json({ success: true, message: "Recipe deleted" });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to delete recipe" });
-  }
-});
+    }
 
-// Payments
-router.get("/payments", async (req, res) => {
-  try {
-    const user = await getCurrentUser(req);
-    if (!user) return void res.status(401).json({ success: false, message: "Unauthorized" });
-    const restaurant = await getRestaurantForUser(user);
-    if (!restaurant) return void res.status(404).json({ success: false, message: ERR.RESTAURANT_NOT_FOUND });
-    const payments = await prisma.payment.findMany({
-      where: { order: { restaurantId: restaurant.id } },
-      include: { order: true },
-      orderBy: { createdAt: "desc" },
-    });
-    res.json({ success: true, data: payments });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch payments" });
+    await prisma.recipe.delete({ where: { id } });
+    return successResponse(res, { message: "Recipe deleted." });
+  } catch (error) {
+    return handleApiError(res, error);
   }
 });
 

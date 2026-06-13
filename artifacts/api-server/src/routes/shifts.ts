@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { Router } from "express";
 
 import { requireRole } from "../lib/auth.js";
-import { createRestaurantScopeWhere, requireBusinessContextForUser } from "../lib/business-context/index.js";
+import { createBusinessScopeWhere, requireBusinessContextForUser } from "../lib/business-context/index.js";
 import { POS_ROLES } from "../lib/constants.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
@@ -20,7 +20,7 @@ router.get("/shifts", async (req, res) => {
     const businessContext = await requireBusinessContextForUser(user);
 
     const shifts = await prisma.shift.findMany({
-      where: createRestaurantScopeWhere(businessContext),
+      where: createBusinessScopeWhere(businessContext),
       include: {
         user: { select: { name: true, email: true } },
         orders: { select: { id: true, total: true, paymentMethod: true, status: true } },
@@ -33,12 +33,13 @@ router.get("/shifts", async (req, res) => {
       ? await prisma.$queryRaw<Array<{ sourceId: string }>>`
           SELECT "sourceId"
           FROM "CashflowEntry"
-          WHERE "restaurantId" = ${businessContext.restaurantId}
+          WHERE "businessId" = ${businessContext.businessId}
             AND "sourceType" = CAST('SHIFT_CLOSE' AS "CashflowSourceType")
             AND "status" != CAST('VOIDED' AS "CashflowEntryStatus")
             AND "sourceId" IN (${Prisma.join(shiftIds)})
         `
       : [];
+
     const syncedShiftIds = new Set(syncedRows.map((row) => row.sourceId));
 
     return successResponse(res, {
@@ -60,7 +61,7 @@ router.post("/shifts/open", async (req, res) => {
     const businessContext = await requireBusinessContextForUser(user);
     const openingCash = Number(req.body?.openingCash ?? 0);
 
-    if (openingCash < 0) {
+    if (!Number.isFinite(openingCash) || openingCash < 0) {
       return errorResponse(res, {
         status: 400,
         code: errorCodes.validationError,
@@ -72,7 +73,7 @@ router.post("/shifts/open", async (req, res) => {
       where: {
         userId: user.id,
         status: "OPEN",
-        ...createRestaurantScopeWhere(businessContext),
+        ...createBusinessScopeWhere(businessContext),
       },
     });
 
@@ -87,7 +88,7 @@ router.post("/shifts/open", async (req, res) => {
     const shift = await prisma.shift.create({
       data: {
         userId: user.id,
-        restaurantId: businessContext.restaurantId,
+        businessId: businessContext.businessId,
         openingCash,
         expectedCash: openingCash,
         status: "OPEN",
@@ -111,7 +112,7 @@ router.get("/shifts/current", async (req, res) => {
       where: {
         userId: user.id,
         status: "OPEN",
-        ...createRestaurantScopeWhere(businessContext),
+        ...createBusinessScopeWhere(businessContext),
       },
       include: { orders: true },
       orderBy: { openedAt: "desc" },
@@ -129,12 +130,12 @@ router.patch("/shifts/:id/close", async (req, res) => {
     if (!user) return;
 
     const businessContext = await requireBusinessContextForUser(user);
-    const { id } = req.params;
+    const id = String(req.params.id ?? "").trim();
 
     const shift = await prisma.shift.findFirst({
       where: {
         id,
-        ...createRestaurantScopeWhere(businessContext),
+        ...createBusinessScopeWhere(businessContext),
       },
       include: {
         orders: { select: { id: true, total: true, paymentMethod: true, status: true } },
@@ -159,7 +160,7 @@ router.patch("/shifts/:id/close", async (req, res) => {
 
     const closingCash = Number(req.body?.closingCash ?? 0);
 
-    if (closingCash < 0) {
+    if (!Number.isFinite(closingCash) || closingCash < 0) {
       return errorResponse(res, {
         status: 400,
         code: errorCodes.validationError,
@@ -171,7 +172,7 @@ router.patch("/shifts/:id/close", async (req, res) => {
       (order) =>
         order.paymentMethod === "CASH" &&
         order.status !== "CANCELLED" &&
-        order.status !== "PENDING_PAYMENT"
+        order.status !== "PENDING_PAYMENT",
     );
 
     const cashSales = cashOrders.reduce((total, order) => total + order.total, 0);
