@@ -4,6 +4,7 @@ export interface HealthStatus {
 
 export type RetailStockStatus = "in-stock" | "low-stock" | "out-of-stock";
 export type RetailPaymentMethod = "cash" | "qris" | "card" | "transfer";
+export type RetailReceivingStatus = "draft" | "ordered" | "partial" | "received";
 export type RetailSharedDashboardId =
   | "overview"
   | "sales"
@@ -54,6 +55,10 @@ export interface RetailSalePreviewInput {
 export interface RetailSaleCheckoutInput {
   paymentMethod: RetailPaymentMethod;
   lines: RetailSaleLineInput[];
+}
+
+export interface RetailReceivingStatusUpdateInput {
+  status: RetailReceivingStatus;
 }
 
 export interface RetailSaleLinePreview {
@@ -116,7 +121,7 @@ export interface RetailReceivingQueueItem {
   id: string;
   supplierId: string;
   supplierName: string;
-  status: "draft" | "ordered" | "partial" | "received";
+  status: RetailReceivingStatus;
   expectedDate: string;
   totalCost: number;
   items: Array<{
@@ -126,6 +131,16 @@ export interface RetailReceivingQueueItem {
     receivedQty: number;
     missingQty: number;
   }>;
+}
+
+export interface RetailReceivingStatusUpdateResult {
+  entity: "RetailReceiving";
+  id: string;
+  previousStatus: RetailReceivingStatus;
+  status: RetailReceivingStatus;
+  updated: boolean;
+  updatedAt: string;
+  reason?: string;
 }
 
 export interface RetailDashboard {
@@ -171,4 +186,5 @@ export type RetailCheckoutResponse = ApiSuccessResponse<RetailCheckoutResult>;
 export type RetailBarcodeLookupResponse = ApiSuccessResponse<RetailBarcodeLookup>;
 export type RetailInventoryRisksResponse = ApiSuccessResponse<RetailInventoryRisk[]>;
 export type RetailReceivingQueueResponse = ApiSuccessResponse<RetailReceivingQueueItem[]>;
+export type RetailReceivingStatusUpdateResponse = ApiSuccessResponse<RetailReceivingStatusUpdateResult>;
 export type RetailSharedDashboardResponse = ApiSuccessResponse<RetailSharedDashboard>;
