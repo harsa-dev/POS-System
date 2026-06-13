@@ -4,15 +4,15 @@ This document tracks implementation gaps after the Retail Phase 1-7F backend del
 
 ## Current assessment
 
-The Retail foundation is functional, but the implementation is not complete enough to call the mode production-ready. The missing work is mostly reversal workflows, generated-client consolidation, scoped validation, migration baseline hardening, and permission policy hardening.
+The Retail foundation is functional, but the implementation is not complete enough to call the mode production-ready. The missing work is mostly generated-client consolidation, scoped validation, migration baseline hardening, and permission policy hardening.
 
 ## Missing implementation list
 
 ```txt
 Phase 8A - Receiving status API route integration: implemented
 Phase 8B - Receiving status frontend action wiring: implemented
-Phase 8C - Return persistence + refund reversal workflow: planned
-Phase 8D - Sale cancellation + stock/cashflow reversal workflow: planned
+Phase 8C - Return persistence + refund reversal workflow: implemented
+Phase 8D - Sale cancellation + stock/cashflow reversal workflow: implemented
 Phase 8E - Generated API client consolidation: planned
 Phase 8F - Retail smoke test script and scoped CI gate: planned
 Phase 8G - Retail migration baseline / idempotency hardening: planned
@@ -109,44 +109,96 @@ Select an ordered receiving row and click Mark partial or Mark received
 Confirm fallback mode disables action buttons
 ```
 
-## Phase 8C - Return persistence + refund reversal workflow: planned
+## Phase 8C - Return persistence + refund reversal workflow: implemented
 
-Goal:
+Implemented scope:
 
 ```txt
-Turn return preview into persisted Retail return workflow.
+- RetailReturn and RetailReturnItem tables exist through scoped return migration
+- Return Prisma schema sync exists and runs the base Retail schema sync first
+- POST /api/retail/returns/preview keeps non-mutating preview behavior
+- POST /api/retail/returns persists return workflow
+- Original receipt number is validated against completed RetailSale rows
+- Return lines are validated against original sale items
+- Over-return is blocked using previous RetailReturnItem totals
+- Restockable return lines increment RetailProduct.currentStock
+- Restockable return lines create RetailStockMovement rows
+- Refund creates CashflowEntry EXPENSE row
+- Workflow writes AuditLog entry
+- React API helper exists for return preview and persistence
 ```
 
-Scope:
+Primary files:
 
 ```txt
-- Persist return header and return lines or reuse a dedicated RetailReturn table
-- Validate original receipt number
-- Create refund payment or negative payment signal
-- Create stock movement for restockable lines
-- Create cashflow reversal entry
-- Write audit log
-- Require manager review for damaged/expired/missing receipt cases
+artifacts/api-server/prisma/migrations/202606140004_add_retail_returns/migration.sql
+artifacts/api-server/scripts/sync-retail-return-prisma-schema.ts
+artifacts/api-server/src/services/retail/retail.return-repository.ts
+artifacts/api-server/src/services/retail/retail.service.ts
+artifacts/api-server/src/routes/retail.ts
+lib/api-client-react/src/generated/retail-returns.ts
 ```
 
-## Phase 8D - Sale cancellation + stock/cashflow reversal workflow: planned
-
-Goal:
+Validation examples:
 
 ```txt
-Allow safe sale cancellation without corrupting stock or cashflow.
+POST /api/retail/sales/checkout
+POST /api/retail/returns/preview
+POST /api/retail/returns
+Confirm stock movement, cashflow expense, and audit rows are created
 ```
 
-Scope:
+## Phase 8D - Sale cancellation + stock/cashflow reversal workflow: implemented
+
+Implemented scope:
 
 ```txt
-- Business-scoped sale lookup
-- Guard cancellation by sale status
-- Restore stock through RetailProduct updateMany guard
-- Create RetailStockMovement reversal rows
-- Create payment/cashflow reversal
-- Write audit log
-- Reject cancellation after configured settlement window unless manager/owner
+- POST /api/retail/sales/:id/cancel is exposed
+- Route is protected by Retail business context guard
+- Route is protected by management role guard
+- Request body accepts optional reason string
+- Sale lookup is business-scoped
+- Only completed sales can be cancelled
+- Sales with persisted returns are blocked and must use the return workflow
+- Sale status is guarded with updateMany where status=completed
+- Paid payment rows are marked refunded
+- Product stock is restored with guarded RetailProduct updateMany
+- RetailStockMovement reversal rows are created with type=in and reason=sale_cancellation
+- CashflowEntry EXPENSE reversal is created
+- AuditLog captures previous status, next status, refund amount, restocked quantity, and movement IDs
+- OpenAPI spec documents cancellation endpoint
+- React API client helper exists for cancellation
+```
+
+Primary files:
+
+```txt
+artifacts/api-server/src/services/retail/retail.sale-cancellation-repository.ts
+artifacts/api-server/src/routes/retail.ts
+artifacts/api-server/src/services/retail/retail.types.ts
+lib/api-spec/openapi.yaml
+lib/api-client-react/src/generated/api.schemas.ts
+lib/api-client-react/src/generated/retail-sale-cancellation.ts
+```
+
+Endpoint contract:
+
+```txt
+POST /api/retail/sales/:id/cancel
+Body: { "reason": "Customer voided sale before settlement." }
+```
+
+Validation examples:
+
+```txt
+Create checkout with POST /api/retail/sales/checkout
+Cancel the sale with POST /api/retail/sales/{saleId}/cancel
+Confirm sale status becomes cancelled
+Confirm payment status becomes refunded
+Confirm stock is restored
+Confirm CashflowEntry EXPENSE and AuditLog rows exist
+Try cancelling the same sale again and expect cancellation to be blocked
+Try cancelling a sale that already has RetailReturn rows and expect cancellation to be blocked
 ```
 
 ## Phase 8E - Generated API client consolidation: planned
@@ -161,8 +213,8 @@ Scope:
 
 ```txt
 - Regenerate OpenAPI client locally
-- Ensure retailUpdateReceivingStatus lands in generated api.ts
-- Remove standalone temporary receiving-status helper if generated output covers it
+- Ensure retailUpdateReceivingStatus, retailPersistReturn, and retailCancelSale land in generated api.ts
+- Remove standalone temporary receiving/return/cancellation helpers if generated output covers them
 - Replace remaining raw fetch calls in Retail frontend bridge
 ```
 
@@ -178,7 +230,7 @@ Scope:
 
 ```txt
 - Add script for retail:schema:sync + generate + typecheck:retail
-- Add optional API smoke script for health/products/preview/checkout/receiving status
+- Add optional API smoke script for health/products/preview/checkout/receiving status/return/cancel flows
 - Keep full backend typecheck separate until legacy non-retail files are cleaned
 ```
 
