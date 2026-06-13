@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 
 import { requireRole } from "../lib/auth.js";
 import { requireBusinessContextForUser } from "../lib/business-context/index.js";
@@ -32,7 +32,7 @@ import { requireBodyObject } from "../features/service-business/service-business
 
 const router = Router();
 
-async function getServiceRequestContext(req: Parameters<typeof requireRole>[0], res: Parameters<typeof requireRole>[1]) {
+async function getServiceRequestContext(req: Request, res: Response) {
   const user = await requireRole(req, res, ALL_ROLES);
   if (!user) return null;
 
@@ -44,7 +44,7 @@ async function getServiceRequestContext(req: Parameters<typeof requireRole>[0], 
   };
 }
 
-function sendMutationResult(res: Parameters<typeof successResponse>[0], result: ServiceBusinessResult<ServiceBusinessMutationResult>) {
+function sendMutationResult(res: Response, result: ServiceBusinessResult<ServiceBusinessMutationResult>) {
   if (!result.ok) {
     return errorResponse(res, {
       status: result.status,
@@ -59,7 +59,7 @@ function sendMutationResult(res: Parameters<typeof successResponse>[0], result: 
   });
 }
 
-function readBodyOrError(reqBody: unknown, res: Parameters<typeof successResponse>[0]) {
+function readBodyOrError(reqBody: unknown, res: Response) {
   const body = requireBodyObject(reqBody);
   if (!body) {
     errorResponse(res, {
