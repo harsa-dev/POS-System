@@ -1,6 +1,6 @@
 # Raw Material Service Layer Cleanup
 
-Status: Phase 4A implemented.
+Status: Phase 4A and Phase 4B implemented.
 
 This document records Phase 4 of the Raw Material backend plan.
 
@@ -17,9 +17,11 @@ artifacts/api-server/src/services/raw-material/raw-material-stock-movement.repos
 artifacts/api-server/src/services/raw-material/raw-material-stock-movement.service.ts
 ```
 
-## Goal
+Goal:
 
+```txt
 Move stock movement persistence details out of the orchestration service.
+```
 
 Before this phase, `raw-material-stock-movement.service.ts` owned too many responsibilities:
 
@@ -40,15 +42,7 @@ raw-material-stock-movement.repository.ts owns persistence helpers.
 raw-material-stock-movement.service.ts owns orchestration, validation, guards, and DTO mapping.
 ```
 
-## Repository responsibilities
-
-New repository file:
-
-```txt
-artifacts/api-server/src/services/raw-material/raw-material-stock-movement.repository.ts
-```
-
-Exports:
+Repository exports:
 
 ```txt
 RawMaterialRepositoryTx
@@ -62,35 +56,72 @@ listRawMaterialStockMovementRows()
 findRawMaterialProcessingConsumptionMovement()
 ```
 
-Persistence moved out of the service:
+## Phase 4B - Processing run repository and presenter split
+
+Status: implemented.
+
+Implemented files:
 
 ```txt
-INSERT INTO RawMaterialStockMovement
-SELECT stock movement rows with batch/storage labels
-load batch with storage location
-load active storage location
-find duplicate processing consumption movement
+artifacts/api-server/src/services/raw-material/raw-material-processing-run.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-processing-run.presenter.ts
+artifacts/api-server/src/services/raw-material/raw-material-processing-run.dto.ts
+artifacts/api-server/src/services/raw-material/raw-material-processing-run.service.ts
 ```
 
-## Service responsibilities after split
-
-`raw-material-stock-movement.service.ts` now focuses on:
+Goal:
 
 ```txt
-role assertion
-input validation
-stock/domain guard application
-transaction orchestration
-batch/storage not-found error mapping
+Move processing run persistence and presentation details out of the orchestration service.
+Keep processing status and quantity guards inside the service layer.
+Keep route behavior unchanged.
+```
+
+Before this phase, `raw-material-processing-run.service.ts` owned:
+
+```txt
+permission checks
+query where construction
+run-number conflict lookup
+input batch lookup
+processing run lookup
+Prisma create/update/cancel operations
+status transition guard orchestration
+output quantity guard orchestration
 DTO mapping
 ```
 
-The service still controls business behavior.
-The repository only exposes persistence operations.
+After this phase:
+
+```txt
+raw-material-processing-run.repository.ts owns Prisma reads and writes.
+raw-material-processing-run.presenter.ts owns DTO mapping.
+raw-material-processing-run.dto.ts remains a compatibility re-export.
+raw-material-processing-run.service.ts owns permission checks, validation, workflow guards, and orchestration.
+```
+
+Repository exports:
+
+```txt
+listRawMaterialProcessingRunRows()
+findRawMaterialProcessingRunById()
+findRawMaterialProcessingRunNumberConflict()
+loadRawMaterialProcessingInputBatch()
+createRawMaterialProcessingRunRecord()
+updateRawMaterialProcessingRunRecord()
+cancelRawMaterialProcessingRunRecord()
+```
+
+Presenter exports:
+
+```txt
+RawMaterialProcessingRunWithBatch
+toRawMaterialProcessingRunDto()
+```
 
 ## Behavior unchanged
 
-This phase does not change:
+These phases do not change:
 
 ```txt
 route paths
@@ -99,13 +130,14 @@ response shapes
 Prisma schema
 migrations
 stock movement rules
+processing workflow guards
 permission matrix
 frontend contract
 ```
 
-## Why stock movement first
+## Why this order
 
-Stock movement is the highest-risk Raw Material service because it mutates:
+Stock movement was split first because it mutates:
 
 ```txt
 RawMaterialBatch.remainingQuantity
@@ -113,24 +145,31 @@ RawMaterialStorageLocation.usedKg
 RawMaterialStockMovement ledger rows
 ```
 
-Splitting it first makes later stock mutation hardening easier.
+Processing run was split second because stock consumption references processing runs and because processing has a status workflow:
+
+```txt
+PLANNED -> RUNNING -> COMPLETED
+PLANNED/RUNNING -> CANCELLED
+```
 
 ## Remaining Phase 4 work
 
-Phase 4B should split processing run persistence and presentation boundaries.
+Phase 4C should split intake and batch persistence/presentation boundaries.
 
 Suggested next files:
 
 ```txt
-raw-material-processing-run.repository.ts
-raw-material-processing-run.presenter.ts
-raw-material-processing-run.service.ts
+raw-material-intake.repository.ts
+raw-material-intake.presenter.ts
+raw-material-batch.repository.ts
+raw-material-batch.presenter.ts
+raw-material-intake.service.ts
+raw-material-batch.service.ts
 ```
 
 Then continue with:
 
 ```txt
-Phase 4C - intake and batch service split
 Phase 4D - supplier/storage/pen service split
 ```
 
@@ -149,4 +188,7 @@ Focus on errors from:
 ```txt
 src/services/raw-material/raw-material-stock-movement.repository.ts
 src/services/raw-material/raw-material-stock-movement.service.ts
+src/services/raw-material/raw-material-processing-run.repository.ts
+src/services/raw-material/raw-material-processing-run.presenter.ts
+src/services/raw-material/raw-material-processing-run.service.ts
 ```
