@@ -8,6 +8,14 @@ import { errorCodes } from "../../lib/errors/error-codes.js";
 import { prisma } from "../../lib/prisma.js";
 import { toRawMaterialStockMovementDto } from "./raw-material-ledger.dto.js";
 import type { RawMaterialActor } from "./raw-material-supplier.types.js";
+import {
+  assertRawMaterialDifferentStorage,
+  assertRawMaterialKgBatch,
+  assertRawMaterialManualAdjustmentNote,
+  assertRawMaterialPositiveMovementQuantity,
+  assertRawMaterialQuantityRange,
+  assertRawMaterialStorageUsage,
+} from "./raw-material.stock-rules.js";
 import type {
   RawMaterialAdjustmentInput,
   RawMaterialProcessingConsumptionInput,
@@ -26,10 +34,10 @@ import {
   validateRawMaterialProcessingConsumptionInput,
   validateRawMaterialTransferInput,
 } from "./raw-material-stock-movement.validation.js";
+import { assertRawMaterialProcessingCanConsumeStock } from "./raw-material.workflow.js";
 
 const viewRoles = new Set<Role>([Role.OWNER, Role.MANAGER, Role.ADMIN, Role.OPERATOR, Role.STAFF, Role.VIEWER]);
 const manageRoles = new Set<Role>([Role.OWNER, Role.MANAGER, Role.ADMIN, Role.OPERATOR]);
-const quantityTolerance = 0.0001;
 
 type Tx = Prisma.TransactionClient;
 
@@ -47,20 +55,6 @@ function assertCanManage(actor: RawMaterialActor) {
   appError(403, errorCodes.forbidden, "You do not have permission to manage raw material stock movements.");
 }
 
-function assertKgBatch(unit: RawMaterialUnit) {
-  if (unit === RawMaterialUnit.KG) return;
-  appError(400, errorCodes.validationError, "Raw material stock movement currently supports KG batches only.");
-}
-
-function assertQuantityRange(nextRemaining: number, batchQuantity: number) {
-  if (nextRemaining < -quantityTolerance) {
-    appError(400, errorCodes.validationError, "Batch remaining quantity cannot become negative.");
-  }
-  if (nextRemaining > batchQuantity + quantityTolerance) {
-    appError(400, errorCodes.validationError, "Batch remaining quantity cannot exceed batch quantity.");
-  }
-}
-
 async function loadBatchForMutation(tx: Tx, businessId: string, batchId: string) {
   const batch = await tx.rawMaterialBatch.findFirst({
     where: { id: batchId, businessId },
@@ -69,7 +63,7 @@ async function loadBatchForMutation(tx: Tx, businessId: string, batchId: string)
 
   if (!batch) appError(404, errorCodes.notFound, "Raw material batch not found.");
   if (!batch.isActive) appError(400, errorCodes.validationError, "Raw material batch is inactive.");
-  assertKgBatch(batch.unit);
+  assertRawMaterialKgBatch(batch.unit);
   return batch;
 }
 
@@ -80,15 +74,6 @@ async function loadStorageForMutation(tx: Tx, businessId: string, storageLocatio
 
   if (!storage) appError(404, errorCodes.notFound, "Raw material storage location not found or inactive.");
   return storage;
-}
-
-function assertStorageUsage(nextUsedKg: number, capacityKg: number) {
-  if (nextUsedKg < -quantityTolerance) {
-    appError(400, errorCodes.validationError, "Storage used quantity cannot become negative.");
-  }
-  if (capacityKg > 0 && nextUsedKg > capacityKg + quantityTolerance) {
-    appError(400, errorCodes.validationError, "Storage capacity would be exceeded.");
-  }
 }
 
 async function insertMovement(tx: Tx, input: {
@@ -240,14 +225,16 @@ export async function adjustRawMaterialBatchStock(params: {
   const { actor, businessContext } = params;
   assertCanManage(actor);
   const data = validateRawMaterialAdjustmentInput(params.input);
+  assertRawMaterialManualAdjustmentNote({ reason: data.reason, note: data.note });
+  assertRawMaterialPositiveMovementQuantity(Math.abs(data.deltaQuantity), "Adjustment quantity");
 
   return prisma.$transaction(async (tx) => {
     const batch = await loadBatchForMutation(tx, businessContext.businessId, data.batchId);
     const nextRemaining = batch.remainingQuantity + data.deltaQuantity;
-    assertQuantityRange(nextRemaining, batch.quantity);
+    assertRawMaterialQuantityRange({ nextRemaining, batchQuantity: batch.quantity });
 
     const nextUsedKg = batch.storageLocation.usedKg + data.deltaQuantity;
-    assertStorageUsage(nextUsedKg, batch.storageLocation.capacityKg);
+    assertRawMaterialStorageUsage({ nextUsedKg, capacityKg: batch.storageLocation.capacityKg });
 
     await tx.rawMaterialBatch.update({
       where: { id: batch.id },
@@ -290,17 +277,16 @@ export async function transferRawMaterialBatchStorage(params: {
     const batch = await loadBatchForMutation(tx, businessContext.businessId, data.batchId);
     const targetStorage = await loadStorageForMutation(tx, businessContext.businessId, data.targetStorageLocationId);
 
-    if (batch.storageLocationId === targetStorage.id) {
-      appError(400, errorCodes.validationError, "Target storage location must be different from source storage location.");
-    }
-    if (batch.remainingQuantity <= 0) {
-      appError(400, errorCodes.validationError, "Cannot transfer an empty batch.");
-    }
+    assertRawMaterialDifferentStorage({
+      sourceStorageLocationId: batch.storageLocationId,
+      targetStorageLocationId: targetStorage.id,
+    });
+    assertRawMaterialPositiveMovementQuantity(batch.remainingQuantity, "Transfer quantity");
 
     const nextSourceUsedKg = batch.storageLocation.usedKg - batch.remainingQuantity;
     const nextTargetUsedKg = targetStorage.usedKg + batch.remainingQuantity;
-    assertStorageUsage(nextSourceUsedKg, batch.storageLocation.capacityKg);
-    assertStorageUsage(nextTargetUsedKg, targetStorage.capacityKg);
+    assertRawMaterialStorageUsage({ nextUsedKg: nextSourceUsedKg, capacityKg: batch.storageLocation.capacityKg });
+    assertRawMaterialStorageUsage({ nextUsedKg: nextTargetUsedKg, capacityKg: targetStorage.capacityKg });
 
     await tx.rawMaterialStorageLocation.update({ where: { id: batch.storageLocationId }, data: { usedKg: nextSourceUsedKg } });
     await tx.rawMaterialStorageLocation.update({ where: { id: targetStorage.id }, data: { usedKg: nextTargetUsedKg } });
@@ -312,7 +298,7 @@ export async function transferRawMaterialBatchStorage(params: {
       sourceStorageLocationId: batch.storageLocationId,
       targetStorageLocationId: targetStorage.id,
       type: "TRANSFER_OUT",
-      reason: "TRANSFER",
+      reason: "TRANSFER_OUT",
       source: "TRANSFER",
       quantity: batch.remainingQuantity,
       beforeQuantity: batch.remainingQuantity,
@@ -326,7 +312,7 @@ export async function transferRawMaterialBatchStorage(params: {
       sourceStorageLocationId: batch.storageLocationId,
       targetStorageLocationId: targetStorage.id,
       type: "TRANSFER_IN",
-      reason: "TRANSFER",
+      reason: "TRANSFER_IN",
       source: "TRANSFER",
       quantity: batch.remainingQuantity,
       beforeQuantity: batch.remainingQuantity,
@@ -365,21 +351,20 @@ export async function consumeRawMaterialForProcessingRun(params: {
       include: { inputBatch: { include: { storageLocation: true } } },
     });
     if (!run) appError(404, errorCodes.notFound, "Raw material processing run not found.");
-    if (run.status === RawMaterialProcessingStatus.PLANNED || run.status === RawMaterialProcessingStatus.CANCELLED) {
-      appError(400, errorCodes.validationError, "Only running or completed processing runs can consume stock.");
-    }
+    assertRawMaterialProcessingCanConsumeStock({ status: run.status });
 
     const batch = run.inputBatch;
     if (!batch.isActive) appError(400, errorCodes.validationError, "Input batch is inactive.");
-    assertKgBatch(batch.unit);
+    assertRawMaterialKgBatch(batch.unit);
     if (run.inputQuantity > batch.remainingQuantity) {
       appError(400, errorCodes.validationError, "Processing input quantity exceeds remaining batch quantity.");
     }
 
     const nextRemaining = batch.remainingQuantity - run.inputQuantity;
     const nextUsedKg = batch.storageLocation.usedKg - run.inputQuantity;
-    assertQuantityRange(nextRemaining, batch.quantity);
-    assertStorageUsage(nextUsedKg, batch.storageLocation.capacityKg);
+    assertRawMaterialQuantityRange({ nextRemaining, batchQuantity: batch.quantity });
+    assertRawMaterialStorageUsage({ nextUsedKg, capacityKg: batch.storageLocation.capacityKg });
+    assertRawMaterialPositiveMovementQuantity(run.inputQuantity, "Processing consumption quantity");
 
     await tx.rawMaterialBatch.update({ where: { id: batch.id }, data: { remainingQuantity: nextRemaining } });
     await tx.rawMaterialStorageLocation.update({ where: { id: batch.storageLocationId }, data: { usedKg: nextUsedKg } });
@@ -389,7 +374,7 @@ export async function consumeRawMaterialForProcessingRun(params: {
       batchId: batch.id,
       sourceStorageLocationId: batch.storageLocationId,
       type: "PRODUCTION_USAGE",
-      reason: "PROCESSING_USAGE",
+      reason: "PRODUCTION_USAGE",
       source: "PROCESSING_RUN",
       sourceId: run.id,
       quantity: run.inputQuantity,
