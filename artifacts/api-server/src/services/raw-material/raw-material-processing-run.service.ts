@@ -11,6 +11,12 @@ import type {
 } from "./raw-material-processing-run.types.js";
 import type { RawMaterialActor } from "./raw-material-supplier.types.js";
 import { validateRawMaterialProcessingRunInput } from "./raw-material-processing-run.validation.js";
+import {
+  assertRawMaterialBatchAcceptedForProcessing,
+  assertRawMaterialProcessingInitialStatus,
+  assertRawMaterialProcessingOutputWithinInput,
+  assertRawMaterialProcessingStatusTransition,
+} from "./raw-material.workflow.js";
 
 const viewRoles = new Set<Role>([Role.OWNER, Role.MANAGER, Role.ADMIN, Role.OPERATOR, Role.STAFF, Role.VIEWER]);
 const manageRoles = new Set<Role>([Role.OWNER, Role.MANAGER, Role.ADMIN, Role.OPERATOR]);
@@ -85,10 +91,7 @@ async function loadInputBatchOrThrow(businessContext: BusinessContext, inputBatc
   });
 
   if (!batch) appError(404, errorCodes.notFound, "Raw material input batch not found.");
-  if (!batch.isActive) appError(400, errorCodes.validationError, "Input batch is inactive.");
-  if (batch.qualityStatus !== "ACCEPTED") {
-    appError(400, errorCodes.validationError, "Input batch must be accepted before processing.");
-  }
+  assertRawMaterialBatchAcceptedForProcessing(batch);
 
   return batch;
 }
@@ -153,6 +156,15 @@ export async function createRawMaterialProcessingRun(params: {
     appError(400, errorCodes.validationError, "Input quantity cannot exceed remaining batch quantity.");
   }
 
+  const nextStatus = data.status ?? RawMaterialProcessingStatus.PLANNED;
+  assertRawMaterialProcessingInitialStatus(nextStatus);
+  assertRawMaterialProcessingOutputWithinInput({
+    inputQuantity: data.inputQuantity,
+    outputQuantity: data.outputQuantity,
+    byproductQuantity: data.byproductQuantity,
+    wasteQuantity: data.wasteQuantity,
+  });
+
   const run = await prisma.rawMaterialProcessingRun.create({
     data: {
       businessId: businessContext.businessId,
@@ -163,7 +175,7 @@ export async function createRawMaterialProcessingRun(params: {
       outputQuantity: data.outputQuantity,
       byproductQuantity: data.byproductQuantity,
       wasteQuantity: data.wasteQuantity,
-      status: data.status ?? RawMaterialProcessingStatus.PLANNED,
+      status: nextStatus,
       startedAt: data.startedAt,
       completedAt: data.completedAt,
       notes: data.notes,
@@ -195,13 +207,22 @@ export async function updateRawMaterialProcessingRun(params: {
   const outputQuantity = data.outputQuantity ?? existing.outputQuantity;
   const byproductQuantity = data.byproductQuantity ?? existing.byproductQuantity;
   const wasteQuantity = data.wasteQuantity ?? existing.wasteQuantity;
+  const nextStatus = data.status ?? existing.status;
+
+  assertRawMaterialProcessingStatusTransition({
+    currentStatus: existing.status,
+    nextStatus,
+  });
+  assertRawMaterialProcessingOutputWithinInput({
+    inputQuantity,
+    outputQuantity,
+    byproductQuantity,
+    wasteQuantity,
+  });
 
   const batch = await loadInputBatchOrThrow(businessContext, inputBatchId);
   if (inputQuantity > batch.remainingQuantity && inputQuantity !== existing.inputQuantity) {
     appError(400, errorCodes.validationError, "Input quantity cannot exceed remaining batch quantity.");
-  }
-  if (outputQuantity + byproductQuantity + wasteQuantity > inputQuantity) {
-    appError(400, errorCodes.validationError, "Processing output cannot exceed input quantity.");
   }
 
   const updated = await prisma.rawMaterialProcessingRun.update({
@@ -214,7 +235,7 @@ export async function updateRawMaterialProcessingRun(params: {
       outputQuantity,
       byproductQuantity,
       wasteQuantity,
-      ...(data.status ? { status: data.status } : {}),
+      status: nextStatus,
       ...(input.startedAt !== undefined ? { startedAt: data.startedAt ?? null } : {}),
       ...(input.completedAt !== undefined ? { completedAt: data.completedAt ?? null } : {}),
       ...(input.notes !== undefined ? { notes: data.notes ?? null } : {}),
@@ -234,9 +255,10 @@ export async function cancelRawMaterialProcessingRun(params: {
   assertCanManage(actor);
 
   const existing = await loadProcessingRunOrThrow(businessContext, id);
-  if (existing.status === RawMaterialProcessingStatus.COMPLETED) {
-    appError(400, errorCodes.validationError, "Completed processing run cannot be cancelled.");
-  }
+  assertRawMaterialProcessingStatusTransition({
+    currentStatus: existing.status,
+    nextStatus: RawMaterialProcessingStatus.CANCELLED,
+  });
 
   const updated = await prisma.rawMaterialProcessingRun.update({
     where: { id: existing.id },
