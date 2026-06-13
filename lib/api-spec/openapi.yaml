@@ -193,6 +193,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RetailCheckoutResponse"
+  /retail/returns/preview:
+    post:
+      operationId: retailPreviewReturn
+      tags: [retail]
+      summary: Preview Retail return and refund
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetailReturnInput"
+      responses:
+        "200":
+          description: Retail return preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailReturnResponse"
+  /retail/returns:
+    post:
+      operationId: retailPersistReturn
+      tags: [retail]
+      summary: Persist Retail return, refund cashflow, and restockable stock movements
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetailReturnInput"
+      responses:
+        "201":
+          description: Retail return persisted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailReturnResponse"
+        "409":
+          description: Retail return requires review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailReturnResponse"
 components:
   schemas:
     HealthStatus:
@@ -206,6 +248,9 @@ components:
     RetailPaymentMethod:
       type: string
       enum: [cash, qris, card, transfer]
+    RetailReturnReason:
+      type: string
+      enum: [damaged, wrong-item, customer-changed-mind, expired, other]
     RetailReceivingStatus:
       type: string
       enum: [draft, ordered, partial, received]
@@ -242,6 +287,17 @@ components:
           items:
             $ref: "#/components/schemas/RetailLineInput"
       required: [paymentMethod, lines]
+    RetailReturnInput:
+      type: object
+      properties:
+        originalReceiptNumber: { type: string }
+        reason:
+          $ref: "#/components/schemas/RetailReturnReason"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetailLineInput"
+      required: [reason, lines]
     RetailReceivingStatusUpdateInput:
       type: object
       properties:
@@ -282,6 +338,14 @@ components:
         message: { type: string }
       required: [success, data]
     RetailCheckoutResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/RetailObject"
+        message: { type: string }
+      required: [success, data]
+    RetailReturnResponse:
       type: object
       properties:
         success: { type: boolean }
