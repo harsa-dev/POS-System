@@ -1,6 +1,6 @@
 # Custom Business Service Prisma Delegate Cleanup
 
-Status: Phase 7D in progress  
+Status: Phase 7E implemented  
 Scope: Business Mode Service / Custom Business Service  
 Branch: main
 
@@ -88,10 +88,23 @@ A delegate-backed read repository exists at:
 artifacts/api-server/src/features/service-business/service-business.delegate.repository.ts
 ```
 
-It uses generated Prisma delegates for the shared dashboard summary read path:
+It uses generated Prisma delegates for:
+
+```txt
+summary read path
+workflow target lookup
+workflow readiness checks
+```
+
+Main delegate calls include:
 
 ```txt
 prisma.serviceRequest.findMany(...)
+prisma.serviceRequest.findFirst(...)
+prisma.serviceCostLine.count(...)
+prisma.serviceQuotation.count(...)
+prisma.serviceInvoice.count(...)
+prisma.serviceChecklistItem.count(...)
 ```
 
 The summary service calls:
@@ -102,10 +115,11 @@ loadServiceBusinessSummaryJobs(businessId)
 
 from the delegate repository instead of using the raw SQL `loadServiceJobs` path.
 
-Updated file:
+Updated files:
 
 ```txt
 artifacts/api-server/src/features/service-business/service-business.summary.ts
+artifacts/api-server/src/features/service-business/service-business.repository.ts
 ```
 
 The summary response source identifies this path as:
@@ -114,22 +128,9 @@ The summary response source identifies this path as:
 api-server-prisma-delegate-summary
 ```
 
-Workflow read lookups also use generated Prisma delegates now:
+The guarded status write transaction still uses explicit SQL for now.
 
-```txt
-findServiceWorkflowTargetWithDelegate(...)
-loadServiceWorkflowReadinessWithDelegate(...)
-```
-
-Those functions are called from:
-
-```txt
-artifacts/api-server/src/features/service-business/service-business.repository.ts
-```
-
-So the workflow preview and guarded status update read side no longer uses raw SQL for target lookup or readiness checks. The guarded status write transaction still uses explicit SQL for now.
-
-## Phase 7D implemented so far
+## Phase 7D and 7E implemented
 
 A delegate-backed write helper exists at:
 
@@ -137,50 +138,59 @@ A delegate-backed write helper exists at:
 artifacts/api-server/src/features/service-business/service-business.delegate-writes.repository.ts
 ```
 
-The first write paths moved to generated Prisma delegates are:
+The write paths moved to generated Prisma delegates are now:
 
 ```txt
 createServiceRequestRecordWithDelegate(...)
 createServiceCostLineRecordWithDelegate(...)
+createServiceQuotationRecordWithDelegate(...)
+approveServiceQuotationRecordWithDelegate(...)
+createServiceInvoiceRecordWithDelegate(...)
+recordServiceInvoicePaymentRecordWithDelegate(...)
 ```
 
-The public repository functions still keep the same names:
+The public CRUD repository still keeps stable exported names:
 
 ```txt
 createServiceRequestRecord(...)
 createServiceCostLineRecord(...)
+createServiceQuotationRecord(...)
+approveServiceQuotationRecord(...)
+createServiceInvoiceRecord(...)
+recordServiceInvoicePaymentRecord(...)
 ```
 
-Those functions now delegate to the Prisma helper instead of writing raw SQL directly.
+Those functions now delegate to Prisma write helpers instead of writing raw SQL directly.
 
-This keeps the route and service contracts unchanged while moving the safest write paths first.
+The CRUD repository is now a thin storage facade at:
+
+```txt
+artifacts/api-server/src/features/service-business/service-business.crud.repository.ts
+```
+
+It owns target lookup and stable exports, while actual Prisma write implementation lives in the delegate write helper.
 
 ## Current raw SQL boundary
 
-The following write-heavy paths still intentionally use raw SQL:
+The remaining raw SQL boundary is intentionally limited to the guarded workflow status transition transaction:
 
 ```txt
-artifacts/api-server/src/features/service-business/service-business.crud.repository.ts::createServiceQuotationRecord
-artifacts/api-server/src/features/service-business/service-business.crud.repository.ts::approveServiceQuotationRecord
-artifacts/api-server/src/features/service-business/service-business.crud.repository.ts::createServiceInvoiceRecord
-artifacts/api-server/src/features/service-business/service-business.crud.repository.ts::recordServiceInvoicePaymentRecord
 artifacts/api-server/src/features/service-business/service-business.repository.ts::updateServiceWorkflowStatus
 ```
 
 Recommended next order:
 
 ```txt
-1. Quotation write transaction: createServiceQuotationRecord.
-2. Approval/update write transaction: approveServiceQuotationRecord.
-3. Invoice writes: createServiceInvoiceRecord, recordServiceInvoicePaymentRecord.
-4. Workflow transaction: updateServiceWorkflowStatus.
+1. Run generate/build/typecheck after Phase 7E.
+2. If service-business stays clean, move updateServiceWorkflowStatus to Prisma delegate transaction.
+3. Remove raw SQL import needs from service-business.repository.ts after the workflow write is migrated.
 ```
 
 Keep transaction boundaries explicit when replacing raw SQL multi-step writes.
 
 ## Validation result from local run
 
-Latest local report:
+Latest local report before Phase 7E:
 
 ```txt
 pnpm --filter @workspace/api-server run generate -> passed
