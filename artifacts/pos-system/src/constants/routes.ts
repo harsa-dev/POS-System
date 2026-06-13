@@ -58,6 +58,8 @@ export const ROUTES = {
   WORKSPACE_RESTAURANT_RECIPES: "/workspace/restaurant/menu/recipes",
   WORKSPACE_RESTAURANT_ORDERS: "/workspace/restaurant/orders",
 
+  WORKSPACE_CUSTOM_BUSINESS_SERVICE: "/workspace/custom-business/service",
+
   V3_RAW_MATERIAL_INTAKE: "/v3/raw-material/intake",
   V3_RAW_MATERIAL_WEIGHING: "/v3/raw-material/weighing",
   V3_RAW_MATERIAL_BATCHES: "/v3/raw-material/batches",

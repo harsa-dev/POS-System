@@ -1,0 +1,14 @@
+diff --git a/artifacts/pos-system/src/App.tsx b/artifacts/pos-system/src/App.tsx
+--- a/artifacts/pos-system/src/App.tsx
++++ b/artifacts/pos-system/src/App.tsx
+@@
+ const RestaurantRecipesWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-recipes-workspace"));
+ const RestaurantOrdersWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-orders-workspace"));
+ const RawMaterialKandangWorkspace = lazy(() => import("@/app/workspace/raw-material/kandang/raw-material-kandang-workspace"));
++const CustomBusinessServiceWorkspace = lazy(() => import("@/app/workspace/custom-business/custom-business-service-workspace"));
+@@
+           <Route path={ROUTES.WORKSPACE_RESTAURANT_RECIPES}><ModeProtectedRoute requiredMode="restaurant"><RestaurantRecipesWorkspace /></ModeProtectedRoute></Route>
+           <Route path={ROUTES.WORKSPACE_RESTAURANT_MENU}><ModeProtectedRoute requiredMode="restaurant"><RestaurantMenuWorkspace /></ModeProtectedRoute></Route>
+           <Route path={ROUTES.WORKSPACE_RESTAURANT_ORDERS}><ModeProtectedRoute requiredMode="restaurant"><RestaurantOrdersWorkspace /></ModeProtectedRoute></Route>
++          <Route path={ROUTES.WORKSPACE_CUSTOM_BUSINESS_SERVICE}><ModeProtectedRoute requiredMode="custom-business"><CustomBusinessServiceWorkspace /></ModeProtectedRoute></Route>
+           <Route path={ROUTES.V3_RAW_MATERIAL_KANDANG}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialKandangWorkspace /></ModeProtectedRoute></Route>
