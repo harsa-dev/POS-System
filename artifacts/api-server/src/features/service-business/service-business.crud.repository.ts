@@ -3,6 +3,10 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "../../lib/prisma.js";
+import {
+  createServiceCostLineRecordWithDelegate,
+  createServiceRequestRecordWithDelegate,
+} from "./service-business.delegate-writes.repository.js";
 import type {
   ServiceBusinessCostCategory,
   ServiceBusinessCostLine,
@@ -345,52 +349,19 @@ export async function createServiceRequestRecord({
   dueDate: Date | null;
   actorName: string;
 }) {
-  const requestId = randomUUID();
-  const jobId = randomUUID();
-
-  await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw(Prisma.sql`
-      INSERT INTO service_requests (
-        id,
-        business_id,
-        request_code,
-        customer_name,
-        customer_segment,
-        service_category,
-        title,
-        summary,
-        status,
-        priority,
-        due_date,
-        assigned_to
-      ) VALUES (
-        ${requestId},
-        ${businessId},
-        ${requestCode},
-        ${customerName},
-        ${customerSegment},
-        ${serviceCategory},
-        ${title},
-        ${summary || null},
-        'REQUEST_INTAKE'::service_business_workflow_status,
-        ${priority}::service_business_priority,
-        ${dueDate},
-        ${assignedTo}
-      )
-    `);
-
-    await tx.$executeRaw(Prisma.sql`
-      INSERT INTO service_jobs (id, request_id, title, assigned_to, status)
-      VALUES (${jobId}, ${requestId}, ${title}, ${assignedTo}, 'REQUEST_INTAKE'::service_business_workflow_status)
-    `);
-
-    await tx.$executeRaw(Prisma.sql`
-      INSERT INTO service_timeline_items (id, request_id, label, actor_name)
-      VALUES (${randomUUID()}, ${requestId}, 'Request received', ${actorName})
-    `);
+  return createServiceRequestRecordWithDelegate({
+    businessId,
+    requestCode,
+    title,
+    customerName,
+    customerSegment,
+    serviceCategory,
+    priority,
+    summary,
+    assignedTo,
+    dueDate,
+    actorName,
   });
-
-  return { requestId, jobId };
 }
 
 export async function createServiceCostLineRecord({
@@ -410,12 +381,15 @@ export async function createServiceCostLineRecord({
   unitCost: number;
   billable: boolean;
 }) {
-  if (!target.jobId) return;
-
-  await prisma.$executeRaw(Prisma.sql`
-    INSERT INTO service_cost_lines (id, job_id, label, category, quantity, unit_label, unit_cost, billable)
-    VALUES (${randomUUID()}, ${target.jobId}, ${label}, ${category}::service_business_cost_category, ${quantity}, ${unitLabel}, ${Math.round(unitCost)}, ${billable})
-  `);
+  return createServiceCostLineRecordWithDelegate({
+    target,
+    label,
+    category,
+    quantity,
+    unitLabel,
+    unitCost,
+    billable,
+  });
 }
 
 export async function createServiceQuotationRecord({
