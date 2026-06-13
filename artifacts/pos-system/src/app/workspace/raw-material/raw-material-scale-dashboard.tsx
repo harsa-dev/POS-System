@@ -29,10 +29,27 @@ const statusLabel: Record<RawMaterialScaleFeature["status"], string> = {
   "future-production": "future production",
 };
 
+const statusTone: Record<RawMaterialScaleFeature["status"], string> = {
+  available: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  "new-dummy": "border-amber-200 bg-amber-50 text-amber-700",
+  "future-production": "border-blue-200 bg-blue-50 text-blue-700",
+};
+
+function countFeaturesByStatus(
+  features: readonly RawMaterialScaleFeature[],
+  status: RawMaterialScaleFeature["status"],
+) {
+  return features.filter((feature) => feature.status === status).length;
+}
+
 export function RawMaterialScaleDashboard({
   profiles,
   features,
 }: RawMaterialScaleDashboardProps) {
+  const availableCount = countFeaturesByStatus(features, "available");
+  const newDummyCount = countFeaturesByStatus(features, "new-dummy");
+  const futureProductionCount = countFeaturesByStatus(features, "future-production");
+
   return (
     <Card className="rounded-xl bg-white">
       <CardHeader>
@@ -49,6 +66,24 @@ export function RawMaterialScaleDashboard({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
+            <p className="text-sm text-neutral-500">Already covered</p>
+            <p className="mt-1 text-2xl font-bold text-neutral-950">{availableCount}</p>
+            <p className="mt-1 text-xs leading-5 text-neutral-500">Existing workspace capabilities that already cover scale needs.</p>
+          </div>
+          <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+            <p className="text-sm text-amber-700">New dummy dashboards</p>
+            <p className="mt-1 text-2xl font-bold text-amber-900">{newDummyCount}</p>
+            <p className="mt-1 text-xs leading-5 text-amber-800">Safe frontend-only feature panels added before schema work.</p>
+          </div>
+          <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+            <p className="text-sm text-blue-700">Future production work</p>
+            <p className="mt-1 text-2xl font-bold text-blue-900">{futureProductionCount}</p>
+            <p className="mt-1 text-xs leading-5 text-blue-800">Items that should become real models, APIs, or background jobs later.</p>
+          </div>
+        </div>
+
         <div className="grid gap-3 lg:grid-cols-3">
           {profiles.map((profile) => (
             <div key={profile.scale} className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
@@ -91,7 +126,7 @@ export function RawMaterialScaleDashboard({
                     <div key={feature.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="font-medium text-neutral-900">{feature.title}</p>
-                        <Badge variant="outline" className="border-neutral-200 text-neutral-600">
+                        <Badge variant="outline" className={statusTone[feature.status]}>
                           {statusLabel[feature.status]}
                         </Badge>
                       </div>
