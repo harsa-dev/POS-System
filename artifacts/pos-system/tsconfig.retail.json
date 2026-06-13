@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/app/workspace/retail/**/*.ts",
+    "src/app/workspace/retail/**/*.tsx",
+    "src/features/retail/**/*.ts",
+    "src/features/retail/**/*.tsx",
+    "src/features/shared/retail-bridge/**/*.ts",
+    "src/features/shared/retail-bridge/**/*.tsx",
+    "src/components/ui/badge.tsx",
+    "src/components/ui/card.tsx",
+    "src/lib/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist",
+    "**/*.test.ts",
+    "src/app/registry/retail-modules.ts"
+  ]
+}
