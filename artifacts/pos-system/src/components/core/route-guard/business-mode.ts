@@ -1,6 +1,23 @@
-export const BUSINESS_MODE_STORAGE_KEY = "currentBusinessMode";
+import {
+  BUSINESS_MODE_STORAGE_KEY,
+  type BusinessModeId,
+} from "../business-mode/business-mode.types";
+import {
+  businessModeRegistry,
+  getBusinessModeConfig,
+  isBusinessModeId,
+} from "../business-mode/business-mode-registry";
+import {
+  clearCurrentBusinessMode,
+  getRawStoredBusinessMode,
+  readBusinessModeStorage,
+  repairBusinessModeStorage,
+  setCurrentBusinessMode,
+} from "../business-mode/business-mode-storage";
 
-export type BusinessMode = "fnb" | "retail" | "service" | "warehouse";
+export { BUSINESS_MODE_STORAGE_KEY };
+
+export type BusinessMode = BusinessModeId;
 
 export type BusinessModeOption = {
   id: BusinessMode;
@@ -8,53 +25,50 @@ export type BusinessModeOption = {
   description: string;
 };
 
-export const businessModeOptions: BusinessModeOption[] = [
-  {
-    id: "fnb",
-    label: "Restaurant / F&B",
-    description:
-      "Enable restaurant operations such as menu, kitchen, cashier, tables, and serving.",
-  },
-  {
-    id: "retail",
-    label: "Retail",
-    description:
-      "Shared dashboards only for now. Retail-exclusive modules will be added later.",
-  },
-  {
-    id: "service",
-    label: "Service",
-    description:
-      "Shared dashboards only for now. Service-exclusive modules will be added later.",
-  },
-  {
-    id: "warehouse",
-    label: "Warehouse",
-    description:
-      "Shared dashboards only for now. Warehouse-exclusive modules will be added later.",
-  },
-];
+export const businessModeOptions: BusinessModeOption[] = businessModeRegistry.map(
+  (mode) => ({
+    id: mode.id,
+    label: mode.label,
+    description: mode.description,
+  }),
+);
 
 export function isBusinessMode(value: string | null): value is BusinessMode {
-  return (
-    value === "fnb" ||
-    value === "retail" ||
-    value === "service" ||
-    value === "warehouse"
-  );
+  return isBusinessModeId(value);
 }
 
 export function getStoredBusinessMode(): BusinessMode | null {
   if (typeof window === "undefined") return null;
 
-  const value = window.localStorage.getItem(BUSINESS_MODE_STORAGE_KEY);
-  return isBusinessMode(value) ? value : null;
+  const state = readBusinessModeStorage();
+
+  if (state.wasLegacy) {
+    repairBusinessModeStorage("route-guard");
+    return state.mode;
+  }
+
+  if (!state.storedValue || state.wasFallback) {
+    return null;
+  }
+
+  return state.mode;
 }
 
-export function setStoredBusinessMode(mode: BusinessMode) {
-  window.localStorage.setItem(BUSINESS_MODE_STORAGE_KEY, mode);
+export function getStoredBusinessModeEntryRoute(): string | null {
+  const mode = getStoredBusinessMode();
+  if (!mode) return null;
+
+  return getBusinessModeConfig(mode).route;
+}
+
+export function setStoredBusinessMode(mode: BusinessMode): boolean {
+  return setCurrentBusinessMode(mode, "route-guard");
 }
 
 export function clearStoredBusinessMode() {
-  window.localStorage.removeItem(BUSINESS_MODE_STORAGE_KEY);
+  clearCurrentBusinessMode("route-guard");
+}
+
+export function getRawBusinessModeStorageValue(): string | null {
+  return getRawStoredBusinessMode();
 }
