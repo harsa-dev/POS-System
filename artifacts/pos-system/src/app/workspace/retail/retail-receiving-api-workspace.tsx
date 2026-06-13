@@ -94,11 +94,15 @@ function getReceivingStatusLabel(status: RetailReceivingStatus) {
   return status;
 }
 
+function getFirstReceivingId(receivings: RetailReceivingQueueItem[]) {
+  return receivings[0]?.id ?? "";
+}
+
 export default function RetailReceivingApiWorkspace() {
   const [receivings, setReceivings] = useState<RetailReceivingQueueItem[]>(getMockReceivingQueue);
   const [source, setSource] = useState<ApiState>("loading");
   const [error, setError] = useState<string | null>(null);
-  const [selectedReceivingId, setSelectedReceivingId] = useState(receivings[0]?.id ?? "");
+  const [selectedReceivingId, setSelectedReceivingId] = useState(getFirstReceivingId(receivings));
   const [mutationState, setMutationState] = useState<StatusMutationState>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -109,12 +113,14 @@ export default function RetailReceivingApiWorkspace() {
     try {
       const payload = await retailGetReceivingQueue({ credentials: "include" });
       const nextReceivings = payload.data;
+      const fallbackReceivings = getMockReceivingQueue();
+      const visibleReceivings = nextReceivings.length > 0 ? nextReceivings : fallbackReceivings;
 
-      setReceivings(nextReceivings.length > 0 ? nextReceivings : getMockReceivingQueue());
+      setReceivings(visibleReceivings);
       setSource(nextReceivings.length > 0 ? "api" : "mock-fallback");
-      setSelectedReceivingId((currentId) => {
-        if (nextReceivings.some((receiving) => receiving.id === currentId)) return currentId;
-        return nextReceivings[0]?.id ?? getMockReceivingQueue()[0]?.id ?? "";
+      setSelectedReceivingId((currentId: string) => {
+        if (visibleReceivings.some((receiving: RetailReceivingQueueItem) => receiving.id === currentId)) return currentId;
+        return getFirstReceivingId(visibleReceivings);
       });
 
       if (nextReceivings.length === 0) {
@@ -124,9 +130,9 @@ export default function RetailReceivingApiWorkspace() {
       const fallbackReceivings = getMockReceivingQueue();
       setReceivings(fallbackReceivings);
       setSource("mock-fallback");
-      setSelectedReceivingId((currentId) => {
-        if (fallbackReceivings.some((receiving) => receiving.id === currentId)) return currentId;
-        return fallbackReceivings[0]?.id ?? "";
+      setSelectedReceivingId((currentId: string) => {
+        if (fallbackReceivings.some((receiving: RetailReceivingQueueItem) => receiving.id === currentId)) return currentId;
+        return getFirstReceivingId(fallbackReceivings);
       });
       setError(caughtError instanceof Error ? caughtError.message : "Retail receiving API request failed.");
     }
@@ -137,13 +143,13 @@ export default function RetailReceivingApiWorkspace() {
   }, []);
 
   const selectedReceiving = useMemo(() => {
-    return receivings.find((receiving) => receiving.id === selectedReceivingId) ?? receivings[0] ?? null;
+    return receivings.find((receiving: RetailReceivingQueueItem) => receiving.id === selectedReceivingId) ?? receivings[0] ?? null;
   }, [receivings, selectedReceivingId]);
 
   const statusActions = selectedReceiving ? nextStatuses[selectedReceiving.status] : [];
-  const totalMissingQty = selectedReceiving?.items.reduce((total, item) => total + item.missingQty, 0) ?? 0;
-  const totalOrderedQty = selectedReceiving?.items.reduce((total, item) => total + item.orderedQty, 0) ?? 0;
-  const totalReceivedQty = selectedReceiving?.items.reduce((total, item) => total + item.receivedQty, 0) ?? 0;
+  const totalMissingQty = selectedReceiving?.items.reduce((total: number, item) => total + item.missingQty, 0) ?? 0;
+  const totalOrderedQty = selectedReceiving?.items.reduce((total: number, item) => total + item.orderedQty, 0) ?? 0;
+  const totalReceivedQty = selectedReceiving?.items.reduce((total: number, item) => total + item.receivedQty, 0) ?? 0;
 
   async function updateReceivingStatus(status: RetailReceivingStatus) {
     if (!selectedReceiving || source !== "api") return;
@@ -179,11 +185,11 @@ export default function RetailReceivingApiWorkspace() {
             {source === "api" ? "Prisma API" : source === "loading" ? "Loading API" : "Mock fallback"}
           </Badge>
           <Badge variant="outline" className="border-blue-200 text-blue-700">
-            Phase 8B receiving action wiring
+            Retail receiving workflow
           </Badge>
         </div>
         <p className="mt-3 text-sm leading-6 text-neutral-600">
-          Receiving now reads the queue from the Retail API and exposes guarded status transitions when the backend is available. Mock fallback stays read-only, because pretending mock writes persisted is how dashboards learn to lie.
+          Receiving reads from the Retail API and exposes guarded status transitions when the backend is available. Mock fallback stays read-only, because pretending mock writes persisted is how dashboards learn to lie.
         </p>
         {error ? <p className="mt-2 text-xs text-amber-700">Fallback reason: {error}</p> : null}
         {statusMessage ? <p className="mt-2 text-xs text-blue-700">{statusMessage}</p> : null}
@@ -274,7 +280,10 @@ export default function RetailReceivingApiWorkspace() {
                     <div className="flex flex-wrap gap-2">
                       {statusActions.length > 0 ? (
                         statusActions.map((status) => {
-                          const isPending = mutationState?.receivingId === selectedReceiving.id && mutationState.status === status;
+                          const isPending =
+                            mutationState !== null &&
+                            mutationState.receivingId === selectedReceiving.id &&
+                            mutationState.status === status;
 
                           return (
                             <button
