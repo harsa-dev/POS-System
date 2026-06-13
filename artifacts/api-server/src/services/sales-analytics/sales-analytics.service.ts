@@ -16,6 +16,7 @@ import {
   requireSalesAnalyticsView,
 } from "./sales-analytics.permissions.js";
 import {
+  countSalesTransactionRows,
   getCogsByOrderIds,
   getSalesBestSellingProducts,
   getSalesBusyHours,
@@ -59,6 +60,19 @@ export function parseSalesAnalyticsExportRequest(
   };
 }
 
+function buildPaginationDto(params: {
+  page: number;
+  pageSize: number;
+  totalRows: number;
+}) {
+  return {
+    page: params.page,
+    pageSize: params.pageSize,
+    totalRows: params.totalRows,
+    totalPages: Math.max(Math.ceil(params.totalRows / params.pageSize), 1),
+  };
+}
+
 function hasScopedCogsFilter(query: SalesAnalyticsQuery) {
   return Boolean(
     query.productId ||
@@ -99,7 +113,10 @@ function serializeQuery(query: SalesAnalyticsQuery) {
     paymentMethod: query.paymentMethod ?? null,
     orderStatus: query.orderStatus ?? null,
     q: query.q ?? null,
-    limit: query.limit,
+    page: query.page,
+    pageSize: query.pageSize,
+    sortBy: query.sortBy,
+    sortDirection: query.sortDirection,
   };
 }
 
@@ -183,6 +200,10 @@ function buildSalesAnalyticsCsv(report: SalesAnalyticsDto) {
       ["Period To", report.period.to],
       ["Period Label", report.period.label],
       ["Basis", report.basis],
+      ["Page", report.pagination.page],
+      ["Page Size", report.pagination.pageSize],
+      ["Total Rows", report.pagination.totalRows],
+      ["Total Pages", report.pagination.totalPages],
     ],
   });
 
@@ -331,6 +352,7 @@ export async function getSalesAnalytics(params: {
     busyHours,
     bestSellingProducts,
     rows,
+    totalRows,
     sourceHealth,
   ] = await Promise.all([
     getSalesRevenueSummary(prisma, restaurantId, params.query),
@@ -339,6 +361,7 @@ export async function getSalesAnalytics(params: {
     getSalesBusyHours(prisma, restaurantId, params.query),
     getSalesBestSellingProducts(prisma, restaurantId, params.query),
     listSalesTransactionRows(prisma, restaurantId, params.query),
+    countSalesTransactionRows(prisma, restaurantId, params.query),
     getSalesSourceHealth(prisma, restaurantId, params.query),
   ]);
 
@@ -373,9 +396,13 @@ export async function getSalesAnalytics(params: {
     busyHours: busyHours.map(toSalesAnalyticsDataPoint),
     bestSellingProducts: bestSellingProducts.map(toBestSellerPoint),
     sourceHealth: sourceHealthDto,
+    pagination: buildPaginationDto({
+      page: params.query.page,
+      pageSize: params.query.pageSize,
+      totalRows: Number(totalRows?.totalRows ?? 0),
+    }),
   };
 }
-
 
 export async function getSalesAnalyticsFilterOptions(params: {
   actor: SalesAnalyticsActor;
