@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Activity, AlertTriangle, CheckCircle2, Gauge, ShieldAlert } from "lucide-react";
 
 import {
@@ -83,7 +84,7 @@ function ScoreTile({
   value,
 }: {
   helper: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
 }) {
