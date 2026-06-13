@@ -61,6 +61,11 @@ const RestaurantMenuWorkspace = lazy(() => import("@/app/workspace/restaurant/re
 const RestaurantRecipesWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-recipes-workspace"));
 const RestaurantOrdersWorkspace = lazy(() => import("@/app/workspace/restaurant/restaurant-orders-workspace"));
 const RetailWorkspace = lazy(() => import("@/app/workspace/retail/retail-workspace"));
+const RetailApiWorkspace = lazy(() =>
+  import("@/app/workspace/retail/retail-api-workspace").then((module) => ({
+    default: module.RetailApiWorkspace,
+  })),
+);
 const RetailGrowthWorkspace = lazy(() =>
   import("@/app/workspace/retail/retail-growth-workspace").then((module) => ({
     default: module.RetailGrowthWorkspace,
@@ -287,8 +292,8 @@ function ProtectedAppRoutes() {
           <Route path={ROUTES.WORKSPACE_RESTAURANT_RECIPES}><ModeProtectedRoute requiredMode="restaurant"><RestaurantRecipesWorkspace /></ModeProtectedRoute></Route>
           <Route path={ROUTES.WORKSPACE_RESTAURANT_MENU}><ModeProtectedRoute requiredMode="restaurant"><RestaurantMenuWorkspace /></ModeProtectedRoute></Route>
           <Route path={ROUTES.WORKSPACE_RESTAURANT_ORDERS}><ModeProtectedRoute requiredMode="restaurant"><RestaurantOrdersWorkspace /></ModeProtectedRoute></Route>
-          <Route path="/v3/retail/cashier"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="cashier" /></ModeProtectedRoute></Route>
-          <Route path="/v3/retail/catalog"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="catalog" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/cashier"><ModeProtectedRoute requiredMode="retail"><RetailApiWorkspace moduleId="cashier" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/catalog"><ModeProtectedRoute requiredMode="retail"><RetailApiWorkspace moduleId="catalog" /></ModeProtectedRoute></Route>
           <Route path="/v3/retail/barcode"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="barcode" /></ModeProtectedRoute></Route>
           <Route path="/v3/retail/receiving"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="receiving" /></ModeProtectedRoute></Route>
           <Route path="/v3/retail/stock-opname"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="stock-opname" /></ModeProtectedRoute></Route>
