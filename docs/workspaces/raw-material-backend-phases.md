@@ -43,7 +43,7 @@ shared dashboard bridge
 
 ## Phase 0 - Documentation alignment
 
-Status: implemented by this document.
+Status: implemented.
 
 Goal:
 
@@ -65,7 +65,13 @@ No code behavior is changed in this phase.
 
 ## Phase 1 - Baseline backend audit and route contract normalization
 
-Status: next.
+Status: implemented.
+
+Phase output:
+
+```txt
+docs/workspaces/raw-material-backend-audit.md
+```
 
 Goal:
 
@@ -76,7 +82,7 @@ Normalize endpoint naming between frontend API contract and API server.
 Document what is already production-backed versus still preview-only.
 ```
 
-Current mismatch to review:
+Current mismatch reviewed:
 
 ```txt
 Frontend contract uses /api/v3/raw-material/*.
@@ -85,17 +91,17 @@ Some frontend contract entries still mark mock-only/future-db.
 Backend already persists data for many of those surfaces.
 ```
 
-Expected outputs:
+Implemented outputs:
 
 ```txt
-raw-material-backend-audit.md
 route matrix
+backend-backed/partial/contract-mismatch labels
 frontend contract update plan
 no migration
 no schema change
 ```
 
-Candidate route groups:
+Audited route groups:
 
 ```txt
 GET/POST/PATCH/DELETE suppliers
@@ -113,7 +119,7 @@ POST stock-movements/consume-processing
 
 ## Phase 2 - Permission hardening
 
-Status: planned.
+Status: next.
 
 Goal:
 
@@ -430,11 +436,11 @@ Do not change restaurant/service-business workflows while doing raw material wor
 
 ## Current recommended next action
 
-Start with Phase 1:
+Proceed to Phase 2:
 
 ```txt
-Audit current Raw Material backend routes and services.
-Create route matrix.
-Mark every surface as backend-backed, partial, mock-only, or contract-mismatch.
-Then proceed to Phase 2 permission hardening.
+Permission hardening.
+Create raw-material.permissions.ts.
+Replace ALL_ROLES usage in raw-material routes with action-specific permission guards.
+Do not change schema or migrations.
 ```
