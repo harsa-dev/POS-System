@@ -5,6 +5,8 @@ import {
   rawMaterialKandangPens,
   rawMaterialMetrics,
   rawMaterialProcessingRuns,
+  rawMaterialScaleFeatures,
+  rawMaterialScaleProfiles,
   rawMaterialStorageLocations,
   rawMaterialSuppliers,
   rawMaterialWeighings,
@@ -19,6 +21,8 @@ import type {
   RawMaterialKandangPen,
   RawMaterialMetric,
   RawMaterialProcessingRun,
+  RawMaterialScaleFeature,
+  RawMaterialScaleProfile,
   RawMaterialStorageLocation,
   RawMaterialSupplier,
   RawMaterialSupplierQuery,
@@ -51,6 +55,14 @@ function textMatches(value: string, search?: string) {
 export const rawMaterialMockService = {
   getMetrics(): RawMaterialApiEnvelope<readonly RawMaterialMetric[]> {
     return createMockEnvelope(rawMaterialMetrics, rawMaterialMetrics.length);
+  },
+
+  listScaleProfiles(): RawMaterialApiEnvelope<readonly RawMaterialScaleProfile[]> {
+    return createMockEnvelope(rawMaterialScaleProfiles, rawMaterialScaleProfiles.length);
+  },
+
+  listScaleFeatures(): RawMaterialApiEnvelope<readonly RawMaterialScaleFeature[]> {
+    return createMockEnvelope(rawMaterialScaleFeatures, rawMaterialScaleFeatures.length);
   },
 
   listSuppliers(
