@@ -1,6 +1,6 @@
-export type BusinessType = "restaurant";
+export type BusinessType = "restaurant" | "retail" | "service" | "livestock";
 
-export type BusinessMode = "restaurant";
+export type BusinessMode = "restaurant" | "retail" | "service" | "livestock";
 
 export type BusinessContext<TBusiness = unknown> = {
   /**
