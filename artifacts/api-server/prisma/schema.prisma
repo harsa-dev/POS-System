@@ -56,6 +56,7 @@ model Business {
   rawMaterialStorageLocations RawMaterialStorageLocation[]
   rawMaterialIntakes RawMaterialIntake[]
   rawMaterialWeighings RawMaterialWeighing[]
+  rawMaterialBatches RawMaterialBatch[]
   tables DiningTable[]
   shifts Shift[]
   attendances Attendance[]
@@ -277,8 +278,10 @@ model RawMaterialSupplier {
   notes String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   intakes RawMaterialIntake[]
+
   @@unique([businessId, name])
   @@index([businessId])
   @@index([category])
@@ -299,8 +302,11 @@ model RawMaterialStorageLocation {
   notes String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   intakes RawMaterialIntake[]
+  batches RawMaterialBatch[]
+
   @@unique([businessId, code])
   @@index([businessId])
   @@index([type])
@@ -325,10 +331,13 @@ model RawMaterialIntake {
   notes String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   supplier RawMaterialSupplier @relation(fields: [supplierId], references: [id])
   targetStorageLocation RawMaterialStorageLocation @relation(fields: [targetStorageLocationId], references: [id])
   weighings RawMaterialWeighing[]
+  batches RawMaterialBatch[]
+
   @@unique([businessId, referenceNumber])
   @@index([businessId])
   @@index([supplierId])
@@ -352,8 +361,10 @@ model RawMaterialWeighing {
   notes String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   intake RawMaterialIntake @relation(fields: [intakeId], references: [id])
+
   @@unique([businessId, referenceNumber])
   @@index([businessId])
   @@index([intakeId])
@@ -363,59 +374,88 @@ model RawMaterialWeighing {
   @@index([netKg])
 }
 
+model RawMaterialBatch {
+  id String @id @default(cuid())
+  businessId String
+  lotCode String
+  intakeId String
+  storageLocationId String
+  materialName String
+  unit RawMaterialUnit @default(KG)
+  quantity Float
+  remainingQuantity Float
+  qualityStatus RawMaterialBatchQualityStatus @default(INSPECTION)
+  expiryDate DateTime?
+  isActive Boolean @default(true)
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  intake RawMaterialIntake @relation(fields: [intakeId], references: [id])
+  storageLocation RawMaterialStorageLocation @relation(fields: [storageLocationId], references: [id])
+
+  @@unique([businessId, lotCode])
+  @@index([businessId])
+  @@index([intakeId])
+  @@index([storageLocationId])
+  @@index([qualityStatus])
+  @@index([expiryDate])
+  @@index([isActive])
+  @@index([materialName])
+}
+
 model StockMovement {
   id String @id @default(cuid())
   inventoryItemId String
   businessId String
-  actorId String?
   type StockMovementType
   quantity Float
-  previousStock Float?
-  newStock Float?
-  unitCostSnapshot Int?
-  sourceType StockMovementSource?
+  reason StockMovementReason @default(MANUAL_ADJUSTMENT)
+  source StockMovementSource @default(MANUAL)
   sourceId String?
   note String?
-  reason StockMovementReason?
+  createdById String?
   createdAt DateTime @default(now())
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
   business Business @relation("BusinessStockMovements", fields: [businessId], references: [id], onDelete: Cascade)
-  actor User? @relation("StockMovementActor", fields: [actorId], references: [id], onDelete: SetNull)
-  @@index([businessId])
+  createdBy User? @relation("StockMovementActor", fields: [createdById], references: [id])
   @@index([inventoryItemId])
-  @@index([actorId])
-  @@index([sourceType])
-  @@index([sourceId])
-  @@index([reason])
-  @@index([createdAt])
+  @@index([businessId])
   @@index([type])
+  @@index([reason])
+  @@index([source])
+  @@index([createdAt])
+  @@index([businessId, type])
+  @@index([businessId, reason])
+  @@index([businessId, source])
+  @@index([source, sourceId])
 }
 
 model CashflowEntry {
   id String @id @default(cuid())
   businessId String
-  sourceType CashflowSourceType
-  sourceId String?
-  idempotencyKey String?
-  account CashflowAccount
   type CashflowEntryType
-  status CashflowEntryStatus @default(POSTED)
-  category String
-  counterpartyName String?
-  description String?
+  account CashflowAccount @default(CASH)
   amount Int
-  occurredAt DateTime
-  postedAt DateTime?
-  voidedAt DateTime?
+  status CashflowEntryStatus @default(POSTED)
+  occurredAt DateTime @default(now())
+  title String
+  description String?
+  sourceType CashflowSourceType @default(MANUAL)
+  sourceId String?
+  reference String?
   createdById String?
-  metadata Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   business Business @relation("BusinessCashflowEntries", fields: [businessId], references: [id], onDelete: Cascade)
-  createdBy User? @relation("CashflowEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  @@unique([businessId, idempotencyKey])
+  createdBy User? @relation("CashflowEntryCreator", fields: [createdById], references: [id])
   @@index([businessId])
-  @@index([businessId, occurredAt])
+  @@index([type])
+  @@index([status])
+  @@index([occurredAt])
+  @@index([sourceType])
+  @@index([sourceId])
   @@index([businessId, type])
   @@index([businessId, status])
   @@index([businessId, sourceType])
@@ -518,6 +558,7 @@ enum RawMaterialSupplierCategory { FEED LIVESTOCK PACKAGING RAW_GOODS }
 enum RawMaterialStorageType { DRY COLD OPEN_YARD KANDANG_SUPPORT }
 enum RawMaterialUnit { KG SACK CRATE HEAD LITER PCS }
 enum RawMaterialIntakeStatus { DRAFT INSPECTION ACCEPTED PARTIALLY_REJECTED REJECTED CANCELLED }
+enum RawMaterialBatchQualityStatus { INSPECTION ACCEPTED REJECTED QUARANTINED }
 enum StockMovementType { IN OUT ADJUSTMENT }
 enum PaymentStatus { PENDING PAID FAILED EXPIRED }
 enum InvoiceStatus { DRAFT SENT PAID CANCELLED }
