@@ -168,3 +168,44 @@ export type RetailCommandCenterDto = {
   }>;
   nextIntegrationSteps: string[];
 };
+
+export type RetailSharedDashboardId =
+  | "overview"
+  | "sales"
+  | "customers"
+  | "inventory"
+  | "cashflow"
+  | "financial-reports"
+  | "invoice-generator"
+  | "shift-reports"
+  | "team-management"
+  | "employee-performance"
+  | "approvals"
+  | "audit-controls"
+  | "roster-overview"
+  | "employee-attendance"
+  | "employee-contracts"
+  | "payroll";
+
+export type RetailSharedDashboardMetricDto = {
+  label: string;
+  value: string;
+  helper: string;
+};
+
+export type RetailSharedDashboardRowDto = {
+  title: string;
+  primary: string;
+  secondary: string;
+  status: "healthy" | "review" | "blocked" | "planned";
+};
+
+export type RetailSharedDashboardDto = {
+  id: RetailSharedDashboardId;
+  title: string;
+  description: string;
+  metrics: RetailSharedDashboardMetricDto[];
+  rows: RetailSharedDashboardRowDto[];
+  bridgeNote: string;
+  source: "prisma";
+};
