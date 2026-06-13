@@ -63,17 +63,17 @@ model Business {
   cashflowEntries           CashflowEntry[]              @relation("BusinessCashflowEntries")
   rawMaterialSuppliers      RawMaterialSupplier[]
   rawMaterialStorageLocations RawMaterialStorageLocation[]
-  rawMaterialIntakes        RawMaterialIntake[]
-  rawMaterialWeighings      RawMaterialWeighing[]
-  rawMaterialBatches        RawMaterialBatch[]
-  rawMaterialProcessingRuns RawMaterialProcessingRun[]
-  rawMaterialKandangPens    RawMaterialKandangPen[]
-  rawMaterialStockMovements RawMaterialStockMovement[]
-  tables                    DiningTable[]
-  shifts                    Shift[]
-  attendances               Attendance[]
-  attendanceSetting         AttendanceSetting?
-  auditLogs                 AuditLog[]
+  rawMaterialIntakes          RawMaterialIntake[]
+  rawMaterialWeighings        RawMaterialWeighing[]
+  rawMaterialBatches          RawMaterialBatch[]
+  rawMaterialProcessingRuns   RawMaterialProcessingRun[]
+  rawMaterialKandangPens      RawMaterialKandangPen[]
+  rawMaterialStockMovements   RawMaterialStockMovement[]
+  tables                      DiningTable[]
+  shifts                      Shift[]
+  attendances                 Attendance[]
+  attendanceSetting           AttendanceSetting?
+  auditLogs                   AuditLog[]
 
   @@index([ownerId])
   @@index([type])
@@ -213,18 +213,18 @@ model Order {
 }
 
 model Payment {
-  id          String        @id @default(cuid())
-  orderId     String        @unique
-  provider    String
-  method      String
-  status      PaymentStatus @default(PENDING)
-  externalId  String?
-  paymentUrl  String?
-  qrString    String?
-  vaNumber    String?
-  paidAt      DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id         String        @id @default(cuid())
+  orderId    String        @unique
+  provider   String
+  method     String
+  status     PaymentStatus @default(PENDING)
+  externalId String?
+  paymentUrl String?
+  qrString   String?
+  vaNumber   String?
+  paidAt     DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -425,12 +425,12 @@ model RawMaterialBatch {
   createdAt         DateTime                      @default(now())
   updatedAt         DateTime                      @updatedAt
 
-  business          Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  intake            RawMaterialIntake          @relation(fields: [intakeId], references: [id])
-  storageLocation   RawMaterialStorageLocation @relation(fields: [storageLocationId], references: [id])
-  processingRuns    RawMaterialProcessingRun[]
-  kandangPens       RawMaterialKandangPen[]
-  stockMovements    RawMaterialStockMovement[]
+  business        Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  intake          RawMaterialIntake          @relation(fields: [intakeId], references: [id])
+  storageLocation RawMaterialStorageLocation @relation(fields: [storageLocationId], references: [id])
+  processingRuns  RawMaterialProcessingRun[]
+  kandangPens     RawMaterialKandangPen[]
+  stockMovements  RawMaterialStockMovement[]
 
   @@unique([businessId, lotCode])
   @@index([businessId])
