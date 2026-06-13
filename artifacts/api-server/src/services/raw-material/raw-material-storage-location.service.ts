@@ -1,10 +1,15 @@
-import type { Prisma } from "@prisma/client";
-
 import type { BusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
-import { prisma } from "../../lib/prisma.js";
 import { toRawMaterialStorageLocationDto } from "./raw-material-storage-location.dto.js";
+import {
+  createRawMaterialStorageLocationRecord,
+  deactivateRawMaterialStorageLocationRecord,
+  findRawMaterialStorageCodeConflict,
+  findRawMaterialStorageLocationById,
+  listRawMaterialStorageLocationRows,
+  updateRawMaterialStorageLocationRecord,
+} from "./raw-material-storage-location.repository.js";
 import type { RawMaterialActor } from "./raw-material-storage-location.types.js";
 import {
   parseStorageNonNegativeNumber,
@@ -37,17 +42,8 @@ function assertCanViewRawMaterialStorage(actor: RawMaterialActor) {
   });
 }
 
-function getStorageWhere(businessContext: BusinessContext, id: string) {
-  return {
-    id,
-    businessId: businessContext.businessId,
-  } satisfies Prisma.RawMaterialStorageLocationWhereInput;
-}
-
 async function loadStorageOrThrow(businessContext: BusinessContext, id: string) {
-  const storageLocation = await prisma.rawMaterialStorageLocation.findFirst({
-    where: getStorageWhere(businessContext, id),
-  });
+  const storageLocation = await findRawMaterialStorageLocationById(businessContext, id);
 
   if (!storageLocation) {
     throw new AppError({
@@ -65,14 +61,7 @@ async function assertStorageCodeAvailable(params: {
   code: string;
   excludeId?: string;
 }) {
-  const duplicate = await prisma.rawMaterialStorageLocation.findFirst({
-    where: {
-      businessId: params.businessContext.businessId,
-      code: params.code,
-      ...(params.excludeId ? { id: { not: params.excludeId } } : {}),
-    },
-    select: { id: true },
-  });
+  const duplicate = await findRawMaterialStorageCodeConflict(params);
 
   if (!duplicate) return;
 
@@ -119,22 +108,10 @@ export async function listRawMaterialStorageLocations(params: {
 
   assertCanViewRawMaterialStorage(actor);
 
-  const trimmedSearch = search?.trim();
-  const storageLocations = await prisma.rawMaterialStorageLocation.findMany({
-    where: {
-      businessId: businessContext.businessId,
-      ...(includeInactive ? {} : { isActive: true }),
-      ...(trimmedSearch
-        ? {
-            OR: [
-              { code: { contains: trimmedSearch, mode: "insensitive" } },
-              { name: { contains: trimmedSearch, mode: "insensitive" } },
-              { notes: { contains: trimmedSearch, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: [{ isActive: "desc" }, { code: "asc" }],
+  const storageLocations = await listRawMaterialStorageLocationRows({
+    businessContext,
+    includeInactive,
+    search,
   });
 
   return storageLocations.map(toRawMaterialStorageLocationDto);
@@ -152,19 +129,7 @@ export async function createRawMaterialStorageLocation(params: {
   const payload = parseStoragePayload(input);
   await assertStorageCodeAvailable({ businessContext, code: payload.code });
 
-  const storageLocation = await prisma.rawMaterialStorageLocation.create({
-    data: {
-      businessId: businessContext.businessId,
-      code: payload.code,
-      name: payload.name,
-      type: payload.type,
-      capacityKg: payload.capacityKg,
-      usedKg: payload.usedKg,
-      temperatureCelsius: payload.temperatureCelsius,
-      isActive: payload.isActive ?? true,
-      notes: payload.notes,
-    },
-  });
+  const storageLocation = await createRawMaterialStorageLocationRecord({ businessContext, payload });
 
   return toRawMaterialStorageLocationDto(storageLocation);
 }
@@ -187,19 +152,7 @@ export async function updateRawMaterialStorageLocation(params: {
     excludeId: id,
   });
 
-  const storageLocation = await prisma.rawMaterialStorageLocation.update({
-    where: { id },
-    data: {
-      code: payload.code,
-      name: payload.name,
-      type: payload.type,
-      capacityKg: payload.capacityKg,
-      usedKg: payload.usedKg,
-      temperatureCelsius: payload.temperatureCelsius,
-      ...(payload.isActive === undefined ? {} : { isActive: payload.isActive }),
-      notes: payload.notes,
-    },
-  });
+  const storageLocation = await updateRawMaterialStorageLocationRecord({ id, payload });
 
   return toRawMaterialStorageLocationDto(storageLocation);
 }
@@ -214,10 +167,7 @@ export async function deactivateRawMaterialStorageLocation(params: {
   assertCanManageRawMaterialStorage(actor);
   await loadStorageOrThrow(businessContext, id);
 
-  const storageLocation = await prisma.rawMaterialStorageLocation.update({
-    where: { id },
-    data: { isActive: false },
-  });
+  const storageLocation = await deactivateRawMaterialStorageLocationRecord(id);
 
   return toRawMaterialStorageLocationDto(storageLocation);
 }
