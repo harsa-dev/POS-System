@@ -33,7 +33,7 @@ export type RoleTemplate = {
   id: string;
   name: string;
   baseRole: SystemRole;
-  category: "default" | "library";
+  category: "default" | "library" | "job";
   locked: boolean;
   description: string;
   recommendedFor: string[];
@@ -42,7 +42,7 @@ export type RoleTemplate = {
 
 export type ManagedRole = RoleTemplate & {
   assignedUsers: number;
-  status: "Locked" | "Custom" | "Draft";
+  status: "Locked" | "Custom" | "Draft" | "Job Preset";
   createdAt: string;
   updatedAt: string;
 };
@@ -62,7 +62,14 @@ export type AccessChangeLog = {
   id: string;
   at: string;
   actor: string;
-  action: "CREATE_ROLE" | "UPDATE_ROLE" | "CLONE_ROLE" | "DELETE_ROLE" | "ASSIGN_ROLE" | "RESET_DEMO";
+  action:
+    | "CREATE_ROLE"
+    | "UPDATE_ROLE"
+    | "CLONE_ROLE"
+    | "DELETE_ROLE"
+    | "ASSIGN_ROLE"
+    | "RESET_DEMO"
+    | "APPLY_JOB_PRESET";
   target: string;
   note: string;
 };
@@ -86,10 +93,20 @@ export const permissionModules: PermissionModule[] = [
     ],
   },
   {
-    id: "orders",
-    label: "Orders & Transactions",
+    id: "pos",
+    label: "POS / Front Desk",
     scope: "operations",
-    description: "Order list, order detail, payment state, and operational status changes.",
+    description: "Checkout, service counter, booking desk, customer intake, and payment-facing work.",
+    actions: [
+      ...commonActions,
+      { id: "approve", label: "Approve", description: "Approve checkout exceptions or operational overrides.", elevated: true },
+    ],
+  },
+  {
+    id: "orders",
+    label: "Orders / Jobs / Work Orders",
+    scope: "operations",
+    description: "Order list, job order, service ticket, workflow status, and operational fulfillment.",
     actions: [
       ...commonActions,
       { id: "approve", label: "Approve", description: "Approve or move workflow status.", elevated: true },
@@ -99,10 +116,30 @@ export const permissionModules: PermissionModule[] = [
     id: "inventory",
     label: "Inventory & Stock",
     scope: "operations",
-    description: "Stock item, movement, adjustment, receiving, and raw material tracking.",
+    description: "Stock item, movement, adjustment, receiving, raw material, and asset tracking.",
     actions: [
       ...commonActions,
       { id: "approve", label: "Approve", description: "Approve stock correction.", elevated: true },
+    ],
+  },
+  {
+    id: "production",
+    label: "Production / Processing",
+    scope: "operations",
+    description: "Kitchen production, raw material processing, repair execution, field service fulfillment, and quality steps.",
+    actions: [
+      ...commonActions,
+      { id: "approve", label: "Approve", description: "Approve completion or quality gate.", elevated: true },
+    ],
+  },
+  {
+    id: "supplier",
+    label: "Supplier / Procurement",
+    scope: "operations",
+    description: "Supplier records, purchase requests, receiving, intake, and vendor coordination.",
+    actions: [
+      ...commonActions,
+      { id: "approve", label: "Approve", description: "Approve supplier or procurement document.", elevated: true },
     ],
   },
   {
@@ -126,6 +163,13 @@ export const permissionModules: PermissionModule[] = [
       { id: "export", label: "Export", description: "Export reports." },
       { id: "approve", label: "Approve", description: "Approve locked reports.", elevated: true },
     ],
+  },
+  {
+    id: "customers",
+    label: "Customer / Client Records",
+    scope: "shared",
+    description: "Customer profile, client history, loyalty, partner records, and communication notes.",
+    actions: commonActions,
   },
   {
     id: "team",
@@ -162,7 +206,7 @@ function viewOnlyPermissions(): PermissionState {
   return Object.fromEntries(permissionModules.map((module) => [module.id, module.actions.some((action) => action.id === "view") ? ["view"] : []]));
 }
 
-function permissionState(seed: Record<string, PermissionActionId[]>): PermissionState {
+export function permissionState(seed: Record<string, PermissionActionId[]>): PermissionState {
   return {
     ...emptyPermissions(),
     ...Object.fromEntries(
@@ -195,10 +239,14 @@ export const roleTemplateLibrary: RoleTemplate[] = [
     recommendedFor: ["Store manager", "Operations lead", "Branch lead"],
     permissions: permissionState({
       "business-overview": ["view", "export"],
+      pos: ["view", "create", "update", "approve"],
       orders: ["view", "create", "update", "approve"],
       inventory: ["view", "create", "update", "approve"],
+      production: ["view", "create", "update", "approve"],
+      supplier: ["view", "create", "update", "approve"],
       cashflow: ["view", "create", "update", "export", "approve"],
       reports: ["view", "export", "approve"],
+      customers: ["view", "create", "update"],
       team: ["view", "create", "update"],
       settings: ["view", "update"],
     }),
@@ -213,10 +261,13 @@ export const roleTemplateLibrary: RoleTemplate[] = [
     recommendedFor: ["Back office", "Finance admin", "HR admin"],
     permissions: permissionState({
       "business-overview": ["view"],
+      pos: ["view"],
       orders: ["view", "update"],
       inventory: ["view", "create", "update"],
+      supplier: ["view", "create", "update"],
       cashflow: ["view", "create", "update", "export"],
       reports: ["view", "export"],
+      customers: ["view", "create", "update"],
       team: ["view", "create", "update", "manage"],
       settings: ["view"],
     }),
@@ -228,12 +279,14 @@ export const roleTemplateLibrary: RoleTemplate[] = [
     category: "default",
     locked: true,
     description: "General operational role for cashier, warehouse, service, or production tasks.",
-    recommendedFor: ["Cashier", "Warehouse operator", "Production operator"],
+    recommendedFor: ["Cashier", "Warehouse operator", "Production operator", "Service operator"],
     permissions: permissionState({
       "business-overview": ["view"],
+      pos: ["view", "create", "update"],
       orders: ["view", "create", "update", "approve"],
       inventory: ["view", "create", "update"],
-      cashflow: ["view", "create"],
+      production: ["view", "create", "update"],
+      customers: ["view", "create", "update"],
       reports: ["view"],
       team: ["view"],
       settings: ["view"],
@@ -246,10 +299,13 @@ export const roleTemplateLibrary: RoleTemplate[] = [
     category: "default",
     locked: true,
     description: "Limited operational role for daily work without sensitive management controls.",
-    recommendedFor: ["Floor staff", "Inventory staff", "Support staff"],
+    recommendedFor: ["Floor staff", "Inventory staff", "Support staff", "Service staff"],
     permissions: permissionState({
+      pos: ["view", "create"],
       orders: ["view", "create", "update"],
       inventory: ["view", "update"],
+      production: ["view", "update"],
+      customers: ["view"],
       team: ["view"],
     }),
   },
@@ -263,68 +319,16 @@ export const roleTemplateLibrary: RoleTemplate[] = [
     recommendedFor: ["Investor", "Auditor", "Mentor", "Read-only demo"],
     permissions: viewOnlyPermissions(),
   },
-  {
-    id: "finance-controller-template",
-    name: "Finance Controller",
-    baseRole: "ADMIN",
-    category: "library",
-    locked: false,
-    description: "Template for finance-heavy role with cashflow, invoice, and report authority.",
-    recommendedFor: ["Finance", "Accounting", "Cashflow review"],
-    permissions: permissionState({
-      "business-overview": ["view", "export"],
-      orders: ["view"],
-      inventory: ["view"],
-      cashflow: ["view", "create", "update", "delete", "export", "approve"],
-      reports: ["view", "export", "approve"],
-      team: ["view"],
-      settings: ["view"],
-    }),
-  },
-  {
-    id: "inventory-lead-template",
-    name: "Inventory Lead",
-    baseRole: "OPERATOR",
-    category: "library",
-    locked: false,
-    description: "Template for stock opname, receiving, warehouse, and raw material control.",
-    recommendedFor: ["Warehouse", "Raw material", "Stock control"],
-    permissions: permissionState({
-      orders: ["view"],
-      inventory: ["view", "create", "update", "delete", "approve"],
-      reports: ["view", "export"],
-      team: ["view"],
-    }),
-  },
-  {
-    id: "operations-supervisor-template",
-    name: "Operations Supervisor",
-    baseRole: "MANAGER",
-    category: "library",
-    locked: false,
-    description: "Template for cross-mode supervisor that can move workflow and review daily operations.",
-    recommendedFor: ["Restaurant", "Retail", "Raw material", "Service ops"],
-    permissions: permissionState({
-      "business-overview": ["view"],
-      orders: ["view", "create", "update", "approve"],
-      inventory: ["view", "create", "update", "approve"],
-      cashflow: ["view"],
-      reports: ["view"],
-      team: ["view", "update"],
-    }),
-  },
 ];
 
 export function createDefaultManagedRoles(now = new Date().toISOString()): ManagedRole[] {
-  return roleTemplateLibrary
-    .filter((role) => role.category === "default")
-    .map((role, index) => ({
-      ...role,
-      assignedUsers: [1, 2, 1, 4, 8, 2][index] ?? 0,
-      status: "Locked",
-      createdAt: now,
-      updatedAt: now,
-    }));
+  return roleTemplateLibrary.map((role, index) => ({
+    ...role,
+    assignedUsers: [1, 2, 1, 4, 8, 2][index] ?? 0,
+    status: "Locked",
+    createdAt: now,
+    updatedAt: now,
+  }));
 }
 
 export function createDefaultMembers(): TeamMember[] {
@@ -351,7 +355,6 @@ export function countTotalPermissions() {
 export function countRiskyPermissions(permissions: PermissionState) {
   return permissionModules.reduce((total, module) => {
     const grantedActions = new Set(permissions[module.id] ?? []);
-
     return total + module.actions.filter((action) => grantedActions.has(action.id) && (action.destructive || action.elevated || action.id === "manage")).length;
   }, 0);
 }
@@ -367,31 +370,13 @@ export function roleIdFromName(name: string) {
   return `${slug}-${Date.now()}`;
 }
 
-export function findTemplate(templateId: string) {
-  return roleTemplateLibrary.find((template) => template.id === templateId) ?? roleTemplateLibrary[0];
-}
-
-export function createDraftFromTemplate(template: RoleTemplate) {
-  return {
-    name: template.category === "default" ? `${template.name} Custom` : template.name,
-    description: template.description,
-    baseRole: template.baseRole,
-    permissions: clonePermissionState(template.permissions),
-  };
-}
-
 export function validateRoleName(name: string, roles: ManagedRole[], currentRoleId?: string) {
   const trimmed = name.trim();
 
-  if (trimmed.length < 3) {
-    return "Role name must be at least 3 characters.";
-  }
+  if (trimmed.length < 3) return "Role name must be at least 3 characters.";
 
   const duplicate = roles.some((role) => role.id !== currentRoleId && role.name.toLowerCase() === trimmed.toLowerCase());
-
-  if (duplicate) {
-    return "Role name already exists.";
-  }
+  if (duplicate) return "Role name already exists.";
 
   return null;
 }
@@ -404,13 +389,8 @@ export function getPermissionDiff(previous: PermissionState, next: PermissionSta
     const before = new Set(previous[module.id] ?? []);
     const after = new Set(next[module.id] ?? []);
 
-    for (const action of after) {
-      if (!before.has(action)) added.push(`${module.label}: ${action}`);
-    }
-
-    for (const action of before) {
-      if (!after.has(action)) removed.push(`${module.label}: ${action}`);
-    }
+    for (const action of after) if (!before.has(action)) added.push(`${module.label}: ${action}`);
+    for (const action of before) if (!after.has(action)) removed.push(`${module.label}: ${action}`);
   }
 
   return { added, removed };

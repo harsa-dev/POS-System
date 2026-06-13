@@ -7,10 +7,10 @@ import {
   type TeamMember,
 } from "./role-permission-library";
 
-const STORAGE_KEY = "pos-v3-demo-role-permissions";
+const STORAGE_KEY = "pos-v3-demo-role-permissions-real-job-library";
 
 export type RolePermissionStoreState = {
-  version: 2;
+  version: 3;
   roles: ManagedRole[];
   members: TeamMember[];
   logs: AccessChangeLog[];
@@ -18,14 +18,14 @@ export type RolePermissionStoreState = {
 
 function createInitialStore(): RolePermissionStoreState {
   return {
-    version: 2,
+    version: 3,
     roles: createDefaultManagedRoles(),
     members: createDefaultMembers(),
     logs: [
       createAccessLog(
         "RESET_DEMO",
         "Role Permission Demo",
-        "Initialized dummy role library and team assignment state.",
+        "Initialized dummy role library with real-world job profile presets.",
       ),
     ],
   };
@@ -43,12 +43,12 @@ export function loadRolePermissionStore(): RolePermissionStoreState {
 
   try {
     const parsed = JSON.parse(raw) as RolePermissionStoreState;
-    if (parsed?.version !== 2 || !Array.isArray(parsed.roles) || !Array.isArray(parsed.members)) {
+    if (parsed?.version !== 3 || !Array.isArray(parsed.roles) || !Array.isArray(parsed.members)) {
       return createInitialStore();
     }
 
     return {
-      version: 2,
+      version: 3,
       roles: parsed.roles,
       members: parsed.members,
       logs: Array.isArray(parsed.logs) ? parsed.logs : [],
