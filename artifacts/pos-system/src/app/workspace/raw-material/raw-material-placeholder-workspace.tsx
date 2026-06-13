@@ -1,14 +1,4 @@
 import { useState, type FormEvent } from "react";
-import {
-  Boxes,
-  ClipboardList,
-  Factory,
-  PackageSearch,
-  Scale,
-  Sprout,
-  Truck,
-  type LucideIcon,
-} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,108 +28,42 @@ import {
   rawMaterialStorageLocations,
   rawMaterialSuppliers,
   rawMaterialWorkspaceModules,
-  type RawMaterialQualityStatus,
-  type RawMaterialSupplier,
   type RawMaterialWorkspaceModuleId,
 } from "@/features/raw-material/core-system";
 
-const moduleIcons: Record<RawMaterialWorkspaceModuleId, LucideIcon> = {
-  intake: Truck,
-  weighing: Scale,
-  batches: ClipboardList,
-  storage: Boxes,
-  processing: Factory,
-  kandang: Sprout,
-  suppliers: PackageSearch,
-};
-
-const qualityStatusTone = {
-  accepted: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  inspection: "border-amber-200 bg-amber-50 text-amber-700",
-  rejected: "border-rose-200 bg-rose-50 text-rose-700",
-} as const;
-
-const processStatusTone = {
-  planned: "border-neutral-200 bg-neutral-50 text-neutral-600",
-  running: "border-blue-200 bg-blue-50 text-blue-700",
-  completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
-} as const;
-
-const healthStatusTone = {
-  stable: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  monitoring: "border-amber-200 bg-amber-50 text-amber-700",
-  critical: "border-rose-200 bg-rose-50 text-rose-700",
-} as const;
-
-const qualityFilterOptions = ["all", "accepted", "inspection", "rejected"] as const;
-const supplierCategoryOptions = ["all", "Feed", "Livestock", "Packaging", "Raw Goods"] as const;
+import {
+  rawMaterialHealthStatusTone,
+  rawMaterialModuleIcons,
+  rawMaterialProcessStatusTone,
+  rawMaterialQualityFilterOptions,
+  rawMaterialQualityStatusTone,
+  rawMaterialSupplierCategoryOptions,
+} from "./raw-material-workspace.constants";
+import type {
+  RawMaterialIntakeDraft,
+  RawMaterialQualityFilterValue,
+  RawMaterialSupplierCategoryFilterValue,
+  RawMaterialWeighingDraft,
+} from "./raw-material-workspace.types";
+import {
+  getRawMaterialBatchLabel,
+  getRawMaterialIntakeLabel,
+  getRawMaterialStorageLabel,
+  getRawMaterialSupplierName,
+  normalizeRawMaterialQualityFilter,
+  normalizeRawMaterialSupplierCategoryFilter,
+  toRawMaterialPositiveNumber,
+} from "./raw-material-workspace.utils";
 
 type RawMaterialPlaceholderWorkspaceProps = {
   moduleId: RawMaterialWorkspaceModuleId;
 };
 
-type QualityFilterValue = (typeof qualityFilterOptions)[number];
-type SupplierCategoryFilterValue = (typeof supplierCategoryOptions)[number];
-
-type IntakeDraft = Readonly<{
-  id: string;
-  materialName: string;
-  supplierId: string;
-  targetStorageId: string;
-  quantityKg: number;
-  status: "draft";
-}>;
-
-type WeighingDraft = Readonly<{
-  id: string;
-  intakeReference: string;
-  grossKg: number;
-  tareKg: number;
-  netKg: number;
-  status: "draft";
-}>;
-
-function getSupplierName(supplierId: string) {
-  return rawMaterialSuppliers.find((supplier) => supplier.id === supplierId)?.name ?? "Unknown supplier";
-}
-
-function getStorageLabel(storageId: string) {
-  const storage = rawMaterialStorageLocations.find((location) => location.id === storageId);
-
-  return storage ? `${storage.code} · ${storage.name}` : "Unassigned storage";
-}
-
-function getIntakeLabel(intakeId: string) {
-  const intake = rawMaterialIntakes.find((candidate) => candidate.id === intakeId);
-
-  return intake ? intake.referenceNumber : "Unknown intake";
-}
-
-function getBatchLabel(batchId: string) {
-  const batch = rawMaterialBatches.find((candidate) => candidate.id === batchId);
-
-  return batch ? batch.lotCode : "Unknown batch";
-}
-
-function toPositiveNumber(value: string) {
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-}
-
-function normalizeQualityFilter(value: QualityFilterValue) {
-  return value === "all" ? undefined : (value satisfies RawMaterialQualityStatus);
-}
-
-function normalizeSupplierCategoryFilter(value: SupplierCategoryFilterValue) {
-  return value === "all" ? undefined : (value satisfies RawMaterialSupplier["category"]);
-}
-
 export default function RawMaterialPlaceholderWorkspace({
   moduleId,
 }: RawMaterialPlaceholderWorkspaceProps) {
   const workspace = rawMaterialWorkspaceModules[moduleId];
-  const Icon = moduleIcons[moduleId];
+  const Icon = rawMaterialModuleIcons[moduleId];
   const moduleContracts = rawMaterialApiContracts.filter(
     (contract) => contract.moduleId === moduleId,
   );
@@ -163,16 +87,16 @@ export default function RawMaterialPlaceholderWorkspace({
   });
   const [intakeFilters, setIntakeFilters] = useState({
     supplierId: "all",
-    qualityStatus: "all" as QualityFilterValue,
+    qualityStatus: "all" as RawMaterialQualityFilterValue,
     search: "",
   });
   const [batchFilters, setBatchFilters] = useState({
     storageId: "all",
-    qualityStatus: "all" as QualityFilterValue,
+    qualityStatus: "all" as RawMaterialQualityFilterValue,
     search: "",
   });
   const [supplierFilters, setSupplierFilters] = useState({
-    category: "all" as SupplierCategoryFilterValue,
+    category: "all" as RawMaterialSupplierCategoryFilterValue,
     search: "",
   });
   const [transferPreviewForm, setTransferPreviewForm] = useState({
@@ -186,26 +110,29 @@ export default function RawMaterialPlaceholderWorkspace({
     inputKg: "300",
     expectedYieldPercent: "92",
   });
-  const [intakeDrafts, setIntakeDrafts] = useState<readonly IntakeDraft[]>([]);
-  const [weighingDrafts, setWeighingDrafts] = useState<readonly WeighingDraft[]>([]);
-  const [draftNotice, setDraftNotice] = useState("Drafts and previews are local only. Refreshing the page clears them.");
+  const [intakeDrafts, setIntakeDrafts] = useState<readonly RawMaterialIntakeDraft[]>([]);
+  const [weighingDrafts, setWeighingDrafts] = useState<readonly RawMaterialWeighingDraft[]>([]);
+  const [draftNotice, setDraftNotice] = useState(
+    "Drafts and previews are local only. Refreshing the page clears them.",
+  );
 
   const intakesEnvelope = rawMaterialMockService.listIntakes({
     supplierId: intakeFilters.supplierId === "all" ? undefined : intakeFilters.supplierId,
-    qualityStatus: normalizeQualityFilter(intakeFilters.qualityStatus),
+    qualityStatus: normalizeRawMaterialQualityFilter(intakeFilters.qualityStatus),
     search: intakeFilters.search || undefined,
   });
   const batchesEnvelope = rawMaterialMockService.listBatches({
     storageId: batchFilters.storageId === "all" ? undefined : batchFilters.storageId,
-    qualityStatus: normalizeQualityFilter(batchFilters.qualityStatus),
+    qualityStatus: normalizeRawMaterialQualityFilter(batchFilters.qualityStatus),
     search: batchFilters.search || undefined,
   });
   const suppliersEnvelope = rawMaterialMockService.listSuppliers({
-    category: normalizeSupplierCategoryFilter(supplierFilters.category),
+    category: normalizeRawMaterialSupplierCategoryFilter(supplierFilters.category),
     search: supplierFilters.search || undefined,
   });
+
   const transferBatch = rawMaterialBatches.find((batch) => batch.id === transferPreviewForm.batchId);
-  const transferQuantityKg = toPositiveNumber(transferPreviewForm.quantityKg);
+  const transferQuantityKg = toRawMaterialPositiveNumber(transferPreviewForm.quantityKg);
   const transferIsValid = Boolean(
     transferBatch &&
       transferQuantityKg > 0 &&
@@ -214,9 +141,10 @@ export default function RawMaterialPlaceholderWorkspace({
       transferPreviewForm.targetStorageId &&
       transferPreviewForm.sourceStorageId !== transferPreviewForm.targetStorageId,
   );
+
   const processingBatch = rawMaterialBatches.find((batch) => batch.id === processingPreviewForm.batchId);
-  const processingInputKg = toPositiveNumber(processingPreviewForm.inputKg);
-  const expectedYieldPercent = toPositiveNumber(processingPreviewForm.expectedYieldPercent);
+  const processingInputKg = toRawMaterialPositiveNumber(processingPreviewForm.inputKg);
+  const expectedYieldPercent = toRawMaterialPositiveNumber(processingPreviewForm.expectedYieldPercent);
   const processingOutputKg = processingInputKg * (expectedYieldPercent / 100);
   const processingByproductKg = Math.max(processingInputKg - processingOutputKg, 0);
   const processingIsValid = Boolean(
@@ -230,13 +158,13 @@ export default function RawMaterialPlaceholderWorkspace({
   function handleCreateIntakeDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const quantityKg = toPositiveNumber(intakeForm.quantityKg);
+    const quantityKg = toRawMaterialPositiveNumber(intakeForm.quantityKg);
     if (!intakeForm.materialName.trim() || !intakeForm.supplierId || !intakeForm.targetStorageId || quantityKg <= 0) {
       setDraftNotice("Intake draft needs material, supplier, storage, and a positive quantity.");
       return;
     }
 
-    const nextDraft: IntakeDraft = {
+    const nextDraft: RawMaterialIntakeDraft = {
       id: `local-intake-${Date.now()}`,
       materialName: intakeForm.materialName.trim(),
       supplierId: intakeForm.supplierId,
@@ -252,8 +180,8 @@ export default function RawMaterialPlaceholderWorkspace({
   function handleCreateWeighingDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const grossKg = toPositiveNumber(weighingForm.grossKg);
-    const tareKg = toPositiveNumber(weighingForm.tareKg);
+    const grossKg = toRawMaterialPositiveNumber(weighingForm.grossKg);
+    const tareKg = toRawMaterialPositiveNumber(weighingForm.tareKg);
     const netKg = grossKg - tareKg;
 
     if (!weighingForm.intakeReference.trim() || grossKg <= 0 || tareKg < 0 || netKg <= 0) {
@@ -261,7 +189,7 @@ export default function RawMaterialPlaceholderWorkspace({
       return;
     }
 
-    const nextDraft: WeighingDraft = {
+    const nextDraft: RawMaterialWeighingDraft = {
       id: `local-weighing-${Date.now()}`,
       intakeReference: weighingForm.intakeReference.trim(),
       grossKg,
@@ -276,7 +204,6 @@ export default function RawMaterialPlaceholderWorkspace({
 
   function handlePreviewTransfer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setDraftNotice(
       transferIsValid
         ? "Storage transfer preview generated locally. No stock movement was created. Civilization survives."
@@ -286,7 +213,6 @@ export default function RawMaterialPlaceholderWorkspace({
 
   function handlePreviewProcessingYield(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setDraftNotice(
       processingIsValid
         ? "Processing yield preview generated locally. No finished goods or cost allocation created yet."
@@ -298,30 +224,19 @@ export default function RawMaterialPlaceholderWorkspace({
     <section className="space-y-6">
       <div className="rounded-xl border border-amber-100 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="border-amber-300 text-amber-700">
-            Raw Material mode
-          </Badge>
-          <Badge variant="outline" className="border-neutral-300 text-neutral-600">
-            Mock data only
-          </Badge>
-          <Badge variant="outline" className="border-rose-300 text-rose-700">
-            Schema untouched
-          </Badge>
-          <Badge variant="outline" className="border-blue-300 text-blue-700">
-            API contract ready
-          </Badge>
+          <Badge variant="outline" className="border-amber-300 text-amber-700">Raw Material mode</Badge>
+          <Badge variant="outline" className="border-neutral-300 text-neutral-600">Mock data only</Badge>
+          <Badge variant="outline" className="border-rose-300 text-rose-700">Schema untouched</Badge>
+          <Badge variant="outline" className="border-blue-300 text-blue-700">API contract ready</Badge>
         </div>
 
         <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-4xl space-y-3">
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-700">
-              {workspace.eyebrow}
-            </p>
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-700">{workspace.eyebrow}</p>
             <h1 className="text-2xl font-bold text-neutral-950">{workspace.title}</h1>
             <p className="text-sm leading-6 text-neutral-600">{workspace.description}</p>
             <p className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm leading-6 text-neutral-600">
-              <span className="font-semibold text-neutral-900">Operational goal:</span>{" "}
-              {workspace.operationalGoal}
+              <span className="font-semibold text-neutral-900">Operational goal:</span> {workspace.operationalGoal}
             </p>
           </div>
 
@@ -345,9 +260,7 @@ export default function RawMaterialPlaceholderWorkspace({
         ))}
       </div>
 
-      <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-        {draftNotice}
-      </div>
+      <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{draftNotice}</div>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card className="rounded-xl bg-white">
@@ -369,38 +282,20 @@ export default function RawMaterialPlaceholderWorkspace({
 
               <div className="space-y-2">
                 <Label>Supplier</Label>
-                <Select
-                  value={intakeForm.supplierId}
-                  onValueChange={(supplierId) => setIntakeForm((current) => ({ ...current, supplierId }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select supplier" />
-                  </SelectTrigger>
+                <Select value={intakeForm.supplierId} onValueChange={(supplierId) => setIntakeForm((current) => ({ ...current, supplierId }))}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select supplier" /></SelectTrigger>
                   <SelectContent>
-                    {rawMaterialSuppliers.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
-                      </SelectItem>
-                    ))}
+                    {rawMaterialSuppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
                 <Label>Target storage</Label>
-                <Select
-                  value={intakeForm.targetStorageId}
-                  onValueChange={(targetStorageId) => setIntakeForm((current) => ({ ...current, targetStorageId }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select storage" />
-                  </SelectTrigger>
+                <Select value={intakeForm.targetStorageId} onValueChange={(targetStorageId) => setIntakeForm((current) => ({ ...current, targetStorageId }))}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select storage" /></SelectTrigger>
                   <SelectContent>
-                    {rawMaterialStorageLocations.map((storage) => (
-                      <SelectItem key={storage.id} value={storage.id}>
-                        {storage.code} · {storage.name}
-                      </SelectItem>
-                    ))}
+                    {rawMaterialStorageLocations.map((storage) => <SelectItem key={storage.id} value={storage.id}>{storage.code} · {storage.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -416,16 +311,12 @@ export default function RawMaterialPlaceholderWorkspace({
                 />
               </div>
 
-              <div className="md:col-span-2">
-                <Button type="submit">Create local intake draft</Button>
-              </div>
+              <div className="md:col-span-2"><Button type="submit">Create local intake draft</Button></div>
             </form>
 
             <div className="mt-4 grid gap-3">
               {intakeDrafts.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-neutral-200 p-3 text-sm text-neutral-500">
-                  No local intake draft yet.
-                </p>
+                <p className="rounded-lg border border-dashed border-neutral-200 p-3 text-sm text-neutral-500">No local intake draft yet.</p>
               ) : (
                 intakeDrafts.map((draft) => (
                   <div key={draft.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
@@ -434,7 +325,7 @@ export default function RawMaterialPlaceholderWorkspace({
                       <Badge variant="outline">{draft.status}</Badge>
                     </div>
                     <p className="mt-1 text-sm text-neutral-500">
-                      {formatRawMaterialWeight(draft.quantityKg)} · {getSupplierName(draft.supplierId)} · {getStorageLabel(draft.targetStorageId)}
+                      {formatRawMaterialWeight(draft.quantityKg)} · {getRawMaterialSupplierName(draft.supplierId)} · {getRawMaterialStorageLabel(draft.targetStorageId)}
                     </p>
                   </div>
                 ))
@@ -452,52 +343,28 @@ export default function RawMaterialPlaceholderWorkspace({
             <form className="grid gap-4 md:grid-cols-3" onSubmit={handleCreateWeighingDraft}>
               <div className="space-y-2 md:col-span-3">
                 <Label htmlFor="rm-weighing-reference">Intake reference</Label>
-                <Input
-                  id="rm-weighing-reference"
-                  value={weighingForm.intakeReference}
-                  onChange={(event) => setWeighingForm((current) => ({ ...current, intakeReference: event.target.value }))}
-                />
+                <Input id="rm-weighing-reference" value={weighingForm.intakeReference} onChange={(event) => setWeighingForm((current) => ({ ...current, intakeReference: event.target.value }))} />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="rm-gross-kg">Gross kg</Label>
-                <Input
-                  id="rm-gross-kg"
-                  type="number"
-                  min="1"
-                  value={weighingForm.grossKg}
-                  onChange={(event) => setWeighingForm((current) => ({ ...current, grossKg: event.target.value }))}
-                />
+                <Input id="rm-gross-kg" type="number" min="1" value={weighingForm.grossKg} onChange={(event) => setWeighingForm((current) => ({ ...current, grossKg: event.target.value }))} />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="rm-tare-kg">Tare kg</Label>
-                <Input
-                  id="rm-tare-kg"
-                  type="number"
-                  min="0"
-                  value={weighingForm.tareKg}
-                  onChange={(event) => setWeighingForm((current) => ({ ...current, tareKg: event.target.value }))}
-                />
+                <Input id="rm-tare-kg" type="number" min="0" value={weighingForm.tareKg} onChange={(event) => setWeighingForm((current) => ({ ...current, tareKg: event.target.value }))} />
               </div>
-
               <div className="space-y-2">
                 <Label>Net preview</Label>
                 <div className="flex h-8 items-center rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 text-sm font-semibold text-neutral-900">
-                  {formatRawMaterialWeight(Math.max(toPositiveNumber(weighingForm.grossKg) - toPositiveNumber(weighingForm.tareKg), 0))}
+                  {formatRawMaterialWeight(Math.max(toRawMaterialPositiveNumber(weighingForm.grossKg) - toRawMaterialPositiveNumber(weighingForm.tareKg), 0))}
                 </div>
               </div>
-
-              <div className="md:col-span-3">
-                <Button type="submit">Create local weighing draft</Button>
-              </div>
+              <div className="md:col-span-3"><Button type="submit">Create local weighing draft</Button></div>
             </form>
 
             <div className="mt-4 grid gap-3">
               {weighingDrafts.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-neutral-200 p-3 text-sm text-neutral-500">
-                  No local weighing draft yet.
-                </p>
+                <p className="rounded-lg border border-dashed border-neutral-200 p-3 text-sm text-neutral-500">No local weighing draft yet.</p>
               ) : (
                 weighingDrafts.map((draft) => (
                   <div key={draft.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
@@ -526,85 +393,38 @@ export default function RawMaterialPlaceholderWorkspace({
             <form className="grid gap-4 md:grid-cols-2" onSubmit={handlePreviewTransfer}>
               <div className="space-y-2 md:col-span-2">
                 <Label>Batch</Label>
-                <Select
-                  value={transferPreviewForm.batchId}
-                  onValueChange={(batchId) => setTransferPreviewForm((current) => ({ ...current, batchId }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select batch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rawMaterialBatches.map((batch) => (
-                      <SelectItem key={batch.id} value={batch.id}>
-                        {batch.lotCode} · {batch.materialName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Select value={transferPreviewForm.batchId} onValueChange={(batchId) => setTransferPreviewForm((current) => ({ ...current, batchId }))}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select batch" /></SelectTrigger>
+                  <SelectContent>{rawMaterialBatches.map((batch) => <SelectItem key={batch.id} value={batch.id}>{batch.lotCode} · {batch.materialName}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label>Source storage</Label>
-                <Select
-                  value={transferPreviewForm.sourceStorageId}
-                  onValueChange={(sourceStorageId) => setTransferPreviewForm((current) => ({ ...current, sourceStorageId }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rawMaterialStorageLocations.map((storage) => (
-                      <SelectItem key={storage.id} value={storage.id}>
-                        {storage.code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Select value={transferPreviewForm.sourceStorageId} onValueChange={(sourceStorageId) => setTransferPreviewForm((current) => ({ ...current, sourceStorageId }))}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Source" /></SelectTrigger>
+                  <SelectContent>{rawMaterialStorageLocations.map((storage) => <SelectItem key={storage.id} value={storage.id}>{storage.code}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label>Target storage</Label>
-                <Select
-                  value={transferPreviewForm.targetStorageId}
-                  onValueChange={(targetStorageId) => setTransferPreviewForm((current) => ({ ...current, targetStorageId }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Target" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rawMaterialStorageLocations.map((storage) => (
-                      <SelectItem key={storage.id} value={storage.id}>
-                        {storage.code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Select value={transferPreviewForm.targetStorageId} onValueChange={(targetStorageId) => setTransferPreviewForm((current) => ({ ...current, targetStorageId }))}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Target" /></SelectTrigger>
+                  <SelectContent>{rawMaterialStorageLocations.map((storage) => <SelectItem key={storage.id} value={storage.id}>{storage.code}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="rm-transfer-kg">Transfer kg</Label>
-                <Input
-                  id="rm-transfer-kg"
-                  type="number"
-                  min="1"
-                  value={transferPreviewForm.quantityKg}
-                  onChange={(event) => setTransferPreviewForm((current) => ({ ...current, quantityKg: event.target.value }))}
-                />
+                <Input id="rm-transfer-kg" type="number" min="1" value={transferPreviewForm.quantityKg} onChange={(event) => setTransferPreviewForm((current) => ({ ...current, quantityKg: event.target.value }))} />
               </div>
-
-              <div className="flex items-end">
-                <Button type="submit" variant="outline">Preview transfer</Button>
-              </div>
+              <div className="flex items-end"><Button type="submit" variant="outline">Preview transfer</Button></div>
             </form>
 
             <div className="mt-4 rounded-lg border border-neutral-100 bg-neutral-50 p-3 text-sm leading-6 text-neutral-600">
               <p><span className="font-semibold text-neutral-900">Batch:</span> {transferBatch?.lotCode ?? "No batch"}</p>
-              <p><span className="font-semibold text-neutral-900">Direction:</span> {getStorageLabel(transferPreviewForm.sourceStorageId)} → {getStorageLabel(transferPreviewForm.targetStorageId)}</p>
+              <p><span className="font-semibold text-neutral-900">Direction:</span> {getRawMaterialStorageLabel(transferPreviewForm.sourceStorageId)} → {getRawMaterialStorageLabel(transferPreviewForm.targetStorageId)}</p>
               <p><span className="font-semibold text-neutral-900">Quantity:</span> {formatRawMaterialWeight(transferQuantityKg)}</p>
               <p><span className="font-semibold text-neutral-900">Remaining after preview:</span> {formatRawMaterialWeight(Math.max((transferBatch?.remainingKg ?? 0) - transferQuantityKg, 0))}</p>
-              <Badge variant="outline" className={transferIsValid ? "border-emerald-200 text-emerald-700" : "border-rose-200 text-rose-700"}>
-                {transferIsValid ? "valid preview" : "needs review"}
-              </Badge>
+              <Badge variant="outline" className={transferIsValid ? "border-emerald-200 text-emerald-700" : "border-rose-200 text-rose-700"}>{transferIsValid ? "valid preview" : "needs review"}</Badge>
             </div>
           </CardContent>
         </Card>
@@ -618,49 +438,20 @@ export default function RawMaterialPlaceholderWorkspace({
             <form className="grid gap-4 md:grid-cols-3" onSubmit={handlePreviewProcessingYield}>
               <div className="space-y-2 md:col-span-3">
                 <Label>Input batch</Label>
-                <Select
-                  value={processingPreviewForm.batchId}
-                  onValueChange={(batchId) => setProcessingPreviewForm((current) => ({ ...current, batchId }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select batch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rawMaterialBatches.map((batch) => (
-                      <SelectItem key={batch.id} value={batch.id}>
-                        {batch.lotCode} · {batch.materialName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Select value={processingPreviewForm.batchId} onValueChange={(batchId) => setProcessingPreviewForm((current) => ({ ...current, batchId }))}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select batch" /></SelectTrigger>
+                  <SelectContent>{rawMaterialBatches.map((batch) => <SelectItem key={batch.id} value={batch.id}>{batch.lotCode} · {batch.materialName}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="rm-processing-input">Input kg</Label>
-                <Input
-                  id="rm-processing-input"
-                  type="number"
-                  min="1"
-                  value={processingPreviewForm.inputKg}
-                  onChange={(event) => setProcessingPreviewForm((current) => ({ ...current, inputKg: event.target.value }))}
-                />
+                <Input id="rm-processing-input" type="number" min="1" value={processingPreviewForm.inputKg} onChange={(event) => setProcessingPreviewForm((current) => ({ ...current, inputKg: event.target.value }))} />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="rm-yield-percent">Yield %</Label>
-                <Input
-                  id="rm-yield-percent"
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={processingPreviewForm.expectedYieldPercent}
-                  onChange={(event) => setProcessingPreviewForm((current) => ({ ...current, expectedYieldPercent: event.target.value }))}
-                />
+                <Input id="rm-yield-percent" type="number" min="1" max="100" value={processingPreviewForm.expectedYieldPercent} onChange={(event) => setProcessingPreviewForm((current) => ({ ...current, expectedYieldPercent: event.target.value }))} />
               </div>
-
-              <div className="flex items-end">
-                <Button type="submit" variant="outline">Preview yield</Button>
-              </div>
+              <div className="flex items-end"><Button type="submit" variant="outline">Preview yield</Button></div>
             </form>
 
             <div className="mt-4 rounded-lg border border-neutral-100 bg-neutral-50 p-3 text-sm leading-6 text-neutral-600">
@@ -668,9 +459,7 @@ export default function RawMaterialPlaceholderWorkspace({
               <p><span className="font-semibold text-neutral-900">Input:</span> {formatRawMaterialWeight(processingInputKg)}</p>
               <p><span className="font-semibold text-neutral-900">Expected output:</span> {formatRawMaterialWeight(processingOutputKg)}</p>
               <p><span className="font-semibold text-neutral-900">Expected byproduct:</span> {formatRawMaterialWeight(processingByproductKg)}</p>
-              <Badge variant="outline" className={processingIsValid ? "border-emerald-200 text-emerald-700" : "border-rose-200 text-rose-700"}>
-                {processingIsValid ? "valid preview" : "needs review"}
-              </Badge>
+              <Badge variant="outline" className={processingIsValid ? "border-emerald-200 text-emerald-700" : "border-rose-200 text-rose-700"}>{processingIsValid ? "valid preview" : "needs review"}</Badge>
             </div>
           </CardContent>
         </Card>
@@ -689,39 +478,17 @@ export default function RawMaterialPlaceholderWorkspace({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-3">
-              <Input
-                value={intakeFilters.search}
-                onChange={(event) => setIntakeFilters((current) => ({ ...current, search: event.target.value }))}
-                placeholder="Search intake/material/supplier"
-              />
-              <Select
-                value={intakeFilters.supplierId}
-                onValueChange={(supplierId) => setIntakeFilters((current) => ({ ...current, supplierId }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Supplier" />
-                </SelectTrigger>
+              <Input value={intakeFilters.search} onChange={(event) => setIntakeFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search intake/material/supplier" />
+              <Select value={intakeFilters.supplierId} onValueChange={(supplierId) => setIntakeFilters((current) => ({ ...current, supplierId }))}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Supplier" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All suppliers</SelectItem>
-                  {rawMaterialSuppliers.map((supplier) => (
-                    <SelectItem key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </SelectItem>
-                  ))}
+                  {rawMaterialSuppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select
-                value={intakeFilters.qualityStatus}
-                onValueChange={(qualityStatus: QualityFilterValue) => setIntakeFilters((current) => ({ ...current, qualityStatus }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Quality" />
-                </SelectTrigger>
-                <SelectContent>
-                  {qualityFilterOptions.map((status) => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
-                  ))}
-                </SelectContent>
+              <Select value={intakeFilters.qualityStatus} onValueChange={(qualityStatus) => setIntakeFilters((current) => ({ ...current, qualityStatus: qualityStatus as RawMaterialQualityFilterValue }))}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Quality" /></SelectTrigger>
+                <SelectContent>{rawMaterialQualityFilterOptions.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
@@ -742,19 +509,12 @@ export default function RawMaterialPlaceholderWorkspace({
                   {intakesEnvelope.data.map((intake) => (
                     <tr key={intake.id}>
                       <td className="py-3 pr-4 font-medium text-neutral-950">{intake.referenceNumber}</td>
-                      <td className="py-3 pr-4 text-neutral-700">
-                        <div>{intake.materialName}</div>
-                        <div className="text-xs text-neutral-500">Received: {intake.receivedQuantity} {intake.unit}</div>
-                      </td>
-                      <td className="py-3 pr-4 text-neutral-700">{getSupplierName(intake.supplierId)}</td>
+                      <td className="py-3 pr-4 text-neutral-700"><div>{intake.materialName}</div><div className="text-xs text-neutral-500">Received: {intake.receivedQuantity} {intake.unit}</div></td>
+                      <td className="py-3 pr-4 text-neutral-700">{getRawMaterialSupplierName(intake.supplierId)}</td>
                       <td className="py-3 pr-4 text-neutral-700">{intake.acceptedQuantity} {intake.unit}</td>
                       <td className="py-3 pr-4 text-neutral-700">{intake.rejectedQuantity} {intake.unit}</td>
-                      <td className="py-3 pr-4 text-neutral-700">{getStorageLabel(intake.targetStorageId)}</td>
-                      <td className="py-3 pr-4">
-                        <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${qualityStatusTone[intake.qualityStatus]}`}>
-                          {intake.qualityStatus}
-                        </span>
-                      </td>
+                      <td className="py-3 pr-4 text-neutral-700">{getRawMaterialStorageLabel(intake.targetStorageId)}</td>
+                      <td className="py-3 pr-4"><span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${rawMaterialQualityStatusTone[intake.qualityStatus]}`}>{intake.qualityStatus}</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -770,27 +530,13 @@ export default function RawMaterialPlaceholderWorkspace({
               <CardDescription>Generated from API contract metadata. Still zero schema mutation.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 text-sm text-neutral-600">
-              <div className="flex items-center justify-between rounded-lg border border-neutral-100 bg-neutral-50 p-3">
-                <span>Readiness</span>
-                <Badge variant="outline">{readiness.readinessLabel}</Badge>
-              </div>
+              <div className="flex items-center justify-between rounded-lg border border-neutral-100 bg-neutral-50 p-3"><span>Readiness</span><Badge variant="outline">{readiness.readinessLabel}</Badge></div>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-lg border border-neutral-100 p-3">
-                  <p className="text-lg font-bold text-neutral-950">{readiness.totalContracts}</p>
-                  <p className="text-xs text-neutral-500">contracts</p>
-                </div>
-                <div className="rounded-lg border border-neutral-100 p-3">
-                  <p className="text-lg font-bold text-neutral-950">{readiness.mockOnlyContracts}</p>
-                  <p className="text-xs text-neutral-500">mock</p>
-                </div>
-                <div className="rounded-lg border border-neutral-100 p-3">
-                  <p className="text-lg font-bold text-neutral-950">{readiness.futureDbContracts}</p>
-                  <p className="text-xs text-neutral-500">future DB</p>
-                </div>
+                <div className="rounded-lg border border-neutral-100 p-3"><p className="text-lg font-bold text-neutral-950">{readiness.totalContracts}</p><p className="text-xs text-neutral-500">contracts</p></div>
+                <div className="rounded-lg border border-neutral-100 p-3"><p className="text-lg font-bold text-neutral-950">{readiness.mockOnlyContracts}</p><p className="text-xs text-neutral-500">mock</p></div>
+                <div className="rounded-lg border border-neutral-100 p-3"><p className="text-lg font-bold text-neutral-950">{readiness.futureDbContracts}</p><p className="text-xs text-neutral-500">future DB</p></div>
               </div>
-              <p className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
-                Service source: {metricsEnvelope.meta.source}. Schema touched: {String(metricsEnvelope.meta.schemaTouched)}.
-              </p>
+              <p className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-800">Service source: {metricsEnvelope.meta.source}. Schema touched: {String(metricsEnvelope.meta.schemaTouched)}.</p>
             </CardContent>
           </Card>
 
@@ -802,20 +548,11 @@ export default function RawMaterialPlaceholderWorkspace({
             <CardContent className="space-y-3">
               {moduleContracts.map((contract) => (
                 <div key={contract.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{contract.method}</Badge>
-                    <Badge variant="outline" className="border-amber-200 text-amber-700">
-                      {contract.persistence}
-                    </Badge>
-                  </div>
+                  <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{contract.method}</Badge><Badge variant="outline" className="border-amber-200 text-amber-700">{contract.persistence}</Badge></div>
                   <p className="mt-2 font-mono text-xs text-neutral-700">{contract.path}</p>
                   <p className="mt-2 text-sm leading-6 text-neutral-600">{contract.purpose}</p>
-                  <p className="mt-2 text-xs leading-5 text-neutral-500">
-                    <span className="font-semibold text-neutral-700">Request:</span> {contract.requestShape}
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-neutral-500">
-                    <span className="font-semibold text-neutral-700">Response:</span> {contract.responseShape}
-                  </p>
+                  <p className="mt-2 text-xs leading-5 text-neutral-500"><span className="font-semibold text-neutral-700">Request:</span> {contract.requestShape}</p>
+                  <p className="mt-1 text-xs leading-5 text-neutral-500"><span className="font-semibold text-neutral-700">Response:</span> {contract.responseShape}</p>
                 </div>
               ))}
             </CardContent>
@@ -836,39 +573,14 @@ export default function RawMaterialPlaceholderWorkspace({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-3">
-              <Input
-                value={batchFilters.search}
-                onChange={(event) => setBatchFilters((current) => ({ ...current, search: event.target.value }))}
-                placeholder="Search lot/material"
-              />
-              <Select
-                value={batchFilters.storageId}
-                onValueChange={(storageId) => setBatchFilters((current) => ({ ...current, storageId }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Storage" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All storage</SelectItem>
-                  {rawMaterialStorageLocations.map((storage) => (
-                    <SelectItem key={storage.id} value={storage.id}>
-                      {storage.code}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+              <Input value={batchFilters.search} onChange={(event) => setBatchFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search lot/material" />
+              <Select value={batchFilters.storageId} onValueChange={(storageId) => setBatchFilters((current) => ({ ...current, storageId }))}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Storage" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All storage</SelectItem>{rawMaterialStorageLocations.map((storage) => <SelectItem key={storage.id} value={storage.id}>{storage.code}</SelectItem>)}</SelectContent>
               </Select>
-              <Select
-                value={batchFilters.qualityStatus}
-                onValueChange={(qualityStatus: QualityFilterValue) => setBatchFilters((current) => ({ ...current, qualityStatus }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Quality" />
-                </SelectTrigger>
-                <SelectContent>
-                  {qualityFilterOptions.map((status) => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
-                  ))}
-                </SelectContent>
+              <Select value={batchFilters.qualityStatus} onValueChange={(qualityStatus) => setBatchFilters((current) => ({ ...current, qualityStatus: qualityStatus as RawMaterialQualityFilterValue }))}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Quality" /></SelectTrigger>
+                <SelectContent>{rawMaterialQualityFilterOptions.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
@@ -877,17 +589,11 @@ export default function RawMaterialPlaceholderWorkspace({
                 <div key={batch.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="font-medium text-neutral-900">{batch.lotCode}</p>
-                    <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${qualityStatusTone[batch.qualityStatus]}`}>
-                      {batch.qualityStatus}
-                    </span>
+                    <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${rawMaterialQualityStatusTone[batch.qualityStatus]}`}>{batch.qualityStatus}</span>
                   </div>
                   <p className="mt-1 text-sm text-neutral-600">{batch.materialName}</p>
-                  <p className="mt-2 text-xs leading-5 text-neutral-500">
-                    Source: {getIntakeLabel(batch.intakeId)} · Remaining: {formatRawMaterialWeight(batch.remainingKg)} / {formatRawMaterialWeight(batch.quantityKg)}
-                  </p>
-                  <p className="text-xs leading-5 text-neutral-500">
-                    Expiry: {batch.expiryDate} · {getStorageLabel(batch.storageId)}
-                  </p>
+                  <p className="mt-2 text-xs leading-5 text-neutral-500">Source: {getRawMaterialIntakeLabel(batch.intakeId)} · Remaining: {formatRawMaterialWeight(batch.remainingKg)} / {formatRawMaterialWeight(batch.quantityKg)}</p>
+                  <p className="text-xs leading-5 text-neutral-500">Expiry: {batch.expiryDate} · {getRawMaterialStorageLabel(batch.storageId)}</p>
                 </div>
               ))}
             </div>
@@ -904,9 +610,7 @@ export default function RawMaterialPlaceholderWorkspace({
               <div key={weighing.id} className="rounded-lg border border-neutral-100 p-3">
                 <p className="font-medium text-neutral-900">{weighing.referenceNumber}</p>
                 <p className="mt-1 text-sm text-neutral-500">{weighing.stationName} · {weighing.operatorName}</p>
-                <p className="mt-2 text-xs leading-5 text-neutral-500">
-                  Gross {formatRawMaterialWeight(weighing.grossKg)} · Tare {formatRawMaterialWeight(weighing.tareKg)} · Net {formatRawMaterialWeight(weighing.netKg)}
-                </p>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">Gross {formatRawMaterialWeight(weighing.grossKg)} · Tare {formatRawMaterialWeight(weighing.tareKg)} · Net {formatRawMaterialWeight(weighing.netKg)}</p>
               </div>
             ))}
           </CardContent>
@@ -922,14 +626,9 @@ export default function RawMaterialPlaceholderWorkspace({
           <CardContent className="space-y-3">
             {storageEnvelope.data.map((location) => (
               <div key={location.id} className="rounded-lg border border-neutral-100 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium text-neutral-900">{location.code}</p>
-                  <Badge variant="outline">{getRawMaterialStorageUsagePercent(location)}%</Badge>
-                </div>
+                <div className="flex items-center justify-between gap-3"><p className="font-medium text-neutral-900">{location.code}</p><Badge variant="outline">{getRawMaterialStorageUsagePercent(location)}%</Badge></div>
                 <p className="mt-1 text-sm text-neutral-500">{location.name} · {location.type}</p>
-                <p className="mt-2 text-xs text-neutral-500">
-                  {formatRawMaterialWeight(location.usedKg)} used from {formatRawMaterialWeight(location.capacityKg)}
-                </p>
+                <p className="mt-2 text-xs text-neutral-500">{formatRawMaterialWeight(location.usedKg)} used from {formatRawMaterialWeight(location.capacityKg)}</p>
               </div>
             ))}
           </CardContent>
@@ -943,19 +642,10 @@ export default function RawMaterialPlaceholderWorkspace({
           <CardContent className="space-y-3">
             {processingEnvelope.data.map((run) => (
               <div key={run.id} className="rounded-lg border border-neutral-100 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="font-medium text-neutral-900">{run.runNumber}</p>
-                  <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${processStatusTone[run.status]}`}>
-                    {run.status}
-                  </span>
-                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-medium text-neutral-900">{run.runNumber}</p><span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${rawMaterialProcessStatusTone[run.status]}`}>{run.status}</span></div>
                 <p className="mt-1 text-sm text-neutral-500">{run.outputName}</p>
-                <p className="mt-2 text-xs leading-5 text-neutral-500">
-                  Input: {formatRawMaterialWeight(run.inputKg)} from {getBatchLabel(run.inputBatchId)}
-                </p>
-                <p className="text-xs leading-5 text-neutral-500">
-                  Output: {formatRawMaterialWeight(run.outputKg)} · Byproduct: {formatRawMaterialWeight(run.byproductKg)}
-                </p>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">Input: {formatRawMaterialWeight(run.inputKg)} from {getRawMaterialBatchLabel(run.inputBatchId)}</p>
+                <p className="text-xs leading-5 text-neutral-500">Output: {formatRawMaterialWeight(run.outputKg)} · Byproduct: {formatRawMaterialWeight(run.byproductKg)}</p>
               </div>
             ))}
           </CardContent>
@@ -969,16 +659,9 @@ export default function RawMaterialPlaceholderWorkspace({
           <CardContent className="space-y-3">
             {kandangEnvelope.data.map((pen) => (
               <div key={pen.id} className="rounded-lg border border-neutral-100 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="font-medium text-neutral-900">{pen.code}</p>
-                  <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${healthStatusTone[pen.healthStatus]}`}>
-                    {pen.healthStatus}
-                  </span>
-                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-medium text-neutral-900">{pen.code}</p><span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${rawMaterialHealthStatusTone[pen.healthStatus]}`}>{pen.healthStatus}</span></div>
                 <p className="mt-1 text-sm text-neutral-500">{pen.flockName}</p>
-                <p className="mt-2 text-xs leading-5 text-neutral-500">
-                  Occupancy: {pen.occupancy}/{pen.capacity} · Feed: {getBatchLabel(pen.feedBatchId)}
-                </p>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">Occupancy: {pen.occupancy}/{pen.capacity} · Feed: {getRawMaterialBatchLabel(pen.feedBatchId)}</p>
               </div>
             ))}
           </CardContent>
@@ -997,37 +680,19 @@ export default function RawMaterialPlaceholderWorkspace({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
-            <Input
-              value={supplierFilters.search}
-              onChange={(event) => setSupplierFilters((current) => ({ ...current, search: event.target.value }))}
-              placeholder="Search supplier/contact/category"
-            />
-            <Select
-              value={supplierFilters.category}
-              onValueChange={(category: SupplierCategoryFilterValue) => setSupplierFilters((current) => ({ ...current, category }))}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                {supplierCategoryOptions.map((category) => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
-                ))}
-              </SelectContent>
+            <Input value={supplierFilters.search} onChange={(event) => setSupplierFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search supplier/contact/category" />
+            <Select value={supplierFilters.category} onValueChange={(category) => setSupplierFilters((current) => ({ ...current, category: category as RawMaterialSupplierCategoryFilterValue }))}>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectContent>{rawMaterialSupplierCategoryOptions.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent>
             </Select>
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
             {suppliersEnvelope.data.map((supplier) => (
               <div key={supplier.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="font-medium text-neutral-900">{supplier.name}</p>
-                  <Badge variant="outline">{supplier.category}</Badge>
-                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-medium text-neutral-900">{supplier.name}</p><Badge variant="outline">{supplier.category}</Badge></div>
                 <p className="mt-1 text-sm text-neutral-500">{supplier.contactPerson} · {supplier.phone}</p>
-                <p className="mt-2 text-xs text-neutral-500">
-                  Lead time: {supplier.leadTimeDays} days · Reliability: {supplier.reliabilityScore}%
-                </p>
+                <p className="mt-2 text-xs text-neutral-500">Lead time: {supplier.leadTimeDays} days · Reliability: {supplier.reliabilityScore}%</p>
               </div>
             ))}
           </div>
@@ -1041,9 +706,7 @@ export default function RawMaterialPlaceholderWorkspace({
               <CardTitle className="text-base">Foundation checkpoint</CardTitle>
               <CardDescription>Before API/schema integration</CardDescription>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm leading-6 text-neutral-600">{checkpoint}</p>
-            </CardContent>
+            <CardContent><p className="text-sm leading-6 text-neutral-600">{checkpoint}</p></CardContent>
           </Card>
         ))}
       </div>
