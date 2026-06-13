@@ -14,12 +14,12 @@ export const apiBusinessModes = [
 
 export type ApiBusinessMode = (typeof apiBusinessModes)[number];
 
-const legacyModeAliases = {
+const legacyModeAliases: Record<string, ApiBusinessMode> = {
   fnb: "restaurant",
   warehouse: "raw-material",
   livestock: "raw-material",
   service: "custom-business",
-} as const satisfies Record<string, ApiBusinessMode>;
+};
 
 function isApiBusinessMode(value: string): value is ApiBusinessMode {
   return apiBusinessModes.some((mode) => mode === value);
