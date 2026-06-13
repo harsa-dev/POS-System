@@ -1,0 +1,154 @@
+import {
+  BUSINESS_MODE_STORAGE_KEY,
+  businessModeIds,
+  type BusinessModeConfig,
+  type BusinessModeId,
+  type BusinessModeStatus,
+} from "./business-mode.types";
+
+export const defaultBusinessModeId = "restaurant" satisfies BusinessModeId;
+
+export const businessModeRegistry = [
+  {
+    id: "restaurant",
+    label: "Restaurant / F&B",
+    shortLabel: "Restaurant",
+    description:
+      "Active workspace for menu, cashier, kitchen, serving, tables, inventory, payments, and reports.",
+    status: "available",
+    category: "food-and-beverage",
+    route: "/workspace/restaurant/pos",
+    storageKey: BUSINESS_MODE_STORAGE_KEY,
+    isDefault: true,
+    isSelectable: true,
+    badgeLabel: "Available",
+    primaryModules: [
+      "Dashboard",
+      "Cashier",
+      "Kitchen",
+      "Serving",
+      "Tables",
+      "Menu",
+      "Inventory",
+      "Payments",
+      "Reports",
+      "Settings",
+    ],
+    plannedModules: [],
+  },
+  {
+    id: "retail",
+    label: "Retail / Supermarket",
+    shortLabel: "Retail",
+    description:
+      "Planned workspace for barcode checkout, receiving, stock opname, shelf management, promotions, and retail reports.",
+    status: "planned",
+    category: "retail",
+    route: "/select-mode",
+    storageKey: BUSINESS_MODE_STORAGE_KEY,
+    isDefault: false,
+    isSelectable: false,
+    badgeLabel: "Planned",
+    primaryModules: ["Dashboard", "Products", "Inventory", "Payments", "Reports"],
+    plannedModules: [
+      "Barcode Checkout",
+      "Receiving",
+      "Stock Opname",
+      "Shelf Management",
+      "Promotions",
+    ],
+    unavailableReason:
+      "Retail mode is planned. Restaurant / F&B remains the only selectable operational workspace for now.",
+  },
+  {
+    id: "raw-material",
+    label: "Raw Material / Livestock",
+    shortLabel: "Raw Material",
+    description:
+      "Planned workspace for intake, weighing, batches, storage, processing, kandang operations, suppliers, and reports.",
+    status: "planned",
+    category: "raw-material",
+    route: "/select-mode",
+    storageKey: BUSINESS_MODE_STORAGE_KEY,
+    isDefault: false,
+    isSelectable: false,
+    badgeLabel: "Planned",
+    primaryModules: ["Dashboard", "Inventory", "Suppliers", "Reports"],
+    plannedModules: [
+      "Intake",
+      "Weighing",
+      "Batches",
+      "Storage",
+      "Processing",
+      "Kandang",
+    ],
+    unavailableReason:
+      "Raw Material / Livestock mode is planned and must not reuse Restaurant workflow prematurely.",
+  },
+  {
+    id: "custom-business",
+    label: "Service / Custom Business",
+    shortLabel: "Service",
+    description:
+      "Planned workspace for requests, jobs, assignments, clients, invoices, payments, and custom operational reports.",
+    status: "planned",
+    category: "service",
+    route: "/select-mode",
+    storageKey: BUSINESS_MODE_STORAGE_KEY,
+    isDefault: false,
+    isSelectable: false,
+    badgeLabel: "Planned",
+    primaryModules: ["Dashboard", "Clients", "Invoices", "Payments", "Reports"],
+    plannedModules: ["Requests", "Jobs", "Assignments", "Service Workflow"],
+    unavailableReason:
+      "Service / Custom Business mode is planned. It needs its own workflow before it can become selectable.",
+  },
+] as const satisfies readonly BusinessModeConfig[];
+
+export const selectableBusinessModeIds = businessModeRegistry
+  .filter((mode) => mode.isSelectable)
+  .map((mode) => mode.id);
+
+export const plannedBusinessModeIds = businessModeRegistry
+  .filter((mode) => mode.status === "planned")
+  .map((mode) => mode.id);
+
+export function isBusinessModeId(value: unknown): value is BusinessModeId {
+  return (
+    typeof value === "string" &&
+    businessModeIds.some((businessModeId) => businessModeId === value)
+  );
+}
+
+export function getBusinessModeConfig(
+  mode: BusinessModeId,
+): BusinessModeConfig {
+  return (
+    businessModeRegistry.find((candidate) => candidate.id === mode) ??
+    getDefaultBusinessModeConfig()
+  );
+}
+
+export function getDefaultBusinessModeConfig(): BusinessModeConfig {
+  const defaultMode = businessModeRegistry.find((mode) => mode.isDefault);
+
+  return defaultMode ?? businessModeRegistry[0];
+}
+
+export function getBusinessModesByStatus(
+  status: BusinessModeStatus,
+): readonly BusinessModeConfig[] {
+  return businessModeRegistry.filter((mode) => mode.status === status);
+}
+
+export function isBusinessModeSelectable(mode: BusinessModeId): boolean {
+  return getBusinessModeConfig(mode).isSelectable;
+}
+
+export function normalizeBusinessModeId(
+  value: unknown,
+): BusinessModeId | null {
+  if (isBusinessModeId(value)) return value;
+
+  return null;
+}
