@@ -26,6 +26,11 @@ model User {
   stockMovements            StockMovement[]            @relation("StockMovementActor")
   rawMaterialStockMovements RawMaterialStockMovement[] @relation("RawMaterialStockMovementActor")
   cashflowEntries           CashflowEntry[]            @relation("CashflowEntryCreator")
+  retailSales              RetailSale[]              @relation("RetailSaleCreator")
+  retailStockMovements     RetailStockMovement[]     @relation("RetailStockMovementActor")
+  retailReturns            RetailReturn[]            @relation("RetailReturnCreator")
+
+
 
   @@index([businessId])
   @@index([role])
@@ -75,6 +80,14 @@ model Business {
   attendances                 Attendance[]
   attendanceSetting           AttendanceSetting?
   auditLogs                   AuditLog[]
+  retailSuppliers             RetailSupplier[]
+  retailProducts              RetailProduct[]
+  retailReceivings            RetailReceiving[]
+  retailSales                 RetailSale[]
+  retailStockMovements        RetailStockMovement[]
+  retailReturns               RetailReturn[]
+
+
 
   @@index([ownerId])
   @@index([type])
@@ -297,6 +310,251 @@ model OrderItem {
 
   @@index([orderId])
   @@index([menuItemId])
+}
+
+model RetailSupplier {
+  id               String   @id @default(cuid())
+  businessId       String
+  name             String
+  leadTimeDays     Int      @default(0)
+  reliabilityScore Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  business   Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  products   RetailProduct[]
+  receivings RetailReceiving[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@index([isActive])
+}
+
+model RetailProduct {
+  id             String   @id @default(cuid())
+  businessId     String
+  supplierId     String?
+  sku            String
+  barcode        String
+  name           String
+  brand          String   @default("")
+  category       String   @default("general")
+  unit           String   @default("pcs")
+  price          Int      @default(0)
+  cost           Int      @default(0)
+  taxRatePercent Int      @default(0)
+  currentStock   Int      @default(0)
+  reorderPoint   Int      @default(0)
+  shelfLocation  String   @default("")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business       Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier       RetailSupplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  receivingItems RetailReceivingItem[]
+  saleItems      RetailSaleItem[]
+  stockMovements RetailStockMovement[]
+  returnItems    RetailReturnItem[]
+
+
+  @@unique([businessId, sku])
+  @@unique([businessId, barcode])
+  @@index([businessId])
+  @@index([supplierId])
+  @@index([category])
+  @@index([currentStock])
+  @@index([reorderPoint])
+  @@index([isActive])
+}
+
+model RetailReceiving {
+  id              String   @id @default(cuid())
+  businessId      String
+  supplierId      String
+  referenceNumber String
+  status          String   @default("ordered")
+  expectedDate    DateTime
+  receivedAt      DateTime?
+  totalCost       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier RetailSupplier        @relation(fields: [supplierId], references: [id])
+  items    RetailReceivingItem[]
+
+  @@unique([businessId, referenceNumber])
+  @@index([businessId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([expectedDate])
+}
+
+model RetailReceivingItem {
+  id          String @id @default(cuid())
+  receivingId String
+  productId   String
+  orderedQty  Int    @default(0)
+  receivedQty Int    @default(0)
+  unitCost    Int    @default(0)
+
+  receiving RetailReceiving @relation(fields: [receivingId], references: [id], onDelete: Cascade)
+  product   RetailProduct   @relation(fields: [productId], references: [id])
+
+  @@index([receivingId])
+  @@index([productId])
+}
+
+model RetailSale {
+  id            String   @id @default(cuid())
+  businessId    String
+  createdById   String
+  receiptNumber String
+  paymentMethod String
+  subtotal      Int      @default(0)
+  discountTotal Int      @default(0)
+  taxIncluded   Int      @default(0)
+  total         Int      @default(0)
+  grossProfit   Int      @default(0)
+  status        String   @default("completed")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business  Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdBy User             @relation("RetailSaleCreator", fields: [createdById], references: [id])
+  items     RetailSaleItem[]
+  payment   RetailPayment?
+  returns   RetailReturn[]
+
+
+  @@unique([businessId, receiptNumber])
+  @@index([businessId])
+  @@index([createdById])
+  @@index([paymentMethod])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RetailSaleItem {
+  id             String @id @default(cuid())
+  saleId         String
+  productId      String
+  skuSnapshot    String
+  nameSnapshot   String
+  quantity       Int
+  unitPrice      Int
+  costSnapshot   Int
+  subtotal       Int
+  discountAmount Int    @default(0)
+  taxIncluded    Int    @default(0)
+  lineTotal      Int
+  grossProfit    Int    @default(0)
+
+  sale    RetailSale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product RetailProduct @relation(fields: [productId], references: [id])
+  returnItems RetailReturnItem[]
+
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+model RetailPayment {
+  id        String   @id @default(cuid())
+  saleId    String   @unique
+  provider  String   @default("manual")
+  method    String
+  status    String   @default("paid")
+  amount    Int      @default(0)
+  paidAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sale RetailSale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([method])
+  @@index([status])
+}
+
+model RetailReturn {
+  id                    String   @id @default(cuid())
+  businessId            String
+  saleId                String
+  createdById           String
+  returnNumber          String
+  originalReceiptNumber String
+  reason                String
+  status                String   @default("completed")
+  refundAmount          Int      @default(0)
+  restockedQuantity     Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  business  Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sale      RetailSale         @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  createdBy User               @relation("RetailReturnCreator", fields: [createdById], references: [id])
+  items     RetailReturnItem[]
+
+  @@unique([businessId, returnNumber])
+  @@index([businessId])
+  @@index([saleId])
+  @@index([createdById])
+  @@index([reason])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RetailReturnItem {
+  id                String   @id @default(cuid())
+  returnId          String
+  saleItemId        String
+  productId         String
+  skuSnapshot       String
+  nameSnapshot      String
+  quantity          Int
+  unitPrice         Int
+  refundAmount      Int      @default(0)
+  restockable       Boolean  @default(false)
+  restockedQuantity Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  return  RetailReturn   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  saleItem RetailSaleItem @relation(fields: [saleItemId], references: [id])
+  product  RetailProduct  @relation(fields: [productId], references: [id])
+
+  @@index([returnId])
+  @@index([saleItemId])
+  @@index([productId])
+  @@index([restockable])
+}
+
+model RetailStockMovement {
+  id             String   @id @default(cuid())
+  businessId     String
+  productId      String
+  type           String
+  reason         String
+  source         String
+  sourceId       String?
+  quantity       Int
+  beforeQuantity Int
+  afterQuantity  Int
+  note           String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  business  Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product   RetailProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdBy User?         @relation("RetailStockMovementActor", fields: [createdById], references: [id])
+
+  @@index([businessId])
+  @@index([productId])
+  @@index([type])
+  @@index([reason])
+  @@index([source])
+  @@index([createdAt])
 }
 
 model RawMaterialSupplier {
