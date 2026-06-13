@@ -1,4 +1,4 @@
-import { Plus, Search, SlidersHorizontal } from "lucide-react";
+import { FilePlus2, ReceiptText, Search, SlidersHorizontal } from "lucide-react";
 
 import {
   getServicePriorityLabel,
@@ -31,6 +31,8 @@ export function ServiceBusinessWorkspaceHeader({
   availableStatuses,
   filteredCount,
   onActiveTabChange,
+  onOpenQuotationPreview,
+  onOpenRequestPreview,
   onPriorityFilterChange,
   onResetFilters,
   onSearchQueryChange,
@@ -45,6 +47,8 @@ export function ServiceBusinessWorkspaceHeader({
   availableStatuses: readonly ServiceBusinessWorkflowStatus[];
   filteredCount: number;
   onActiveTabChange: (tab: ServiceBusinessWorkspaceTab) => void;
+  onOpenQuotationPreview: () => void;
+  onOpenRequestPreview: () => void;
   onPriorityFilterChange: (priority: ServiceBusinessPriorityFilter) => void;
   onResetFilters: () => void;
   onSearchQueryChange: (query: string) => void;
@@ -68,24 +72,25 @@ export function ServiceBusinessWorkspaceHeader({
             Service workspace control center
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">
-            Search, filter, and preview service workflows without touching backend data. The buttons are intentionally disabled until real contracts exist.
+            Search, filter, and preview service workflows without touching backend data. Preview forms are local-only and cannot submit.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
-            disabled
             type="button"
-            className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-semibold text-neutral-400"
+            onClick={onOpenRequestPreview}
+            className="inline-flex items-center gap-2 rounded-xl bg-neutral-950 px-3 py-2 text-sm font-semibold text-white"
           >
-            <Plus className="h-4 w-4" />
-            New request
+            <FilePlus2 className="h-4 w-4" />
+            Request preview
           </button>
           <button
-            disabled
             type="button"
-            className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-semibold text-neutral-400"
+            onClick={onOpenQuotationPreview}
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-700"
           >
-            Draft quote
+            <ReceiptText className="h-4 w-4" />
+            Quote preview
           </button>
         </div>
       </div>
