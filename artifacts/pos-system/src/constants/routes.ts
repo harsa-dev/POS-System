@@ -5,6 +5,10 @@ export const ROUTES = {
   ROOT: "/",
   LOGIN: "/login",
   REGISTER: "/register",
+  PRIVACY: "/privacy",
+  TERMS: "/terms",
+  SECURITY: "/security",
+  COOKIES: "/cookies",
   SELECT_MODE: "/select-mode",
 
   DASHBOARD: "/dashboard",
