@@ -6,6 +6,8 @@ import type {
   ServiceBusinessPriority,
   ServiceBusinessQuoteStatus,
   ServiceBusinessWorkflowStatus,
+  ServiceWorkflowReadinessRow,
+  ServiceWorkflowTargetRow,
 } from "./service-business.types.js";
 
 function toIsoDate(value: Date | null | undefined) {
@@ -35,8 +37,8 @@ function toInvoiceStatus(value: unknown): ServiceBusinessInvoiceStatus {
 /**
  * Phase 7B read-side repository.
  *
- * This intentionally uses generated Prisma delegates instead of raw SQL for the
- * shared dashboard summary path. The heavier CRUD/write repository still uses
+ * This intentionally uses generated Prisma delegates instead of raw SQL for
+ * summary and workflow read paths. The heavier CRUD/write repository still uses
  * explicit SQL until each mutation can be moved behind transactions safely.
  */
 export async function loadServiceBusinessSummaryJobs(businessId: string): Promise<ServiceBusinessJob[]> {
@@ -129,4 +131,117 @@ export async function loadServiceBusinessSummaryJobs(businessId: string): Promis
       })),
     };
   });
+}
+
+export async function findServiceWorkflowTargetWithDelegate(
+  businessId: string,
+  id: string,
+): Promise<ServiceWorkflowTargetRow | null> {
+  const request = await prisma.serviceRequest.findFirst({
+    where: {
+      businessId,
+      OR: [
+        { id },
+        { requestCode: id },
+        {
+          jobs: {
+            some: {
+              id,
+            },
+          },
+        },
+      ],
+    },
+    include: {
+      jobs: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
+      },
+    },
+  });
+
+  if (!request) {
+    return null;
+  }
+
+  const job = request.jobs[0] ?? null;
+
+  return {
+    requestId: request.id,
+    requestCode: request.requestCode,
+    jobId: job?.id ?? null,
+    currentStatus: toWorkflowStatus(job?.status ?? request.status),
+    summary: request.summary,
+  };
+}
+
+export async function loadServiceWorkflowReadinessWithDelegate(
+  target: ServiceWorkflowTargetRow,
+): Promise<ServiceWorkflowReadinessRow> {
+  const [costLineCount, billableCostCount, quotationCount, approvedQuotationCount, invoiceCount, paidInvoiceCount, checklistCount] =
+    await prisma.$transaction([
+      target.jobId
+        ? prisma.serviceCostLine.count({
+            where: {
+              jobId: target.jobId,
+            },
+          })
+        : Promise.resolve(0),
+      target.jobId
+        ? prisma.serviceCostLine.count({
+            where: {
+              jobId: target.jobId,
+              billable: true,
+              quantity: {
+                gt: 0,
+              },
+              unitCost: {
+                gt: 0,
+              },
+            },
+          })
+        : Promise.resolve(0),
+      prisma.serviceQuotation.count({
+        where: {
+          requestId: target.requestId,
+        },
+      }),
+      prisma.serviceQuotation.count({
+        where: {
+          requestId: target.requestId,
+          status: "APPROVED",
+        },
+      }),
+      prisma.serviceInvoice.count({
+        where: {
+          requestId: target.requestId,
+        },
+      }),
+      prisma.serviceInvoice.count({
+        where: {
+          requestId: target.requestId,
+          status: "PAID",
+        },
+      }),
+      target.jobId
+        ? prisma.serviceChecklistItem.count({
+            where: {
+              jobId: target.jobId,
+            },
+          })
+        : Promise.resolve(0),
+    ]);
+
+  return {
+    hasSummary: Boolean(target.summary?.trim()),
+    hasCostLines: costLineCount > 0,
+    hasBillableCost: billableCostCount > 0,
+    hasQuotation: quotationCount > 0,
+    hasApprovedQuotation: approvedQuotationCount > 0,
+    hasInvoice: invoiceCount > 0,
+    hasPaidInvoice: paidInvoiceCount > 0,
+    checklistCount,
+  };
 }
