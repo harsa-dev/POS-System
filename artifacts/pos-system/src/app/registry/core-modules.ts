@@ -1,3 +1,5 @@
+import { ROUTES } from "@/constants/routes";
+
 import type { V3ModuleMetadata } from "./module-types";
 
 const allModes = [
@@ -57,7 +59,7 @@ export const coreModules: readonly V3ModuleMetadata[] = [
     layer: "core",
     status: "active",
     supportedModes: allModes,
-    routeBase: "/dashboard/inventory",
+    routeBase: ROUTES.INVENTORY,
     sidebarGroup: "Shared Business",
     sidebarVisible: true,
     sidebarOrder: 30,
@@ -88,11 +90,24 @@ export const coreModules: readonly V3ModuleMetadata[] = [
     layer: "core",
     status: "active",
     supportedModes: allModes,
-    routeBase: "/dashboard/analytics",
+    routeBase: ROUTES.ANALYTICS,
     sidebarGroup: "Shared Business",
     sidebarVisible: true,
     sidebarOrder: 10,
     workspaceOrder: 10,
+    sidebarEntries: [
+      {
+        moduleId: "analytics",
+        label: "Overview",
+        description: "Hardcoded shared business dashboard for cross-mode KPI and module navigation demos.",
+        routePath: ROUTES.BUSINESS_OVERVIEW,
+        group: "Shared Business",
+        supportedModes: allModes,
+        requiredPermissions: ["analytics.operational-view"],
+        featureFlags: [],
+        order: 5,
+      },
+    ],
     requiredPermissions: ["analytics.operational-view"],
     featureFlags: [],
     dependencies: ["auth", "permissions"],
