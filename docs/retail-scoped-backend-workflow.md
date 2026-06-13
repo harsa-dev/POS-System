@@ -15,12 +15,14 @@ Phase 5 - Frontend catalog and cashier API wiring: implemented
 Phase 6 - Retail OpenAPI client coverage: implemented
 Phase 7 - Prisma schema delegate cleanup: in progress
   Phase 7A - Schema model mapping: implemented
-  Phase 7B - Summary read delegate: planned
+  Phase 7B - Summary read delegate: implemented
   Phase 7C - Workflow read delegate: planned
   Phase 7D - Checkout preview + cost read delegate: planned
   Phase 7E - Sale + payment + stock movement write delegate: planned
   Phase 7F - Guarded workflow status write delegate: planned
 ```
+
+---
 
 ## Phase 1 - Persistence foundation: implemented
 
@@ -33,7 +35,7 @@ Implemented scope:
 - RetailReceiving and RetailReceivingItem tables exist in SQL migration
 - RetailSale, RetailSaleItem, RetailPayment, and RetailStockMovement tables exist in SQL migration
 - Retail repository provider seam exists
-- Retail raw Prisma repository exists
+- Retail Prisma-backed repository exists
 ```
 
 Primary files:
@@ -52,6 +54,8 @@ pnpm --filter @workspace/api-server run retail:db:apply
 ```
 
 Do not use full `prisma migrate dev` or `prisma migrate deploy` for this Retail track yet. Full migration replay can fail on older non-retail migration history before Retail tables are even tested.
+
+---
 
 ## Phase 2 - Backend route, guard, and workflow preview: implemented
 
@@ -100,6 +104,8 @@ A successful Retail checkout must remain one transaction:
 
 Never update Retail stock directly from a route handler. Stock mutations belong in the Retail repository/service workflow.
 
+---
+
 ## Phase 3 - Shared dashboard backend summary: implemented
 
 Implemented scope:
@@ -125,6 +131,8 @@ Retail behavior:
 - skip payroll/contracts/attendance-heavy pages unless Retail-specific workforce logic exists
 - fallback to local Retail mock context if API is unavailable
 ```
+
+---
 
 ## Phase 4 - Seed retail product/supplier per business: implemented
 
@@ -161,6 +169,8 @@ GET /api/retail/barcode/8991001000011 can resolve the demo chips product.
 GET /api/retail/shared-dashboard/inventory has inventory context instead of an empty Retail database.
 ```
 
+---
+
 ## Phase 5 - Frontend catalog and cashier API wiring: implemented
 
 Implemented scope:
@@ -182,6 +192,8 @@ Primary files:
 artifacts/pos-system/src/app/workspace/retail/retail-api-workspace.tsx
 artifacts/pos-system/src/App.tsx
 ```
+
+---
 
 ## Phase 6 - Retail OpenAPI client coverage: implemented
 
@@ -223,6 +235,8 @@ Current note:
 ```txt
 The React client surface is implemented. Full Orval regeneration should still be run locally with pnpm --filter @workspace/api-spec codegen when the generator environment is stable, because the project keeps generated artifacts in git.
 ```
+
+---
 
 ## Phase 7 - Prisma schema delegate cleanup: in progress
 
@@ -268,31 +282,55 @@ prisma.retailPayment.create
 prisma.retailStockMovement.create
 ```
 
-### Phase 7B - Summary read delegate: planned
+### Phase 7B - Summary read delegate: implemented
 
-Goal:
+Implemented scope:
 
 ```txt
-Convert dashboard and summary reads from raw SQL to Prisma delegates.
+- Retail summary product listing now reads through prisma.retailProduct.findMany
+- Retail supplier listing now reads through prisma.retailSupplier.findMany
+- Retail inventory risk summary now reads through prisma.retailProduct.findMany
+- Summary DTO shapes remain unchanged
+- No route changes are required
+- No frontend changes are required
 ```
 
-Target methods:
+Primary file:
 
 ```txt
-- listProducts summary data
-- getDashboard summary data
-- getCommandCenter summary data
-- getSharedDashboard summary data
-- inventory risk summary reads
+artifacts/api-server/src/services/retail/retail.prisma-repository.ts
+```
+
+Converted repository methods:
+
+```txt
+listProducts(scope)
+listSuppliers(scope)
+getInventoryRisks(scope)
+```
+
+Delegate behavior:
+
+```txt
+- listProducts maps Prisma decimal values into number DTO fields
+- listProducts derives stock status in application code: in-stock, low-stock, out-of-stock
+- getInventoryRisks filters products where currentStock <= reorderPoint in application code
+- getInventoryRisks derives suggestedOrderQty and estimatedCost in application code
+```
+
+Why some raw SQL still exists:
+
+```txt
+Phase 7B only covers summary reads. Workflow reads, receiving reads, preview cost reads, checkout writes, and guarded status writes are intentionally left for Phase 7C-7F.
 ```
 
 Acceptance criteria:
 
 ```txt
-- Summary endpoints return the same DTO shapes as before
-- No route changes are required
-- No frontend changes are required
-- Raw SQL fallback can stay temporarily behind the repository seam if needed
+- GET /api/retail/products still returns the same product DTO shape
+- GET /api/retail/inventory/risks still returns the same risk DTO shape
+- GET /api/retail/dashboard still works because service summary reads still use the repository seam
+- GET /api/retail/shared-dashboard/:dashboardId still works without route/frontend changes
 ```
 
 ### Phase 7C - Workflow read delegate: planned
@@ -306,11 +344,11 @@ Convert operational read workflows from raw SQL to Prisma delegates.
 Target methods:
 
 ```txt
-- getProductById
-- findProductByBarcodeOrSku
-- listReceiving
-- sale preview product lookup reads
-- return preview sale/product lookup reads
+findProductById(scope, productId)
+findProductByCode(scope, code)
+listReceivingQueue(scope)
+sale preview product lookup reads
+return preview sale/product lookup reads
 ```
 
 Acceptance criteria:
@@ -420,16 +458,7 @@ Repository migration rule:
 Do not replace every raw query in one pass. Convert read methods first, then checkout write transaction, then guarded status writes.
 ```
 
-Why the repository still uses raw SQL right now:
-
-```txt
-The production-safe path is:
-1. keep current raw SQL repository working
-2. sync schema.prisma locally
-3. generate Prisma client
-4. confirm retail delegates exist
-5. convert repository methods one by one through Phase 7B-7F
-```
+---
 
 ## Scope Rule
 
@@ -458,76 +487,4 @@ OUT OF SCOPE FOR THIS TRACK
 - Restaurant/F&B inventory workflow cleanup
 - global audit-log migration cleanup
 - full Prisma migration-history repair
-- full workforce/payroll/contract modules
-```
-
-Do not fix non-retail typecheck failures inside this track unless they block `typecheck:retail` or the Retail build path directly.
-
-## Retail Validation Commands
-
-From the repo root:
-
-```bash
-pnpm --filter @workspace/api-server run retail:db:apply
-pnpm --filter @workspace/api-server run retail:seed
-pnpm --filter @workspace/api-server run retail:schema:sync
-pnpm --filter @workspace/api-server run generate
-pnpm --filter @workspace/api-server run typecheck:retail
-pnpm --filter @workspace/api-server run build
-```
-
-For frontend after Retail bridge changes:
-
-```bash
-pnpm --filter @workspace/pos-system typecheck
-pnpm --filter @workspace/pos-system build
-```
-
-For API client generation:
-
-```bash
-pnpm --filter @workspace/api-spec codegen
-```
-
-If full backend typecheck fails in non-retail files, do not treat that as a Retail failure. Use `typecheck:retail` for this track.
-
-## Retail Smoke Test
-
-After auth, Retail business context, and Retail tables exist:
-
-```txt
-GET  /api/retail/health
-GET  /api/retail/products
-GET  /api/retail/barcode/8991001000011
-GET  /api/retail/dashboard
-GET  /api/retail/shared-dashboard/inventory
-POST /api/retail/sales/preview
-POST /api/retail/sales/checkout
-```
-
-Frontend smoke test:
-
-```txt
-Open /v3/retail/catalog and verify the source badge shows Prisma API or Mock fallback.
-Open /v3/retail/cashier and verify scanner search can add products to cart.
-Submit checkout and verify persisted checkout succeeds when backend auth/business context is valid.
-```
-
-If `GET /api/retail/products` returns an empty array after `retail:seed`, check that at least one active Business row has `mode = RETAIL`.
-
-## Done Definition For Current Retail Track
-
-Retail track is considered stable when:
-
-```txt
-- retail:db:apply succeeds on local/dev database
-- retail:seed creates visible Retail products
-- retail:schema:sync syncs Retail Prisma models into schema.prisma
-- generate exposes Retail Prisma delegates
-- GET /api/retail/products returns seeded rows
-- POST /api/retail/sales/preview returns totals and validation reasons
-- POST /api/retail/sales/checkout persists sale/payment/stock movement
-- GET /api/retail/shared-dashboard/inventory returns API dashboard context
-- @workspace/api-client-react exports Retail client functions
-- Phase 7B-7F progressively remove raw SQL repository reads/writes without changing route contracts
 ```
