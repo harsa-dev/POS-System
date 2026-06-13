@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/select";
 import {
   formatRawMaterialWeight,
-  getRawMaterialStorageUsagePercent,
   rawMaterialApiContracts,
   rawMaterialBatches,
   rawMaterialIntakes,
@@ -32,9 +31,13 @@ import {
 } from "@/features/raw-material/core-system";
 
 import {
-  rawMaterialHealthStatusTone,
+  RawMaterialApiContractCard,
+  RawMaterialMetricsGrid,
+  RawMaterialReadinessCard,
+  RawMaterialStaticSnapshots,
+} from "./raw-material-readonly-sections";
+import {
   rawMaterialModuleIcons,
-  rawMaterialProcessStatusTone,
   rawMaterialQualityFilterOptions,
   rawMaterialQualityStatusTone,
   rawMaterialSupplierCategoryOptions,
@@ -46,7 +49,6 @@ import type {
   RawMaterialWeighingDraft,
 } from "./raw-material-workspace.types";
 import {
-  getRawMaterialBatchLabel,
   getRawMaterialIntakeLabel,
   getRawMaterialStorageLabel,
   getRawMaterialSupplierName,
@@ -246,19 +248,7 @@ export default function RawMaterialPlaceholderWorkspace({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {metricsEnvelope.data.map((metric) => (
-          <Card key={metric.label} className="rounded-xl bg-white">
-            <CardHeader className="pb-2">
-              <CardDescription>{metric.label}</CardDescription>
-              <CardTitle className="text-2xl">{metric.value}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm leading-6 text-neutral-500">{metric.helper}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <RawMaterialMetricsGrid metrics={metricsEnvelope.data} />
 
       <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{draftNotice}</div>
 
@@ -284,9 +274,7 @@ export default function RawMaterialPlaceholderWorkspace({
                 <Label>Supplier</Label>
                 <Select value={intakeForm.supplierId} onValueChange={(supplierId) => setIntakeForm((current) => ({ ...current, supplierId }))}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Select supplier" /></SelectTrigger>
-                  <SelectContent>
-                    {rawMaterialSuppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>)}
-                  </SelectContent>
+                  <SelectContent>{rawMaterialSuppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
 
@@ -294,21 +282,13 @@ export default function RawMaterialPlaceholderWorkspace({
                 <Label>Target storage</Label>
                 <Select value={intakeForm.targetStorageId} onValueChange={(targetStorageId) => setIntakeForm((current) => ({ ...current, targetStorageId }))}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Select storage" /></SelectTrigger>
-                  <SelectContent>
-                    {rawMaterialStorageLocations.map((storage) => <SelectItem key={storage.id} value={storage.id}>{storage.code} · {storage.name}</SelectItem>)}
-                  </SelectContent>
+                  <SelectContent>{rawMaterialStorageLocations.map((storage) => <SelectItem key={storage.id} value={storage.id}>{storage.code} · {storage.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="rm-intake-quantity">Quantity kg</Label>
-                <Input
-                  id="rm-intake-quantity"
-                  type="number"
-                  min="1"
-                  value={intakeForm.quantityKg}
-                  onChange={(event) => setIntakeForm((current) => ({ ...current, quantityKg: event.target.value }))}
-                />
+                <Input id="rm-intake-quantity" type="number" min="1" value={intakeForm.quantityKg} onChange={(event) => setIntakeForm((current) => ({ ...current, quantityKg: event.target.value }))} />
               </div>
 
               <div className="md:col-span-2"><Button type="submit">Create local intake draft</Button></div>
@@ -432,7 +412,7 @@ export default function RawMaterialPlaceholderWorkspace({
         <Card className="rounded-xl bg-white">
           <CardHeader>
             <CardTitle>Preview processing yield</CardTitle>
-            <CardDescription>Calculates output and byproduct locally before production logic exists.</CardDescription>
+            <CardDescription>Calculates output and extra material locally before production logic exists.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="grid gap-4 md:grid-cols-3" onSubmit={handlePreviewProcessingYield}>
@@ -458,7 +438,7 @@ export default function RawMaterialPlaceholderWorkspace({
               <p><span className="font-semibold text-neutral-900">Batch:</span> {processingBatch?.lotCode ?? "No batch"}</p>
               <p><span className="font-semibold text-neutral-900">Input:</span> {formatRawMaterialWeight(processingInputKg)}</p>
               <p><span className="font-semibold text-neutral-900">Expected output:</span> {formatRawMaterialWeight(processingOutputKg)}</p>
-              <p><span className="font-semibold text-neutral-900">Expected byproduct:</span> {formatRawMaterialWeight(processingByproductKg)}</p>
+              <p><span className="font-semibold text-neutral-900">Expected extra:</span> {formatRawMaterialWeight(processingByproductKg)}</p>
               <Badge variant="outline" className={processingIsValid ? "border-emerald-200 text-emerald-700" : "border-rose-200 text-rose-700"}>{processingIsValid ? "valid preview" : "needs review"}</Badge>
             </div>
           </CardContent>
@@ -481,10 +461,7 @@ export default function RawMaterialPlaceholderWorkspace({
               <Input value={intakeFilters.search} onChange={(event) => setIntakeFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search intake/material/supplier" />
               <Select value={intakeFilters.supplierId} onValueChange={(supplierId) => setIntakeFilters((current) => ({ ...current, supplierId }))}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Supplier" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All suppliers</SelectItem>
-                  {rawMaterialSuppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>)}
-                </SelectContent>
+                <SelectContent><SelectItem value="all">All suppliers</SelectItem>{rawMaterialSuppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={intakeFilters.qualityStatus} onValueChange={(qualityStatus) => setIntakeFilters((current) => ({ ...current, qualityStatus: qualityStatus as RawMaterialQualityFilterValue }))}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Quality" /></SelectTrigger>
@@ -524,39 +501,12 @@ export default function RawMaterialPlaceholderWorkspace({
         </Card>
 
         <div className="space-y-4">
-          <Card className="rounded-xl bg-white">
-            <CardHeader>
-              <CardTitle>Mock service readiness</CardTitle>
-              <CardDescription>Generated from API contract metadata. Still zero schema mutation.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 text-sm text-neutral-600">
-              <div className="flex items-center justify-between rounded-lg border border-neutral-100 bg-neutral-50 p-3"><span>Readiness</span><Badge variant="outline">{readiness.readinessLabel}</Badge></div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-lg border border-neutral-100 p-3"><p className="text-lg font-bold text-neutral-950">{readiness.totalContracts}</p><p className="text-xs text-neutral-500">contracts</p></div>
-                <div className="rounded-lg border border-neutral-100 p-3"><p className="text-lg font-bold text-neutral-950">{readiness.mockOnlyContracts}</p><p className="text-xs text-neutral-500">mock</p></div>
-                <div className="rounded-lg border border-neutral-100 p-3"><p className="text-lg font-bold text-neutral-950">{readiness.futureDbContracts}</p><p className="text-xs text-neutral-500">future DB</p></div>
-              </div>
-              <p className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-800">Service source: {metricsEnvelope.meta.source}. Schema touched: {String(metricsEnvelope.meta.schemaTouched)}.</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-xl bg-white">
-            <CardHeader>
-              <CardTitle>API contract for this module</CardTitle>
-              <CardDescription>Frontend contract only. No handler, Prisma call, or schema mutation yet.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {moduleContracts.map((contract) => (
-                <div key={contract.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
-                  <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{contract.method}</Badge><Badge variant="outline" className="border-amber-200 text-amber-700">{contract.persistence}</Badge></div>
-                  <p className="mt-2 font-mono text-xs text-neutral-700">{contract.path}</p>
-                  <p className="mt-2 text-sm leading-6 text-neutral-600">{contract.purpose}</p>
-                  <p className="mt-2 text-xs leading-5 text-neutral-500"><span className="font-semibold text-neutral-700">Request:</span> {contract.requestShape}</p>
-                  <p className="mt-1 text-xs leading-5 text-neutral-500"><span className="font-semibold text-neutral-700">Response:</span> {contract.responseShape}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          <RawMaterialReadinessCard
+            readiness={readiness}
+            source={metricsEnvelope.meta.source}
+            schemaTouched={metricsEnvelope.meta.schemaTouched}
+          />
+          <RawMaterialApiContractCard contracts={moduleContracts} />
         </div>
       </div>
 
@@ -617,56 +567,11 @@ export default function RawMaterialPlaceholderWorkspace({
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="rounded-xl bg-white">
-          <CardHeader>
-            <CardTitle>Storage capacity</CardTitle>
-            <CardDescription>Usage preview before transfer API exists.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {storageEnvelope.data.map((location) => (
-              <div key={location.id} className="rounded-lg border border-neutral-100 p-3">
-                <div className="flex items-center justify-between gap-3"><p className="font-medium text-neutral-900">{location.code}</p><Badge variant="outline">{getRawMaterialStorageUsagePercent(location)}%</Badge></div>
-                <p className="mt-1 text-sm text-neutral-500">{location.name} · {location.type}</p>
-                <p className="mt-2 text-xs text-neutral-500">{formatRawMaterialWeight(location.usedKg)} used from {formatRawMaterialWeight(location.capacityKg)}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl bg-white">
-          <CardHeader>
-            <CardTitle>Processing runs</CardTitle>
-            <CardDescription>Input, output, byproduct, and yield preview.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {processingEnvelope.data.map((run) => (
-              <div key={run.id} className="rounded-lg border border-neutral-100 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-medium text-neutral-900">{run.runNumber}</p><span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${rawMaterialProcessStatusTone[run.status]}`}>{run.status}</span></div>
-                <p className="mt-1 text-sm text-neutral-500">{run.outputName}</p>
-                <p className="mt-2 text-xs leading-5 text-neutral-500">Input: {formatRawMaterialWeight(run.inputKg)} from {getRawMaterialBatchLabel(run.inputBatchId)}</p>
-                <p className="text-xs leading-5 text-neutral-500">Output: {formatRawMaterialWeight(run.outputKg)} · Byproduct: {formatRawMaterialWeight(run.byproductKg)}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl bg-white">
-          <CardHeader>
-            <CardTitle>Kandang snapshot</CardTitle>
-            <CardDescription>Livestock support data without new tables.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {kandangEnvelope.data.map((pen) => (
-              <div key={pen.id} className="rounded-lg border border-neutral-100 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-medium text-neutral-900">{pen.code}</p><span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${rawMaterialHealthStatusTone[pen.healthStatus]}`}>{pen.healthStatus}</span></div>
-                <p className="mt-1 text-sm text-neutral-500">{pen.flockName}</p>
-                <p className="mt-2 text-xs leading-5 text-neutral-500">Occupancy: {pen.occupancy}/{pen.capacity} · Feed: {getRawMaterialBatchLabel(pen.feedBatchId)}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+      <RawMaterialStaticSnapshots
+        storageLocations={storageEnvelope.data}
+        processingRuns={processingEnvelope.data}
+        kandangPens={kandangEnvelope.data}
+      />
 
       <Card className="rounded-xl bg-white">
         <CardHeader>
