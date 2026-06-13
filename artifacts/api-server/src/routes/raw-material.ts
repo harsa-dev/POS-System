@@ -5,10 +5,12 @@ import {
   requireBusinessContextForRequest,
   requireBusinessMode,
 } from "../lib/business-context/index.js";
-import { requireRole } from "../lib/auth.js";
-import { ALL_ROLES } from "../lib/constants.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { successResponse } from "../lib/responses/success-response.js";
+import {
+  RAW_MATERIAL_PERMISSIONS,
+  requireRawMaterialPermission,
+} from "../services/raw-material/raw-material.permissions.js";
 import {
   cancelRawMaterialIntake,
   createRawMaterialBatch,
@@ -45,7 +47,7 @@ function getActor(user: { id: string; role: Role }) {
 
 router.get("/raw-material/suppliers", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.view);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -64,7 +66,7 @@ router.get("/raw-material/suppliers", async (req, res) => {
 
 router.post("/raw-material/suppliers", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.supplierManage);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -86,7 +88,7 @@ router.post("/raw-material/suppliers", async (req, res) => {
 
 router.patch("/raw-material/suppliers/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.supplierManage);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -108,7 +110,7 @@ router.patch("/raw-material/suppliers/:id", async (req, res) => {
 
 router.delete("/raw-material/suppliers/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.supplierManage);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -129,7 +131,7 @@ router.delete("/raw-material/suppliers/:id", async (req, res) => {
 
 router.get("/raw-material/storage-locations", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.view);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -148,7 +150,7 @@ router.get("/raw-material/storage-locations", async (req, res) => {
 
 router.post("/raw-material/storage-locations", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.storageManage);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -170,7 +172,7 @@ router.post("/raw-material/storage-locations", async (req, res) => {
 
 router.patch("/raw-material/storage-locations/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.storageManage);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -192,7 +194,7 @@ router.patch("/raw-material/storage-locations/:id", async (req, res) => {
 
 router.delete("/raw-material/storage-locations/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.storageManage);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -213,7 +215,7 @@ router.delete("/raw-material/storage-locations/:id", async (req, res) => {
 
 router.get("/raw-material/intakes", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.view);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -234,7 +236,7 @@ router.get("/raw-material/intakes", async (req, res) => {
 
 router.post("/raw-material/intakes", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.intakeCreate);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -256,7 +258,7 @@ router.post("/raw-material/intakes", async (req, res) => {
 
 router.patch("/raw-material/intakes/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.intakeUpdate);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -278,7 +280,7 @@ router.patch("/raw-material/intakes/:id", async (req, res) => {
 
 router.delete("/raw-material/intakes/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.intakeUpdate);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -299,7 +301,7 @@ router.delete("/raw-material/intakes/:id", async (req, res) => {
 
 router.get("/raw-material/weighings", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.view);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -320,7 +322,7 @@ router.get("/raw-material/weighings", async (req, res) => {
 
 router.post("/raw-material/weighings", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.weighingRecord);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -342,7 +344,7 @@ router.post("/raw-material/weighings", async (req, res) => {
 
 router.patch("/raw-material/weighings/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.weighingRecord);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -364,7 +366,7 @@ router.patch("/raw-material/weighings/:id", async (req, res) => {
 
 router.delete("/raw-material/weighings/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.weighingRecord);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -385,7 +387,7 @@ router.delete("/raw-material/weighings/:id", async (req, res) => {
 
 router.get("/raw-material/batches", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.view);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -407,7 +409,7 @@ router.get("/raw-material/batches", async (req, res) => {
 
 router.post("/raw-material/batches", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.batchManage);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -429,7 +431,7 @@ router.post("/raw-material/batches", async (req, res) => {
 
 router.patch("/raw-material/batches/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.batchManage);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
@@ -451,7 +453,7 @@ router.patch("/raw-material/batches/:id", async (req, res) => {
 
 router.delete("/raw-material/batches/:id", async (req, res) => {
   try {
-    const user = await requireRole(req, res, ALL_ROLES);
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.batchManage);
     if (!user) return;
 
     const businessContext = await requireBusinessContextForRequest(req, user);
