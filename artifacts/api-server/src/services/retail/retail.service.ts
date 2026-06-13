@@ -1,4 +1,4 @@
-import { retailMockRepository } from "./retail.mock-repository.js";
+import { retailRepository } from "./retail.repository-provider.js";
 import type {
   RetailCheckoutPaymentMethod,
   RetailCommandCenterDto,
@@ -53,14 +53,16 @@ function buildSaleLinePreview(input: { product: RetailProductDto; quantity: numb
   };
 }
 
-function previewSale(input: RetailSalePreviewInput): RetailSalePreviewDto {
+async function previewSale(input: RetailSalePreviewInput): Promise<RetailSalePreviewDto> {
   const blockedReasons: string[] = [];
-  const lines = input.lines.map((line) => {
-    const product = retailMockRepository.findProductById(line.productId);
+  const lines: RetailSaleLinePreviewDto[] = [];
+
+  for (const line of input.lines) {
+    const product = await retailRepository.findProductById(line.productId);
 
     if (!product) {
       blockedReasons.push(`Product ${line.productId} was not found.`);
-      return null;
+      continue;
     }
 
     const previewLine = buildSaleLinePreview({
@@ -73,8 +75,8 @@ function previewSale(input: RetailSalePreviewInput): RetailSalePreviewDto {
       blockedReasons.push(`${product.sku} cannot be checked out with the requested quantity.`);
     }
 
-    return previewLine;
-  }).filter((line): line is RetailSaleLinePreviewDto => line !== null);
+    lines.push(previewLine);
+  }
 
   if (lines.length === 0) {
     blockedReasons.push("At least one valid sale line is required.");
@@ -95,11 +97,11 @@ function previewSale(input: RetailSalePreviewInput): RetailSalePreviewDto {
 }
 
 export const retailService = {
-  getDashboard(): RetailDashboardDto {
-    const products = retailMockRepository.listProducts();
-    const inventoryRisks = retailMockRepository.getInventoryRisks();
-    const receivingQueue = retailMockRepository.listReceivingQueue();
-    const samplePreview = previewSale({
+  async getDashboard(): Promise<RetailDashboardDto> {
+    const products = await retailRepository.listProducts();
+    const inventoryRisks = await retailRepository.getInventoryRisks();
+    const receivingQueue = await retailRepository.listReceivingQueue();
+    const samplePreview = await previewSale({
       paymentMethod: "cash",
       lines: products
         .filter((product) => product.currentStock > 0)
@@ -127,10 +129,11 @@ export const retailService = {
     };
   },
 
-  listProducts(filters: { search?: string; category?: string; stockStatus?: string }) {
+  async listProducts(filters: { search?: string; category?: string; stockStatus?: string }) {
+    const products = await retailRepository.listProducts();
     const search = filters.search?.trim().toLowerCase();
 
-    return retailMockRepository.listProducts().filter((product) => {
+    return products.filter((product) => {
       const matchesSearch = search
         ? [product.name, product.sku, product.barcode, product.brand].some((value) => value.toLowerCase().includes(search))
         : true;
@@ -142,25 +145,25 @@ export const retailService = {
   },
 
   getProductById(productId: string) {
-    return retailMockRepository.findProductById(productId);
+    return retailRepository.findProductById(productId);
   },
 
   lookupBarcode(code: string) {
-    return retailMockRepository.findProductByCode(code);
+    return retailRepository.findProductByCode(code);
   },
 
   getInventoryRisks() {
-    return retailMockRepository.getInventoryRisks();
+    return retailRepository.getInventoryRisks();
   },
 
   getReceivingQueue() {
-    return retailMockRepository.listReceivingQueue();
+    return retailRepository.listReceivingQueue();
   },
 
   previewSale,
 
-  mockCheckout(input: RetailSalePreviewInput) {
-    const preview = previewSale(input);
+  async mockCheckout(input: RetailSalePreviewInput) {
+    const preview = await previewSale(input);
 
     return {
       ...preview,
@@ -172,45 +175,43 @@ export const retailService = {
     };
   },
 
-  previewReturn(input: RetailReturnPreviewInput): RetailReturnPreviewDto {
+  async previewReturn(input: RetailReturnPreviewInput): Promise<RetailReturnPreviewDto> {
     const reviewReasons: string[] = [];
-    const lines = input.lines.map((line) => {
-      const product = retailMockRepository.findProductById(line.productId);
+    const restockableLines: RetailReturnPreviewDto["restockableLines"] = [];
+    let estimatedRefund = 0;
+
+    for (const line of input.lines) {
+      const product = await retailRepository.findProductById(line.productId);
       const quantity = normalizeQuantity(line.quantity);
 
       if (!product) {
         reviewReasons.push(`Product ${line.productId} was not found.`);
-        return null;
+        continue;
       }
 
       const restockable = input.reason !== "damaged" && input.reason !== "expired";
       if (!input.originalReceiptNumber) reviewReasons.push("Missing original receipt number.");
       if (!restockable) reviewReasons.push(`${product.sku} should not be auto-restocked.`);
 
-      return {
+      estimatedRefund += product.price * quantity;
+      restockableLines.push({
         productId: product.id,
         sku: product.sku,
         quantity,
         restockable,
-      };
-    }).filter((line): line is RetailReturnPreviewDto["restockableLines"][number] => line !== null);
-
-    const estimatedRefund = input.lines.reduce((total, line) => {
-      const product = retailMockRepository.findProductById(line.productId);
-      if (!product) return total;
-      return total + product.price * normalizeQuantity(line.quantity);
-    }, 0);
+      });
+    }
 
     return {
       persisted: false,
       requiresManagerReview: reviewReasons.length > 0,
       estimatedRefund,
-      restockableLines: lines,
+      restockableLines,
       reviewReasons: Array.from(new Set(reviewReasons)),
     };
   },
 
-  getCommandCenter(): RetailCommandCenterDto {
+  async getCommandCenter(): Promise<RetailCommandCenterDto> {
     return {
       healthScore: 82,
       priorityActions: [
