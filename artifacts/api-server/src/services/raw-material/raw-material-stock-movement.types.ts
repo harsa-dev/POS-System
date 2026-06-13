@@ -9,13 +9,18 @@ export type RawMaterialStockMovementType =
   | "CORRECTION";
 
 export type RawMaterialStockMovementReason =
-  | "BATCH_CREATION"
+  | "PURCHASE"
+  | "RECEIVING"
   | "MANUAL_ADJUSTMENT"
-  | "TRANSFER"
-  | "PROCESSING_USAGE"
-  | "WASTE"
+  | "STOCK_COUNT"
   | "CORRECTION"
-  | "OPENING_BALANCE";
+  | "TRANSFER_IN"
+  | "TRANSFER_OUT"
+  | "PRODUCTION_USAGE"
+  | "WASTE"
+  | "DAMAGED"
+  | "EXPIRED"
+  | "RETURN";
 
 export type RawMaterialStockMovementSource =
   | "MANUAL"
@@ -23,6 +28,7 @@ export type RawMaterialStockMovementSource =
   | "BATCH"
   | "PROCESSING_RUN"
   | "TRANSFER"
+  | "STOCK_COUNT"
   | "SYSTEM";
 
 export type RawMaterialStockMovementRow = Readonly<{
