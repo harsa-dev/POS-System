@@ -20,6 +20,7 @@ export const ROUTES = {
   PAYMENTS: "/dashboard/fnb/server/payments",
 
   BUSINESS_OVERVIEW: "/dashboard/overview",
+  INTERNAL_MONITORING: "/dashboard/internal-monitoring",
   ANALYTICS: "/dashboard/analytics",
   CUSTOMERS: "/dashboard/customers",
   CASHFLOW: "/dashboard/cashflow",
