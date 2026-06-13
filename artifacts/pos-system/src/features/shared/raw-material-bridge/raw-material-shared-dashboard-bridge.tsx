@@ -63,6 +63,10 @@ const rawMaterialSharedRenderPolicy: Record<
     renderBaseDashboard: false,
     reason: "Generic approvals are hidden; raw material mode needs quality holds, factory planning, and kandang monitoring approvals later.",
   },
+  "hpp-calculator": {
+    renderBaseDashboard: false,
+    reason: "Restaurant recipe HPP is hidden; raw material mode needs material cost, rejection loss, batch cost, and processing-yield preview instead.",
+  },
 };
 
 function getStatusClass(status: RawMaterialSharedRow["status"]) {
