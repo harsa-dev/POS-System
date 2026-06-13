@@ -378,7 +378,7 @@ router.patch("/custom-business/service/invoices/:id/payment", async (req, res) =
         invoiceCode: data.job.invoice.code,
         invoiceStatus: data.job.invoice.status,
         paidAmount: data.job.invoice.paidAmount,
-        paymentPreview: data.preview ?? null,
+        paymentPreview: data.preview ? JSON.stringify(data.preview) : null,
       },
     }) : null);
 
