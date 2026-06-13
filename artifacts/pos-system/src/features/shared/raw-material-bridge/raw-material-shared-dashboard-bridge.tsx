@@ -10,6 +10,61 @@ import {
   type RawMaterialSharedRow,
 } from "@/features/raw-material/core-system";
 
+type RawMaterialSharedRenderPolicy = Readonly<{
+  renderBaseDashboard: boolean;
+  reason: string;
+}>;
+
+const rawMaterialSharedRenderPolicy: Record<
+  RawMaterialSharedDashboardId,
+  RawMaterialSharedRenderPolicy
+> = {
+  overview: {
+    renderBaseDashboard: false,
+    reason: "Default overview KPIs are business-generic; raw material mode needs intake, batch, storage, kandang, and processing context instead.",
+  },
+  sales: {
+    renderBaseDashboard: false,
+    reason: "Sales analytics is not the primary raw material surface; raw material mode needs operational volume, rejection, and yield analytics.",
+  },
+  customers: {
+    renderBaseDashboard: false,
+    reason: "Customer CRM is replaced by supplier and partner control in raw material mode.",
+  },
+  inventory: {
+    renderBaseDashboard: false,
+    reason: "Generic product inventory is hidden because raw material mode needs lot, storage, FEFO, quality, and batch readiness instead.",
+  },
+  cashflow: {
+    renderBaseDashboard: false,
+    reason: "Generic cashflow is hidden until supplier payable, procurement planning, and material cost rules exist for raw material mode.",
+  },
+  "financial-reports": {
+    renderBaseDashboard: false,
+    reason: "Generic financial reports are hidden because raw material mode currently has cost planning, rejection loss, and yield context only.",
+  },
+  "invoice-generator": {
+    renderBaseDashboard: false,
+    reason: "Customer invoice generation is hidden; raw material mode only needs supplier receiving and invoice-hold context for now.",
+  },
+  "shift-reports": {
+    renderBaseDashboard: false,
+    reason: "Restaurant/cashier shift reporting is hidden; raw material mode needs weighing, receiving, and processing operator activity.",
+  },
+  "team-management": {
+    renderBaseDashboard: false,
+    reason: "Generic HR surfaces are hidden; raw material mode only needs operator responsibility, supplier ownership, and kandang watch context here.",
+  },
+  "employee-performance": {
+    renderBaseDashboard: false,
+    reason: "Employee performance is hidden as payroll-like logic; raw material mode only previews operational performance signals.",
+  },
+  approvals: {
+    renderBaseDashboard: false,
+    reason: "Generic approvals are hidden; raw material mode needs quality holds, factory planning, and kandang monitoring approvals later.",
+  },
+};
+
 function getStatusClass(status: RawMaterialSharedRow["status"]) {
   if (status === "healthy") return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (status === "review") return "border-amber-200 bg-amber-50 text-amber-700";
@@ -40,6 +95,7 @@ export function RawMaterialSharedDashboardBridge({
 }) {
   const isRawMaterialMode = useIsRawMaterialMode();
   const context = getRawMaterialSharedDashboardContext(dashboardId);
+  const renderPolicy = rawMaterialSharedRenderPolicy[dashboardId];
 
   if (!isRawMaterialMode) {
     return <>{children}</>;
@@ -93,9 +149,15 @@ export function RawMaterialSharedDashboardBridge({
         <p className="mt-4 rounded-xl border border-dashed border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
           {context.bridgeNote}
         </p>
+
+        {!renderPolicy.renderBaseDashboard && (
+          <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+            Base shared dashboard hidden in raw material mode. {renderPolicy.reason}
+          </p>
+        )}
       </section>
 
-      {children}
+      {renderPolicy.renderBaseDashboard ? children : null}
     </div>
   );
 }
