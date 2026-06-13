@@ -1,9 +1,15 @@
 import type { ReactNode } from "react";
 
+import { getRawBusinessModeStorageValue } from "@/components/core/route-guard";
 import {
   ServiceBusinessSharedDashboardBridge,
+  ServiceBusinessSharedDashboardHiddenNotice,
   type ServiceBusinessSharedSurface,
 } from "@/features/shared/service-business/service-business-shared-dashboard-bridge";
+import {
+  shouldCallServiceBusinessSharedSurface,
+  shouldHideSharedDashboardForServiceMode,
+} from "@/features/shared/service-business/service-business-shared-dashboard-config";
 import { cn } from "@/lib/utils";
 
 const serviceBusinessSurfaceByTitle: Record<string, ServiceBusinessSharedSurface> = {
@@ -28,6 +34,12 @@ const serviceBusinessSurfaceByTitle: Record<string, ServiceBusinessSharedSurface
   "Developer Monitoring": "platform-monitoring",
 };
 
+function isServiceBusinessPreviewModeActive(): boolean {
+  const rawMode = getRawBusinessModeStorageValue();
+
+  return rawMode === "custom-business" || rawMode === "service";
+}
+
 export function DashboardShell({
   title,
   description,
@@ -38,14 +50,27 @@ export function DashboardShell({
   children: ReactNode;
 }) {
   const serviceBusinessSurface = serviceBusinessSurfaceByTitle[title];
+  const isServicePreview = isServiceBusinessPreviewModeActive();
+  const shouldCallServiceBridge = serviceBusinessSurface
+    ? shouldCallServiceBusinessSharedSurface(serviceBusinessSurface)
+    : false;
+  const shouldHideChildrenForService = Boolean(
+    isServicePreview &&
+      serviceBusinessSurface &&
+      shouldHideSharedDashboardForServiceMode(serviceBusinessSurface),
+  );
 
   return (
     <section className="flex min-h-0 flex-col gap-5">
       <DashboardHeader title={title} description={description} />
-      {serviceBusinessSurface ? (
+      {serviceBusinessSurface && shouldCallServiceBridge ? (
         <ServiceBusinessSharedDashboardBridge surface={serviceBusinessSurface} />
       ) : null}
-      {children}
+      {shouldHideChildrenForService && serviceBusinessSurface ? (
+        <ServiceBusinessSharedDashboardHiddenNotice surface={serviceBusinessSurface} />
+      ) : (
+        children
+      )}
     </section>
   );
 }
