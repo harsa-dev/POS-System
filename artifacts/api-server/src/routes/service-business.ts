@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import type { Prisma } from "@prisma/client";
 
 import { requireBusinessContextForUser } from "../lib/business-context/index.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
@@ -32,20 +33,38 @@ import type {
   ServiceBusinessMutationResult,
 } from "../features/service-business/service-business.types.js";
 import { requireBodyObject } from "../features/service-business/service-business.validators.js";
+import {
+  writeServiceBusinessAuditLog,
+  type ServiceBusinessAuditAction,
+} from "../features/service-business/service-business.audit.js";
 
 const router = Router();
+
+type ServiceRequestContext = {
+  actorId: string;
+  actorName: string;
+  businessId: string;
+};
+
+type ServiceMutationAuditDraft = {
+  action: ServiceBusinessAuditAction;
+  entityType: string;
+  entityId: string;
+  changes: Prisma.InputJsonObject;
+};
 
 async function getServiceRequestContext(
   req: Request,
   res: Response,
   permission: ServiceBusinessPermission,
-) {
+): Promise<ServiceRequestContext | null> {
   const user = await requireServiceBusinessPermission(req, res, permission);
   if (!user) return null;
 
   const businessContext = await requireBusinessContextForUser(user);
 
   return {
+    actorId: user.id,
     actorName: user.name ?? "System",
     businessId: businessContext.businessId,
   };
@@ -63,6 +82,26 @@ function sendMutationResult(res: Response, result: ServiceBusinessResult<Service
   return successResponse(res, {
     status: result.status,
     data: presentServiceBusinessMutation(result.data),
+  });
+}
+
+async function auditServiceMutation(
+  context: ServiceRequestContext,
+  result: ServiceBusinessResult<ServiceBusinessMutationResult>,
+  buildAudit: (data: ServiceBusinessMutationResult) => ServiceMutationAuditDraft | null,
+) {
+  if (!result.ok) return;
+
+  const audit = buildAudit(result.data);
+  if (!audit || !audit.entityId) return;
+
+  await writeServiceBusinessAuditLog({
+    businessId: context.businessId,
+    userId: context.actorId,
+    action: audit.action,
+    entityType: audit.entityType,
+    entityId: audit.entityId,
+    changes: audit.changes,
   });
 }
 
@@ -126,6 +165,21 @@ router.post("/custom-business/service/requests", async (req, res) => {
       body,
     });
 
+    await auditServiceMutation(context, result, (data) => data.job ? ({
+      action: "CREATE",
+      entityType: "ServiceJob",
+      entityId: data.job.id,
+      changes: {
+        message: data.message,
+        requestCode: data.job.requestCode,
+        title: data.job.title,
+        customerName: data.job.customerName,
+        serviceCategory: data.job.serviceCategory,
+        priority: data.job.priority,
+        status: data.job.status,
+      },
+    }) : null);
+
     return sendMutationResult(res, result);
   } catch (error) {
     return handleApiError(res, error);
@@ -151,6 +205,17 @@ router.patch("/custom-business/service/jobs/:id/status", async (req, res) => {
       body,
     });
 
+    await auditServiceMutation(context, result, (data) => data.job ? ({
+      action: "UPDATE",
+      entityType: "ServiceJob",
+      entityId: data.job.id,
+      changes: {
+        message: data.message,
+        requestCode: data.job.requestCode,
+        nextStatus: data.job.status,
+      },
+    }) : null);
+
     return sendMutationResult(res, result);
   } catch (error) {
     return handleApiError(res, error);
@@ -170,6 +235,17 @@ router.post("/custom-business/service/jobs/:id/cost-lines", async (req, res) => 
       id: req.params.id,
       body,
     });
+
+    await auditServiceMutation(context, result, (data) => data.job ? ({
+      action: "UPDATE",
+      entityType: "ServiceJob",
+      entityId: data.job.id,
+      changes: {
+        message: data.message,
+        requestCode: data.job.requestCode,
+        costLineCount: data.job.costLines.length,
+      },
+    }) : null);
 
     return sendMutationResult(res, result);
   } catch (error) {
@@ -191,6 +267,19 @@ router.post("/custom-business/service/quotations", async (req, res) => {
       body,
     });
 
+    await auditServiceMutation(context, result, (data) => data.job?.quote.id ? ({
+      action: "CREATE",
+      entityType: "ServiceQuotation",
+      entityId: data.job.quote.id,
+      changes: {
+        message: data.message,
+        requestCode: data.job.requestCode,
+        quotationCode: data.job.quote.code,
+        quoteStatus: data.job.quote.status,
+        validUntil: data.job.quote.validUntil || null,
+      },
+    }) : null);
+
     return sendMutationResult(res, result);
   } catch (error) {
     return handleApiError(res, error);
@@ -207,6 +296,19 @@ router.patch("/custom-business/service/quotations/:id/approve", async (req, res)
       actorName: context.actorName,
       id: req.params.id,
     });
+
+    await auditServiceMutation(context, result, (data) => data.job?.quote.id ? ({
+      action: "UPDATE",
+      entityType: "ServiceQuotation",
+      entityId: data.job.quote.id,
+      changes: {
+        message: data.message,
+        requestCode: data.job.requestCode,
+        quotationCode: data.job.quote.code,
+        quoteStatus: data.job.quote.status,
+        approvedAt: data.job.quote.customerApprovedAt ?? null,
+      },
+    }) : null);
 
     return sendMutationResult(res, result);
   } catch (error) {
@@ -227,6 +329,19 @@ router.post("/custom-business/service/invoices", async (req, res) => {
       actorName: context.actorName,
       body,
     });
+
+    await auditServiceMutation(context, result, (data) => data.job?.invoice.id ? ({
+      action: "CREATE",
+      entityType: "ServiceInvoice",
+      entityId: data.job.invoice.id,
+      changes: {
+        message: data.message,
+        requestCode: data.job.requestCode,
+        invoiceCode: data.job.invoice.code,
+        invoiceStatus: data.job.invoice.status,
+        dueDate: data.job.invoice.dueDate || null,
+      },
+    }) : null);
 
     return sendMutationResult(res, result);
   } catch (error) {
@@ -252,6 +367,20 @@ router.patch("/custom-business/service/invoices/:id/payment", async (req, res) =
       id: req.params.id,
       body,
     });
+
+    await auditServiceMutation(context, result, (data) => data.job?.invoice.id ? ({
+      action: "UPDATE",
+      entityType: "ServiceInvoice",
+      entityId: data.job.invoice.id,
+      changes: {
+        message: data.message,
+        requestCode: data.job.requestCode,
+        invoiceCode: data.job.invoice.code,
+        invoiceStatus: data.job.invoice.status,
+        paidAmount: data.job.invoice.paidAmount,
+        paymentPreview: data.preview ?? null,
+      },
+    }) : null);
 
     return sendMutationResult(res, result);
   } catch (error) {
