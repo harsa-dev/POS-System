@@ -1,4 +1,4 @@
-import type { RetailRepository } from "./retail.repository.js";
+import type { RetailCreateSaleInput, RetailRepository } from "./retail.repository.js";
 import type {
   RetailInventoryRiskDto,
   RetailProductDto,
@@ -122,11 +122,11 @@ export const retailMockRepository = {
     return receivingQueue;
   },
 
-  findProductById(productId: string) {
+  findProductById(_scope, productId) {
     return products.find((product) => product.id === productId) ?? null;
   },
 
-  findProductByCode(code: string) {
+  findProductByCode(_scope, code) {
     const normalizedCode = code.trim().toLowerCase();
 
     return (
@@ -155,5 +155,17 @@ export const retailMockRepository = {
           supplierId: product.supplierId,
         };
       });
+  },
+
+  createSale(input: RetailCreateSaleInput) {
+    return {
+      ...input.preview,
+      persisted: true,
+      saleId: "mock-sale-persisted",
+      receiptNumber: `RTL-MOCK-${Date.now()}`,
+      paymentId: "mock-payment-persisted",
+      stockMovementIds: input.preview.lines.map((line) => `mock-movement-${line.productId}`),
+      createdAt: new Date().toISOString(),
+    };
   },
 } satisfies RetailRepository;
