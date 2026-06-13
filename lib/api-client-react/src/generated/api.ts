@@ -3,9 +3,15 @@ import type { QueryFunction, QueryKey, UseMutationOptions, UseMutationResult, Us
 
 import type {
   HealthStatus,
+  RetailBarcodeLookupResponse,
   RetailCheckoutResponse,
+  RetailDashboardResponse,
+  RetailInventoryRisksResponse,
   RetailProductListResponse,
+  RetailReceivingQueueResponse,
   RetailSaleCheckoutInput,
+  RetailSalePreviewInput,
+  RetailSalePreviewResponse,
   RetailSharedDashboardId,
   RetailSharedDashboardResponse,
   RetailStockStatus,
@@ -60,9 +66,13 @@ function appendQuery(url: string, params?: Record<string, string | undefined>) {
   return query ? `${url}?${query}` : url;
 }
 
-export const getRetailListProductsUrl = (params?: RetailListProductsParams) => {
-  return appendQuery(`/api/retail/products`, params);
+export const getRetailGetDashboardUrl = () => `/api/retail/dashboard`;
+
+export const retailGetDashboard = async (options?: RequestInit): Promise<RetailDashboardResponse> => {
+  return customFetch<RetailDashboardResponse>(getRetailGetDashboardUrl(), { ...options, method: "GET" });
 };
+
+export const getRetailListProductsUrl = (params?: RetailListProductsParams) => appendQuery(`/api/retail/products`, params);
 
 export const retailListProducts = async (params?: RetailListProductsParams, options?: RequestInit): Promise<RetailProductListResponse> => {
   return customFetch<RetailProductListResponse>(getRetailListProductsUrl(params), { ...options, method: "GET" });
@@ -88,6 +98,24 @@ export function useRetailListProducts<TData = Awaited<ReturnType<typeof retailLi
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+export const getRetailLookupBarcodeUrl = (code: string) => `/api/retail/barcode/${code}`;
+
+export const retailLookupBarcode = async (code: string, options?: RequestInit): Promise<RetailBarcodeLookupResponse> => {
+  return customFetch<RetailBarcodeLookupResponse>(getRetailLookupBarcodeUrl(code), { ...options, method: "GET" });
+};
+
+export const getRetailGetInventoryRisksUrl = () => `/api/retail/inventory/risks`;
+
+export const retailGetInventoryRisks = async (options?: RequestInit): Promise<RetailInventoryRisksResponse> => {
+  return customFetch<RetailInventoryRisksResponse>(getRetailGetInventoryRisksUrl(), { ...options, method: "GET" });
+};
+
+export const getRetailGetReceivingQueueUrl = () => `/api/retail/receiving`;
+
+export const retailGetReceivingQueue = async (options?: RequestInit): Promise<RetailReceivingQueueResponse> => {
+  return customFetch<RetailReceivingQueueResponse>(getRetailGetReceivingQueueUrl(), { ...options, method: "GET" });
+};
 
 export const getRetailGetSharedDashboardUrl = (dashboardId: RetailSharedDashboardId) => `/api/retail/shared-dashboard/${dashboardId}`;
 
@@ -115,6 +143,16 @@ export function useRetailGetSharedDashboard<TData = Awaited<ReturnType<typeof re
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+export const getRetailPreviewSaleUrl = () => `/api/retail/sales/preview`;
+
+export const retailPreviewSale = async (retailSalePreviewInput: RetailSalePreviewInput, options?: RequestInit): Promise<RetailSalePreviewResponse> => {
+  return customFetch<RetailSalePreviewResponse>(getRetailPreviewSaleUrl(), {
+    ...options,
+    method: "POST",
+    body: JSON.stringify(retailSalePreviewInput),
+  });
+};
 
 export const getRetailCheckoutSaleUrl = () => `/api/retail/sales/checkout`;
 
