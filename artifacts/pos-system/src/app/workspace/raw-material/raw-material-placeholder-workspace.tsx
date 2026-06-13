@@ -23,8 +23,6 @@ import {
   rawMaterialApiContracts,
   rawMaterialBatches,
   rawMaterialMockService,
-  rawMaterialScaleFeatures,
-  rawMaterialScaleProfiles,
   rawMaterialStorageLocations,
   rawMaterialSuppliers,
   rawMaterialWorkspaceModules,
@@ -72,6 +70,8 @@ export default function RawMaterialPlaceholderWorkspace({
   );
   const readiness = rawMaterialMockService.getContractReadiness(moduleId);
   const metricsEnvelope = rawMaterialMockService.getMetrics();
+  const scaleProfilesEnvelope = rawMaterialMockService.listScaleProfiles();
+  const scaleFeaturesEnvelope = rawMaterialMockService.listScaleFeatures();
   const weighingsEnvelope = rawMaterialMockService.listWeighings();
   const storageEnvelope = rawMaterialMockService.listStorageLocations();
   const processingEnvelope = rawMaterialMockService.listProcessingRuns();
@@ -191,7 +191,7 @@ export default function RawMaterialPlaceholderWorkspace({
 
       <RawMaterialMetricsGrid metrics={metricsEnvelope.data} />
 
-      <RawMaterialScaleDashboard profiles={rawMaterialScaleProfiles} features={rawMaterialScaleFeatures} />
+      <RawMaterialScaleDashboard profiles={scaleProfilesEnvelope.data} features={scaleFeaturesEnvelope.data} />
 
       <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
         {draftNotice}
