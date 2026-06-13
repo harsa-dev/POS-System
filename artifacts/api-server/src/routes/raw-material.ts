@@ -1,7 +1,10 @@
 import type { Role } from "@prisma/client";
 import { Router } from "express";
 
-import { requireBusinessContextForRequest } from "../lib/business-context/index.js";
+import {
+  requireBusinessContextForRequest,
+  requireBusinessMode,
+} from "../lib/business-context/index.js";
 import { requireRole } from "../lib/auth.js";
 import { ALL_ROLES } from "../lib/constants.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
@@ -14,6 +17,8 @@ import {
 } from "../services/raw-material/index.js";
 
 const router = Router();
+
+router.use("/raw-material", requireBusinessMode(["raw-material"]));
 
 function getActor(user: { id: string; role: Role }) {
   return {
