@@ -4,7 +4,7 @@ This document tracks implementation gaps after the Retail Phase 1-7F backend del
 
 ## Current assessment
 
-The Retail foundation is functional, but the implementation is not complete enough to call the mode production-ready. The missing work is mostly generated-client consolidation, scoped validation, migration baseline hardening, and permission policy hardening.
+The Retail foundation is functional, but the implementation is not complete enough to call the mode production-ready. The missing work is mostly scoped validation, migration baseline hardening, smoke testing, and permission policy hardening.
 
 ## Missing implementation list
 
@@ -13,7 +13,7 @@ Phase 8A - Receiving status API route integration: implemented
 Phase 8B - Receiving status frontend action wiring: implemented
 Phase 8C - Return persistence + refund reversal workflow: implemented
 Phase 8D - Sale cancellation + stock/cashflow reversal workflow: implemented
-Phase 8E - Generated API client consolidation: planned
+Phase 8E - Generated API client consolidation: implemented
 Phase 8F - Retail smoke test script and scoped CI gate: planned
 Phase 8G - Retail migration baseline / idempotency hardening: planned
 Phase 8H - Retail audit and permission policy hardening: planned
@@ -201,21 +201,38 @@ Try cancelling the same sale again and expect cancellation to be blocked
 Try cancelling a sale that already has RetailReturn rows and expect cancellation to be blocked
 ```
 
-## Phase 8E - Generated API client consolidation: planned
+## Phase 8E - Generated API client consolidation: implemented
 
-Goal:
+Implemented scope:
 
 ```txt
-Move all manual Retail client helper exports into the generated api.ts surface once codegen is stable.
+- Receiving status update helpers now live in lib/api-client-react/src/generated/api.ts
+- Return preview and persistence helpers now live in lib/api-client-react/src/generated/api.ts
+- Sale cancellation helper now lives in lib/api-client-react/src/generated/api.ts
+- React Query mutation option builders and hooks exist for receiving update, return preview, return persistence, and cancellation
+- Temporary standalone helper files remain as compatibility re-exports from generated/api.ts
+- Package root exports only generated/api, generated/api.schemas, and custom-fetch configuration
+- Retail workflow helpers consistently use customFetch instead of mixing native fetch with customFetch
 ```
 
-Scope:
+Primary files:
 
 ```txt
-- Regenerate OpenAPI client locally
-- Ensure retailUpdateReceivingStatus, retailPersistReturn, and retailCancelSale land in generated api.ts
-- Remove standalone temporary receiving/return/cancellation helpers if generated output covers them
-- Replace remaining raw fetch calls in Retail frontend bridge
+lib/api-client-react/src/generated/api.ts
+lib/api-client-react/src/generated/retail-receiving-status.ts
+lib/api-client-react/src/generated/retail-returns.ts
+lib/api-client-react/src/generated/retail-sale-cancellation.ts
+lib/api-client-react/src/index.ts
+```
+
+Validation examples:
+
+```txt
+Import retailUpdateReceivingStatus from @workspace/api-client-react
+Import retailPreviewReturn from @workspace/api-client-react
+Import retailPersistReturn from @workspace/api-client-react
+Import retailCancelSale from @workspace/api-client-react
+Confirm legacy direct helper paths still re-export the same functions
 ```
 
 ## Phase 8F - Retail smoke test script and scoped CI gate: planned
