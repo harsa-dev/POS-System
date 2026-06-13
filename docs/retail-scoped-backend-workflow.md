@@ -13,7 +13,7 @@ Phase 1 - Persistence foundation: implemented
 Phase 2 - Backend route, guard, and workflow preview: implemented
 Phase 3 - Shared dashboard backend summary: implemented
 Phase 4 - Seed retail product/supplier per business: implemented
-Phase 5 - Frontend catalog and cashier API wiring: planned
+Phase 5 - Frontend catalog and cashier API wiring: implemented
 Phase 6 - Retail OpenAPI client coverage: planned
 Phase 7 - Prisma schema delegate cleanup: planned
 ```
@@ -204,27 +204,46 @@ GET /api/retail/barcode/8991001000011 can resolve the demo chips product.
 GET /api/retail/shared-dashboard/inventory has inventory context instead of an empty Retail database.
 ```
 
-### Phase 5 - Frontend catalog and cashier API wiring: planned
+### Phase 5 - Frontend catalog and cashier API wiring: implemented
 
-Catalog goal:
+Implemented scope:
 
 ```txt
-Retail catalog should call GET /api/retail/products first, then fallback to local mock data if the backend is unavailable during dev.
+- Retail API-backed workspace exists for cashier and catalog
+- Retail catalog calls GET /api/retail/products first
+- Retail cashier calls GET /api/retail/products for scanner/cart product data
+- Retail cashier posts persisted checkout to POST /api/retail/sales/checkout
+- Frontend requests include credentials so auth cookies are sent
+- UI falls back to local mock products if backend is offline, unauthorized, or empty during dev
+- UI shows source state: Prisma API / Loading API / Mock fallback
+- /v3/retail/cashier and /v3/retail/catalog routes use the API-backed workspace
 ```
 
-Cashier goal:
+Primary files:
 
 ```txt
-Retail cashier should call POST /api/retail/sales/checkout for persisted checkout, then fallback to mock checkout only when clearly labeled.
+artifacts/pos-system/src/app/workspace/retail/retail-api-workspace.tsx
+artifacts/pos-system/src/App.tsx
 ```
 
-Frontend behavior:
+Catalog behavior:
 
 ```txt
-1. Try API with credentials included.
-2. If API succeeds, render API data.
-3. If API fails because backend is offline, unauthorized, or empty during dev, fallback to local mock data.
-4. Show a small source badge: Prisma API / Loading API / Mock fallback.
+1. Try GET /api/retail/products with credentials included.
+2. Map backend RetailProductDto into the existing frontend RetailProduct shape.
+3. Render product search, category filter, stock filter, SKU table, selected detail, and reorder candidates.
+4. If API fails or returns zero products, fallback to local retailProducts mock data.
+```
+
+Cashier behavior:
+
+```txt
+1. Load product data from GET /api/retail/products.
+2. Allow barcode/SKU/name/brand scanning against API-backed products.
+3. Build an editable cart from selected product rows.
+4. Submit checkout to POST /api/retail/sales/checkout.
+5. Show persisted receipt/payable result when checkout succeeds.
+6. Show explicit error/fallback state when backend rejects the request.
 ```
 
 Checkout request shape:
@@ -323,6 +342,7 @@ IN SCOPE
 - artifacts/api-server/src/services/retail/**
 - artifacts/api-server/prisma/migrations/202606140001_add_retail_core/migration.sql
 - artifacts/api-server/scripts/seed-retail-demo-data.ts
+- artifacts/pos-system/src/app/workspace/retail/retail-api-workspace.tsx
 - artifacts/pos-system/src/features/retail/**
 - artifacts/pos-system/src/features/shared/retail-bridge/**
 - Retail-specific OpenAPI paths and schemas
@@ -377,6 +397,14 @@ POST /api/retail/sales/preview
 POST /api/retail/sales/checkout
 ```
 
+Frontend smoke test:
+
+```txt
+Open /v3/retail/catalog and verify the source badge shows Prisma API or Mock fallback.
+Open /v3/retail/cashier and verify scanner search can add products to cart.
+Submit checkout and verify persisted checkout succeeds when backend auth/business context is valid.
+```
+
 If `GET /api/retail/products` returns an empty array after `retail:seed`, check that at least one active Business row has `mode = RETAIL`.
 
 ## Done Definition For Current Retail Track
@@ -401,9 +429,7 @@ Retail track is considered stable when:
 Keep commits small and Retail-only:
 
 ```txt
-1. Retail catalog API wiring with mock fallback
-2. Retail cashier checkout API wiring with mock fallback
-3. Retail OpenAPI path/schema coverage
-4. Retail schema.prisma model sync
-5. Raw repository to typed Prisma delegate migration
+1. Retail OpenAPI path/schema coverage
+2. Retail schema.prisma model sync
+3. Raw repository to typed Prisma delegate migration
 ```
