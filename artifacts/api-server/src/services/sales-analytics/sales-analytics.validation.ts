@@ -4,15 +4,20 @@ import {
   salesAnalyticsBases,
   salesAnalyticsExportFormats,
   salesAnalyticsPaidOrderStatuses,
+  salesAnalyticsSortDirections,
+  salesAnalyticsSortKeys,
   type SalesAnalyticsBasis,
   type SalesAnalyticsExportFormat,
   type SalesAnalyticsOrderStatus,
   type SalesAnalyticsQuery,
+  type SalesAnalyticsSortDirection,
+  type SalesAnalyticsSortKey,
 } from "./sales-analytics.types.js";
 
 const MAX_ANALYTICS_RANGE_DAYS = 400;
-const DEFAULT_ANALYTICS_ROW_LIMIT = 50;
-const MAX_ANALYTICS_ROW_LIMIT = 100;
+const DEFAULT_ANALYTICS_PAGE = 1;
+const DEFAULT_ANALYTICS_PAGE_SIZE = 10;
+const MAX_ANALYTICS_PAGE_SIZE = 100;
 const MAX_SEARCH_LENGTH = 80;
 const MAX_FILTER_VALUE_LENGTH = 80;
 const MAX_PAYMENT_METHOD_LENGTH = 32;
@@ -126,19 +131,76 @@ function parseOrderStatus(value: unknown): SalesAnalyticsOrderStatus | undefined
   });
 }
 
-function parseLimit(value: unknown) {
-  if (value === undefined || value === null || value === "") return DEFAULT_ANALYTICS_ROW_LIMIT;
+function parsePositiveInteger(params: {
+  value: unknown;
+  field: string;
+  fallback: number;
+  max?: number;
+}) {
+  const { value, field, fallback, max } = params;
+  if (value === undefined || value === null || value === "") return fallback;
 
   const raw = typeof value === "number" ? value : Number(value);
-  if (!Number.isInteger(raw) || raw < 1 || raw > MAX_ANALYTICS_ROW_LIMIT) {
+  if (!Number.isInteger(raw) || raw < 1 || (max !== undefined && raw > max)) {
     throw new AppError({
       statusCode: 400,
       code: errorCodes.validationError,
-      message: `Limit must be between 1 and ${MAX_ANALYTICS_ROW_LIMIT}.`,
+      message:
+        max === undefined
+          ? `${field} must be a positive integer.`
+          : `${field} must be between 1 and ${max}.`,
     });
   }
 
   return raw;
+}
+
+function parsePage(value: unknown) {
+  return parsePositiveInteger({
+    value,
+    field: "page",
+    fallback: DEFAULT_ANALYTICS_PAGE,
+  });
+}
+
+function parsePageSize(rawQuery: Record<string, unknown>) {
+  return parsePositiveInteger({
+    value: rawQuery.pageSize ?? rawQuery.limit,
+    field: "pageSize",
+    fallback: DEFAULT_ANALYTICS_PAGE_SIZE,
+    max: MAX_ANALYTICS_PAGE_SIZE,
+  });
+}
+
+function parseSortBy(value: unknown): SalesAnalyticsSortKey {
+  if (value === undefined || value === null || value === "") return "date";
+  if (typeof value === "string" && salesAnalyticsSortKeys.includes(value as SalesAnalyticsSortKey)) {
+    return value as SalesAnalyticsSortKey;
+  }
+
+  throw new AppError({
+    statusCode: 400,
+    code: errorCodes.validationError,
+    message: "Invalid sales analytics sortBy filter.",
+    details: { allowedValues: salesAnalyticsSortKeys },
+  });
+}
+
+function parseSortDirection(value: unknown): SalesAnalyticsSortDirection {
+  if (value === undefined || value === null || value === "") return "desc";
+  if (
+    typeof value === "string" &&
+    salesAnalyticsSortDirections.includes(value.toLowerCase() as SalesAnalyticsSortDirection)
+  ) {
+    return value.toLowerCase() as SalesAnalyticsSortDirection;
+  }
+
+  throw new AppError({
+    statusCode: 400,
+    code: errorCodes.validationError,
+    message: "Invalid sales analytics sortDirection filter.",
+    details: { allowedValues: salesAnalyticsSortDirections },
+  });
 }
 
 function assertDateRange(from: Date, to: Date) {
@@ -189,7 +251,10 @@ export function parseSalesAnalyticsQuery(rawQuery: Record<string, unknown>): Sal
   const paymentMethod = parsePaymentMethod(rawQuery.paymentMethod);
   const orderStatus = parseOrderStatus(rawQuery.orderStatus);
   const q = parseSearch(rawQuery.q);
-  const limit = parseLimit(rawQuery.limit);
+  const page = parsePage(rawQuery.page);
+  const pageSize = parsePageSize(rawQuery);
+  const sortBy = parseSortBy(rawQuery.sortBy);
+  const sortDirection = parseSortDirection(rawQuery.sortDirection);
 
   assertDateRange(from, to);
 
@@ -202,6 +267,9 @@ export function parseSalesAnalyticsQuery(rawQuery: Record<string, unknown>): Sal
     paymentMethod,
     orderStatus,
     q,
-    limit,
+    page,
+    pageSize,
+    sortBy,
+    sortDirection,
   };
 }
