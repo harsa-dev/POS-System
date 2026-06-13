@@ -22,6 +22,7 @@ artifacts/pos-system/src/app/workspace/custom-business/service/service-business-
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-view-model.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-status-transitions.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-transition-requirements.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-action-rail.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-job-detail-panel.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-metric-cards.tsx
@@ -74,6 +75,7 @@ The workspace now contains hard-coded examples for:
 - selected service job detail panel
 - disabled status action rail
 - status transition map draft
+- transition requirement preview
 - cost line breakdown
 - quotation subtotal, discount, tax, total, and gross profit preview
 - invoice collection progress
@@ -123,6 +125,7 @@ Current mock interactions:
 - show selected job detail panel
 - close selected job detail panel
 - preview next status actions based on the selected job status
+- preview transition requirements for each next action
 - disabled action buttons for future request and quotation creation
 - disabled action rail buttons for future status changes
 
@@ -151,6 +154,24 @@ REQUEST_INTAKE -> JOB_PLANNING -> QUOTATION_DRAFT -> QUOTATION_APPROVED -> IN_PR
 ```
 
 The frontend transition map is not the backend source of truth. The backend must validate transitions later.
+
+## Transition requirements preview
+
+The file below contains frontend-only requirement checks for each transition:
+
+```txt
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-transition-requirements.ts
+```
+
+Examples:
+
+- drafting quotation requires cost lines and billable costs
+- starting work requires approved quotation
+- issuing invoice requires delivered service and approved quote
+- recording payment requires issued invoice and paid amount
+- closing job requires full collection
+
+These checks are UI preview only. Backend validation must still enforce the real rules later.
 
 ## API placeholder
 
