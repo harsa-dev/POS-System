@@ -21,6 +21,8 @@ artifacts/pos-system/src/app/workspace/custom-business/service/service-business-
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-placeholder-panel.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-view-model.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-status-transitions.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-action-rail.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-job-detail-panel.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-metric-cards.tsx
 artifacts/pos-system/src/app/workspace/custom-business/service/service-business-workflow-pipeline.tsx
@@ -70,6 +72,8 @@ The workspace now contains hard-coded examples for:
 - service workflow pipeline
 - service job cards
 - selected service job detail panel
+- disabled status action rail
+- status transition map draft
 - cost line breakdown
 - quotation subtotal, discount, tax, total, and gross profit preview
 - invoice collection progress
@@ -98,6 +102,7 @@ ServiceBusinessWorkspaceLayout
 ├── ServiceBusinessJobList
 │   └── ServiceBusinessJobCard
 ├── ServiceBusinessJobDetailPanel
+│   └── ServiceBusinessActionRail
 ├── ServiceBusinessPlaceholderPanel
 ├── ServiceBusinessPricingModulesPanel
 └── ServiceBusinessConfigReadinessPanel
@@ -117,7 +122,9 @@ Current mock interactions:
 - select a service job
 - show selected job detail panel
 - close selected job detail panel
+- preview next status actions based on the selected job status
 - disabled action buttons for future request and quotation creation
+- disabled action rail buttons for future status changes
 
 ## View model adapter
 
@@ -128,6 +135,22 @@ artifacts/pos-system/src/app/workspace/custom-business/service/service-business-
 ```
 
 Later backend responses should be normalized through this kind of boundary before reaching UI components.
+
+## Status transition map
+
+The file below contains the frontend-only transition preview:
+
+```txt
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-status-transitions.ts
+```
+
+Current mock transition path:
+
+```txt
+REQUEST_INTAKE -> JOB_PLANNING -> QUOTATION_DRAFT -> QUOTATION_APPROVED -> IN_PROGRESS -> READY_FOR_REVIEW -> DELIVERED -> INVOICED -> PAID -> CLOSED
+```
+
+The frontend transition map is not the backend source of truth. The backend must validate transitions later.
 
 ## API placeholder
 
