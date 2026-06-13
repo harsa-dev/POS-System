@@ -9,9 +9,11 @@ import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import { retailService } from "../services/retail/retail.service.js";
+import { updateRetailReceivingStatusWithDelegate } from "../services/retail/retail.workflow-status.repository.js";
 import type {
   RetailActor,
   RetailBusinessScope,
+  RetailReceivingQueueDto,
   RetailReturnPreviewInput,
   RetailSalePreviewInput,
   RetailSharedDashboardId,
@@ -36,6 +38,11 @@ const retailSharedDashboardIds = new Set<string>([
   "employee-contracts",
   "payroll",
 ]);
+const retailReceivingStatuses = new Set<string>(["draft", "ordered", "partial", "received"]);
+
+type RetailReceivingStatusUpdateBody = {
+  status: RetailReceivingQueueDto["status"];
+};
 
 function getStringQuery(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
@@ -43,6 +50,16 @@ function getStringQuery(value: unknown) {
 
 function isRetailSharedDashboardId(value: string): value is RetailSharedDashboardId {
   return retailSharedDashboardIds.has(value);
+}
+
+function isRetailReceivingStatus(value: unknown): value is RetailReceivingQueueDto["status"] {
+  return typeof value === "string" && retailReceivingStatuses.has(value);
+}
+
+function isReceivingStatusUpdateBody(value: unknown): value is RetailReceivingStatusUpdateBody {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { status?: unknown };
+  return isRetailReceivingStatus(candidate.status);
 }
 
 function isSalePreviewInput(value: unknown): value is RetailSalePreviewInput {
@@ -226,6 +243,55 @@ router.get("/retail/receiving", async (req, res) => {
 
     return successResponse(res, {
       data: await retailService.getReceivingQueue(context.scope),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.patch("/retail/receiving/:id/status", async (req, res) => {
+  try {
+    const context = await getRetailRequestContext(req, res, OPERATIONS_ROLES);
+    if (!context) return;
+
+    if (!isReceivingStatusUpdateBody(req.body)) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Request body must contain a valid receiving status.",
+        details: {
+          allowedStatuses: Array.from(retailReceivingStatuses),
+        },
+      });
+    }
+
+    const data = await updateRetailReceivingStatusWithDelegate({
+      scope: context.scope,
+      actor: context.actor,
+      receivingId: req.params.id,
+      status: req.body.status,
+    });
+
+    if (!data) {
+      return errorResponse(res, {
+        status: 404,
+        code: errorCodes.notFound,
+        message: "Retail receiving record was not found.",
+      });
+    }
+
+    if (!data.updated && data.reason?.startsWith("Invalid receiving status transition")) {
+      return errorResponse(res, {
+        status: 409,
+        code: errorCodes.validationError,
+        message: data.reason,
+        details: data,
+      });
+    }
+
+    return successResponse(res, {
+      data,
+      message: data.updated ? "Retail receiving status updated." : data.reason,
     });
   } catch (error) {
     return handleApiError(res, error);
