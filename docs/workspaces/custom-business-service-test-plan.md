@@ -201,6 +201,29 @@ Expected:
 - no quotation is created
 - activity events are display-only
 
+## Service insight checks
+
+For a selected job detail panel:
+
+- Service insight preview appears below costing and action rail.
+- Readiness score is visible.
+- Risk score is visible.
+- Next action requirement score is visible.
+- Collection score is visible.
+- Signal list is visible.
+- Positive, warning, or critical signals appear based on mock job state.
+- Scores change when selecting jobs with different status, priority, quote, or invoice state.
+- Insight preview does not persist data.
+- Insight preview does not call API functions.
+
+Expected preview behavior:
+
+- urgent or high priority creates risk signals
+- missing cost or missing quote creates warning signals
+- negative or low gross profit creates risk signals
+- incomplete collection creates warning signals in billing/closing phases
+- completed next action requirements create readiness signal
+
 ## Activity preview checks
 
 For a selected job detail panel:
