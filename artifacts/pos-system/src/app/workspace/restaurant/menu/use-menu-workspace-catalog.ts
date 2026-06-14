@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { menuApi } from "@/lib/api";
+import { restaurantApi, type RestaurantMenuItemDto } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils/format";
 import {
   menuAvailabilityLabels,
@@ -44,91 +44,77 @@ type MenuWorkspaceCatalogResult = {
   reload: () => Promise<void>;
 };
 
-type MenuItemResponse = {
+type CategoryBucket = {
   id: string;
   name: string;
-  description?: string | null;
-  price: number;
-  isAvailable?: boolean | null;
-  hasRecipe?: boolean | null;
-  recipeCount?: number | null;
-  availabilityStatus?: string | null;
-  imageUrl?: string | null;
-  categoryId?: string | null;
-  recipes?: unknown[] | null;
-  category?: {
-    id?: string | null;
-    name?: string | null;
-  } | null;
 };
 
-type CategoryResponse = {
-  id: string;
-  name: string;
-};
+function getRecipeAvailability(menuItem: RestaurantMenuItemDto) {
+  if (!menuItem.isAvailable) return "UNAVAILABLE";
+  if (menuItem.recipeIngredients.length === 0) return "NO_RECIPE";
+
+  const hasStockRisk = menuItem.recipeIngredients.some(
+    (ingredient) => ingredient.currentStock < ingredient.quantityNeeded,
+  );
+
+  return hasStockRisk ? "OUT_OF_STOCK" : "AVAILABLE";
+}
 
 function mapMenuItemToWorkspaceItem(
-  menuItem: MenuItemResponse,
+  menuItem: RestaurantMenuItemDto,
 ): MenuWorkspaceItem {
-  const isAvailable = menuItem.isAvailable ?? true;
-  const recipeCount =
-    typeof menuItem.recipeCount === "number"
-      ? menuItem.recipeCount
-      : Array.isArray(menuItem.recipes)
-        ? menuItem.recipes.length
-        : menuItem.hasRecipe === true
-          ? 1
-          : 0;
-  const hasRecipe =
-    typeof menuItem.hasRecipe === "boolean"
-      ? menuItem.hasRecipe
-      : recipeCount > 0;
-  const availability = isAvailable
-    ? hasRecipe
-      ? normalizeMenuAvailabilityStatus(menuItem.availabilityStatus)
-      : "NO_RECIPE"
-    : "UNAVAILABLE";
+  const recipeCount = menuItem.recipeIngredients.length;
+  const hasRecipe = recipeCount > 0;
+  const availability = normalizeMenuAvailabilityStatus(
+    getRecipeAvailability(menuItem),
+  );
 
   return {
     id: menuItem.id,
     name: menuItem.name,
     description: menuItem.description?.trim() || "No description yet.",
-    categoryId: menuItem.categoryId ?? menuItem.category?.id ?? null,
+    categoryId: menuItem.category?.id ?? null,
     categoryName: menuItem.category?.name ?? "Uncategorized",
     price: menuItem.price,
     priceLabel: formatCurrency(menuItem.price),
     availability,
     availabilityLabel: menuAvailabilityLabels[availability],
-    isAvailable,
+    isAvailable: menuItem.isAvailable,
     hasRecipe,
     recipeCount,
-    isSellable: isAvailable && hasRecipe,
+    isSellable: menuItem.isAvailable && availability === "AVAILABLE",
     imageUrl: menuItem.imageUrl ?? null,
   };
 }
 
-function mapCategories(
-  categories: CategoryResponse[],
-  items: MenuWorkspaceItem[],
-): MenuWorkspaceCategory[] {
+function mapCategories(items: MenuWorkspaceItem[]): MenuWorkspaceCategory[] {
+  const categoryBuckets = new Map<string, CategoryBucket>();
   const categoryCounts = new Map<string, number>();
+  let uncategorizedCount = 0;
 
   for (const item of items) {
-    if (!item.categoryId) continue;
+    if (!item.categoryId) {
+      uncategorizedCount += 1;
+      continue;
+    }
+
+    categoryBuckets.set(item.categoryId, {
+      id: item.categoryId,
+      name: item.categoryName,
+    });
     categoryCounts.set(
       item.categoryId,
       (categoryCounts.get(item.categoryId) ?? 0) + 1,
     );
   }
 
-  const mappedCategories = categories.map((category) => ({
-    id: category.id,
-    name: category.name,
-    itemCount: categoryCounts.get(category.id) ?? 0,
-  }));
-
-  const uncategorizedCount = items.filter((item) => item.categoryId === null)
-    .length;
+  const mappedCategories = Array.from(categoryBuckets.values()).map(
+    (category) => ({
+      id: category.id,
+      name: category.name,
+      itemCount: categoryCounts.get(category.id) ?? 0,
+    }),
+  );
 
   if (uncategorizedCount > 0) {
     mappedCategories.push({
@@ -145,7 +131,7 @@ function mapCategories(
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) return error.message;
-  return "Menu catalog is unavailable.";
+  return "Restaurant menu catalog is unavailable.";
 }
 
 export function useMenuWorkspaceCatalog(): MenuWorkspaceCatalogResult {
@@ -166,28 +152,16 @@ export function useMenuWorkspaceCatalog(): MenuWorkspaceCatalogResult {
     setErrorMessage(null);
 
     try {
-      const [menuItemsResponse, categoriesResponse] = await Promise.all([
-        menuApi.listMenuItemsWithOptions<MenuItemResponse[]>({
-          includeUnavailable: true,
-        }),
-        menuApi.listCategories(),
-      ]);
+      const response = await restaurantApi.listMenuItems();
 
-      if (!menuItemsResponse.success) {
-        throw new Error(menuItemsResponse.message ?? "Failed to load menu");
+      if (!response.success) {
+        throw new Error(response.message ?? "Failed to load restaurant menu");
       }
 
-      if (!categoriesResponse.success) {
-        throw new Error(categoriesResponse.message ?? "Failed to load categories");
-      }
-
-      const mappedItems = (menuItemsResponse.data ?? [])
+      const mappedItems = (response.data ?? [])
         .map(mapMenuItemToWorkspaceItem)
         .sort((left, right) => left.name.localeCompare(right.name));
-      const mappedCategories = mapCategories(
-        categoriesResponse.data ?? [],
-        mappedItems,
-      );
+      const mappedCategories = mapCategories(mappedItems);
 
       setItems(mappedItems);
       setCategories(mappedCategories);
