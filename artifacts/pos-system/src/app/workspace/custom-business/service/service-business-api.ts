@@ -1,5 +1,9 @@
 import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
 
+import {
+  buildServiceBusinessApiPath,
+  SERVICE_BUSINESS_OPENAPI_OPERATIONS,
+} from "./service-business-api-operations";
 import type {
   AddServiceCostLineInput,
   ApproveServiceQuotationInput,
@@ -17,25 +21,11 @@ import type {
 } from "./service-business-api-contract-types";
 import type { ServiceBusinessJob, ServiceBusinessWorkflowStatus } from "./service-business-workspace-types";
 
-const SERVICE_BUSINESS_API_BASE = "/api/custom-business/service";
+export { SERVICE_BUSINESS_OPENAPI_OPERATIONS };
 
-type ServiceBusinessEnvelope<TData> = ApiEnvelope<TData> & {
+export type ServiceBusinessEnvelope<TData> = ApiEnvelope<TData> & {
   data: TData;
 };
-
-function buildQueryString(query?: ListServiceBusinessJobsQuery) {
-  if (!query) return "";
-
-  const params = new URLSearchParams();
-
-  Object.entries(query).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") return;
-    params.set(key, String(value));
-  });
-
-  const queryString = params.toString();
-  return queryString ? `?${queryString}` : "";
-}
 
 async function unwrapData<TData>(request: Promise<ServiceBusinessEnvelope<TData>>) {
   const response = await request;
@@ -46,7 +36,7 @@ export const serviceBusinessApi = {
   getWorkspace(): Promise<ServiceBusinessWorkspaceResponse> {
     return unwrapData(
       apiClient.get<ServiceBusinessEnvelope<ServiceBusinessWorkspaceResponse>>(
-        `${SERVICE_BUSINESS_API_BASE}/workspace`,
+        buildServiceBusinessApiPath("serviceBusinessGetWorkspace"),
       ),
     );
   },
@@ -54,7 +44,7 @@ export const serviceBusinessApi = {
   getSummary(): Promise<ServiceBusinessSummaryResponse> {
     return unwrapData(
       apiClient.get<ServiceBusinessEnvelope<ServiceBusinessSummaryResponse>>(
-        `${SERVICE_BUSINESS_API_BASE}/summary`,
+        buildServiceBusinessApiPath("serviceBusinessGetSummary"),
       ),
     );
   },
@@ -62,7 +52,7 @@ export const serviceBusinessApi = {
   listJobs(query?: ListServiceBusinessJobsQuery): Promise<readonly ServiceBusinessJob[]> {
     return unwrapData(
       apiClient.get<ServiceBusinessEnvelope<readonly ServiceBusinessJob[]>>(
-        `${SERVICE_BUSINESS_API_BASE}/jobs${buildQueryString(query)}`,
+        buildServiceBusinessApiPath("serviceBusinessListJobs", { query }),
       ),
     );
   },
@@ -70,7 +60,7 @@ export const serviceBusinessApi = {
   getWorkflow(): Promise<ServiceBusinessWorkflowResponse> {
     return unwrapData(
       apiClient.get<ServiceBusinessEnvelope<ServiceBusinessWorkflowResponse>>(
-        `${SERVICE_BUSINESS_API_BASE}/workflow/statuses`,
+        buildServiceBusinessApiPath("serviceBusinessGetWorkflowStatuses"),
       ),
     );
   },
@@ -79,10 +69,12 @@ export const serviceBusinessApi = {
     jobId: string,
     nextStatus: ServiceBusinessWorkflowStatus,
   ): Promise<ServiceBusinessTransitionPreviewResponse> {
-    const params = new URLSearchParams({ nextStatus });
     return unwrapData(
       apiClient.get<ServiceBusinessEnvelope<ServiceBusinessTransitionPreviewResponse>>(
-        `${SERVICE_BUSINESS_API_BASE}/jobs/${jobId}/transition-preview?${params.toString()}`,
+        buildServiceBusinessApiPath("serviceBusinessGetTransitionPreview", {
+          pathParams: { id: jobId },
+          query: { nextStatus },
+        }),
       ),
     );
   },
@@ -92,7 +84,7 @@ export const serviceBusinessApi = {
   ): Promise<ServiceBusinessMutationPreviewResponse> {
     return unwrapData(
       apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        `${SERVICE_BUSINESS_API_BASE}/requests`,
+        buildServiceBusinessApiPath("serviceBusinessCreateRequest"),
         { json: input },
       ),
     );
@@ -103,7 +95,9 @@ export const serviceBusinessApi = {
   ): Promise<ServiceBusinessMutationPreviewResponse> {
     return unwrapData(
       apiClient.patch<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        `${SERVICE_BUSINESS_API_BASE}/jobs/${input.jobId}/guarded-status`,
+        buildServiceBusinessApiPath("serviceBusinessUpdateJobStatus", {
+          pathParams: { id: input.jobId },
+        }),
         { json: input },
       ),
     );
@@ -114,7 +108,9 @@ export const serviceBusinessApi = {
   ): Promise<ServiceBusinessMutationPreviewResponse> {
     return unwrapData(
       apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        `${SERVICE_BUSINESS_API_BASE}/jobs/${input.jobId}/cost-lines`,
+        buildServiceBusinessApiPath("serviceBusinessAddCostLine", {
+          pathParams: { id: input.jobId },
+        }),
         { json: input },
       ),
     );
@@ -125,7 +121,7 @@ export const serviceBusinessApi = {
   ): Promise<ServiceBusinessMutationPreviewResponse> {
     return unwrapData(
       apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        `${SERVICE_BUSINESS_API_BASE}/quotations`,
+        buildServiceBusinessApiPath("serviceBusinessCreateQuotation"),
         { json: input },
       ),
     );
@@ -136,7 +132,9 @@ export const serviceBusinessApi = {
   ): Promise<ServiceBusinessMutationPreviewResponse> {
     return unwrapData(
       apiClient.patch<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        `${SERVICE_BUSINESS_API_BASE}/quotations/${input.quotationId}/approve`,
+        buildServiceBusinessApiPath("serviceBusinessApproveQuotation", {
+          pathParams: { id: input.quotationId },
+        }),
         { json: input },
       ),
     );
@@ -147,7 +145,7 @@ export const serviceBusinessApi = {
   ): Promise<ServiceBusinessMutationPreviewResponse> {
     return unwrapData(
       apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        `${SERVICE_BUSINESS_API_BASE}/invoices`,
+        buildServiceBusinessApiPath("serviceBusinessCreateInvoice"),
         { json: input },
       ),
     );
@@ -158,7 +156,9 @@ export const serviceBusinessApi = {
   ): Promise<ServiceBusinessMutationPreviewResponse> {
     return unwrapData(
       apiClient.patch<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        `${SERVICE_BUSINESS_API_BASE}/invoices/${input.invoiceId}/payment`,
+        buildServiceBusinessApiPath("serviceBusinessRecordInvoicePayment", {
+          pathParams: { id: input.invoiceId },
+        }),
         { json: input },
       ),
     );
