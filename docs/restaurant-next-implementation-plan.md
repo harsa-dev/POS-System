@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 7D implemented
+Status: Phase 7E implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -18,8 +18,8 @@ Phase 7A - Prisma schema model mapping                             Done
 Phase 7B - Summary read delegate                                   Done
 Phase 7C - Workflow read delegate                                  Done
 Phase 7D - Order/payment/kitchen/serving preview delegate           Done
-Phase 7E - Order/write delegate                                    Next
-Phase 7F - Guarded workflow status delegate                        Planned
+Phase 7E - Order/write delegate                                    Done
+Phase 7F - Guarded workflow status delegate                        Next
 Phase 8A - Order/kitchen/serving/table status API route             Planned
 Phase 8B - Status frontend action                                  Planned
 Phase 8C - Order cancellation + stock/cashflow reversal workflow    Planned
@@ -226,3 +226,17 @@ Implemented surfaces:
 - `artifacts/pos-system/src/lib/api/restaurant-api.ts` mirrors the preview DTOs and exposes typed preview client helpers.
 
 This phase does not create orders, confirm payments, update kitchen status, update serving status, cancel orders, refund payments, or mutate stock. It is a safety preview layer before Phase 7E/7F write delegates.
+
+## Phase 7E result
+
+Restaurant now has scoped write delegates for order creation and payment confirmation.
+
+Implemented surfaces:
+
+- `artifacts/api-server/src/services/restaurant/restaurant.order-write.ts` performs transactional Restaurant order creation and payment confirmation.
+- `POST /restaurant/orders` creates an order through the scoped Restaurant API.
+- `POST /restaurant/payments/confirm` confirms payment for a `PENDING_PAYMENT` order.
+- Paid writes deduct recipe inventory, create `StockMovement` records, post `CashflowEntry` income, update table occupancy, update shift expected cash for cash payments, and create normalized `AuditLog` entries.
+- `artifacts/pos-system/src/lib/api/restaurant-api.ts` exposes typed `createOrder` and `confirmPayment` helpers.
+
+This phase does not update kitchen/serving workflow status, cancel orders, refund payments, or reverse stock/cashflow. Those remain in Phase 7F and Phase 8C/8D.
