@@ -1,405 +1,719 @@
-You are Codex working inside my POS System repository.
+POS System V3 Phase 2: Global Structure, Flow, Frontend, Backend, and Code Quality Cleanup
+Context
 
-CONTEXT:
-This project is a portfolio-grade POS System, not a simple cashier CRUD app.
+Phase 1 V3 canonical cleanup has already been implemented locally.
 
-Current business modes:
+Known Phase 1 changes:
 
-1. Restaurant mode: already implemented.
-2. Raw Material mode: already implemented.
-3. Retail mode: already implemented.
-4. Service mode: still planned only. Do not implement service mode unless required to keep the architecture clean.
+features/fnb was moved to features/restaurant.
+features/orders/constans was renamed to features/orders/constants.
+duplicate order-respone.mapper.ts was deleted.
+canonical routes were changed from /dashboard/fnb/* to /dashboard/restaurant/*.
+central business mode contract was added.
+old runtime aliases for fnb, warehouse, and service were removed from normal app flow.
+old stored currentBusinessMode values are only repaired at the storage boundary.
+backend mode parsing rejects old API mode IDs.
+UI labels changed from Restaurant / F&B to Restaurant.
+docs were updated, including V3 canonical business mode docs.
 
-Important architecture:
+This next phase must continue from the current working tree.
+Do not push to GitHub.
+Do not create a branch.
+Do not create a PR.
+Work locally only and focus on testing, cleanup, restructuring, and fixing real issues.
 
-* The app supports business mode switching.
-* Business mode selection is handled through `/select-mode`.
-* Selected mode may be stored as `currentBusinessMode`.
-* The main scope for this task is:
+Main Goal
 
-  * Restaurant mode
-  * Raw Material mode
-  * Retail mode
-  * Business mode switcher / guard / routing logic
+Perform a global V3 quality cleanup across the entire repository.
 
-Before changing code:
+This phase must:
 
-1. Read all documentation files in the repository.
-2. Read README, design docs, architecture docs, business flow docs, API docs, database docs, coding rules, and any markdown docs available.
-3. Inspect the current folder structure.
-4. Understand existing business mode boundaries before modifying anything.
-5. Do not make blind refactors.
+read all docs
+inspect all source files
+restructure files where needed
+split fat files
+remove duplicate code
+remove dead code
+remove hardcoded values
+remove repeated logic
+create reusable helpers where useful
+fix frontend flow bugs
+fix backend/API flow bugs
+polish frontend UI
+polish backend/API quality
+fix mode switching flow globally
+run available tests/typechecks/build checks
+update docs if structure or behavior changes
 
-MAIN GOAL:
-Perform a full quality audit and cleanup of the project so the codebase becomes more maintainable, readable, safer, faster, and easier to scale.
+This is still not a full rewrite.
+This is a controlled cleanup pass.
 
-You must check and improve:
+Scope
 
-A. TypeScript / Typecheck
+Scope includes all files in the repository, especially:
 
-* Run the project typecheck command.
-* Fix all real TypeScript errors.
-* Do not silence errors with `any`, `as unknown as`, `// @ts-ignore`, or temporary hacks unless there is absolutely no alternative.
-* Prefer proper typing, reusable types, schemas, and interfaces.
-* Make sure type safety is preserved across business modes.
+artifacts/pos-system
+frontend app
+backend/API if present
+shared configs
+business mode logic
+docs
+scripts
+typecheck configs
+route configs
+feature folders
 
-B. Build / Lint / Format
+Business modes in scope:
 
-* Run build, lint, and formatting checks if scripts exist.
-* Fix errors properly.
-* If scripts are missing, identify what is missing and add reasonable scripts only if it fits the project.
-* Do not change package manager unless the project already uses another one.
+Restaurant
+Retail
+Raw Material
+Custom Business / Service planned state
+Business mode switcher
+Shared dashboards and shared components
 
-C. Business Flow Validation
-Audit and fix flows for:
+Do not implement full Service/Custom Business mode.
+Only make its planned/guarded state clean and safe.
 
-* Restaurant
-* Raw Material
-* Retail
-* Business mode switcher
+Important Rule
 
-For each flow, check:
+No GitHub publishing in this phase.
 
-* Invalid transitions.
-* Missing guards.
-* Broken redirects.
-* Wrong default mode.
-* Data from one business mode leaking into another.
-* Components from one mode being reused incorrectly.
-* Pages reachable when mode is not selected.
-* Incorrect permission assumptions.
-* Missing empty states, loading states, and error states.
+Do not run:
 
-D. Edge Cases
-Check and fix edge cases such as:
+git push
+gh pr create
+branch creation
+PR creation
+remote publishing commands
 
-* User opens dashboard without selecting business mode.
-* User refreshes page after selecting mode.
-* `localStorage` is unavailable or empty.
-* Invalid business mode value exists in storage.
-* User switches mode while inside a mode-specific route.
-* Missing data from API.
-* API returns empty array.
-* API returns error.
-* Slow network.
-* Duplicate submit.
-* Invalid form input.
-* Deleted or unavailable entity.
-* Concurrent state issues where possible.
-* Role mismatch.
-* Unauthorized access.
-* Broken route after refactor.
+You may use git locally only for:
 
-E. Hardcoded Values
-Find and remove unnecessary hardcoded values:
+checking diff
+checking status
+seeing changed files
 
-* Business mode strings.
-* Route paths.
-* Role names.
-* Status labels.
-* Colors repeated everywhere.
-* API paths.
-* Dummy data that should not be in production flow.
-* Repeated table headers, select options, status maps, badge configs.
+Do not commit unless explicitly asked later.
 
-Replace them with:
+Required First Steps
 
-* Constants.
-* Config maps.
-* Shared helpers.
-* Type-safe enums/unions.
-* Centralized route config.
-* Centralized business mode config.
-* Reusable status label/color helpers.
+Before modifying code:
 
-F. Duplicate Code
-Find duplicate or near-duplicate code in:
+Read all docs in the repo.
+Read the new V3 canonical business mode docs.
+Inspect the current project tree.
+Inspect package scripts.
+Inspect TypeScript configs.
+Inspect frontend routes.
+Inspect backend/API routes.
+Inspect business mode config and guard logic.
+Search for duplicate/hardcoded/repeated logic.
+Identify fat files and risky files.
 
-* Restaurant mode
-* Raw Material mode
-* Retail mode
-* Shared dashboards
-* API handlers
-* UI cards/tables/forms/modals
-* Validation logic
-* Formatting logic
-* Fetching logic
+Search terms:
 
-Refactor duplicate logic into:
+restaurant
+retail
+raw-material
+custom-business
+service
+businessMode
+currentBusinessMode
+dashboard
+mode
+route
+guard
+api
+TODO
+FIXME
+hardcoded
+mock
+demo
+legacy
+fnb
+warehouse
+constans
+respon
+response
+mapper
 
-* Shared components.
-* Feature-specific helpers.
-* Shared hooks.
-* Utility functions.
-* Config-driven rendering.
-* Reusable API helpers.
-* Reusable validation schemas.
+If fnb, warehouse, service, or other old names still exist:
 
-Do not over-abstract. If abstraction makes the code harder to read, keep it local.
+check whether they are intentional docs/history references
+check whether they are old runtime leftovers
+remove or fix runtime leftovers
+keep only truly necessary migration-boundary references
+Global File Restructure Requirements
 
-G. Fat Files / Large Components
-Find files that are too large or doing too many things.
+Audit the full file structure.
 
-Refactor large files by splitting into:
+Restructure files only when it improves readability, maintainability, or domain separation.
 
-* `components`
-* `hooks`
-* `lib`
-* `utils`
-* `constants`
-* `types`
-* `schemas`
-* `services`
-* `api`
-* `config`
+Target structure style:
+
+src/
+  app/
+  components/
+    core/
+    shared/
+  config/
+    business-modes/
+    routes/
+    navigation/
+    status/
+  features/
+    restaurant/
+      components/
+      hooks/
+      services/
+      schemas/
+      types/
+      utils/
+      constants/
+    retail/
+      components/
+      hooks/
+      services/
+      schemas/
+      types/
+      utils/
+      constants/
+    raw-material/
+      components/
+      hooks/
+      services/
+      schemas/
+      types/
+      utils/
+      constants/
+    shared/
+      components/
+      hooks/
+      services/
+      schemas/
+      types/
+      utils/
+      constants/
+  lib/
+    api/
+    auth/
+    business-mode/
+    db/
+    errors/
+    formatters/
+    validators/
+  types/
+  schemas/
+
+Adapt to the existing repo if it already has a consistent pattern.
 
 Rules:
 
-* Do not split files just to create more files.
-* Split only when it improves readability or reuse.
-* Keep business logic away from UI components when possible.
-* Keep API/database logic away from visual components.
+mode-specific code must stay inside its mode folder
+shared code must not import from mode-specific folders
+Restaurant code must not leak into Retail or Raw Material
+Retail code must not leak into Restaurant or Raw Material
+Raw Material code must not leak into Restaurant or Retail
+business mode switcher logic must be centralized
+route config must be centralized if routes are repeated
+status config must be centralized if statuses are repeated
+API response helpers should be centralized if repeated
+validation helpers should be centralized if repeated
 
-H. Folder Structure Cleanup
-Review and improve the folder structure.
+Do not create empty folders.
+Do not create fake architecture.
+Do not split small clear files just for aesthetics.
 
-Goals:
+Fat File Cleanup
 
-* Restaurant, Raw Material, and Retail modes must have clear boundaries.
-* Shared code must live in shared/core folders, not hidden inside one business mode.
-* Business mode switcher logic must be centralized.
-* Avoid random folders and ambiguous names.
-* Rename files/folders if names are misleading.
+Find files that are too large, doing too many jobs, or hard to understand.
 
-Preferred structure style:
+A file should be considered suspicious if:
 
-* `components/core` for app shell, route guards, global layout pieces.
-* `components/shared` for reusable UI primitives.
-* `features/{business-mode}` for mode-specific business logic.
-* `features/shared` for dashboards or features used by multiple modes.
-* `lib` for low-level helpers, API clients, auth, db utilities.
-* `config` for mode config, routes, navigation, status maps.
-* `types` for shared types.
-* `schemas` for validation schemas.
+it mixes UI, data fetching, business rules, constants, and formatting
+it has multiple unrelated components
+it has large inline arrays/configs
+it repeats status/route/mode checks
+it contains long conditional chains
+it contains repeated JSX blocks
+it contains repeated fetch logic
+it contains duplicated form logic
+it is difficult to test or reason about
 
-Adapt this to the actual repository. Do not force the exact structure if the existing project has a better consistent pattern.
+For each fat file:
 
-I. Naming Cleanup
-Rename unclear files, variables, functions, and components.
+extract constants
+extract helper functions
+extract hooks
+extract child components
+extract schemas/types if needed
+keep the public behavior unchanged
+
+Preferred extraction examples:
+
+formatCurrency, formatDate, formatPercent
+getStatusLabel, getStatusVariant, getStatusColor
+getModeDashboardRoute
+isSupportedBusinessMode
+getBusinessModeLabel
+useBusinessMode
+useModeNavigation
+useDashboardMetrics
+reusable table empty state component
+reusable loading/error state component
+reusable API error parser
+reusable response formatter
+
+Do not over-abstract one-off logic.
+
+Duplicate Code Cleanup
+
+Search globally for duplicate code.
+
+Check duplicates in:
+
+page components
+dashboard cards
+table components
+status badges
+forms
+modals
+fetch logic
+API response handling
+validation schemas
+route constants
+mode constants
+mapper functions
+currency/date formatters
+error handlers
+empty/loading/error UI
+sidebar/navigation config
+permission checks
+
+Fix duplicates by creating:
+
+shared components
+shared hooks
+shared helpers
+shared constants
+mode-specific helpers
+API utilities
+typed config maps
 
 Rules:
 
-* Names must describe purpose.
-* Avoid vague names like `data`, `items`, `handler`, `thing`, `newFile`, `test`, `temp`, `final`, `old`.
-* Components should use PascalCase.
-* Hooks should start with `use`.
-* Helpers should use clear verbs/nouns.
-* API helpers should clearly say what they fetch, create, update, or delete.
+shared helpers must be truly shared
+mode-specific helpers should stay inside the relevant mode
+do not create giant global utility files full of unrelated functions
+avoid utils.ts dumping grounds
+use specific file names
 
-J. Dead Code / Unused Files
-Find and remove:
+Bad:
 
-* Unused components.
-* Unused imports.
-* Unused constants.
-* Unused helper functions.
-* Old backup files.
-* Temporary files.
-* Dead pages.
-* Unused mock data.
-* Duplicate old versions of files.
-* Console logs used for debugging.
+utils.ts
+helper.ts
+data.ts
+misc.ts
 
-Important:
+Better:
 
-* Do not delete anything unless you are confident it is unused.
-* If unsure, leave a comment in the final report instead of deleting.
-* Never delete documentation unless it is clearly obsolete and replaced.
+format-currency.ts
+order-status.config.ts
+business-mode-routes.ts
+parse-api-error.ts
+restaurant-dashboard-metrics.ts
+retail-inventory-status.ts
+Hardcode Cleanup
 
-K. Security Hardening
-Audit and improve security where relevant:
+Remove hardcoded values that can create drift.
 
-* API route authorization.
-* Role-based access control.
-* Business mode access control.
-* Input validation.
-* Server-side validation, not only client-side validation.
-* Safe error responses.
-* Avoid leaking stack traces or internal DB errors to the client.
-* Avoid trusting client-provided business mode blindly.
-* Check ownership/tenant boundaries if restaurant/business/user IDs exist.
-* Prevent unauthorized access to mode-specific data.
-* Validate route params.
-* Validate request body.
-* Avoid unsafe direct object access.
+Centralize repeated:
 
-Do not add complex enterprise security systems unless needed. Improve practical security.
+business mode IDs
+business mode labels
+route paths
+sidebar items
+nav groups
+API paths
+order statuses
+inventory statuses
+payment statuses
+badge variants
+role labels
+currency formatting
+date formatting
+empty state copy
+dashboard metric definitions
+table column definitions if repeated
+localStorage keys
+error messages if repeated
+query keys if used
 
-L. Backend / API Polish
-For API routes:
+Do not centralize one-off text unnecessarily.
 
-* Standardize response format.
-* Standardize error handling.
-* Standardize validation.
-* Avoid duplicated try/catch patterns if a helper can clean it.
-* Ensure correct status codes.
-* Avoid returning sensitive fields.
-* Avoid mixing business logic directly inside route handlers when it should be in a service/helper.
-* Ensure database queries are scoped properly.
-* Improve performance of expensive queries if obvious.
+Especially check:
 
-M. Performance
-Improve obvious performance issues:
+direct string comparisons like mode === "restaurant"
+direct path strings like /dashboard/restaurant
+direct status strings inside components
+repeated badge color logic
+repeated currency formatter calls
+repeated localStorage key usage
+Frontend Flow Audit
 
-* Avoid unnecessary re-renders.
-* Memoize only where useful.
-* Avoid huge client components if server components can be used.
-* Avoid repeated calculations in render.
-* Avoid duplicate API calls.
-* Avoid loading all data when pagination/filtering is needed.
-* Split large UI sections where appropriate.
-* Improve slow pages if the cause is obvious.
-* Avoid premature optimization.
+Check and fix frontend behavior globally.
 
-N. UI Polish
-Polish UI for:
+Audit:
 
-* Empty states.
-* Loading states.
-* Error states.
-* Disabled states.
-* Form validation messages.
-* Button consistency.
-* Table readability.
-* Responsive layout.
-* Business mode switcher UX.
-* Mode-specific dashboard clarity.
-* Consistent spacing, labels, badges, and actions.
+/select-mode
+dashboard route access
+mode-specific navigation
+mode switching from inside a mode route
+empty currentBusinessMode
+invalid currentBusinessMode
+old stored values
+planned Custom Business/Service state
+refresh behavior
+direct URL access
+sidebar active state
+topbar labels
+breadcrumbs if present
+mobile/responsive layout if obvious
+loading states
+error states
+empty states
+disabled states
+duplicate submit prevention
+form validation messages
+table overflow
+long text truncation
+inconsistent badges
+inconsistent buttons
+inconsistent spacing
 
-Do not redesign the entire app unless necessary. Polish existing UI.
+Required outcomes:
 
-O. Documentation Updates
-After changes:
+no invalid mode should silently render wrong UI
+no mode should show another mode’s navigation/data
+planned mode must not look production-ready
+invalid route should redirect or show safe state
+mode switcher must not rely on scattered logic
+refresh should preserve valid selected mode
+invalid stored mode should be repaired or cleared safely
+Backend/API Flow Audit
 
-* Update docs if architecture, folder structure, routes, helpers, or business flow changed.
-* If docs are missing critical information, add concise docs.
-* Document:
+Check backend/API behavior globally.
 
-  * Business mode architecture.
-  * Current supported modes.
-  * Planned service mode status.
-  * Shared helpers/configs.
-  * Important flow rules.
-  * How to run typecheck/build/lint.
-  * Known limitations.
+Audit:
 
-P. Tests / Manual Verification
-If tests exist:
+mode parsing
+request validation
+route param validation
+response shape consistency
+error handling consistency
+status codes
+duplicated try/catch
+repeated response helpers
+unsafe trust of client mode
+tenant/ownership filtering if business/user IDs exist
+role checks if present
+missing null checks
+duplicate mapper logic
+inconsistent DTOs
+overly fat service files
+old V2 naming leftovers
+API endpoints no longer used by frontend
+frontend calls to endpoints that do not exist
 
-* Run them.
-* Fix broken tests properly.
-* Add tests only where useful and realistic.
+Required outcomes:
 
-If tests do not exist:
+backend should reject invalid mode IDs
+API should not accept old mode aliases as normal flow
+response shapes should be predictable
+errors should be safe for client
+no stack traces/internal DB messages should be returned directly
+duplicated mapper/service logic should be reduced
+backend services should not be giant mixed files if avoidable
 
-* Do not create a massive test suite.
-* Add small validation/unit tests only if the repo already has a testing setup.
-* Otherwise, include manual verification steps in the final report.
+Do not rewrite the backend architecture from scratch.
+Fix obvious issues and split files where useful.
 
-STRICT RULES:
+Code Quality Rules
 
-1. Do not use temporary fixes.
-2. Do not hide errors.
-3. Do not remove important features.
-4. Do not rewrite the whole app from scratch.
-5. Do not implement Service mode fully. It is planned only.
-6. Do not break Restaurant, Raw Material, Retail, or business mode switcher.
-7. Do not create placeholder pages unless needed for routing safety.
-8. Do not introduce unnecessary dependencies.
-9. Do not change UI framework or styling system.
-10. Do not change database schema unless required, and explain why.
-11. Do not make destructive migration changes without warning.
-12. Do not delete docs unless clearly obsolete.
-13. Do not mix business-specific logic into shared code.
-14. Do not make shared code depend on Restaurant-specific assumptions.
-15. Do not leave console logs, commented-out old code, or debug files.
-16. Do not over-engineer.
+Do not use:
 
-EXECUTION ORDER:
+any
+as any
+as unknown as
+@ts-ignore
+@ts-expect-error
 
-1. Read all docs.
-2. Inspect package scripts and project structure.
-3. Run typecheck.
-4. Run lint/build if available.
-5. Audit business mode switcher.
-6. Audit Restaurant mode.
-7. Audit Raw Material mode.
-8. Audit Retail mode.
-9. Identify duplicate code, hardcode, fat files, dead files.
-10. Plan refactor in small safe steps.
-11. Apply fixes incrementally.
-12. Re-run typecheck/build/lint after changes.
-13. Update docs.
-14. Produce final report.
+Do not add:
 
-FINAL REPORT FORMAT:
-At the end, give me a clear report with:
+fake aliases
+compatibility bridges except storage migration boundary
+unnecessary dependencies
+placeholder features
+empty files
+giant catch-all helpers
+broad database schema rewrites
+full Service/Custom Business implementation
 
-1. Commands run
+Prefer:
 
-* typecheck
-* lint
-* build
-* tests if any
+typed configs
+explicit unions
+schema validation
+small helper functions
+small reusable components
+clear folder boundaries
+clear file names
+predictable API contracts
+domain-specific helpers
+Naming Rules
 
-2. Errors found
+Use clear and consistent names.
 
-* TypeScript errors
-* Build errors
-* Lint errors
-* Runtime risks
-* Flow bugs
-* Security issues
+Canonical names:
 
-3. Changes made
-   Group by:
+restaurant
+retail
+raw-material
+custom-business
 
-* Business mode switcher
-* Restaurant mode
-* Raw Material mode
-* Retail mode
-* Shared components/helpers
-* API/backend
-* UI polish
-* Documentation
+Avoid:
 
-4. Files changed
-   For each changed file:
+fnb
+warehouse
+service as active mode
+constans
+respon
+vague names like data, helper, misc, temp, final, old
 
-* File path
-* What changed
-* Why it changed
+If old names remain only in docs/history:
 
-5. Files deleted
-   For each deleted file:
+make it clear they are legacy references
+do not keep them in active runtime paths
+UI Polish Rules
 
-* File path
-* Why it was safe to delete
+Polish frontend where needed.
 
-6. New helpers/configs/components created
-   For each new file:
+Focus on:
 
-* File path
-* Purpose
-* Where it is used
+readable dashboards
+consistent cards
+consistent buttons
+consistent badge styles
+reusable loading state
+reusable error state
+reusable empty state
+good mode switcher UX
+clear planned-mode messaging
+responsive fixes
+table readability
+form clarity
 
-7. Remaining risks
-   Mention anything not fixed and why.
+Do not redesign the whole app.
+Do not change the visual identity radically.
+Polish existing UI.
 
-8. Manual QA checklist
-   Give me step-by-step checks I can do manually in the browser.
+Testing and Verification
 
-9. Next recommended task
-   Give only the next most important task after this cleanup.
+Run checks after cleanup.
 
-Start now by reading the documentation and inspecting the repository. Then proceed with the audit and fixes.
+Try these commands if available:
+
+pnpm --filter @workspace/pos-system run typecheck:restaurant
+pnpm --filter @workspace/pos-system run typecheck:retail
+pnpm --filter @workspace/pos-system run typecheck:raw-material
+pnpm --filter @workspace/pos-system run typecheck:service
+
+If pnpm is blocked by environment, use repo-local equivalents that already worked:
+
+tsc -p artifacts/pos-system/tsconfig.restaurant.json --noEmit
+tsc -p artifacts/pos-system/tsconfig.retail.json --noEmit
+tsc -p artifacts/pos-system/tsconfig.raw-material.json --noEmit
+tsc -p artifacts/pos-system/tsconfig.service.json --noEmit
+
+Run frontend build:
+
+cd artifacts/pos-system
+vite build
+
+Run additional scripts only if they exist and environment allows:
+
+pnpm business-mode:check
+pnpm restaurant:check
+pnpm retail:check
+pnpm raw-material:check
+pnpm typecheck
+pnpm build
+
+For backend:
+
+run backend typecheck if available
+if backend still has existing broader errors, report them clearly
+separate existing pre-existing errors from errors caused by this cleanup
+fix touched-area backend errors
+do not pretend backend passed if it did not
+Manual QA Checklist
+
+Even if browser automation is unavailable, provide a manual QA checklist.
+
+Checklist must include:
+
+Open /select-mode.
+Select Restaurant.
+Confirm Restaurant dashboard loads.
+Refresh Restaurant dashboard.
+Access Restaurant route directly.
+Confirm sidebar/nav only shows valid Restaurant items.
+Select Retail.
+Confirm Retail dashboard loads.
+Refresh Retail dashboard.
+Access Retail route directly.
+Confirm sidebar/nav only shows valid Retail items.
+Select Raw Material.
+Confirm Raw Material dashboard loads.
+Refresh Raw Material dashboard.
+Access Raw Material route directly.
+Confirm sidebar/nav only shows valid Raw Material items.
+Set currentBusinessMode to an invalid value.
+Refresh app and confirm it safely clears/repairs/redirects.
+Clear currentBusinessMode.
+Refresh app and confirm it routes to /select-mode.
+Try planned Custom Business/Service state.
+Confirm it is guarded or shown as planned, not production-ready.
+Confirm there is no visible FNB label.
+Confirm no active route uses /dashboard/fnb.
+Confirm no page shows another mode’s data or navigation.
+Documentation Update
+
+Update docs if any of these changed:
+
+folder structure
+route structure
+business mode behavior
+mode contract
+helper locations
+frontend flow
+backend flow
+commands used
+known limitations
+
+Docs must not lie.
+
+Docs should include:
+
+final supported modes
+planned Custom Business/Service status
+final folder structure
+key shared helpers
+route/mode behavior
+checks actually run
+known remaining risks
+Final Report Format
+
+At the end, produce a clear report:
+
+1. Summary
+
+Short explanation of the cleanup.
+
+2. Docs read
+
+List docs inspected.
+
+3. Commands run
+
+Include pass/fail status.
+
+4. Structure changes
+
+For each moved/renamed file:
+
+old path
+new path
+reason
+5. Fat files split
+
+For each:
+
+original file
+extracted files
+reason
+6. Helpers/components created
+
+For each:
+
+file path
+purpose
+where used
+7. Duplicate code removed
+
+Explain what duplicate logic was removed.
+
+8. Hardcoded values removed
+
+Explain what was centralized.
+
+9. Frontend flow fixes
+
+Group by:
+
+business mode switcher
+Restaurant
+Retail
+Raw Material
+Custom Business planned state
+shared UI
+10. Backend/API fixes
+
+Group by:
+
+mode parsing
+validation
+response/error handling
+services/mappers
+security checks
+11. Files deleted
+
+For each:
+
+file path
+reason it was safe to delete
+12. Remaining risks
+
+Be honest.
+
+13. Manual QA checklist
+
+Give exact browser steps.
+
+14. Next recommended task
+
+Give only one next task.
+
+Strict Rules
+Do not push to GitHub.
+Do not create a PR.
+Do not create a branch unless explicitly asked.
+Do not commit unless explicitly asked.
+Do not implement full Service/Custom Business mode.
+Do not reintroduce fnb as active runtime naming.
+Do not create fake compatibility maps to hide wrong naming.
+Do not loosen types to make errors disappear.
+Do not use any, cast hacks, or ignore comments.
+Do not create giant shared utility dumping grounds.
+Do not move mode-specific logic into shared code.
+Do not let shared code import from mode-specific folders.
+Do not leave fat files untouched if they clearly mix unrelated responsibilities.
+Do not leave duplicate code if it is obviously reusable.
+Do not remove files unless confirmed unused.
+Do not delete useful logic. Move it first.
+Do not rewrite the entire app.
+Do not change database schema unless absolutely required.
+Do not silently skip checks.
+Do not claim checks passed unless they actually passed.
+
+Start by reading all docs, inspecting the whole repository, then make a cleanup plan before editing. After that, implement the cleanup in safe batches and run verification.
