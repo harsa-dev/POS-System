@@ -9,6 +9,7 @@
     "src/routes/raw-material-pens.ts",
     "src/routes/raw-material-stock-movements.ts",
     "src/routes/raw-material-summary.ts",
+    "src/routes/raw-material-preview.ts",
     "src/services/raw-material/**/*.ts",
     "src/lib/auth.ts",
     "src/lib/business-context/**/*.ts",
