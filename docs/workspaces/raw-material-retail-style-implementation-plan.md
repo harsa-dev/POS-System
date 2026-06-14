@@ -26,6 +26,7 @@ seeded demo data
 scoped validation gate
 read-only API smoke script
 workflow read delegate
+frontend list/workflow API wiring
 ```
 
 ## Retail-style Raw Material phases
@@ -35,8 +36,8 @@ Phase 1  - Raw Material persistence foundation                Done
 Phase 2  - Backend route, guard, workflow preview             Done
 Phase 3  - Shared dashboard backend summary                   Done
 Phase 4  - Seed supplier/storage/intake/batch/kandang         Done
-Phase 5  - Frontend list/workflow API wiring                  Next
-Phase 6  - Raw Material OpenAPI/client coverage               Planned
+Phase 5  - Frontend list/workflow API wiring                  Done
+Phase 6  - Raw Material OpenAPI/client coverage               Next
 Phase 7A - Prisma schema model mapping                        Done
 Phase 7B - Summary read delegate                              Done
 Phase 7C - Workflow read delegate                             Done
@@ -89,6 +90,45 @@ The seed script is idempotent and scoped to:
 ```txt
 Business.mode = RAW_MATERIAL
 Business.isActive = true
+```
+
+## Phase 5 - Frontend list/workflow API wiring
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-client.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-placeholder-workspace.tsx
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-readonly-sections.tsx
+docs/workspaces/raw-material-frontend-list-workflow-api-wiring.md
+```
+
+Implemented behavior:
+
+```txt
+frontend workflow list surfaces are API-first
+mock fallback remains available
+API contract metadata covers every workflow read endpoint
+write route metadata exists but write buttons remain disabled
+backend enum casing is mapped into frontend display casing
+```
+
+Wired read surfaces:
+
+```txt
+supplier intake queue
+batch traceability
+weighing records
+storage capacity cards
+processing run cards
+kandang snapshot cards
+supplier filter preview
+stock movement trail
+transfer preview selectors
+processing preview selectors
 ```
 
 ## Phase 7C - Workflow read delegate
@@ -168,7 +208,6 @@ The scoped gate intentionally excludes global non-Raw-Material typecheck errors.
 Preferred path:
 
 ```txt
-Phase 5  - Frontend list/workflow API wiring
 Phase 6  - Raw Material OpenAPI/client coverage
 Phase 7D - Intake/batch/processing preview delegate
 Phase 7E - Stock/write delegate frontend wiring
@@ -178,21 +217,31 @@ Phase 8B - Status frontend action
 Phase 8C - Stock adjustment reversal workflow
 Phase 8D - Processing cancellation reversal workflow
 Phase 8G - Migration baseline/idempotency hardening
-Phase 8H - Audit + permission smoke/policy assertion
+Phase 8H - Audit + permission policy hardening
 ```
 
-## Why Phase 5 should come next
+## Validation commands
 
-Phase 7C created the shared workflow read delegate and hydrated the main workspace lists from backend read endpoints.
+Raw Material scoped validation:
 
-Phase 5 should refine per-module frontend wiring so each module communicates its API-backed state, loading/fallback behavior, and workflow status more clearly.
+```bash
+pnpm raw-material:check
+```
 
-## Non-goals
+Raw Material scoped validation without frontend bundle build:
 
-```txt
-Do not fix global non-Raw-Material typecheck errors here.
-Do not redesign Raw Material schema.
-Do not remove mock fallback.
-Do not enable unsafe write buttons without preview/confirmation.
-Do not merge Raw Material stock with restaurant inventory stock.
+```bash
+pnpm raw-material:check -- --no-build
+```
+
+Raw Material scoped API smoke only:
+
+```bash
+pnpm raw-material:smoke
+```
+
+Retail scoped validation remains separate:
+
+```bash
+pnpm retail:check
 ```
