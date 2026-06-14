@@ -21,7 +21,10 @@ import {
 import {
   formatRawMaterialWeight,
   getRawMaterialPreviewErrorMessage,
+  rawMaterialIntakes,
   rawMaterialPreviewApiClient,
+  rawMaterialStorageLocations,
+  rawMaterialSuppliers,
   type RawMaterialIntake,
   type RawMaterialStorageLocation,
   type RawMaterialSupplier,
@@ -34,9 +37,9 @@ import type {
 import { toRawMaterialPositiveNumber } from "./raw-material-workspace.utils";
 
 type RawMaterialDraftFormsProps = {
-  suppliers: readonly RawMaterialSupplier[];
-  storageLocations: readonly RawMaterialStorageLocation[];
-  intakes: readonly RawMaterialIntake[];
+  suppliers?: readonly RawMaterialSupplier[];
+  storageLocations?: readonly RawMaterialStorageLocation[];
+  intakes?: readonly RawMaterialIntake[];
   onNoticeChange: (message: string) => void;
 };
 
@@ -54,9 +57,9 @@ function formatPreviewIssues(issues: readonly string[]) {
 }
 
 export function RawMaterialDraftForms({
-  suppliers,
-  storageLocations,
-  intakes,
+  suppliers = rawMaterialSuppliers,
+  storageLocations = rawMaterialStorageLocations,
+  intakes = rawMaterialIntakes,
   onNoticeChange,
 }: RawMaterialDraftFormsProps) {
   const [intakeForm, setIntakeForm] = useState({
