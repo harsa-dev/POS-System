@@ -12,8 +12,10 @@ import {
   createManualCashflowEntry,
   exportCashflowEntries,
   getCashflowAccountBalances,
+  getCashflowCapabilities,
   getCashflowDashboard,
   getCashflowReconciliation,
+  getCashflowSyncSources,
   listCashflowEntries,
   parseCashflowListQuery,
   syncOrderPaymentToCashflow,
@@ -47,6 +49,23 @@ function getExportFormat(query: unknown): CashflowExportFormat {
     details: { allowedValues: ["csv", "json"] },
   });
 }
+
+router.get("/cashflow-capabilities", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+    const data = getCashflowCapabilities({
+      actor: getActor(user),
+      businessContext,
+    });
+
+    return successResponse(res, { data });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
 
 router.get("/cashflow-dashboard", async (req, res) => {
   try {
@@ -92,6 +111,24 @@ router.get("/cashflow-reconciliation", async (req, res) => {
     const data = await getCashflowReconciliation({
       actor: getActor(user),
       businessContext,
+    });
+
+    return successResponse(res, { data });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/cashflow-sync-sources", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+    const data = await getCashflowSyncSources({
+      actor: getActor(user),
+      businessContext,
+      limit: req.query.limit,
     });
 
     return successResponse(res, { data });
