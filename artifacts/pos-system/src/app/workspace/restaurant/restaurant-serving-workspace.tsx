@@ -8,7 +8,7 @@ import {
 } from "@/app/workspace/restaurant/serving/use-serving-orders";
 import { WorkspaceShell } from "@/app/workspace/workspace-shell";
 import { ROUTES } from "@/constants/routes";
-import { getApiErrorMessage, orderApi } from "@/lib/api";
+import { getApiErrorMessage, restaurantApi } from "@/lib/api";
 
 export default function RestaurantServingWorkspace() {
   const servingOrders = useServingOrders();
@@ -21,7 +21,7 @@ export default function RestaurantServingWorkspace() {
   ) {
     if (updatingOrderIdRef.current !== null) {
       if (import.meta.env.DEV) {
-        console.debug("[serving-v3] duplicate status update blocked", {
+        console.debug("[restaurant-serving] duplicate status update blocked", {
           activeOrderId: updatingOrderIdRef.current,
           orderId,
           status,
@@ -35,15 +35,12 @@ export default function RestaurantServingWorkspace() {
     setUpdatingOrderId(orderId);
 
     try {
-      const result = await orderApi.updateStatusWithResult(orderId, {
-        status,
+      const response = await restaurantApi.updateOrderStatus(orderId, {
+        targetStatus: status,
       });
 
-      if (!result.ok || !result.body.success) {
-        toast.error(
-          result.body.message ||
-            `Failed to update order status (${result.status})`,
-        );
+      if (!response.success) {
+        toast.error(response.message || "Failed to update serving order status");
         return;
       }
 
@@ -51,7 +48,7 @@ export default function RestaurantServingWorkspace() {
 
       toast.success("Order marked as served");
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Failed to update order status"));
+      toast.error(getApiErrorMessage(error, "Failed to update serving order status"));
     } finally {
       updatingOrderIdRef.current = null;
       setUpdatingOrderId(null);
@@ -61,7 +58,7 @@ export default function RestaurantServingWorkspace() {
   return (
     <WorkspaceShell
       title="Restaurant Serving Workspace"
-      description="Read-only V3 serving queue for orders that are ready to be served. The active mutation workflow remains on the current F&B route."
+      description="Restaurant serving queue for moving ready orders to served through the canonical status API."
       currentRouteLabel="current Serving route"
       currentRoutePath={ROUTES.SERVING}
     >
