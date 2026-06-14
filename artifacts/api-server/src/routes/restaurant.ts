@@ -6,7 +6,12 @@ import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
-import { RESTAURANT_READ_ROLES } from "../services/restaurant/restaurant.policy.js";
+import { RestaurantWriteError, restaurantOrderWriteService } from "../services/restaurant/restaurant.order-write.js";
+import {
+  RESTAURANT_PAYMENT_ROLES,
+  RESTAURANT_POS_ROLES,
+  RESTAURANT_READ_ROLES,
+} from "../services/restaurant/restaurant.policy.js";
 import { restaurantPreviewService } from "../services/restaurant/restaurant.preview.js";
 import { restaurantService } from "../services/restaurant/restaurant.service.js";
 import type {
@@ -51,6 +56,19 @@ function badRequest(res: Response, message: string) {
     status: 400,
     code: errorCodes.badRequest,
     message,
+  });
+}
+
+function handleRestaurantWriteError(res: Response, error: unknown) {
+  if (!(error instanceof RestaurantWriteError)) return null;
+
+  return errorResponse(res, {
+    status: error.status,
+    code: error.status === 404 ? errorCodes.notFound : error.status === 409 ? errorCodes.conflict : errorCodes.validationError,
+    message: error.message,
+    details: {
+      warnings: error.warnings,
+    },
   });
 }
 
@@ -266,6 +284,27 @@ router.post("/restaurant/orders/preview", async (req, res) => {
   }
 });
 
+router.post("/restaurant/orders", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res, RESTAURANT_POS_ROLES);
+    if (!context) return;
+
+    const input = readOrderPreviewInput(req, res);
+    if (!input) return;
+
+    return successResponse(res, {
+      status: 201,
+      data: await restaurantOrderWriteService.createOrder(context.actor, input),
+      message: "Restaurant order created.",
+    });
+  } catch (error) {
+    const handledWriteError = handleRestaurantWriteError(res, error);
+    if (handledWriteError) return handledWriteError;
+
+    return handleApiError(res, error);
+  }
+});
+
 router.post("/restaurant/payments/preview", async (req, res) => {
   try {
     const context = await getRestaurantRequestContext(req, res);
@@ -278,6 +317,26 @@ router.post("/restaurant/payments/preview", async (req, res) => {
       data: await restaurantPreviewService.previewPayment(context.scope, input),
     });
   } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/restaurant/payments/confirm", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res, RESTAURANT_PAYMENT_ROLES);
+    if (!context) return;
+
+    const input = readPaymentPreviewInput(req, res);
+    if (!input) return;
+
+    return successResponse(res, {
+      data: await restaurantOrderWriteService.confirmPayment(context.actor, input),
+      message: "Restaurant payment confirmed.",
+    });
+  } catch (error) {
+    const handledWriteError = handleRestaurantWriteError(res, error);
+    if (handledWriteError) return handledWriteError;
+
     return handleApiError(res, error);
   }
 });
