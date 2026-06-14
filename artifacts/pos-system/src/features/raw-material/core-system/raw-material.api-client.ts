@@ -1,6 +1,10 @@
-import { apiClient, getApiErrorMessage, type ApiEnvelope } from "@/lib/api/api-client";
+import { getApiErrorMessage } from "@/lib/api/api-client";
 
 import { formatRawMaterialWeight } from "./raw-material.mock-data";
+import {
+  rawMaterialGeneratedApiData,
+  type RawMaterialGeneratedApiOperationId,
+} from "./raw-material.generated-api-client";
 import type {
   RawMaterialBatch,
   RawMaterialIntake,
@@ -199,14 +203,8 @@ type BackendRawMaterialStockMovement = Readonly<{
   createdAt: string;
 }>;
 
-async function fetchRawMaterialData<TData>(path: string, signal?: AbortSignal) {
-  const payload = await apiClient.get<ApiEnvelope<TData>>(path, { signal });
-
-  if (!payload.success || !payload.data) {
-    throw new Error(`Raw Material API returned an empty response for ${path}.`);
-  }
-
-  return payload.data;
+async function fetchRawMaterialData<TData>(operationId: RawMaterialGeneratedApiOperationId, signal?: AbortSignal) {
+  return rawMaterialGeneratedApiData<TData>(operationId, { signal });
 }
 
 function normalizeUpperSnake(value: string) {
@@ -374,7 +372,7 @@ function toRawMaterialStockMovement(row: BackendRawMaterialStockMovement): RawMa
 }
 
 export async function fetchRawMaterialSummary(signal?: AbortSignal) {
-  return fetchRawMaterialData<RawMaterialSummaryResponse>("/raw-material/summary", signal);
+  return fetchRawMaterialData<RawMaterialSummaryResponse>("rawMaterialGetSummary", signal);
 }
 
 export function getRawMaterialSummaryErrorMessage(error: unknown) {
@@ -407,42 +405,42 @@ export function createRawMaterialSummaryMetrics(summary: RawMaterialSummaryRespo
 }
 
 export async function listRawMaterialSuppliers(signal?: AbortSignal) {
-  const rows = await fetchRawMaterialData<BackendRawMaterialSupplier[]>("/raw-material/suppliers", signal);
+  const rows = await fetchRawMaterialData<BackendRawMaterialSupplier[]>("rawMaterialListSuppliers", signal);
   return rows.map(toRawMaterialSupplier);
 }
 
 export async function listRawMaterialStorageLocations(signal?: AbortSignal) {
-  const rows = await fetchRawMaterialData<BackendRawMaterialStorageLocation[]>("/raw-material/storage-locations", signal);
+  const rows = await fetchRawMaterialData<BackendRawMaterialStorageLocation[]>("rawMaterialListStorageLocations", signal);
   return rows.map(toRawMaterialStorageLocation);
 }
 
 export async function listRawMaterialIntakes(signal?: AbortSignal) {
-  const rows = await fetchRawMaterialData<BackendRawMaterialIntake[]>("/raw-material/intakes", signal);
+  const rows = await fetchRawMaterialData<BackendRawMaterialIntake[]>("rawMaterialListIntakes", signal);
   return rows.map(toRawMaterialIntake);
 }
 
 export async function listRawMaterialWeighings(signal?: AbortSignal) {
-  const rows = await fetchRawMaterialData<BackendRawMaterialWeighing[]>("/raw-material/weighings", signal);
+  const rows = await fetchRawMaterialData<BackendRawMaterialWeighing[]>("rawMaterialListWeighings", signal);
   return rows.map(toRawMaterialWeighing);
 }
 
 export async function listRawMaterialBatches(signal?: AbortSignal) {
-  const rows = await fetchRawMaterialData<BackendRawMaterialBatch[]>("/raw-material/batches", signal);
+  const rows = await fetchRawMaterialData<BackendRawMaterialBatch[]>("rawMaterialListBatches", signal);
   return rows.map(toRawMaterialBatch);
 }
 
 export async function listRawMaterialProcessingRuns(signal?: AbortSignal) {
-  const rows = await fetchRawMaterialData<BackendRawMaterialProcessingRun[]>("/raw-material/processing-runs", signal);
+  const rows = await fetchRawMaterialData<BackendRawMaterialProcessingRun[]>("rawMaterialListProcessingRuns", signal);
   return rows.map(toRawMaterialProcessingRun);
 }
 
 export async function listRawMaterialKandangPens(signal?: AbortSignal) {
-  const rows = await fetchRawMaterialData<BackendRawMaterialKandangPen[]>("/raw-material/pens", signal);
+  const rows = await fetchRawMaterialData<BackendRawMaterialKandangPen[]>("rawMaterialListPens", signal);
   return rows.map(toRawMaterialKandangPen);
 }
 
 export async function listRawMaterialStockMovements(signal?: AbortSignal) {
-  const rows = await fetchRawMaterialData<BackendRawMaterialStockMovement[]>("/raw-material/stock-movements", signal);
+  const rows = await fetchRawMaterialData<BackendRawMaterialStockMovement[]>("rawMaterialListStockMovements", signal);
   return rows.map(toRawMaterialStockMovement);
 }
 
