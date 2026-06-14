@@ -4,6 +4,7 @@ import type { BusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
 import { prisma } from "../../lib/prisma.js";
+import { writeRawMaterialAuditLog } from "./raw-material.audit.js";
 import { toRawMaterialStockMovementDto } from "./raw-material-ledger.dto.js";
 import type { RawMaterialActor } from "./raw-material-supplier.types.js";
 import {
@@ -144,6 +145,23 @@ export async function adjustRawMaterialBatchStock(params: {
       createdById: actor.id,
     });
 
+    await writeRawMaterialAuditLog({
+      businessId: businessContext.businessId,
+      userId: actor.id,
+      action: "CREATE",
+      entityType: "RawMaterialStockMovement",
+      entityId: movementId,
+      changes: {
+        operation: "adjust",
+        input: data,
+        batchId: batch.id,
+        beforeQuantity: batch.remainingQuantity,
+        afterQuantity: nextRemaining,
+        beforeStorageUsedKg: batch.storageLocation.usedKg,
+        afterStorageUsedKg: nextUsedKg,
+      },
+    }, tx);
+
     return getMovementDto(tx, businessContext.businessId, movementId);
   });
 }
@@ -190,7 +208,7 @@ export async function transferRawMaterialBatchStorage(params: {
       note: data.note,
       createdById: actor.id,
     });
-    await createRawMaterialStockMovementRecord(tx, {
+    const inId = await createRawMaterialStockMovementRecord(tx, {
       businessId: businessContext.businessId,
       batchId: batch.id,
       sourceStorageLocationId: batch.storageLocationId,
@@ -204,6 +222,28 @@ export async function transferRawMaterialBatchStorage(params: {
       note: data.note,
       createdById: actor.id,
     });
+
+    await writeRawMaterialAuditLog({
+      businessId: businessContext.businessId,
+      userId: actor.id,
+      action: "CREATE",
+      entityType: "RawMaterialStockMovement",
+      entityId: outId,
+      changes: {
+        operation: "transfer",
+        input: data,
+        batchId: batch.id,
+        outMovementId: outId,
+        inMovementId: inId,
+        sourceStorageLocationId: batch.storageLocationId,
+        targetStorageLocationId: targetStorage.id,
+        quantity: batch.remainingQuantity,
+        beforeSourceUsedKg: batch.storageLocation.usedKg,
+        afterSourceUsedKg: nextSourceUsedKg,
+        beforeTargetUsedKg: targetStorage.usedKg,
+        afterTargetUsedKg: nextTargetUsedKg,
+      },
+    }, tx);
 
     return getMovementDto(tx, businessContext.businessId, outId);
   });
@@ -265,6 +305,24 @@ export async function consumeRawMaterialForProcessingRun(params: {
       note: data.note,
       createdById: actor.id,
     });
+
+    await writeRawMaterialAuditLog({
+      businessId: businessContext.businessId,
+      userId: actor.id,
+      action: "CREATE",
+      entityType: "RawMaterialStockMovement",
+      entityId: movementId,
+      changes: {
+        operation: "consume-processing",
+        input: data,
+        processingRunId: run.id,
+        batchId: batch.id,
+        beforeQuantity: batch.remainingQuantity,
+        afterQuantity: nextRemaining,
+        beforeStorageUsedKg: batch.storageLocation.usedKg,
+        afterStorageUsedKg: nextUsedKg,
+      },
+    }, tx);
 
     return getMovementDto(tx, businessContext.businessId, movementId);
   });
