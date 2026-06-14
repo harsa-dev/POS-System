@@ -11,6 +11,7 @@ import { successResponse } from "../lib/responses/success-response.js";
 import {
   createManualCashflowEntry,
   exportCashflowEntries,
+  getCashflowAccountBalances,
   getCashflowDashboard,
   getCashflowReconciliation,
   listCashflowEntries,
@@ -57,6 +58,23 @@ router.get("/cashflow-dashboard", async (req, res) => {
       actor: getActor(user),
       businessContext,
       query: getQuery(req.query),
+    });
+
+    return successResponse(res, { data });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/cashflow-account-balances", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+    const data = await getCashflowAccountBalances({
+      actor: getActor(user),
+      businessContext,
     });
 
     return successResponse(res, { data });
