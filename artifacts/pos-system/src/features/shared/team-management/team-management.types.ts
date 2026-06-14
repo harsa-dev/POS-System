@@ -1,4 +1,4 @@
-import type { PermissionState, SystemRole } from "./role-permission-library";
+import type { PermissionState, SystemRole, TeamMemberStatus } from "./role-permission-library";
 import type { BusinessRoleSector } from "./job-role-library";
 
 export type DraftRole = {
@@ -11,6 +11,7 @@ export type DraftRole = {
 };
 
 export type RoleFilter = "all" | "locked" | "custom" | "risk";
+export type MemberStatusFilter = "all" | TeamMemberStatus;
 
 export const baseRoles: SystemRole[] = [
   "OWNER",
@@ -33,4 +34,11 @@ export const roleFilterLabels: Record<RoleFilter, string> = {
   locked: "System locked",
   custom: "Custom roles",
   risk: "Risky access",
+};
+
+export const memberStatusFilterLabels: Record<MemberStatusFilter, string> = {
+  all: "All statuses",
+  Active: "Active",
+  Pending: "Pending",
+  Suspended: "Suspended",
 };
