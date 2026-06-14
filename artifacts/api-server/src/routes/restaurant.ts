@@ -8,9 +8,35 @@ import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import { RESTAURANT_READ_ROLES } from "../services/restaurant/restaurant.policy.js";
 import { restaurantService } from "../services/restaurant/restaurant.service.js";
-import type { RestaurantActorContext, RestaurantBusinessScope } from "../services/restaurant/restaurant.types.js";
+import type {
+  RestaurantActorContext,
+  RestaurantBusinessScope,
+  RestaurantSharedDashboardId,
+} from "../services/restaurant/restaurant.types.js";
 
 const router: IRouter = Router();
+const restaurantSharedDashboardIds = new Set<string>([
+  "overview",
+  "sales",
+  "customers",
+  "inventory",
+  "cashflow",
+  "financial-reports",
+  "invoice-generator",
+  "shift-reports",
+  "team-management",
+  "employee-performance",
+  "approvals",
+  "audit-controls",
+  "roster-overview",
+  "employee-attendance",
+  "employee-contracts",
+  "payroll",
+]);
+
+function isRestaurantSharedDashboardId(value: string): value is RestaurantSharedDashboardId {
+  return restaurantSharedDashboardIds.has(value);
+}
 
 async function getRestaurantRequestContext(req: Request, res: Response, roles = RESTAURANT_READ_ROLES) {
   const user = await requireRole(req, res, roles);
@@ -64,6 +90,27 @@ router.get("/restaurant/dashboard", async (req, res) => {
 
     return successResponse(res, {
       data: await restaurantService.getDashboardSummary(context.scope),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/restaurant/shared-dashboard/:dashboardId", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res);
+    if (!context) return;
+
+    if (!isRestaurantSharedDashboardId(req.params.dashboardId)) {
+      return errorResponse(res, {
+        status: 404,
+        code: errorCodes.notFound,
+        message: "Restaurant shared dashboard context was not found.",
+      });
+    }
+
+    return successResponse(res, {
+      data: await restaurantService.getSharedDashboard(context.scope, req.params.dashboardId),
     });
   } catch (error) {
     return handleApiError(res, error);
