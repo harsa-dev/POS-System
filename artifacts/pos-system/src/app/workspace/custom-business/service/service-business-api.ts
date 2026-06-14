@@ -22,6 +22,7 @@ import type {
   ServiceBusinessWorkflowResponse,
   ServiceBusinessWorkspaceResponse,
   UpdateServiceJobStatusInput,
+  UpdateServiceRequestStatusInput,
 } from "./service-business-api-contract-types";
 import type { ServiceBusinessJob, ServiceBusinessWorkflowStatus } from "./service-business-workspace-types";
 
@@ -131,11 +132,34 @@ export const serviceBusinessApi = {
     input: UpdateServiceJobStatusInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
     return unwrapData(
-      apiClient.patch<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessUpdateJobStatus", {
+      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
+        buildServiceBusinessApiPath("serviceBusinessSetJobStatus", {
           pathParams: { id: input.jobId },
         }),
-        { json: input },
+        {
+          json: {
+            status: input.nextStatus,
+            note: input.note,
+          },
+        },
+      ),
+    );
+  },
+
+  updateRequestStatus(
+    input: UpdateServiceRequestStatusInput,
+  ): Promise<ServiceBusinessMutationPreviewResponse> {
+    return unwrapData(
+      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
+        buildServiceBusinessApiPath("serviceBusinessSetRequestStatus", {
+          pathParams: { id: input.requestId },
+        }),
+        {
+          json: {
+            status: input.nextStatus,
+            note: input.note,
+          },
+        },
       ),
     );
   },
