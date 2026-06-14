@@ -11,6 +11,7 @@ import {
   PermissionMatrixPanel,
   RoleBuilderPanel,
   RoleRegistryPanel,
+  TeamMemberTable,
   TeamOverviewCards,
 } from "./components";
 import {
@@ -45,6 +46,7 @@ import {
   baseRoles,
   businessRoleSectors,
   type DraftRole,
+  type MemberStatusFilter,
   type RoleFilter,
 } from "./team-management.types";
 
@@ -87,8 +89,12 @@ export function TeamManagementRolePermissionPage() {
   const [query, setQuery] = useState("");
   const [jobQuery, setJobQuery] = useState("");
   const [filter, setFilter] = useState<RoleFilter>("all");
+  const [memberQuery, setMemberQuery] = useState("");
+  const [memberStatusFilter, setMemberStatusFilter] = useState<MemberStatusFilter>("all");
+  const [memberRoleFilter, setMemberRoleFilter] = useState("all");
   const [selectedMemberId, setSelectedMemberId] = useState("usr-001");
   const [selectedAssignRoleId, setSelectedAssignRoleId] = useState("operator-default");
+  const [pendingDeleteRoleId, setPendingDeleteRoleId] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
   const [notice, setNotice] = useState("Real-world job role library ready. Still dummy, but at least it stopped inventing jobs out of dashboard fog.");
 
@@ -101,6 +107,31 @@ export function TeamManagementRolePermissionPage() {
   const draftRiskCount = useMemo(() => countRiskyPermissions(draft.permissions), [draft.permissions]);
   const customRoleCount = roles.filter((role) => !role.locked).length;
   const lockedRoleCount = roles.filter((role) => role.locked).length;
+  const activeMemberCount = members.filter((member) => member.status === "Active").length;
+  const pendingMemberCount = members.filter((member) => member.status === "Pending").length;
+  const suspendedMemberCount = members.filter((member) => member.status === "Suspended").length;
+
+  const filteredMembers = useMemo(() => {
+    const normalizedQuery = memberQuery.trim().toLowerCase();
+
+    return members.filter((member) => {
+      const role = roles.find((item) => item.id === member.roleId);
+      const searchable = [
+        member.name,
+        member.email,
+        member.area,
+        member.status,
+        role?.name ?? "",
+        role?.baseRole ?? "",
+      ].join(" ").toLowerCase();
+
+      const matchesQuery = !normalizedQuery || searchable.includes(normalizedQuery);
+      const matchesStatus = memberStatusFilter === "all" || member.status === memberStatusFilter;
+      const matchesRole = memberRoleFilter === "all" || member.roleId === memberRoleFilter;
+
+      return matchesQuery && matchesStatus && matchesRole;
+    });
+  }, [memberQuery, memberRoleFilter, memberStatusFilter, members, roles]);
 
   const filteredJobRoles = useMemo(() => {
     const normalizedQuery = jobQuery.trim().toLowerCase();
@@ -146,6 +177,10 @@ export function TeamManagementRolePermissionPage() {
 
   function updateStore(updater: (current: RolePermissionStoreState) => RolePermissionStoreState) {
     setStore((current) => updater(current));
+  }
+
+  function getAssignedMemberCount(roleId: string) {
+    return members.filter((member) => member.roleId === roleId).length;
   }
 
   function applyJobPreset(jobId: string) {
@@ -279,6 +314,7 @@ export function TeamManagementRolePermissionPage() {
 
     setSelectedRoleId(role.id);
     setDraft(roleToDraft(role));
+    setPendingDeleteRoleId(null);
   }
 
   function cloneSelectedRole() {
@@ -309,6 +345,19 @@ export function TeamManagementRolePermissionPage() {
     setNotice("Selected role cloned.");
   }
 
+  function requestDeleteRole(roleId: string) {
+    const target = roles.find((role) => role.id === roleId);
+    if (!target || target.locked) return;
+
+    const assignedMemberCount = getAssignedMemberCount(roleId);
+    setPendingDeleteRoleId(roleId);
+    setNotice(
+      assignedMemberCount > 0
+        ? `${target.name} is assigned to ${assignedMemberCount} member(s). Confirm delete to move them to Viewer.`
+        : `Confirm deletion for custom role: ${target.name}.`,
+    );
+  }
+
   function deleteRole(roleId: string) {
     const target = roles.find((role) => role.id === roleId);
     if (!target || target.locked) return;
@@ -325,6 +374,7 @@ export function TeamManagementRolePermissionPage() {
     }));
 
     setSelectedRoleId("owner-default");
+    setPendingDeleteRoleId(null);
     setNotice("Custom role deleted.");
   }
 
@@ -347,6 +397,10 @@ export function TeamManagementRolePermissionPage() {
     const next = resetRolePermissionStore();
     setStore(next);
     setSelectedRoleId("owner-default");
+    setPendingDeleteRoleId(null);
+    setMemberQuery("");
+    setMemberStatusFilter("all");
+    setMemberRoleFilter("all");
     applyJobPreset("service-operations-manager");
     setNotice("Demo role store reset.");
   }
@@ -371,6 +425,7 @@ export function TeamManagementRolePermissionPage() {
         members: parsed.members,
         logs: [createAccessLog("RESET_DEMO", "Imported state", "Imported dummy role permission JSON."), ...(Array.isArray(parsed.logs) ? parsed.logs : [])],
       });
+      setPendingDeleteRoleId(null);
       setNotice("Imported dummy role permission state.");
     } catch {
       setNotice("Import failed. JSON payload is invalid.");
@@ -385,12 +440,29 @@ export function TeamManagementRolePermissionPage() {
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{notice}</div>
 
       <TeamOverviewCards
+        totalMemberCount={members.length}
+        activeMemberCount={activeMemberCount}
+        pendingMemberCount={pendingMemberCount}
+        suspendedMemberCount={suspendedMemberCount}
         lockedRoleCount={lockedRoleCount}
         jobPresetCount={jobRoleLibrary.length}
         draftPermissionCount={draftPermissionCount}
         totalPermissions={totalPermissions}
         draftRiskCount={draftRiskCount}
         customRoleCount={customRoleCount}
+      />
+
+      <TeamMemberTable
+        members={filteredMembers}
+        roles={roles}
+        memberQuery={memberQuery}
+        memberStatusFilter={memberStatusFilter}
+        memberRoleFilter={memberRoleFilter}
+        selectedMemberId={selectedMemberId}
+        onMemberQueryChange={setMemberQuery}
+        onMemberStatusFilterChange={setMemberStatusFilter}
+        onMemberRoleFilterChange={setMemberRoleFilter}
+        onSelectMember={setSelectedMemberId}
       />
 
       <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
@@ -427,13 +499,17 @@ export function TeamManagementRolePermissionPage() {
         <RoleRegistryPanel
           filteredRoles={filteredRoles}
           selectedRoleId={selectedRoleId}
+          pendingDeleteRoleId={pendingDeleteRoleId}
           query={query}
           filter={filter}
           totalPermissions={totalPermissions}
+          getAssignedMemberCount={getAssignedMemberCount}
           onQueryChange={setQuery}
           onFilterChange={setFilter}
           onSelectRole={selectRole}
-          onDeleteRole={deleteRole}
+          onRequestDeleteRole={requestDeleteRole}
+          onCancelDeleteRole={() => setPendingDeleteRoleId(null)}
+          onConfirmDeleteRole={deleteRole}
         />
 
         <AssignmentImportExportPanel
