@@ -48,6 +48,7 @@ Allowed now:
 - data-contract planning docs
 - localStorage-backed Team Management role and permission simulation
 - frontend API contract definitions that are not wired into runtime yet
+- read-only Team Management backend snapshot API
 
 Not allowed yet:
 
@@ -58,6 +59,7 @@ Not allowed yet:
 - approval mutation APIs
 - audit log writes
 - schema-level contract storage
+- Team Management mutation APIs
 
 ## Team Management Frontend Phases
 
@@ -121,6 +123,24 @@ Reference doc:
 
 ```txt
 docs/v3/team-management-phase-4-api-contract.md
+```
+
+### Phase 5: Read-only Snapshot API
+
+The backend now exposes the first Team Management read-only route:
+
+```txt
+GET /api/team-management/snapshot
+```
+
+This endpoint maps existing `User`, canonical `Role`, current business context, and recent `AuditLog` rows into the Team Management snapshot DTO.
+
+It does not write data, create custom roles, assign roles, change member status, or create new Prisma tables.
+
+Reference doc:
+
+```txt
+docs/v3/team-management-phase-5-readonly-snapshot-api.md
 ```
 
 ## Future Data Contract Draft
