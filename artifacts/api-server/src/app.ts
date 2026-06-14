@@ -7,6 +7,7 @@ import { mkdirSync } from "fs";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import uploadRouter from "./routes/upload.js";
+import customersPartnersRouter from "./routes/customers-partners.js";
 
 const UPLOADS_DIR = path.resolve("data/uploads");
 mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -85,6 +86,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/media", express.static(UPLOADS_DIR));
 app.use("/api/upload", uploadRouter);
 app.use("/api/uploads/menu-image", uploadRouter);
+app.use("/api", customersPartnersRouter);
 app.use("/api", router);
 
 export default app;
