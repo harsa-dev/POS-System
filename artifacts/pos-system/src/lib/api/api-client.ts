@@ -64,8 +64,37 @@ type ApiRequestOptions = Omit<RequestInit, "body"> & {
   json?: unknown;
 };
 
+type ApiPostInput = ApiRequestOptions | unknown;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isApiRequestOptions(value: unknown): value is ApiRequestOptions {
+  if (!isRecord(value)) return false;
+
+  return [
+    "body",
+    "json",
+    "headers",
+    "signal",
+    "method",
+    "mode",
+    "cache",
+    "credentials",
+    "redirect",
+    "referrer",
+    "referrerPolicy",
+    "integrity",
+    "keepalive",
+    "window",
+  ].some((key) => key in value);
+}
+
+function getRequestOptionsFromJsonOrOptions(value: ApiPostInput) {
+  if (value === undefined) return undefined;
+  if (isApiRequestOptions(value)) return value;
+  return { json: value } satisfies ApiRequestOptions;
 }
 
 function getStoredBusinessModeHeaderValue() {
@@ -296,10 +325,16 @@ export function getApiErrorMessage(error: unknown, fallback: string) {
 export const apiClient = {
   get: <T>(endpoint: string, options?: ApiRequestOptions) =>
     apiRequest<T>(endpoint, { ...options, method: "GET" }),
-  post: <T>(endpoint: string, options?: ApiRequestOptions) =>
-    apiRequest<T>(endpoint, { ...options, method: "POST" }),
-  patch: <T>(endpoint: string, options?: ApiRequestOptions) =>
-    apiRequest<T>(endpoint, { ...options, method: "PATCH" }),
+  post: <T>(endpoint: string, optionsOrJson?: ApiPostInput) =>
+    apiRequest<T>(endpoint, {
+      ...getRequestOptionsFromJsonOrOptions(optionsOrJson),
+      method: "POST",
+    }),
+  patch: <T>(endpoint: string, optionsOrJson?: ApiPostInput) =>
+    apiRequest<T>(endpoint, {
+      ...getRequestOptionsFromJsonOrOptions(optionsOrJson),
+      method: "PATCH",
+    }),
   delete: <T>(endpoint: string, options?: ApiRequestOptions) =>
     apiRequest<T>(endpoint, { ...options, method: "DELETE" }),
 };
