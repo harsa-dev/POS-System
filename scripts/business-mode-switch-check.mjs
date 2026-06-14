@@ -38,6 +38,9 @@ const files = {
   switcher: read("artifacts/pos-system/src/components/core/business-mode/business-mode-switcher.tsx"),
   sidebar: read("artifacts/pos-system/src/components/core/sidebar/sidebar.tsx"),
   permissionCompat: read("artifacts/pos-system/src/app/registry/permission-compat.ts"),
+  sharedDashboardModeContext: read("artifacts/pos-system/src/features/shared/dashboard/shared-dashboard-mode-context.ts"),
+  dashboardShell: read("artifacts/pos-system/src/features/shared/dashboard/dashboard-shell.tsx"),
+  cashflowDashboard: read("artifacts/pos-system/src/features/shared/cashflow/cashflow-dashboard.tsx"),
   browserSmoke: read("scripts/business-mode-browser-smoke.mjs"),
   e2eRunner: read("scripts/business-mode-e2e.mjs"),
   e2eConfig: read("playwright.business-mode.config.mjs"),
@@ -167,6 +170,42 @@ const checks = [
       throw new Error("permission-compat.ts still contains legacy runtime roles CASHIER/KITCHEN/SERVER");
     }
   },
+  () => assertFileExists("artifacts/pos-system/src/features/shared/dashboard/shared-dashboard-mode-context.ts"),
+  () => assertContains({
+    label: "shared dashboard mode context",
+    content: files.sharedDashboardModeContext,
+    expected: "SharedDashboardModeContext",
+  }),
+  () => assertContains({
+    label: "shared dashboard mode context",
+    content: files.sharedDashboardModeContext,
+    expected: "queryScopeKey",
+  }),
+  () => assertContains({
+    label: "shared dashboard mode context",
+    content: files.sharedDashboardModeContext,
+    expected: "apiModeHeader",
+  }),
+  () => assertContains({
+    label: "dashboard shell mode badge",
+    content: files.dashboardShell,
+    expected: "SharedDashboardModeBadge",
+  }),
+  () => assertContains({
+    label: "dashboard shell mode context panel",
+    content: files.dashboardShell,
+    expected: "Mode context unavailable",
+  }),
+  () => assertContains({
+    label: "cashflow mode context subscription",
+    content: files.cashflowDashboard,
+    expected: "businessModeService.subscribe",
+  }),
+  () => assertContains({
+    label: "cashflow query scope key",
+    content: files.cashflowDashboard,
+    expected: "modeContext.queryScopeKey",
+  }),
   () => assertFileExists("scripts/business-mode-browser-smoke.mjs"),
   () => assertContains({
     label: "business mode browser smoke",
