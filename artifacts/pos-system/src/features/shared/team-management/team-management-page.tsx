@@ -16,6 +16,7 @@ import {
 import {
   getJobRoleById,
   jobRoleLibrary,
+  type BusinessRoleSector,
   type JobRoleProfile,
 } from "./job-role-library";
 import {
@@ -31,7 +32,6 @@ import {
   validateRoleName,
   type ManagedRole,
   type PermissionActionId,
-  type SystemRole,
   type TeamMemberStatus,
 } from "./role-permission-library";
 import {
@@ -80,7 +80,7 @@ function buildPolicyPayload(role: ManagedRole | DraftRole) {
 
 export function TeamManagementRolePermissionPage() {
   const [store, setStore] = useState<RolePermissionStoreState>(() => loadRolePermissionStore());
-  const [selectedSector, setSelectedSector] = useState("custom-business" as const);
+  const [selectedSector, setSelectedSector] = useState<BusinessRoleSector>("custom-business");
   const [selectedJobId, setSelectedJobId] = useState("service-operations-manager");
   const [selectedRoleId, setSelectedRoleId] = useState("owner-default");
   const [draft, setDraft] = useState<DraftRole>(() => jobToDraft(getJobRoleById("service-operations-manager")));
