@@ -31,6 +31,7 @@ export const rawMaterialProcessStatusTone = {
   planned: "border-neutral-200 bg-neutral-50 text-neutral-600",
   running: "border-blue-200 bg-blue-50 text-blue-700",
   completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  cancelled: "border-rose-200 bg-rose-50 text-rose-700",
 } as const;
 
 export const rawMaterialHealthStatusTone = {
