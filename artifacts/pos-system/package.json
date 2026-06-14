@@ -9,6 +9,7 @@
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "typecheck:retail": "tsc -p tsconfig.retail.json --noEmit",
+    "typecheck:raw-material": "tsc -p tsconfig.raw-material.json --noEmit",
     "v3:sidebar-parity": "tsx scripts/v3-sidebar-parity.ts"
   },
   "devDependencies": {
