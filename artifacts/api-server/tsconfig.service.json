@@ -8,6 +8,7 @@
     "src/routes/service-business-workflow.ts",
     "src/routes/service-business-preview.ts",
     "src/routes/service-business-status.ts",
+    "src/routes/service-business-reversal.ts",
     "src/features/service-business/**/*.ts",
     "src/lib/auth.ts",
     "src/lib/business-context/**/*.ts",
