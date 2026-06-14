@@ -47,6 +47,7 @@ Allowed now:
 - sidebar registry wiring
 - data-contract planning docs
 - localStorage-backed Team Management role and permission simulation
+- frontend API contract definitions that are not wired into runtime yet
 
 Not allowed yet:
 
@@ -94,6 +95,33 @@ The Team Management dashboard now has a stronger local UX layer while still rema
 Deleting an assigned custom role still uses the existing dummy behavior: affected members are reassigned to Viewer in localStorage.
 
 This is intentionally not real employee management yet. The purpose is to validate UX, role-risk flow, and future API contracts before committing to schema work. Revolutionary restraint, apparently.
+
+### Phase 3: Store Stabilization
+
+The local role permission store now sanitizes localStorage and imported JSON before using it in the UI.
+
+- invalid roles are dropped
+- invalid permissions are filtered against the current permission registry
+- broken member role references fall back to Viewer
+- invalid logs are dropped
+- selected role/member/assignment IDs fall back when deleted or missing
+
+### Phase 4: API Contract Boundary
+
+Team Management now has frontend-only API contract files:
+
+```txt
+artifacts/pos-system/src/features/shared/team-management/team-management-contract.ts
+artifacts/pos-system/src/features/shared/team-management/team-management-api.ts
+```
+
+The UI is still not wired to these API calls. These files define the future backend surface for snapshot, roles, members, role assignment, status update, and audit-log reads.
+
+Reference doc:
+
+```txt
+docs/v3/team-management-phase-4-api-contract.md
+```
 
 ## Future Data Contract Draft
 
