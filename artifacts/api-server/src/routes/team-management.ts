@@ -1,11 +1,13 @@
-import { Role } from "@prisma/client";
+import { AuditAction, Role } from "@prisma/client";
 import { Router, type IRouter } from "express";
 
 import { requireRole } from "../lib/auth.js";
 import { requireBusinessContextForUser } from "../lib/business-context/index.js";
 import { MANAGEMENT_ROLES } from "../lib/constants.js";
+import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { prisma } from "../lib/prisma.js";
+import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
 
 const router: IRouter = Router();
@@ -243,10 +245,133 @@ function getMemberStatus(isActive: boolean): TeamMemberStatus {
   return isActive ? "Active" : "Suspended";
 }
 
-function mapAuditAction(action: "CREATE" | "UPDATE" | "DELETE"): AccessChangeLogAction {
-  if (action === "CREATE") return "CREATE_ROLE";
-  if (action === "DELETE") return "DELETE_ROLE";
+function parseTeamMemberStatus(value: unknown): TeamMemberStatus | null {
+  if (value === "Active" || value === "Pending" || value === "Suspended") return value;
+  return null;
+}
+
+function isManagementRole(role: Role) {
+  return role === Role.OWNER || role === Role.MANAGER || role === Role.ADMIN;
+}
+
+function canUpdateMemberStatus(actorRole: Role, targetRole: Role) {
+  if (actorRole === Role.OWNER) return true;
+  if (targetRole === Role.OWNER || isManagementRole(targetRole)) return false;
+  return actorRole === Role.MANAGER || actorRole === Role.ADMIN;
+}
+
+function cleanOptionalString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function mapAuditAction(action: AuditAction): AccessChangeLogAction {
+  if (action === AuditAction.CREATE) return "CREATE_ROLE";
+  if (action === AuditAction.DELETE) return "DELETE_ROLE";
   return "UPDATE_ROLE";
+}
+
+function mapAuditLog(log: {
+  id: string;
+  createdAt: Date;
+  action: AuditAction;
+  entityType: string;
+  entityId: string;
+  user: {
+    name: string;
+    email: string;
+  };
+}): AccessChangeLogDto {
+  return {
+    id: log.id,
+    at: log.createdAt.toISOString(),
+    actor: log.user.name || log.user.email,
+    action: mapAuditAction(log.action),
+    target: `${log.entityType}:${log.entityId}`,
+    note: `Backend audit ${log.action.toLowerCase()} for ${log.entityType}.`,
+  };
+}
+
+async function buildTeamManagementSnapshot({
+  businessContext,
+  viewer,
+}: {
+  businessContext: Awaited<ReturnType<typeof requireBusinessContextForUser>>;
+  viewer: {
+    id: string;
+    role: Role;
+  };
+}) {
+  const generatedAt = new Date().toISOString();
+
+  const [users, auditLogs] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        OR: [
+          { businessId: businessContext.businessId },
+          { ownedBusinesses: { some: { id: businessContext.businessId } } },
+        ],
+      },
+      orderBy: [{ role: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+      },
+    }),
+    prisma.auditLog.findMany({
+      where: { businessId: businessContext.businessId },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  const memberCountByRole = new Map<Role, number>();
+  for (const member of users) {
+    memberCountByRole.set(member.role, (memberCountByRole.get(member.role) ?? 0) + 1);
+  }
+
+  const roles = Object.values(Role).map((role) => ({
+    ...getRoleTemplate(role, generatedAt),
+    assignedUsers: memberCountByRole.get(role) ?? 0,
+  }));
+
+  const members: TeamMemberDto[] = users.map((member) => ({
+    id: member.id,
+    name: member.name,
+    email: member.email,
+    area: getAreaForRole(member.role),
+    roleId: roleIdFromRole(member.role),
+    status: getMemberStatus(member.isActive),
+  }));
+
+  return {
+    contractVersion: TEAM_MANAGEMENT_API_CONTRACT_VERSION,
+    source: "api",
+    generatedAt,
+    business: {
+      id: businessContext.businessId,
+      name: businessContext.businessName,
+      mode: businessContext.businessMode,
+      type: businessContext.businessType,
+    },
+    viewer: {
+      userId: viewer.id,
+      role: viewer.role,
+    },
+    roles,
+    members,
+    logs: auditLogs.map(mapAuditLog),
+  };
 }
 
 router.get("/team-management/snapshot", async (req, res) => {
@@ -255,29 +380,115 @@ router.get("/team-management/snapshot", async (req, res) => {
     if (!user) return;
 
     const businessContext = await requireBusinessContextForUser(user);
-    const generatedAt = new Date().toISOString();
 
-    const [users, auditLogs] = await Promise.all([
-      prisma.user.findMany({
-        where: {
-          OR: [
-            { businessId: businessContext.businessId },
-            { ownedBusinesses: { some: { id: businessContext.businessId } } },
-          ],
+    return successResponse(res, {
+      data: await buildTeamManagementSnapshot({ businessContext, viewer: user }),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.patch("/team-management/members/:memberId/status", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+    const memberId = cleanOptionalString(req.params.memberId);
+    const nextStatus = parseTeamMemberStatus(req.body?.status);
+    const reason = cleanOptionalString(req.body?.reason);
+
+    if (!memberId) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "memberId is required.",
+      });
+    }
+
+    if (!nextStatus) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "status must be Active, Pending, or Suspended.",
+      });
+    }
+
+    if (nextStatus === "Pending") {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Pending status is reserved for invite/onboarding flow and is not persisted by the current User schema.",
+      });
+    }
+
+    const target = await prisma.user.findFirst({
+      where: {
+        id: memberId,
+        OR: [
+          { businessId: businessContext.businessId },
+          { ownedBusinesses: { some: { id: businessContext.businessId } } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+      },
+    });
+
+    if (!target) {
+      return errorResponse(res, {
+        status: 404,
+        code: errorCodes.notFound,
+        message: "Team member not found.",
+      });
+    }
+
+    if (!canUpdateMemberStatus(user.role, target.role)) {
+      return errorResponse(res, {
+        status: 403,
+        code: errorCodes.forbidden,
+        message: "You do not have permission to update this team member status.",
+      });
+    }
+
+    if (target.id === user.id && nextStatus === "Suspended") {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "You cannot suspend your own active session account from Team Management.",
+      });
+    }
+
+    const nextIsActive = nextStatus === "Active";
+    const previousStatus = getMemberStatus(target.isActive);
+
+    const auditLog = await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: target.id },
+        data: { isActive: nextIsActive },
+      });
+
+      return tx.auditLog.create({
+        data: {
+          businessId: businessContext.businessId,
+          userId: user.id,
+          action: AuditAction.UPDATE,
+          entityType: "User",
+          entityId: target.id,
+          changes: {
+            operation: "TEAM_MEMBER_STATUS_UPDATE",
+            previousStatus,
+            nextStatus,
+            previousIsActive: target.isActive,
+            nextIsActive,
+            reason: reason || null,
+          },
         },
-        orderBy: [{ role: "asc" }, { name: "asc" }],
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          isActive: true,
-        },
-      }),
-      prisma.auditLog.findMany({
-        where: { businessId: businessContext.businessId },
-        orderBy: { createdAt: "desc" },
-        take: 20,
         include: {
           user: {
             select: {
@@ -286,56 +497,19 @@ router.get("/team-management/snapshot", async (req, res) => {
             },
           },
         },
-      }),
-    ]);
+      });
+    });
 
-    const memberCountByRole = new Map<Role, number>();
-    for (const member of users) {
-      memberCountByRole.set(member.role, (memberCountByRole.get(member.role) ?? 0) + 1);
-    }
-
-    const roles = Object.values(Role).map((role) => ({
-      ...getRoleTemplate(role, generatedAt),
-      assignedUsers: memberCountByRole.get(role) ?? 0,
-    }));
-
-    const members: TeamMemberDto[] = users.map((member) => ({
-      id: member.id,
-      name: member.name,
-      email: member.email,
-      area: getAreaForRole(member.role),
-      roleId: roleIdFromRole(member.role),
-      status: getMemberStatus(member.isActive),
-    }));
-
-    const logs: AccessChangeLogDto[] = auditLogs.map((log) => ({
-      id: log.id,
-      at: log.createdAt.toISOString(),
-      actor: log.user.name || log.user.email,
-      action: mapAuditAction(log.action),
-      target: `${log.entityType}:${log.entityId}`,
-      note: `Backend audit ${log.action.toLowerCase()} for ${log.entityType}.`,
-    }));
+    const snapshot = await buildTeamManagementSnapshot({ businessContext, viewer: user });
+    const log = mapAuditLog(auditLog);
 
     return successResponse(res, {
       data: {
-        contractVersion: TEAM_MANAGEMENT_API_CONTRACT_VERSION,
-        source: "api",
-        generatedAt,
-        business: {
-          id: businessContext.businessId,
-          name: businessContext.businessName,
-          mode: businessContext.businessMode,
-          type: businessContext.businessType,
-        },
-        viewer: {
-          userId: user.id,
-          role: user.role,
-        },
-        roles,
-        members,
-        logs,
+        snapshot,
+        log,
+        message: `Updated ${target.name} status from ${previousStatus} to ${nextStatus}.`,
       },
+      message: "Team member status updated.",
     });
   } catch (error) {
     return handleApiError(res, error);
