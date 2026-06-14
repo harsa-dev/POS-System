@@ -6,7 +6,7 @@ The goal is parity across business modes without pretending every mode needs the
 
 ## Current validation baseline
 
-Service Business backend implementation is mature through the delegate cleanup, status-route lanes, seeded demo data, scoped validation, idempotent DB setup, OpenAPI/client coverage, preview delegates, quote/invoice cancellation reversal, payment reversal workflow, and generated-client-style frontend consolidation.
+Service Business backend implementation is mature through the delegate cleanup, status-route lanes, seeded demo data, scoped validation, idempotent DB setup, OpenAPI/client coverage, preview delegates, quote/invoice cancellation reversal, payment reversal workflow, generated-client-style frontend consolidation, and audit/permission policy assertions.
 
 Known completed capabilities:
 
@@ -18,6 +18,7 @@ workflow transition preview
 service layer split
 permission hardening
 audit integration
+audit + permission policy assertion
 shared dashboard backend summary
 Prisma schema model mapping
 summary read delegate
@@ -52,12 +53,13 @@ docs/workspaces/custom-business-service-quote-invoice-cancellation-reversal.md
 docs/workspaces/custom-business-service-payment-reversal.md
 docs/workspaces/custom-business-service-smoke-test-scoped-ci.md
 docs/workspaces/custom-business-service-migration-baseline-idempotency.md
+docs/workspaces/custom-business-service-audit-permission-policy-hardening.md
 ```
 
 Current known gap compared with Retail and Raw Material:
 
 ```txt
-no explicit Service audit + permission policy assertion lane yet
+no known Service parity gap in the Retail-style implementation plan
 ```
 
 ## Retail-style Service Business phases
@@ -82,7 +84,7 @@ Phase 8D - Payment reversal workflow                              Done
 Phase 8E - Generated API client consolidation                     Done
 Phase 8F - Service smoke test + scoped CI gate                    Done
 Phase 8G - Service migration baseline/idempotency hardening       Done
-Phase 8H - Service audit + permission policy hardening            Next
+Phase 8H - Service audit + permission policy hardening            Done
 ```
 
 ## Implemented phase notes
@@ -436,8 +438,37 @@ artifacts/api-server/prisma/migrations/202606140007_add_service_business_core_id
 artifacts/api-server/prisma/sql/service-business-schema-verify.sql
 ```
 
-## Next recommended phase
+### Phase 8H - Service audit + permission policy hardening
+
+Status: implemented.
+
+Implemented files:
 
 ```txt
-Service Phase 8H - Service audit + permission policy hardening
+artifacts/api-server/src/features/service-business/service-business.audit.ts
+artifacts/api-server/src/features/service-business/service-business.policy.ts
+artifacts/api-server/scripts/check-service-business-policy.ts
+artifacts/api-server/package.json
+scripts/service-check.mjs
+docs/workspaces/custom-business-service-audit-permission-policy-hardening.md
+```
+
+Behavior:
+
+```txt
+adds stable audit action/entity/operation constants
+maps Service Business read, preview, mutation, status, and reversal surfaces to permissions
+marks read-only and preview surfaces as non-audited
+requires audit coverage for sensitive non-GET non-preview surfaces
+asserts every Service permission has policy coverage
+asserts every Service permission resolves to at least one role
+adds service:policy:check
+runs service:policy:check inside pnpm service:check
+```
+
+## Next recommended lane
+
+```txt
+Service Retail-style implementation plan: complete through Phase 8H
+Next parity lane: compare all 4 business modes and document remaining cross-mode gaps
 ```
