@@ -90,6 +90,10 @@ export class RestaurantService {
     return this.repository.getDashboardSummary(scope);
   }
 
+  getWorkflowSummary(scope: RestaurantBusinessScope) {
+    return this.repository.getWorkflowSummary(scope);
+  }
+
   listMenuItems(scope: RestaurantBusinessScope) {
     return this.repository.listMenuItems(scope);
   }
