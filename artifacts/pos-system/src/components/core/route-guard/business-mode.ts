@@ -12,8 +12,8 @@ import {
   getRawStoredBusinessMode,
   readBusinessModeStorage,
   repairBusinessModeStorage,
-  setCurrentBusinessMode,
 } from "../business-mode/business-mode-storage";
+import { businessModeService } from "../business-mode/business-mode-service";
 
 export { BUSINESS_MODE_STORAGE_KEY };
 
@@ -61,8 +61,21 @@ export function getStoredBusinessModeEntryRoute(): string | null {
   return getBusinessModeConfig(mode).route;
 }
 
+export function canEnterStoredBusinessModeRoute({
+  pathname,
+  requiredMode,
+}: {
+  pathname: string;
+  requiredMode?: BusinessMode | null;
+}) {
+  return businessModeService.canEnterRoute({ pathname, requiredMode });
+}
+
 export function setStoredBusinessMode(mode: BusinessMode): boolean {
-  return setCurrentBusinessMode(mode, "route-guard");
+  return businessModeService.switchMode({
+    targetMode: mode,
+    source: "route-guard",
+  }).success;
 }
 
 export function clearStoredBusinessMode() {
