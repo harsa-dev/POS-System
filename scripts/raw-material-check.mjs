@@ -39,6 +39,11 @@ const steps = [
     args: ["--filter", "@workspace/api-server", "run", "typecheck:raw-material"],
   },
   {
+    label: "Check Raw Material audit and permission policy",
+    command: "pnpm",
+    args: ["--filter", "@workspace/api-server", "run", "raw-material:policy:check"],
+  },
+  {
     label: "Typecheck Raw Material POS frontend scope",
     command: "pnpm",
     args: ["--filter", "@workspace/pos-system", "run", "typecheck:raw-material"],
