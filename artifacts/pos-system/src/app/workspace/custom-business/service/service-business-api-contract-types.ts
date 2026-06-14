@@ -109,6 +109,76 @@ export type RecordServiceInvoicePaymentInput = {
   note?: string;
 };
 
+export type ServiceBusinessPreviewKind = "quotation" | "invoice" | "invoice-payment";
+
+export type ServiceBusinessPreviewResponse<TEstimates extends Record<string, unknown> = Record<string, unknown>> = {
+  kind: ServiceBusinessPreviewKind;
+  canProceed: boolean;
+  blockingIssues: readonly string[];
+  warnings: readonly string[];
+  estimates: TEstimates;
+  previewedAt: string;
+  source: "api-server-prisma-preview";
+};
+
+export type ServiceBusinessQuotationPreviewEstimates = {
+  requestId: string;
+  requestCode: string | null;
+  title: string | null;
+  customerName: string | null;
+  costLineCount: number;
+  costTotal: number;
+  billableCostTotal: number;
+  discountAmount: number;
+  taxRate: number;
+  targetMarginRate: number;
+  marginBase: number;
+  subtotalAfterDiscount: number;
+  taxAmount: number;
+  total: number;
+  validUntil: string | null;
+  existingQuotationId: string | null;
+  existingQuotationCode: string | null;
+};
+
+export type ServiceBusinessInvoicePreviewEstimates = {
+  requestId: string;
+  requestCode: string | null;
+  title: string | null;
+  customerName: string | null;
+  quotationId: string | null;
+  quotationCode: string | null;
+  quoteStatus: string | null;
+  costTotal: number;
+  discountAmount: number;
+  taxRate: number;
+  targetMarginRate: number;
+  invoiceTotal: number;
+  dueDate: string | null;
+  existingInvoiceId: string | null;
+  existingInvoiceCode: string | null;
+  existingInvoiceStatus: string | null;
+};
+
+export type ServiceBusinessInvoicePaymentPreviewEstimates = {
+  invoiceId: string;
+  invoiceTotal: number;
+  currentPaidAmount: number;
+  remainingBeforePayment: number;
+  requestedPaidAmount: number;
+  appliedAmount: number;
+  overflowAmount: number;
+  nextPaidAmount: number;
+  remainingAfterPayment: number;
+  nextInvoiceStatus: string;
+  nextWorkflowStatus: ServiceBusinessWorkflowStatus;
+  projectedCollectionRate: number;
+  paymentMethod: string;
+  paidAt: string;
+  requestId: string | null;
+  jobId: string | null;
+};
+
 export type ServiceBusinessTransitionRequirement = {
   id: string;
   label: string;
