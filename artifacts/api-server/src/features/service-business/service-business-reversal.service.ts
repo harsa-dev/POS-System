@@ -58,7 +58,7 @@ function validationError(message: string): ReversalResult {
   return {
     ok: false,
     status: 400,
-    code: errorCodes.validation,
+    code: errorCodes.validationError,
     message,
   };
 }
