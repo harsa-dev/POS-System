@@ -1,4 +1,6 @@
-import { apiClient, getApiErrorMessage, type ApiEnvelope } from "@/lib/api/api-client";
+import { getApiErrorMessage } from "@/lib/api/api-client";
+
+import { rawMaterialGeneratedApiData } from "./raw-material.generated-api-client";
 
 export type RawMaterialBatchQualityStatusWrite = "ACCEPTED" | "INSPECTION" | "REJECTED";
 export type RawMaterialProcessingStatusWrite = "PLANNED" | "RUNNING" | "COMPLETED";
@@ -10,14 +12,15 @@ type RawMaterialWorkflowStatusRequestBody = {
   note?: string;
 };
 
-async function requestRawMaterialWorkflowStatus(path: string, body: RawMaterialWorkflowStatusRequestBody) {
-  const payload = await apiClient.post<ApiEnvelope<unknown>>(path, { json: body });
-
-  if (!payload.success) {
-    throw new Error(`Raw Material workflow status API returned an unsuccessful response for ${path}.`);
-  }
-
-  return payload.data ?? null;
+async function requestRawMaterialWorkflowStatus(
+  operationId: "rawMaterialSetIntakeStatus" | "rawMaterialSetBatchStatus" | "rawMaterialSetProcessingWorkflowStatus" | "rawMaterialSetPenWorkflowStatus",
+  id: string,
+  body: RawMaterialWorkflowStatusRequestBody,
+) {
+  return rawMaterialGeneratedApiData<unknown>(operationId, {
+    pathParams: { id },
+    json: body,
+  });
 }
 
 export function getRawMaterialWorkflowStatusErrorMessage(error: unknown) {
@@ -25,30 +28,30 @@ export function getRawMaterialWorkflowStatusErrorMessage(error: unknown) {
 }
 
 export function cancelRawMaterialIntake(id: string) {
-  return requestRawMaterialWorkflowStatus(`/raw-material/status/intakes/${id}`, { status: "CANCELLED" });
+  return requestRawMaterialWorkflowStatus("rawMaterialSetIntakeStatus", id, { status: "CANCELLED" });
 }
 
 export function setRawMaterialBatchQualityStatus(id: string, qualityStatus: RawMaterialBatchQualityStatusWrite) {
-  return requestRawMaterialWorkflowStatus(`/raw-material/status/batches/${id}`, { status: qualityStatus });
+  return requestRawMaterialWorkflowStatus("rawMaterialSetBatchStatus", id, { status: qualityStatus });
 }
 
 export function quarantineRawMaterialBatch(id: string) {
-  return requestRawMaterialWorkflowStatus(`/raw-material/status/batches/${id}`, { status: "QUARANTINED" });
+  return requestRawMaterialWorkflowStatus("rawMaterialSetBatchStatus", id, { status: "QUARANTINED" });
 }
 
 export function setRawMaterialProcessingStatus(id: string, status: RawMaterialProcessingStatusWrite) {
-  return requestRawMaterialWorkflowStatus(`/raw-material/status/processing-runs/${id}`, { status });
+  return requestRawMaterialWorkflowStatus("rawMaterialSetProcessingWorkflowStatus", id, { status });
 }
 
 export function cancelRawMaterialProcessingRun(id: string, note?: string) {
-  return requestRawMaterialWorkflowStatus(`/raw-material/status/processing-runs/${id}`, {
+  return requestRawMaterialWorkflowStatus("rawMaterialSetProcessingWorkflowStatus", id, {
     status: "CANCELLED",
     note,
   });
 }
 
 export function setRawMaterialPenHealthStatus(id: string, healthStatus: RawMaterialPenHealthStatusWrite) {
-  return requestRawMaterialWorkflowStatus(`/raw-material/status/pens/${id}`, { healthStatus });
+  return requestRawMaterialWorkflowStatus("rawMaterialSetPenWorkflowStatus", id, { healthStatus });
 }
 
 export const rawMaterialWorkflowStatusApiClient = {
