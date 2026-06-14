@@ -133,13 +133,6 @@ kandang feed batch guards
 stock movement enum alignment with Prisma schema
 ```
 
-Important stock enum correction:
-
-```txt
-Old service literals: TRANSFER, PROCESSING_USAGE
-Prisma enum literals: TRANSFER_IN, TRANSFER_OUT, PRODUCTION_USAGE
-```
-
 No Prisma schema or migration was changed in this phase.
 
 ## Phase 4 - Service layer cleanup
@@ -213,29 +206,26 @@ artifacts/api-server/src/services/raw-material/raw-material-pen.service.ts
 docs/workspaces/raw-material-service-layer-cleanup.md
 ```
 
-Scope:
-
-```txt
-Move supplier persistence helpers into a repository.
-Move storage location persistence helpers into a repository.
-Move kandang pen raw SQL persistence helpers into a repository.
-Keep services as orchestration, validation, permission, and guard layers.
-Keep schema, migration, route path, and response contract unchanged.
-```
-
 ## Phase 5 - Audit integration
 
-Status: next.
+Status: implemented.
 
-Goal:
+Implemented files:
 
 ```txt
-Mirror important raw material mutations into global AuditLog.
-Keep existing raw material stock movement ledger as operational history.
-Use AuditLog for governance-level changes.
+artifacts/api-server/src/services/raw-material/raw-material.audit.ts
+artifacts/api-server/src/services/raw-material/raw-material-supplier.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-storage-location.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-intake.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-weighing.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-batch.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-processing-run.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-pen.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-stock-movement.service.ts
+docs/workspaces/raw-material-audit-integration.md
 ```
 
-Audit candidates:
+Audited mutation groups:
 
 ```txt
 supplier create/update/deactivate
@@ -250,9 +240,11 @@ stock transfer
 processing consumption
 ```
 
+No Prisma schema or migration was changed in this phase.
+
 ## Phase 6 - Shared dashboard backend summary
 
-Status: planned.
+Status: next.
 
 Goal:
 
