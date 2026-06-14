@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 2 implemented
+Status: Phase 3 implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -10,8 +10,8 @@ Restaurant mode is the canonical name for the old F&B flow. The old `features/fn
 ```text
 Phase 1  - Restaurant scope audit + F&B legacy mapping             Done
 Phase 2  - Restaurant persistence foundation                       Done
-Phase 3  - Backend route, guard, workflow preview                  Next
-Phase 4  - Shared dashboard backend summary                        Planned
+Phase 3  - Backend route, guard, workflow preview                  Done
+Phase 4  - Shared dashboard backend summary                        Next
 Phase 5  - Seed restaurant/menu/table/order/payment demo data       Planned
 Phase 6  - Frontend Restaurant workspace API wiring                Planned
 Phase 7A - Prisma schema model mapping                             Planned
@@ -68,6 +68,31 @@ Implemented files:
 
 The foundation is read-focused and intentionally does not replace legacy order/menu/table routes yet. It provides one canonical Restaurant repository/service surface for dashboard summary, menu items, tables, active orders, kitchen queue, and serving queue. Write flows stay in legacy endpoints until Phase 7E/8C/8D.
 
+## Phase 3 result
+
+Restaurant now has a scoped read-only backend route mounted through the API router.
+
+Implemented route file:
+
+- `artifacts/api-server/src/routes/restaurant.ts`
+
+Mounted in:
+
+- `artifacts/api-server/src/routes/index.ts`
+
+Scoped endpoints:
+
+- `GET /restaurant/health`
+- `GET /restaurant/dashboard`
+- `GET /restaurant/menu-items`
+- `GET /restaurant/tables`
+- `GET /restaurant/orders/active`
+- `GET /restaurant/kitchen`
+- `GET /restaurant/serving`
+- `GET /restaurant/workflow-preview`
+
+The route enforces restaurant business mode through `requireBusinessContextForUser`. If a user from another business mode hits the route, it returns `businessModeMismatch`. Legacy `/orders`, `/menu`, `/tables`, and F&B dashboard routes stay mounted as compatibility during the migration.
+
 ## Canonical target layout
 
 Frontend target:
@@ -81,13 +106,6 @@ artifacts/pos-system/src/app/workspace/restaurant/
   restaurant-kitchen-workspace.tsx
   restaurant-serving-workspace.tsx
   restaurant-orders-workspace.tsx
-  pos/
-  menu/
-  tables/
-  kitchen/
-  serving/
-  orders/
-  shared/
 ```
 
 Backend target:
@@ -102,37 +120,29 @@ artifacts/api-server/src/services/restaurant/
   restaurant.policy.ts
   restaurant.audit.ts
   restaurant.workflow-status.repository.ts
-
-artifacts/api-server/src/routes/restaurant.ts
+  restaurant.order-reversal.repository.ts
+  restaurant.payment-reversal.repository.ts
 ```
 
-Client target:
+Route target:
 
 ```text
-lib/api-spec/openapi.yaml
-lib/api-client-react/src/generated/api.schemas.ts
-lib/api-client-react/src/generated/api.ts
+artifacts/api-server/src/routes/restaurant.ts
 ```
 
 Validation target:
 
-```text
+```bash
 pnpm restaurant:check
 pnpm restaurant:smoke
 pnpm --filter @workspace/api-server run typecheck:restaurant
 pnpm --filter @workspace/pos-system run typecheck:restaurant
 ```
 
-## Phase 3 next actions
+## Safety rules
 
-1. Add scoped `routes/restaurant.ts` read endpoints.
-2. Mount the Restaurant route under API router.
-3. Keep old `/orders`, `/menu-items`, `/tables` endpoints alive as compatibility.
-4. Use `RESTAURANT_*_ROLES` policy for scoped endpoints.
-5. Add simple workflow preview endpoints for active orders, kitchen queue, and serving queue.
-
-## Non-goals for the Restaurant track
-
-- Do not touch Retail implementation unless a shared client export breaks Restaurant.
-- Do not refactor Raw Material.
-- Do not delete legacy F&B files until scoped Restaurant routes and frontend wiring are stable.
+- New Restaurant work must use the `restaurant` naming layer.
+- Existing `fnb` files are compatibility only.
+- Do not delete F&B legacy until Restaurant-scoped API, client, frontend, and smoke gates exist.
+- Do not use global typecheck as the Restaurant gate while non-restaurant work remains noisy.
+- Prefer scoped commands and scoped docs, matching the Retail implementation style.
