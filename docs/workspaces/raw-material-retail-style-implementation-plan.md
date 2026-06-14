@@ -37,6 +37,7 @@ status frontend action migrated to status route family
 stock adjustment reversal workflow
 processing cancellation reversal workflow
 generated API client consolidation boundary
+migration baseline/idempotency hardening
 ```
 
 ## Retail-style Raw Material phases
@@ -60,8 +61,8 @@ Phase 8C - Stock adjustment reversal workflow                 Done
 Phase 8D - Processing cancellation reversal workflow          Done
 Phase 8E - Generated API client consolidation                 Done
 Phase 8F - Raw Material smoke test + scoped CI gate           Done
-Phase 8G - Migration baseline/idempotency hardening           Next
-Phase 8H - Audit + permission policy hardening                Mostly Done, needs smoke/policy assertion
+Phase 8G - Migration baseline/idempotency hardening           Done
+Phase 8H - Audit + permission policy hardening                Next
 ```
 
 ## Phase execution notes
@@ -275,14 +276,48 @@ Implemented commands:
 
 ```bash
 pnpm raw-material:check
+pnpm raw-material:check -- --db
 pnpm raw-material:check -- --seed
 pnpm raw-material:check -- --no-build
 pnpm raw-material:check -- --no-smoke
 pnpm raw-material:smoke
 ```
 
+### Phase 8G - Migration baseline/idempotency hardening
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/api-server/prisma/sql/raw-material-baseline-guard.sql
+artifacts/api-server/prisma/migrations/202606140006_add_raw_material_core_idempotent/migration.sql
+artifacts/api-server/prisma/sql/raw-material-schema-verify.sql
+artifacts/api-server/scripts/apply-raw-material-db.mjs
+artifacts/api-server/package.json
+scripts/raw-material-check.mjs
+docs/workspaces/raw-material-migration-baseline-idempotency.md
+```
+
+Commands:
+
+```bash
+pnpm --filter @workspace/api-server run raw-material:db:apply
+pnpm raw-material:check -- --db
+pnpm raw-material:check -- --db --seed --no-smoke
+```
+
+Behavior:
+
+```txt
+raw-material:db:apply avoids global prisma migrate deploy
+baseline guard checks Business, User, AuditLog, BusinessType, and BusinessMode
+idempotent migration creates or verifies Raw Material enums, tables, and indexes
+verify script fails loudly on missing Raw Material tables, columns, or enum values
+```
+
 ## Next phase
 
 ```txt
-Phase 8G - Migration baseline/idempotency hardening
+Phase 8H - Audit + permission policy hardening
 ```
