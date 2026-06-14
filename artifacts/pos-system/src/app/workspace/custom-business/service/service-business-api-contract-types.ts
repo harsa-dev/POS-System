@@ -125,6 +125,12 @@ export type RecordServiceInvoicePaymentInput = {
   note?: string;
 };
 
+export type ReverseServiceInvoicePaymentInput = {
+  invoiceId: string;
+  amount?: number;
+  note?: string;
+};
+
 export type ServiceBusinessPreviewKind = "quotation" | "invoice" | "invoice-payment";
 
 export type ServiceBusinessPreviewResponse<TEstimates extends Record<string, unknown> = Record<string, unknown>> = {
