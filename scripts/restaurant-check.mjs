@@ -3,6 +3,7 @@
 import { spawnSync } from "node:child_process";
 
 const args = new Set(process.argv.slice(2));
+const withBaseline = args.has("--baseline") || process.env.RESTAURANT_CHECK_WITH_BASELINE === "true";
 const withSeed = args.has("--seed") || process.env.RESTAURANT_CHECK_WITH_SEED === "true";
 const withSmoke = args.has("--smoke") || process.env.RESTAURANT_CHECK_WITH_SMOKE === "true";
 const withBuild = args.has("--build") || process.env.RESTAURANT_CHECK_WITH_BUILD === "true";
@@ -19,6 +20,15 @@ const steps = [
     command: "pnpm",
     args: ["--filter", "@workspace/pos-system", "run", "typecheck:restaurant"],
   },
+  ...(withBaseline
+    ? [
+        {
+          label: "Check Restaurant database baseline",
+          command: "pnpm",
+          args: ["run", "restaurant:baseline"],
+        },
+      ]
+    : []),
   ...(withSeed
     ? [
         {
@@ -77,6 +87,7 @@ function runStep(step, index) {
 }
 
 console.log("Restaurant scoped validation only. Non-Restaurant global errors are intentionally outside this gate.");
+console.log(`Database baseline step: ${withBaseline ? "enabled" : "skipped"}`);
 console.log(`Seed step: ${withSeed ? "enabled" : "skipped"}`);
 console.log(`API smoke step: ${withSmoke ? "enabled" : "skipped"}`);
 console.log(`Frontend build step: ${withBuild ? "enabled" : "skipped"}`);
