@@ -1,4 +1,5 @@
 import type { OrderStatus, OrderType, PaymentStatus, Role, TableStatus } from "@prisma/client";
+import type { RestaurantWorkflowStageId } from "./restaurant.workflow.js";
 
 export type RestaurantBusinessScope = {
   businessId: string;
@@ -82,6 +83,55 @@ export type RestaurantOrderDto = {
   items: RestaurantOrderItemDto[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type RestaurantWorkflowStageStatus = "empty" | "healthy" | "review" | "blocked";
+
+export type RestaurantWorkflowStageDto = {
+  id: RestaurantWorkflowStageId;
+  title: string;
+  description: string;
+  statuses: OrderStatus[];
+  count: number;
+  totalValue: number;
+  oldestOrderAgeMinutes: number;
+  status: RestaurantWorkflowStageStatus;
+  orders: RestaurantOrderDto[];
+};
+
+export type RestaurantWorkflowTransitionDto = {
+  from: OrderStatus;
+  to: OrderStatus;
+  actionKey: string;
+  label: string;
+  roleScope: "cashier" | "kitchen" | "server" | "manager";
+};
+
+export type RestaurantWorkflowNextActionDto = {
+  key: string;
+  stageId: RestaurantWorkflowStageId;
+  label: string;
+  count: number;
+  orderIds: string[];
+  status: Exclude<RestaurantWorkflowStageStatus, "empty">;
+};
+
+export type RestaurantWorkflowSummaryDto = {
+  generatedAt: string;
+  totals: {
+    activeOrders: number;
+    paymentQueue: number;
+    kitchenQueue: number;
+    servingQueue: number;
+    completedToday: number;
+    cancelledToday: number;
+    blockedStages: number;
+    operationalValue: number;
+  };
+  stages: RestaurantWorkflowStageDto[];
+  transitions: RestaurantWorkflowTransitionDto[];
+  nextActions: RestaurantWorkflowNextActionDto[];
+  stuckOrders: RestaurantOrderDto[];
 };
 
 export type RestaurantDashboardHealthSignalDto = {
