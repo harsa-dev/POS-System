@@ -1,4 +1,4 @@
-import type { Role } from "@prisma/client";
+import type { Prisma, Role } from "@prisma/client";
 
 type RestaurantAuditActor = {
   userId: string;
@@ -18,8 +18,12 @@ type RestaurantAuditInput = {
   metadata?: Record<string, unknown>;
 };
 
+function toPrismaJsonObject(value: Record<string, unknown>) {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonObject;
+}
+
 export function buildRestaurantAuditPayload(input: RestaurantAuditInput) {
-  return {
+  return toPrismaJsonObject({
     event: input.event,
     actor: input.actor,
     references: input.references ?? {},
@@ -27,5 +31,5 @@ export function buildRestaurantAuditPayload(input: RestaurantAuditInput) {
     status: input.status ?? {},
     reason: input.reason ?? null,
     metadata: input.metadata ?? {},
-  };
+  });
 }
