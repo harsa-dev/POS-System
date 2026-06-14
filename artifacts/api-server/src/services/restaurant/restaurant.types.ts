@@ -102,3 +102,44 @@ export type RestaurantDashboardSummaryDto = {
     averageOrderValueToday: number;
   };
 };
+
+export type RestaurantSharedDashboardId =
+  | "overview"
+  | "sales"
+  | "customers"
+  | "inventory"
+  | "cashflow"
+  | "financial-reports"
+  | "invoice-generator"
+  | "shift-reports"
+  | "team-management"
+  | "employee-performance"
+  | "approvals"
+  | "audit-controls"
+  | "roster-overview"
+  | "employee-attendance"
+  | "employee-contracts"
+  | "payroll";
+
+export type RestaurantSharedDashboardMetricDto = {
+  label: string;
+  value: string;
+  helper: string;
+};
+
+export type RestaurantSharedDashboardRowDto = {
+  title: string;
+  primary: string;
+  secondary: string;
+  status: "healthy" | "review" | "blocked" | "planned";
+};
+
+export type RestaurantSharedDashboardDto = {
+  id: RestaurantSharedDashboardId;
+  title: string;
+  description: string;
+  metrics: RestaurantSharedDashboardMetricDto[];
+  rows: RestaurantSharedDashboardRowDto[];
+  bridgeNote: string;
+  source: "prisma";
+};
