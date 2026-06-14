@@ -21,6 +21,7 @@ import {
 import {
   createRawMaterialStockMovementRecord,
   findRawMaterialProcessingConsumptionMovement,
+  findRawMaterialStockAdjustmentReversalMovement,
   findRawMaterialStockMovementRowById,
   listRawMaterialStockMovementRows,
   loadRawMaterialBatchForMutation,
@@ -29,8 +30,10 @@ import {
 } from "./raw-material-stock-movement.repository.js";
 import type {
   RawMaterialAdjustmentInput,
+  RawMaterialAdjustmentReversalInput,
   RawMaterialProcessingConsumptionInput,
   RawMaterialStockMovementQuery,
+  RawMaterialStockMovementRow,
   RawMaterialTransferInput,
 } from "./raw-material-stock-movement.types.js";
 import {
@@ -38,6 +41,7 @@ import {
   normalizeRawMaterialStockMovementSource,
   normalizeRawMaterialStockMovementType,
   validateRawMaterialAdjustmentInput,
+  validateRawMaterialAdjustmentReversalInput,
   validateRawMaterialProcessingConsumptionInput,
   validateRawMaterialTransferInput,
 } from "./raw-material-stock-movement.validation.js";
@@ -81,6 +85,48 @@ async function getMovementDto(tx: RawMaterialRepositoryTx, businessId: string, m
 
   if (!row) appError(404, errorCodes.notFound, "Raw material stock movement not found.");
   return toRawMaterialStockMovementDto(row);
+}
+
+function assertAdjustmentCanBeReversed(original: RawMaterialStockMovementRow) {
+  if (original.type !== "ADJUSTMENT") {
+    appError(400, errorCodes.validationError, "Only adjustment stock movements can be reversed.", {
+      movementId: original.id,
+      type: original.type,
+    });
+  }
+
+  if (original.source === "SYSTEM" || original.sourceId) {
+    appError(400, errorCodes.validationError, "System-generated or already-linked adjustment movements cannot be reversed.", {
+      movementId: original.id,
+      source: original.source,
+      sourceId: original.sourceId,
+    });
+  }
+
+  if (original.source !== "MANUAL" && original.source !== "STOCK_COUNT") {
+    appError(400, errorCodes.validationError, "Only manual or stock-count adjustment movements can be reversed.", {
+      movementId: original.id,
+      source: original.source,
+    });
+  }
+
+  if (original.quantity <= 0 || original.beforeQuantity === null || original.afterQuantity === null) {
+    appError(400, errorCodes.validationError, "Adjustment movement is missing reversible quantity metadata.", {
+      movementId: original.id,
+    });
+  }
+
+  if (!original.sourceStorageLocationId || !original.targetStorageLocationId) {
+    appError(400, errorCodes.validationError, "Adjustment movement is missing storage references.", {
+      movementId: original.id,
+    });
+  }
+
+  if (original.sourceStorageLocationId !== original.targetStorageLocationId) {
+    appError(400, errorCodes.validationError, "Adjustment reversal requires matching source and target storage references.", {
+      movementId: original.id,
+    });
+  }
 }
 
 export async function listRawMaterialStockMovements(params: {
@@ -178,6 +224,106 @@ export async function adjustRawMaterialBatchStock(params: {
         operation: "adjust",
         input: data,
         batchId: batch.id,
+        beforeQuantity: batch.remainingQuantity,
+        afterQuantity: nextRemaining,
+        beforeStorageUsedKg: batch.storageLocation.usedKg,
+        afterStorageUsedKg: nextUsedKg,
+      },
+    }, tx);
+
+    return getMovementDto(tx, businessContext.businessId, movementId);
+  });
+}
+
+export async function reverseRawMaterialStockAdjustment(params: {
+  actor: RawMaterialActor;
+  businessContext: BusinessContext;
+  input: RawMaterialAdjustmentReversalInput;
+}) {
+  const { actor, businessContext } = params;
+  assertCanManage(actor);
+  const data = validateRawMaterialAdjustmentReversalInput(params.input);
+
+  return prisma.$transaction(async (tx) => {
+    const original = await findRawMaterialStockMovementRowById(tx, businessContext.businessId, data.movementId);
+    if (!original) appError(404, errorCodes.notFound, "Raw material adjustment movement not found.");
+    assertAdjustmentCanBeReversed(original);
+
+    const existingReversal = await findRawMaterialStockAdjustmentReversalMovement(tx, businessContext.businessId, original.id);
+    if (existingReversal) {
+      appError(409, errorCodes.conflict, "Raw material stock adjustment has already been reversed.", {
+        originalMovementId: original.id,
+        reversalMovementId: existingReversal.id,
+      });
+    }
+
+    const batch = await getBatchForMutation(tx, businessContext.businessId, original.batchId);
+    if (batch.storageLocationId !== original.sourceStorageLocationId) {
+      appError(409, errorCodes.conflict, "Batch storage changed after the original adjustment. Move it back or apply a new correction instead.", {
+        originalMovementId: original.id,
+        originalStorageLocationId: original.sourceStorageLocationId,
+        currentStorageLocationId: batch.storageLocationId,
+      });
+    }
+
+    const reverseDelta = Number(original.beforeQuantity) - Number(original.afterQuantity);
+    const movementQuantity = Math.abs(reverseDelta);
+    const nextRemaining = batch.remainingQuantity + reverseDelta;
+    const nextUsedKg = batch.storageLocation.usedKg + reverseDelta;
+    assertRawMaterialPositiveMovementQuantity(movementQuantity, "Adjustment reversal quantity");
+    assertRawMaterialQuantityRange({ nextRemaining, batchQuantity: batch.quantity });
+    if (reverseDelta < 0) {
+      assertRawMaterialStorageContainsQuantity({
+        storageLocationId: batch.storageLocationId,
+        storageUsedKg: batch.storageLocation.usedKg,
+        quantity: movementQuantity,
+      });
+    }
+    assertRawMaterialStorageUsage({ nextUsedKg, capacityKg: batch.storageLocation.capacityKg });
+    assertRawMaterialStockMovementLedger({
+      type: "ADJUSTMENT",
+      reason: "CORRECTION",
+      source: "SYSTEM",
+      sourceId: original.id,
+      sourceStorageLocationId: batch.storageLocationId,
+      targetStorageLocationId: batch.storageLocationId,
+      quantity: movementQuantity,
+      beforeQuantity: batch.remainingQuantity,
+      afterQuantity: nextRemaining,
+    });
+
+    await tx.rawMaterialBatch.update({ where: { id: batch.id }, data: { remainingQuantity: nextRemaining } });
+    await tx.rawMaterialStorageLocation.update({ where: { id: batch.storageLocationId }, data: { usedKg: nextUsedKg } });
+
+    const movementId = await createRawMaterialStockMovementRecord(tx, {
+      businessId: businessContext.businessId,
+      batchId: batch.id,
+      sourceStorageLocationId: batch.storageLocationId,
+      targetStorageLocationId: batch.storageLocationId,
+      type: "ADJUSTMENT",
+      reason: "CORRECTION",
+      source: "SYSTEM",
+      sourceId: original.id,
+      quantity: movementQuantity,
+      beforeQuantity: batch.remainingQuantity,
+      afterQuantity: nextRemaining,
+      note: `Reversal of raw material stock adjustment ${original.id}: ${data.note}`,
+      createdById: actor.id,
+    });
+
+    await writeRawMaterialAuditLog({
+      businessId: businessContext.businessId,
+      userId: actor.id,
+      action: "CREATE",
+      entityType: "RawMaterialStockMovement",
+      entityId: movementId,
+      changes: {
+        operation: "reverse-adjustment",
+        input: data,
+        originalMovementId: original.id,
+        reversalMovementId: movementId,
+        batchId: batch.id,
+        reverseDelta,
         beforeQuantity: batch.remainingQuantity,
         afterQuantity: nextRemaining,
         beforeStorageUsedKg: batch.storageLocation.usedKg,
