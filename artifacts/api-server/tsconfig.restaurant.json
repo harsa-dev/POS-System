@@ -7,6 +7,7 @@
   "include": [
     "scripts/ensure-restaurant-profile-compatible.ts",
     "scripts/seed-restaurant-demo-data.ts",
+    "src/routes/index.ts",
     "src/routes/restaurant.ts",
     "src/routes/restaurant-payment-reversal.ts",
     "src/services/restaurant/**/*.ts",
