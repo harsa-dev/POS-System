@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,15 +22,23 @@ import {
   createRawMaterialSummaryMetrics,
   formatRawMaterialWeight,
   getRawMaterialSummaryErrorMessage,
+  getRawMaterialWorkflowReadErrorMessage,
   rawMaterialApiClient,
   rawMaterialApiContracts,
   rawMaterialBatches,
   rawMaterialMockService,
   rawMaterialStorageLocations,
-  rawMaterialSuppliers,
   rawMaterialWorkspaceModules,
   type RawMaterialApiSource,
+  type RawMaterialBatch,
+  type RawMaterialIntake,
+  type RawMaterialKandangPen,
   type RawMaterialMetric,
+  type RawMaterialProcessingRun,
+  type RawMaterialStorageLocation,
+  type RawMaterialSupplier,
+  type RawMaterialWeighing,
+  type RawMaterialWorkflowReadData,
   type RawMaterialWorkspaceModuleId,
 } from "@/features/raw-material/core-system";
 
@@ -53,9 +61,6 @@ import type {
   RawMaterialSupplierCategoryFilterValue,
 } from "./raw-material-workspace.types";
 import {
-  getRawMaterialIntakeLabel,
-  getRawMaterialStorageLabel,
-  getRawMaterialSupplierName,
   normalizeRawMaterialQualityFilter,
   normalizeRawMaterialSupplierCategoryFilter,
   toRawMaterialPositiveNumber,
@@ -64,6 +69,120 @@ import {
 type RawMaterialPlaceholderWorkspaceProps = {
   moduleId: RawMaterialWorkspaceModuleId;
 };
+
+type IntakeFilters = {
+  supplierId: string;
+  qualityStatus: RawMaterialQualityFilterValue;
+  search: string;
+};
+
+type BatchFilters = {
+  storageId: string;
+  qualityStatus: RawMaterialQualityFilterValue;
+  search: string;
+};
+
+type SupplierFilters = {
+  category: RawMaterialSupplierCategoryFilterValue;
+  search: string;
+};
+
+function createMockWorkflowReads(): RawMaterialWorkflowReadData {
+  return {
+    suppliers: rawMaterialMockService.listSuppliers().data,
+    storageLocations: rawMaterialMockService.listStorageLocations().data,
+    intakes: rawMaterialMockService.listIntakes().data,
+    weighings: rawMaterialMockService.listWeighings().data,
+    batches: rawMaterialMockService.listBatches().data,
+    processingRuns: rawMaterialMockService.listProcessingRuns().data,
+    kandangPens: rawMaterialMockService.listKandangPens().data,
+    stockMovements: [],
+  };
+}
+
+function textMatches(value: string, search?: string) {
+  if (!search) return true;
+  return value.toLowerCase().includes(search.toLowerCase());
+}
+
+function getSupplierName(suppliers: readonly RawMaterialSupplier[], supplierId: string) {
+  return suppliers.find((supplier) => supplier.id === supplierId)?.name ?? "Unknown supplier";
+}
+
+function getStorageLabel(storageLocations: readonly RawMaterialStorageLocation[], storageId: string) {
+  const storage = storageLocations.find((location) => location.id === storageId);
+  return storage ? `${storage.code} · ${storage.name}` : "Unassigned storage";
+}
+
+function getIntakeLabel(intakes: readonly RawMaterialIntake[], intakeId: string) {
+  return intakes.find((intake) => intake.id === intakeId)?.referenceNumber ?? "Unknown intake";
+}
+
+function getBatchLabel(batches: readonly RawMaterialBatch[], batchId?: string | null) {
+  if (!batchId) return "No feed batch";
+  return batches.find((batch) => batch.id === batchId)?.lotCode ?? "Unknown batch";
+}
+
+function filterSuppliers(
+  suppliers: readonly RawMaterialSupplier[],
+  filters: SupplierFilters,
+) {
+  const category = normalizeRawMaterialSupplierCategoryFilter(filters.category);
+
+  return suppliers.filter((supplier) => {
+    const matchesCategory = category ? supplier.category === category : true;
+    const matchesSearch = textMatches(
+      `${supplier.name} ${supplier.contactPerson} ${supplier.phone} ${supplier.category}`,
+      filters.search,
+    );
+
+    return matchesCategory && matchesSearch;
+  });
+}
+
+function filterIntakes(
+  intakes: readonly RawMaterialIntake[],
+  suppliers: readonly RawMaterialSupplier[],
+  filters: IntakeFilters,
+) {
+  const qualityStatus = normalizeRawMaterialQualityFilter(filters.qualityStatus);
+
+  return intakes.filter((intake) => {
+    const matchesSupplier = filters.supplierId === "all" ? true : intake.supplierId === filters.supplierId;
+    const matchesQuality = qualityStatus ? intake.qualityStatus === qualityStatus : true;
+    const matchesSearch = textMatches(
+      `${intake.referenceNumber} ${intake.materialName} ${getSupplierName(suppliers, intake.supplierId)}`,
+      filters.search,
+    );
+
+    return matchesSupplier && matchesQuality && matchesSearch;
+  });
+}
+
+function filterBatches(
+  batches: readonly RawMaterialBatch[],
+  filters: BatchFilters,
+) {
+  const qualityStatus = normalizeRawMaterialQualityFilter(filters.qualityStatus);
+
+  return batches.filter((batch) => {
+    const matchesStorage = filters.storageId === "all" ? true : batch.storageId === filters.storageId;
+    const matchesQuality = qualityStatus ? batch.qualityStatus === qualityStatus : true;
+    const matchesSearch = textMatches(`${batch.lotCode} ${batch.materialName}`, filters.search);
+
+    return matchesStorage && matchesQuality && matchesSearch;
+  });
+}
+
+function getWorkflowSourceBadgeLabel(source: RawMaterialApiSource) {
+  if (source === "api") return "Backend workflow reads";
+  if (source === "api-with-mock-fallback") return "Workflow API fallback";
+  return "Mock workflow reads";
+}
+
+function formatWorkflowStatusSummary(data: RawMaterialWorkflowReadData) {
+  return `${data.suppliers.length} suppliers · ${data.intakes.length} intakes · ${data.batches.length} batches · ${data.stockMovements.length} stock movements`;
+}
 
 export default function RawMaterialPlaceholderWorkspace({
   moduleId,
@@ -77,28 +196,29 @@ export default function RawMaterialPlaceholderWorkspace({
   const metricsEnvelope = rawMaterialMockService.getMetrics();
   const scaleProfilesEnvelope = rawMaterialMockService.listScaleProfiles();
   const scaleFeaturesEnvelope = rawMaterialMockService.listScaleFeatures();
-  const weighingsEnvelope = rawMaterialMockService.listWeighings();
-  const storageEnvelope = rawMaterialMockService.listStorageLocations();
-  const processingEnvelope = rawMaterialMockService.listProcessingRuns();
-  const kandangEnvelope = rawMaterialMockService.listKandangPens();
 
   const [summaryMetrics, setSummaryMetrics] = useState<readonly RawMaterialMetric[] | null>(null);
   const [summarySource, setSummarySource] = useState<RawMaterialApiSource>("mock");
   const [summaryStatus, setSummaryStatus] = useState(
     "Loading backend summary. Mock fallback is ready if the API refuses to participate.",
   );
-  const [intakeFilters, setIntakeFilters] = useState({
+  const [workflowReads, setWorkflowReads] = useState<RawMaterialWorkflowReadData>(() => createMockWorkflowReads());
+  const [workflowSource, setWorkflowSource] = useState<RawMaterialApiSource>("mock");
+  const [workflowStatus, setWorkflowStatus] = useState(
+    "Loading backend workflow reads. Mock lists are ready if the API refuses to participate.",
+  );
+  const [intakeFilters, setIntakeFilters] = useState<IntakeFilters>({
     supplierId: "all",
-    qualityStatus: "all" as RawMaterialQualityFilterValue,
+    qualityStatus: "all",
     search: "",
   });
-  const [batchFilters, setBatchFilters] = useState({
+  const [batchFilters, setBatchFilters] = useState<BatchFilters>({
     storageId: "all",
-    qualityStatus: "all" as RawMaterialQualityFilterValue,
+    qualityStatus: "all",
     search: "",
   });
-  const [supplierFilters, setSupplierFilters] = useState({
-    category: "all" as RawMaterialSupplierCategoryFilterValue,
+  const [supplierFilters, setSupplierFilters] = useState<SupplierFilters>({
+    category: "all",
     search: "",
   });
   const [transferPreviewForm, setTransferPreviewForm] = useState({
@@ -137,30 +257,62 @@ export default function RawMaterialPlaceholderWorkspace({
     return () => controller.abort();
   }, []);
 
-  const intakesEnvelope = rawMaterialMockService.listIntakes({
-    supplierId: intakeFilters.supplierId === "all" ? undefined : intakeFilters.supplierId,
-    qualityStatus: normalizeRawMaterialQualityFilter(intakeFilters.qualityStatus),
-    search: intakeFilters.search || undefined,
-  });
-  const batchesEnvelope = rawMaterialMockService.listBatches({
-    storageId: batchFilters.storageId === "all" ? undefined : batchFilters.storageId,
-    qualityStatus: normalizeRawMaterialQualityFilter(batchFilters.qualityStatus),
-    search: batchFilters.search || undefined,
-  });
-  const suppliersEnvelope = rawMaterialMockService.listSuppliers({
-    category: normalizeRawMaterialSupplierCategoryFilter(supplierFilters.category),
-    search: supplierFilters.search || undefined,
-  });
+  useEffect(() => {
+    const controller = new AbortController();
+
+    rawMaterialApiClient
+      .getWorkflowReads(controller.signal)
+      .then((data) => {
+        setWorkflowReads(data);
+        setWorkflowSource("api");
+        setWorkflowStatus(`Backend workflow reads loaded. ${formatWorkflowStatusSummary(data)}.`);
+        setTransferPreviewForm((current) => ({
+          ...current,
+          batchId: data.batches[0]?.id ?? current.batchId,
+          sourceStorageId: data.storageLocations[0]?.id ?? current.sourceStorageId,
+          targetStorageId: data.storageLocations[1]?.id ?? data.storageLocations[0]?.id ?? current.targetStorageId,
+        }));
+        setProcessingPreviewForm((current) => ({
+          ...current,
+          batchId: data.batches[0]?.id ?? current.batchId,
+        }));
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+
+        const fallback = createMockWorkflowReads();
+        setWorkflowReads(fallback);
+        setWorkflowSource("api-with-mock-fallback");
+        setWorkflowStatus(getRawMaterialWorkflowReadErrorMessage(error));
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  const filteredIntakes = useMemo(
+    () => filterIntakes(workflowReads.intakes, workflowReads.suppliers, intakeFilters),
+    [workflowReads.intakes, workflowReads.suppliers, intakeFilters],
+  );
+  const filteredBatches = useMemo(
+    () => filterBatches(workflowReads.batches, batchFilters),
+    [workflowReads.batches, batchFilters],
+  );
+  const filteredSuppliers = useMemo(
+    () => filterSuppliers(workflowReads.suppliers, supplierFilters),
+    [workflowReads.suppliers, supplierFilters],
+  );
 
   const dashboardMetrics = summaryMetrics ?? metricsEnvelope.data;
-  const dashboardSchemaTouched = summarySource !== "mock";
-  const sourceBadgeLabel = summarySource === "api"
-    ? "Backend summary"
-    : summarySource === "api-with-mock-fallback"
-      ? "API fallback"
-      : "Mock fallback";
+  const dashboardSchemaTouched = summarySource !== "mock" || workflowSource !== "mock";
+  const sourceBadgeLabel = workflowSource === "api"
+    ? getWorkflowSourceBadgeLabel(workflowSource)
+    : summarySource === "api"
+      ? "Backend summary"
+      : getWorkflowSourceBadgeLabel(workflowSource);
+  const readinessSource = workflowSource === "api" ? workflowSource : summarySource;
+  const apiStatusLabel = `${summaryStatus} Workflow: ${workflowStatus}`;
 
-  const transferBatch = rawMaterialBatches.find((batch) => batch.id === transferPreviewForm.batchId);
+  const transferBatch = workflowReads.batches.find((batch) => batch.id === transferPreviewForm.batchId);
   const transferQuantityKg = toRawMaterialPositiveNumber(transferPreviewForm.quantityKg);
   const transferIsValid = Boolean(
     transferBatch &&
@@ -171,7 +323,7 @@ export default function RawMaterialPlaceholderWorkspace({
       transferPreviewForm.sourceStorageId !== transferPreviewForm.targetStorageId,
   );
 
-  const processingBatch = rawMaterialBatches.find((batch) => batch.id === processingPreviewForm.batchId);
+  const processingBatch = workflowReads.batches.find((batch) => batch.id === processingPreviewForm.batchId);
   const processingInputKg = toRawMaterialPositiveNumber(processingPreviewForm.inputKg);
   const expectedYieldPercent = toRawMaterialPositiveNumber(processingPreviewForm.expectedYieldPercent);
   const processingOutputKg = processingInputKg * (expectedYieldPercent / 100);
@@ -188,7 +340,7 @@ export default function RawMaterialPlaceholderWorkspace({
     event.preventDefault();
     setDraftNotice(
       transferIsValid
-        ? "Storage transfer preview generated locally. Use the backend stock movement transfer API when write UX is wired. Civilization survives."
+        ? "Storage transfer preview generated locally from current workflow read data. Backend write UX stays disabled until preview delegates exist. Civilization limps forward."
         : "Transfer preview needs different source/target storage and quantity within remaining batch stock.",
     );
   }
@@ -197,7 +349,7 @@ export default function RawMaterialPlaceholderWorkspace({
     event.preventDefault();
     setDraftNotice(
       processingIsValid
-        ? "Processing yield preview generated locally. Backend processing API exists; this UI still avoids accidental writes."
+        ? "Processing yield preview generated locally from current workflow read data. Backend processing API exists; this UI still avoids accidental writes."
         : "Processing preview needs a valid batch, input quantity within remaining stock, and yield between 1-100%.",
     );
   }
@@ -209,7 +361,7 @@ export default function RawMaterialPlaceholderWorkspace({
           <Badge variant="outline" className="border-amber-300 text-amber-700">Raw Material mode</Badge>
           <Badge variant="outline" className="border-emerald-300 text-emerald-700">{sourceBadgeLabel}</Badge>
           <Badge variant="outline" className="border-neutral-300 text-neutral-600">Mock fallback retained</Badge>
-          <Badge variant="outline" className="border-blue-300 text-blue-700">API contract synced</Badge>
+          <Badge variant="outline" className="border-blue-300 text-blue-700">Workflow reads API-first</Badge>
         </div>
 
         <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -250,21 +402,21 @@ export default function RawMaterialPlaceholderWorkspace({
                 <Label>Batch</Label>
                 <Select value={transferPreviewForm.batchId} onValueChange={(batchId) => setTransferPreviewForm((current) => ({ ...current, batchId }))}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Select batch" /></SelectTrigger>
-                  <SelectContent>{rawMaterialBatches.map((batch) => <SelectItem key={batch.id} value={batch.id}>{batch.lotCode} · {batch.materialName}</SelectItem>)}</SelectContent>
+                  <SelectContent>{workflowReads.batches.map((batch) => <SelectItem key={batch.id} value={batch.id}>{batch.lotCode} · {batch.materialName}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Source storage</Label>
                 <Select value={transferPreviewForm.sourceStorageId} onValueChange={(sourceStorageId) => setTransferPreviewForm((current) => ({ ...current, sourceStorageId }))}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Source" /></SelectTrigger>
-                  <SelectContent>{rawMaterialStorageLocations.map((storage) => <SelectItem key={storage.id} value={storage.id}>{storage.code}</SelectItem>)}</SelectContent>
+                  <SelectContent>{workflowReads.storageLocations.map((storage) => <SelectItem key={storage.id} value={storage.id}>{storage.code}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Target storage</Label>
                 <Select value={transferPreviewForm.targetStorageId} onValueChange={(targetStorageId) => setTransferPreviewForm((current) => ({ ...current, targetStorageId }))}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Target" /></SelectTrigger>
-                  <SelectContent>{rawMaterialStorageLocations.map((storage) => <SelectItem key={storage.id} value={storage.id}>{storage.code}</SelectItem>)}</SelectContent>
+                  <SelectContent>{workflowReads.storageLocations.map((storage) => <SelectItem key={storage.id} value={storage.id}>{storage.code}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
@@ -276,7 +428,7 @@ export default function RawMaterialPlaceholderWorkspace({
 
             <div className="mt-4 rounded-lg border border-neutral-100 bg-neutral-50 p-3 text-sm leading-6 text-neutral-600">
               <p><span className="font-semibold text-neutral-900">Batch:</span> {transferBatch?.lotCode ?? "No batch"}</p>
-              <p><span className="font-semibold text-neutral-900">Direction:</span> {getRawMaterialStorageLabel(transferPreviewForm.sourceStorageId)} → {getRawMaterialStorageLabel(transferPreviewForm.targetStorageId)}</p>
+              <p><span className="font-semibold text-neutral-900">Direction:</span> {getStorageLabel(workflowReads.storageLocations, transferPreviewForm.sourceStorageId)} → {getStorageLabel(workflowReads.storageLocations, transferPreviewForm.targetStorageId)}</p>
               <p><span className="font-semibold text-neutral-900">Quantity:</span> {formatRawMaterialWeight(transferQuantityKg)}</p>
               <p><span className="font-semibold text-neutral-900">Remaining after preview:</span> {formatRawMaterialWeight(Math.max((transferBatch?.remainingKg ?? 0) - transferQuantityKg, 0))}</p>
               <Badge variant="outline" className={transferIsValid ? "border-emerald-200 text-emerald-700" : "border-rose-200 text-rose-700"}>{transferIsValid ? "valid preview" : "needs review"}</Badge>
@@ -295,7 +447,7 @@ export default function RawMaterialPlaceholderWorkspace({
                 <Label>Input batch</Label>
                 <Select value={processingPreviewForm.batchId} onValueChange={(batchId) => setProcessingPreviewForm((current) => ({ ...current, batchId }))}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Select batch" /></SelectTrigger>
-                  <SelectContent>{rawMaterialBatches.map((batch) => <SelectItem key={batch.id} value={batch.id}>{batch.lotCode} · {batch.materialName}</SelectItem>)}</SelectContent>
+                  <SelectContent>{workflowReads.batches.map((batch) => <SelectItem key={batch.id} value={batch.id}>{batch.lotCode} · {batch.materialName}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
@@ -326,9 +478,9 @@ export default function RawMaterialPlaceholderWorkspace({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle>Supplier intake queue</CardTitle>
-                <CardDescription>List view keeps mock fallback while summary metrics are API-first.</CardDescription>
+                <CardDescription>API-backed read delegate with mock fallback retained.</CardDescription>
               </div>
-              <Badge variant="outline">{intakesEnvelope.meta.total} intakes</Badge>
+              <Badge variant="outline">{filteredIntakes.length} intakes</Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -336,7 +488,7 @@ export default function RawMaterialPlaceholderWorkspace({
               <Input value={intakeFilters.search} onChange={(event) => setIntakeFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search intake/material/supplier" />
               <Select value={intakeFilters.supplierId} onValueChange={(supplierId) => setIntakeFilters((current) => ({ ...current, supplierId }))}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Supplier" /></SelectTrigger>
-                <SelectContent><SelectItem value="all">All suppliers</SelectItem>{rawMaterialSuppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>)}</SelectContent>
+                <SelectContent><SelectItem value="all">All suppliers</SelectItem>{workflowReads.suppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={intakeFilters.qualityStatus} onValueChange={(qualityStatus) => setIntakeFilters((current) => ({ ...current, qualityStatus: qualityStatus as RawMaterialQualityFilterValue }))}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Quality" /></SelectTrigger>
@@ -358,14 +510,14 @@ export default function RawMaterialPlaceholderWorkspace({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
-                  {intakesEnvelope.data.map((intake) => (
+                  {filteredIntakes.map((intake) => (
                     <tr key={intake.id}>
                       <td className="py-3 pr-4 font-medium text-neutral-950">{intake.referenceNumber}</td>
                       <td className="py-3 pr-4 text-neutral-700"><div>{intake.materialName}</div><div className="text-xs text-neutral-500">Received: {intake.receivedQuantity} {intake.unit}</div></td>
-                      <td className="py-3 pr-4 text-neutral-700">{getRawMaterialSupplierName(intake.supplierId)}</td>
+                      <td className="py-3 pr-4 text-neutral-700">{getSupplierName(workflowReads.suppliers, intake.supplierId)}</td>
                       <td className="py-3 pr-4 text-neutral-700">{intake.acceptedQuantity} {intake.unit}</td>
                       <td className="py-3 pr-4 text-neutral-700">{intake.rejectedQuantity} {intake.unit}</td>
-                      <td className="py-3 pr-4 text-neutral-700">{getRawMaterialStorageLabel(intake.targetStorageId)}</td>
+                      <td className="py-3 pr-4 text-neutral-700">{getStorageLabel(workflowReads.storageLocations, intake.targetStorageId)}</td>
                       <td className="py-3 pr-4"><span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${rawMaterialQualityStatusTone[intake.qualityStatus]}`}>{intake.qualityStatus}</span></td>
                     </tr>
                   ))}
@@ -378,9 +530,9 @@ export default function RawMaterialPlaceholderWorkspace({
         <div className="space-y-4">
           <RawMaterialReadinessCard
             readiness={readiness}
-            source={summarySource}
+            source={readinessSource}
             schemaTouched={dashboardSchemaTouched}
-            apiStatusLabel={summaryStatus}
+            apiStatusLabel={apiStatusLabel}
           />
           <RawMaterialApiContractCard contracts={moduleContracts} />
         </div>
@@ -394,7 +546,7 @@ export default function RawMaterialPlaceholderWorkspace({
                 <CardTitle>Batch traceability</CardTitle>
                 <CardDescription>Filtered lot, source intake, remaining quantity, expiry, quality, and storage mapping.</CardDescription>
               </div>
-              <Badge variant="outline">{batchesEnvelope.meta.total} batches</Badge>
+              <Badge variant="outline">{filteredBatches.length} batches</Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -402,7 +554,7 @@ export default function RawMaterialPlaceholderWorkspace({
               <Input value={batchFilters.search} onChange={(event) => setBatchFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search lot/material" />
               <Select value={batchFilters.storageId} onValueChange={(storageId) => setBatchFilters((current) => ({ ...current, storageId }))}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Storage" /></SelectTrigger>
-                <SelectContent><SelectItem value="all">All storage</SelectItem>{rawMaterialStorageLocations.map((storage) => <SelectItem key={storage.id} value={storage.id}>{storage.code}</SelectItem>)}</SelectContent>
+                <SelectContent><SelectItem value="all">All storage</SelectItem>{workflowReads.storageLocations.map((storage) => <SelectItem key={storage.id} value={storage.id}>{storage.code}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={batchFilters.qualityStatus} onValueChange={(qualityStatus) => setBatchFilters((current) => ({ ...current, qualityStatus: qualityStatus as RawMaterialQualityFilterValue }))}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Quality" /></SelectTrigger>
@@ -411,15 +563,15 @@ export default function RawMaterialPlaceholderWorkspace({
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
-              {batchesEnvelope.data.map((batch) => (
+              {filteredBatches.map((batch) => (
                 <div key={batch.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="font-medium text-neutral-900">{batch.lotCode}</p>
                     <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${rawMaterialQualityStatusTone[batch.qualityStatus]}`}>{batch.qualityStatus}</span>
                   </div>
                   <p className="mt-1 text-sm text-neutral-600">{batch.materialName}</p>
-                  <p className="mt-2 text-xs leading-5 text-neutral-500">Source: {getRawMaterialIntakeLabel(batch.intakeId)} · Remaining: {formatRawMaterialWeight(batch.remainingKg)} / {formatRawMaterialWeight(batch.quantityKg)}</p>
-                  <p className="text-xs leading-5 text-neutral-500">Expiry: {batch.expiryDate} · {getRawMaterialStorageLabel(batch.storageId)}</p>
+                  <p className="mt-2 text-xs leading-5 text-neutral-500">Source: {getIntakeLabel(workflowReads.intakes, batch.intakeId)} · Remaining: {formatRawMaterialWeight(batch.remainingKg)} / {formatRawMaterialWeight(batch.quantityKg)}</p>
+                  <p className="text-xs leading-5 text-neutral-500">Expiry: {batch.expiryDate} · {getStorageLabel(workflowReads.storageLocations, batch.storageId)}</p>
                 </div>
               ))}
             </div>
@@ -429,10 +581,10 @@ export default function RawMaterialPlaceholderWorkspace({
         <Card className="rounded-xl bg-white">
           <CardHeader>
             <CardTitle>Weighing records</CardTitle>
-            <CardDescription>Gross, tare, and net preview.</CardDescription>
+            <CardDescription>Gross, tare, and net records from workflow read delegate.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {weighingsEnvelope.data.map((weighing) => (
+            {workflowReads.weighings.map((weighing: RawMaterialWeighing) => (
               <div key={weighing.id} className="rounded-lg border border-neutral-100 p-3">
                 <p className="font-medium text-neutral-900">{weighing.referenceNumber}</p>
                 <p className="mt-1 text-sm text-neutral-500">{weighing.stationName} · {weighing.operatorName}</p>
@@ -443,38 +595,75 @@ export default function RawMaterialPlaceholderWorkspace({
         </Card>
       </div>
 
-      <RawMaterialStaticSnapshots storageLocations={storageEnvelope.data} processingRuns={processingEnvelope.data} kandangPens={kandangEnvelope.data} />
+      <RawMaterialStaticSnapshots
+        storageLocations={workflowReads.storageLocations}
+        processingRuns={workflowReads.processingRuns}
+        kandangPens={workflowReads.kandangPens}
+      />
 
-      <Card className="rounded-xl bg-white">
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle>Supplier filter preview</CardTitle>
-              <CardDescription>Mock table fallback. Backend supplier list contract is synced for API integration.</CardDescription>
+      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+        <Card className="rounded-xl bg-white">
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <CardTitle>Supplier filter preview</CardTitle>
+                <CardDescription>Supplier list now uses workflow read API with mock fallback.</CardDescription>
+              </div>
+              <Badge variant="outline">{filteredSuppliers.length} suppliers</Badge>
             </div>
-            <Badge variant="outline">{suppliersEnvelope.meta.total} suppliers</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2">
-            <Input value={supplierFilters.search} onChange={(event) => setSupplierFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search supplier/contact/category" />
-            <Select value={supplierFilters.category} onValueChange={(category) => setSupplierFilters((current) => ({ ...current, category: category as RawMaterialSupplierCategoryFilterValue }))}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Category" /></SelectTrigger>
-              <SelectContent>{rawMaterialSupplierCategoryOptions.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input value={supplierFilters.search} onChange={(event) => setSupplierFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search supplier/contact/category" />
+              <Select value={supplierFilters.category} onValueChange={(category) => setSupplierFilters((current) => ({ ...current, category: category as RawMaterialSupplierCategoryFilterValue }))}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Category" /></SelectTrigger>
+                <SelectContent>{rawMaterialSupplierCategoryOptions.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
-            {suppliersEnvelope.data.map((supplier) => (
-              <div key={supplier.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-medium text-neutral-900">{supplier.name}</p><Badge variant="outline">{supplier.category}</Badge></div>
-                <p className="mt-1 text-sm text-neutral-500">{supplier.contactPerson} · {supplier.phone}</p>
-                <p className="mt-2 text-xs text-neutral-500">Lead time: {supplier.leadTimeDays} days · Reliability: {supplier.reliabilityScore}%</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {filteredSuppliers.map((supplier) => (
+                <div key={supplier.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-medium text-neutral-900">{supplier.name}</p><Badge variant="outline">{supplier.category}</Badge></div>
+                  <p className="mt-1 text-sm text-neutral-500">{supplier.contactPerson} · {supplier.phone}</p>
+                  <p className="mt-2 text-xs text-neutral-500">Lead time: {supplier.leadTimeDays} days · Reliability: {supplier.reliabilityScore}%</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl bg-white">
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <CardTitle>Stock movement trail</CardTitle>
+                <CardDescription>Read-only ledger preview from Raw Material stock movement API.</CardDescription>
+              </div>
+              <Badge variant="outline">{workflowReads.stockMovements.length} movements</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {workflowReads.stockMovements.slice(0, 6).map((movement) => (
+              <div key={movement.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-medium text-neutral-900">{movement.batchLotCode ?? getBatchLabel(workflowReads.batches, movement.batchId)}</p>
+                  <Badge variant="outline">{movement.type}</Badge>
+                </div>
+                <p className="mt-1 text-sm text-neutral-500">{movement.reason} · {formatRawMaterialWeight(movement.quantity)}</p>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">
+                  {movement.sourceStorageCode ?? "-"} → {movement.targetStorageCode ?? "-"} · {movement.createdAt}
+                </p>
               </div>
             ))}
-          </div>
-        </CardContent>
-      </Card>
+            {workflowReads.stockMovements.length === 0 ? (
+              <p className="rounded-lg border border-neutral-100 bg-neutral-50 p-3 text-sm text-neutral-500">
+                No stock movement data from the current workflow source yet.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {workspace.checkpoints.map((checkpoint) => (
