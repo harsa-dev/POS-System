@@ -112,7 +112,16 @@ apiModeHeader
 emptyStateMessage
 ```
 
-The first rollout target is Cashflow because it is the highest-risk shared dashboard for cross-mode data bleed. Cashflow now displays the active mode scope, uses a mode-specific export filename, and reloads when the active business mode changes.
+The first rollout target is Cashflow because it is the highest-risk shared dashboard for cross-mode data bleed. Cashflow displays the active mode scope, uses a mode-specific export filename, and reloads when the active business mode changes.
+
+BM-9 adds reusable rollout helpers:
+
+```txt
+useSharedDashboardModeContext(surfaceId)
+SharedDashboardModeSummaryPanel
+```
+
+These helpers are intended for Financial Reports, Invoice Generator, Customers & Partners, Inventory Management, Team Management, Audit Log, and Approvals in follow-up per-surface patches.
 
 ## Sidebar/module visibility
 
@@ -214,7 +223,8 @@ BM-5 - Business-mode smoke checklist/script                         Done
 BM-6 - Optional browser switch-flow smoke                           Done
 BM-7 - Browser E2E dependency/config hardening                      Done
 BM-8 - Shared dashboard mode-context data contract                  Done
-BM-9 - Shared dashboard mode-context rollout                        Next
+BM-9 - Shared dashboard mode-context rollout helpers                Done
+BM-10 - Financial Reports mode-context rollout                      Next
 ```
 
 ## Manual smoke
