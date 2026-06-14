@@ -198,22 +198,35 @@ router.get("/restaurant/serving", async (req, res) => {
   }
 });
 
+router.get("/restaurant/workflow", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res);
+    if (!context) return;
+
+    return successResponse(res, {
+      data: await restaurantService.getWorkflowSummary(context.scope),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
 router.get("/restaurant/workflow-preview", async (req, res) => {
   try {
     const context = await getRestaurantRequestContext(req, res);
     if (!context) return;
 
-    const [activeOrders, kitchenQueue, servingQueue] = await Promise.all([
-      restaurantService.listActiveOrders(context.scope),
-      restaurantService.listKitchenQueue(context.scope),
-      restaurantService.listServingQueue(context.scope),
-    ]);
+    const workflow = await restaurantService.getWorkflowSummary(context.scope);
+    const getOrdersByStage = (stageId: string) => workflow.stages.find((stage) => stage.id === stageId)?.orders ?? [];
 
     return successResponse(res, {
       data: {
-        activeOrders,
-        kitchenQueue,
-        servingQueue,
+        workflow,
+        activeOrders: workflow.stages
+          .filter((stage) => stage.id === "payment" || stage.id === "kitchen" || stage.id === "serving")
+          .flatMap((stage) => stage.orders),
+        kitchenQueue: getOrdersByStage("kitchen"),
+        servingQueue: getOrdersByStage("serving").filter((order) => order.status === "READY"),
       },
     });
   } catch (error) {
