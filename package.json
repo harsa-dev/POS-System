@@ -12,7 +12,9 @@
     "retail:check": "node ./scripts/retail-check.mjs",
     "retail:smoke": "node ./scripts/retail-api-smoke.mjs",
     "raw-material:check": "node ./scripts/raw-material-check.mjs",
-    "raw-material:smoke": "node ./scripts/raw-material-api-smoke.mjs"
+    "raw-material:smoke": "node ./scripts/raw-material-api-smoke.mjs",
+    "service:check": "node ./scripts/service-check.mjs",
+    "service:smoke": "node ./scripts/service-api-smoke.mjs"
   },
   "private": true,
   "devDependencies": {
@@ -20,7 +22,7 @@
     "@rollup/rollup-win32-x64-msvc": "^4.60.3",
     "@tailwindcss/postcss": "4.3.0",
     "@tailwindcss/vite": "4.3.0",
-    "autoprefixer": "^10.5.0",
+    "autoprefixer": "^10.5.15",
     "esbuild": "0.27.3",
     "lightningcss-win32-x64-msvc": "1.32.0",
     "postcss": "^8.5.15",
