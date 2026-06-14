@@ -1,5 +1,6 @@
 import type {
   RawMaterialAdjustmentInput,
+  RawMaterialAdjustmentReversalInput,
   RawMaterialProcessingConsumptionInput,
   RawMaterialStockMovementReason,
   RawMaterialStockMovementSource,
@@ -95,6 +96,16 @@ export function validateRawMaterialAdjustmentInput(input: RawMaterialAdjustmentI
   }
 
   return { batchId, deltaQuantity, reason, note };
+}
+
+export function validateRawMaterialAdjustmentReversalInput(input: RawMaterialAdjustmentReversalInput) {
+  const movementId = asString(input.movementId);
+  const note = asOptionalText(input.note);
+
+  if (!movementId) throw new Error("Stock movement id is required");
+  if (!note) throw new Error("Stock adjustment reversal requires a note");
+
+  return { movementId, note };
 }
 
 export function validateRawMaterialTransferInput(input: RawMaterialTransferInput) {
