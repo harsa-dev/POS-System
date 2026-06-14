@@ -12,10 +12,10 @@ import { ModeSelector } from "@/components/core/mode-selector";
 import { LegalPage } from "@/pages/legal/legal-page";
 import {
   RouteGuard,
-  getStoredBusinessMode,
   getStoredBusinessModeEntryRoute,
   type BusinessMode,
 } from "@/components/core/route-guard";
+import { businessModeService } from "@/components/core/business-mode/business-mode-service";
 import { authApi } from "@/lib/api";
 
 const CheckoutPage         = lazy(() => import("@/pages/dashboard/checkout"));
@@ -78,6 +78,16 @@ const queryClient = new QueryClient({
     queries: { staleTime: 1000 * 60, refetchOnWindowFocus: false, retry: 1 },
   },
 });
+
+function BusinessModeQueryResetBoundary() {
+  useEffect(() => {
+    return businessModeService.subscribe(() => {
+      queryClient.clear();
+    });
+  }, []);
+
+  return null;
+}
 
 type User = {
   id: string;
@@ -154,9 +164,13 @@ function ModeProtectedRoute({
   children: React.ReactNode;
   requiredMode?: BusinessMode;
 }) {
-  const currentMode = getStoredBusinessMode();
+  const [pathname] = useLocation();
+  const routeAccess = businessModeService.canEnterRoute({
+    pathname,
+    requiredMode,
+  });
 
-  if (!currentMode || (requiredMode && currentMode !== requiredMode)) {
+  if (!routeAccess.canEnter) {
     return <Redirect to={ROUTES.SELECT_MODE} />;
   }
 
@@ -400,9 +414,10 @@ function App() {
   return (
     <MotionConfig reducedMotion="user">
       <QueryClientProvider client={queryClient}>
+        <BusinessModeQueryResetBoundary />
         <TooltipProvider>
           <AuthProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}> 
               <InternalNavigationBoundary />
               <Router />
             </WouterRouter>
