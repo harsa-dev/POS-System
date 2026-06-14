@@ -30,6 +30,7 @@ import {
   type RawMaterialSupplier,
 } from "@/features/raw-material/core-system";
 
+import { RawMaterialStockWriteActions } from "./raw-material-stock-write-actions";
 import type {
   RawMaterialIntakeDraft,
   RawMaterialWeighingDraft,
@@ -162,159 +163,163 @@ export function RawMaterialDraftForms({
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
-      <Card className="rounded-xl bg-white">
-        <CardHeader>
-          <CardTitle>Create intake draft</CardTitle>
-          <CardDescription>Backend preview delegate validates supplier, storage, and quantity before the draft stays local.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCreateIntakeDraft}>
-            <div className="space-y-2">
-              <Label htmlFor="rm-material-name">Material</Label>
-              <Input
-                id="rm-material-name"
-                value={intakeForm.materialName}
-                onChange={(event) => setIntakeForm((current) => ({ ...current, materialName: event.target.value }))}
-                placeholder="Pakan starter, jagung, dedak..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Supplier</Label>
-              <Select
-                value={intakeForm.supplierId}
-                onValueChange={(supplierId) => setIntakeForm((current) => ({ ...current, supplierId }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select supplier" />
-                </SelectTrigger>
-                <SelectContent>
-                  {suppliers.map((supplier) => (
-                    <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Target storage</Label>
-              <Select
-                value={intakeForm.targetStorageId}
-                onValueChange={(targetStorageId) => setIntakeForm((current) => ({ ...current, targetStorageId }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select storage" />
-                </SelectTrigger>
-                <SelectContent>
-                  {storageLocations.map((storage) => (
-                    <SelectItem key={storage.id} value={storage.id}>{storage.code} · {storage.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="rm-intake-quantity">Quantity kg</Label>
-              <Input
-                id="rm-intake-quantity"
-                type="number"
-                min="1"
-                value={intakeForm.quantityKg}
-                onChange={(event) => setIntakeForm((current) => ({ ...current, quantityKg: event.target.value }))}
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <Button type="submit">Preview and create local intake draft</Button>
-            </div>
-          </form>
-
-          <div className="mt-4 grid gap-3">
-            {intakeDrafts.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-neutral-200 p-3 text-sm text-neutral-500">No local intake draft yet.</p>
-            ) : (
-              intakeDrafts.map((draft) => (
-                <div key={draft.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="font-medium text-neutral-900">{draft.materialName}</p>
-                    <Badge variant="outline">{draft.status}</Badge>
-                  </div>
-                  <p className="mt-1 text-sm text-neutral-500">
-                    {formatRawMaterialWeight(draft.quantityKg)} · {getSupplierName(suppliers, draft.supplierId)} · {getStorageLabel(storageLocations, draft.targetStorageId)}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-xl bg-white">
-        <CardHeader>
-          <CardTitle>Create weighing draft</CardTitle>
-          <CardDescription>Local net-weight preview. No scale hardware, no API, no audit record yet.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4 md:grid-cols-3" onSubmit={handleCreateWeighingDraft}>
-            <div className="space-y-2 md:col-span-3">
-              <Label htmlFor="rm-weighing-reference">Intake reference</Label>
-              <Input
-                id="rm-weighing-reference"
-                value={weighingForm.intakeReference}
-                onChange={(event) => setWeighingForm((current) => ({ ...current, intakeReference: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rm-gross-kg">Gross kg</Label>
-              <Input
-                id="rm-gross-kg"
-                type="number"
-                min="1"
-                value={weighingForm.grossKg}
-                onChange={(event) => setWeighingForm((current) => ({ ...current, grossKg: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rm-tare-kg">Tare kg</Label>
-              <Input
-                id="rm-tare-kg"
-                type="number"
-                min="0"
-                value={weighingForm.tareKg}
-                onChange={(event) => setWeighingForm((current) => ({ ...current, tareKg: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Net preview</Label>
-              <div className="flex h-8 items-center rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 text-sm font-semibold text-neutral-900">
-                {formatRawMaterialWeight(Math.max(toRawMaterialPositiveNumber(weighingForm.grossKg) - toRawMaterialPositiveNumber(weighingForm.tareKg), 0))}
+    <div className="space-y-4">
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card className="rounded-xl bg-white">
+          <CardHeader>
+            <CardTitle>Create intake draft</CardTitle>
+            <CardDescription>Backend preview delegate validates supplier, storage, and quantity before the draft stays local.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCreateIntakeDraft}>
+              <div className="space-y-2">
+                <Label htmlFor="rm-material-name">Material</Label>
+                <Input
+                  id="rm-material-name"
+                  value={intakeForm.materialName}
+                  onChange={(event) => setIntakeForm((current) => ({ ...current, materialName: event.target.value }))}
+                  placeholder="Pakan starter, jagung, dedak..."
+                />
               </div>
-            </div>
-            <div className="md:col-span-3">
-              <Button type="submit">Create local weighing draft</Button>
-            </div>
-          </form>
 
-          <div className="mt-4 grid gap-3">
-            {weighingDrafts.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-neutral-200 p-3 text-sm text-neutral-500">No local weighing draft yet.</p>
-            ) : (
-              weighingDrafts.map((draft) => (
-                <div key={draft.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="font-medium text-neutral-900">{draft.intakeReference}</p>
-                    <Badge variant="outline">{draft.status}</Badge>
+              <div className="space-y-2">
+                <Label>Supplier</Label>
+                <Select
+                  value={intakeForm.supplierId}
+                  onValueChange={(supplierId) => setIntakeForm((current) => ({ ...current, supplierId }))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select supplier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Target storage</Label>
+                <Select
+                  value={intakeForm.targetStorageId}
+                  onValueChange={(targetStorageId) => setIntakeForm((current) => ({ ...current, targetStorageId }))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select storage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {storageLocations.map((storage) => (
+                      <SelectItem key={storage.id} value={storage.id}>{storage.code} · {storage.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rm-intake-quantity">Quantity kg</Label>
+                <Input
+                  id="rm-intake-quantity"
+                  type="number"
+                  min="1"
+                  value={intakeForm.quantityKg}
+                  onChange={(event) => setIntakeForm((current) => ({ ...current, quantityKg: event.target.value }))}
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <Button type="submit">Preview and create local intake draft</Button>
+              </div>
+            </form>
+
+            <div className="mt-4 grid gap-3">
+              {intakeDrafts.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-neutral-200 p-3 text-sm text-neutral-500">No local intake draft yet.</p>
+              ) : (
+                intakeDrafts.map((draft) => (
+                  <div key={draft.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="font-medium text-neutral-900">{draft.materialName}</p>
+                      <Badge variant="outline">{draft.status}</Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-neutral-500">
+                      {formatRawMaterialWeight(draft.quantityKg)} · {getSupplierName(suppliers, draft.supplierId)} · {getStorageLabel(storageLocations, draft.targetStorageId)}
+                    </p>
                   </div>
-                  <p className="mt-1 text-sm text-neutral-500">
-                    Gross {formatRawMaterialWeight(draft.grossKg)} · Tare {formatRawMaterialWeight(draft.tareKg)} · Net {formatRawMaterialWeight(draft.netKg)}
-                  </p>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl bg-white">
+          <CardHeader>
+            <CardTitle>Create weighing draft</CardTitle>
+            <CardDescription>Local net-weight preview. No scale hardware, no API, no audit record yet.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="grid gap-4 md:grid-cols-3" onSubmit={handleCreateWeighingDraft}>
+              <div className="space-y-2 md:col-span-3">
+                <Label htmlFor="rm-weighing-reference">Intake reference</Label>
+                <Input
+                  id="rm-weighing-reference"
+                  value={weighingForm.intakeReference}
+                  onChange={(event) => setWeighingForm((current) => ({ ...current, intakeReference: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="rm-gross-kg">Gross kg</Label>
+                <Input
+                  id="rm-gross-kg"
+                  type="number"
+                  min="1"
+                  value={weighingForm.grossKg}
+                  onChange={(event) => setWeighingForm((current) => ({ ...current, grossKg: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="rm-tare-kg">Tare kg</Label>
+                <Input
+                  id="rm-tare-kg"
+                  type="number"
+                  min="0"
+                  value={weighingForm.tareKg}
+                  onChange={(event) => setWeighingForm((current) => ({ ...current, tareKg: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Net preview</Label>
+                <div className="flex h-8 items-center rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 text-sm font-semibold text-neutral-900">
+                  {formatRawMaterialWeight(Math.max(toRawMaterialPositiveNumber(weighingForm.grossKg) - toRawMaterialPositiveNumber(weighingForm.tareKg), 0))}
                 </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              </div>
+              <div className="md:col-span-3">
+                <Button type="submit">Create local weighing draft</Button>
+              </div>
+            </form>
+
+            <div className="mt-4 grid gap-3">
+              {weighingDrafts.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-neutral-200 p-3 text-sm text-neutral-500">No local weighing draft yet.</p>
+              ) : (
+                weighingDrafts.map((draft) => (
+                  <div key={draft.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="font-medium text-neutral-900">{draft.intakeReference}</p>
+                      <Badge variant="outline">{draft.status}</Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-neutral-500">
+                      Gross {formatRawMaterialWeight(draft.grossKg)} · Tare {formatRawMaterialWeight(draft.tareKg)} · Net {formatRawMaterialWeight(draft.netKg)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <RawMaterialStockWriteActions onNoticeChange={onNoticeChange} />
     </div>
   );
 }
