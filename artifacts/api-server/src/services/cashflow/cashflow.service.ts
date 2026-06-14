@@ -8,6 +8,7 @@ import { toCashflowEntryDto, toCashflowEntryDtos } from "./cashflow.dto.js";
 import {
   countCashflowEntryRecords,
   createCashflowEntryRecord,
+  exportCashflowEntryRecords,
   findCashflowEntryById,
   findCashflowEntryByIdempotencyKey,
   getCashflowCategorySummary,
@@ -18,6 +19,7 @@ import {
 } from "./cashflow.repository.js";
 import {
   requireCashflowCreate,
+  requireCashflowExport,
   requireCashflowSync,
   requireCashflowView,
   requireCashflowVoid,
@@ -25,7 +27,11 @@ import {
 import type {
   CashflowActor,
   CashflowDashboardDto,
+  CashflowEntryDto,
+  CashflowEntryRecord,
   CashflowEntryType,
+  CashflowExportFormat,
+  CashflowExportResult,
   CashflowQuery,
   CreateCashflowEntryInput,
 } from "./cashflow.types.js";
@@ -37,6 +43,8 @@ import {
   parseCreateCashflowEntryInput,
 } from "./cashflow.validation.js";
 
+const CASHFLOW_EXPORT_LIMIT = 5000;
+
 function getPostedAt(status: "PENDING" | "POSTED" | "VOIDED") {
   return status === "POSTED" ? new Date() : null;
 }
@@ -44,6 +52,56 @@ function getPostedAt(status: "PENDING" | "POSTED" | "VOIDED") {
 function getSignedAmount(type: CashflowEntryType, amount: number) {
   if (type === "EXPENSE" || type === "TRANSFER_OUT") return Math.abs(amount);
   return amount;
+}
+
+function escapeCsvValue(value: unknown) {
+  if (value === null || value === undefined) return "";
+  const stringValue = value instanceof Date ? value.toISOString() : String(value);
+  if (!/[",\n\r]/.test(stringValue)) return stringValue;
+  return `"${stringValue.replace(/"/g, '""')}"`;
+}
+
+function buildCashflowCsv(entries: CashflowEntryDto[]) {
+  const headers = [
+    "Date",
+    "Account",
+    "Type",
+    "Status",
+    "Source Type",
+    "Source ID",
+    "Category",
+    "Counterparty",
+    "Description",
+    "Amount",
+    "Posted At",
+    "Voided At",
+    "Created At",
+  ];
+
+  const rows = entries.map((entry) => [
+    entry.occurredAt,
+    entry.account,
+    entry.type,
+    entry.status,
+    entry.sourceType,
+    entry.sourceId,
+    entry.category,
+    entry.counterpartyName,
+    entry.description,
+    entry.amount,
+    entry.postedAt,
+    entry.voidedAt,
+    entry.createdAt,
+  ]);
+
+  return [headers, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\n");
+}
+
+function buildCashflowExportFilename(format: CashflowExportFormat) {
+  const date = new Date().toISOString().slice(0, 10);
+  return `cashflow-export-${date}.${format}`;
 }
 
 export function parseCashflowListQuery(rawQuery: Record<string, unknown>) {
@@ -74,6 +132,42 @@ export async function listCashflowEntries(params: {
       hasNextPage: params.query.page < totalPages,
       hasPreviousPage: params.query.page > 1,
     },
+  };
+}
+
+export async function exportCashflowEntries(params: {
+  actor: CashflowActor;
+  businessContext: BusinessContext;
+  query: CashflowQuery;
+  format: CashflowExportFormat;
+}): Promise<CashflowExportResult> {
+  requireCashflowExport(params.actor.role);
+
+  const exportedAt = new Date().toISOString();
+  const records = await exportCashflowEntryRecords(
+    prisma,
+    params.businessContext.businessId,
+    params.query,
+    CASHFLOW_EXPORT_LIMIT,
+  );
+  const entries = toCashflowEntryDtos(records as CashflowEntryRecord[]);
+
+  if (params.format === "json") {
+    return {
+      format: "json",
+      exportedAt,
+      rowCount: entries.length,
+      entries,
+    };
+  }
+
+  return {
+    format: "csv",
+    filename: buildCashflowExportFilename("csv"),
+    contentType: "text/csv; charset=utf-8",
+    content: buildCashflowCsv(entries),
+    exportedAt,
+    rowCount: entries.length,
   };
 }
 
