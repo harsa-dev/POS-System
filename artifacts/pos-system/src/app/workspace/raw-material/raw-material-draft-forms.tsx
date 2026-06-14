@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,41 +20,76 @@ import {
 } from "@/components/ui/select";
 import {
   formatRawMaterialWeight,
-  rawMaterialIntakes,
-  rawMaterialStorageLocations,
-  rawMaterialSuppliers,
+  getRawMaterialPreviewErrorMessage,
+  rawMaterialPreviewApiClient,
+  type RawMaterialIntake,
+  type RawMaterialStorageLocation,
+  type RawMaterialSupplier,
 } from "@/features/raw-material/core-system";
 
 import type {
   RawMaterialIntakeDraft,
   RawMaterialWeighingDraft,
 } from "./raw-material-workspace.types";
-import {
-  getRawMaterialStorageLabel,
-  getRawMaterialSupplierName,
-  toRawMaterialPositiveNumber,
-} from "./raw-material-workspace.utils";
+import { toRawMaterialPositiveNumber } from "./raw-material-workspace.utils";
 
 type RawMaterialDraftFormsProps = {
+  suppliers: readonly RawMaterialSupplier[];
+  storageLocations: readonly RawMaterialStorageLocation[];
+  intakes: readonly RawMaterialIntake[];
   onNoticeChange: (message: string) => void;
 };
 
-export function RawMaterialDraftForms({ onNoticeChange }: RawMaterialDraftFormsProps) {
+function getSupplierName(suppliers: readonly RawMaterialSupplier[], supplierId: string) {
+  return suppliers.find((supplier) => supplier.id === supplierId)?.name ?? "Unknown supplier";
+}
+
+function getStorageLabel(storageLocations: readonly RawMaterialStorageLocation[], storageId: string) {
+  const storage = storageLocations.find((location) => location.id === storageId);
+  return storage ? `${storage.code} · ${storage.name}` : "Unassigned storage";
+}
+
+function formatPreviewIssues(issues: readonly string[]) {
+  return issues.length > 0 ? issues.join(" ") : "Preview blocked this draft.";
+}
+
+export function RawMaterialDraftForms({
+  suppliers,
+  storageLocations,
+  intakes,
+  onNoticeChange,
+}: RawMaterialDraftFormsProps) {
   const [intakeForm, setIntakeForm] = useState({
     materialName: "Dedak Halus",
-    supplierId: rawMaterialSuppliers[0]?.id ?? "",
-    targetStorageId: rawMaterialStorageLocations[0]?.id ?? "",
+    supplierId: suppliers[0]?.id ?? "",
+    targetStorageId: storageLocations[0]?.id ?? "",
     quantityKg: "500",
   });
   const [weighingForm, setWeighingForm] = useState({
-    intakeReference: rawMaterialIntakes[0]?.referenceNumber ?? "RM-IN-DRAFT",
+    intakeReference: intakes[0]?.referenceNumber ?? "RM-IN-DRAFT",
     grossKg: "640",
     tareKg: "40",
   });
   const [intakeDrafts, setIntakeDrafts] = useState<readonly RawMaterialIntakeDraft[]>([]);
   const [weighingDrafts, setWeighingDrafts] = useState<readonly RawMaterialWeighingDraft[]>([]);
 
-  function handleCreateIntakeDraft(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    setIntakeForm((current) => ({
+      ...current,
+      supplierId: suppliers.some((supplier) => supplier.id === current.supplierId)
+        ? current.supplierId
+        : suppliers[0]?.id ?? "",
+      targetStorageId: storageLocations.some((storage) => storage.id === current.targetStorageId)
+        ? current.targetStorageId
+        : storageLocations[0]?.id ?? "",
+    }));
+    setWeighingForm((current) => ({
+      ...current,
+      intakeReference: current.intakeReference || intakes[0]?.referenceNumber || "RM-IN-DRAFT",
+    }));
+  }, [intakes, storageLocations, suppliers]);
+
+  async function handleCreateIntakeDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const quantityKg = toRawMaterialPositiveNumber(intakeForm.quantityKg);
@@ -72,8 +107,30 @@ export function RawMaterialDraftForms({ onNoticeChange }: RawMaterialDraftFormsP
       status: "draft",
     };
 
-    setIntakeDrafts((current) => [nextDraft, ...current]);
-    onNoticeChange("Intake draft created locally. No API call, no schema write, no fake confidence parade.");
+    try {
+      const preview = await rawMaterialPreviewApiClient.previewIntake({
+        materialName: nextDraft.materialName,
+        supplierId: nextDraft.supplierId,
+        targetStorageLocationId: nextDraft.targetStorageId,
+        receivedQuantity: quantityKg,
+        acceptedQuantity: quantityKg,
+        rejectedQuantity: 0,
+        unit: "KG",
+      });
+
+      if (!preview.canProceed) {
+        onNoticeChange(`Backend intake preview blocked this draft. ${formatPreviewIssues(preview.blockingIssues)}`);
+        return;
+      }
+
+      setIntakeDrafts((current) => [nextDraft, ...current]);
+      onNoticeChange(
+        `Backend intake preview passed. Acceptance ${preview.estimates.acceptanceRate}% · storage after ${formatRawMaterialWeight(Number(preview.estimates.storageUsedAfterAcceptance ?? 0))}. Draft kept local; write UX still disabled.`,
+      );
+    } catch (error) {
+      setIntakeDrafts((current) => [nextDraft, ...current]);
+      onNoticeChange(`${getRawMaterialPreviewErrorMessage(error)} Local intake draft created as fallback.`);
+    }
   }
 
   function handleCreateWeighingDraft(event: FormEvent<HTMLFormElement>) {
@@ -98,7 +155,7 @@ export function RawMaterialDraftForms({ onNoticeChange }: RawMaterialDraftFormsP
     };
 
     setWeighingDrafts((current) => [nextDraft, ...current]);
-    onNoticeChange("Weighing draft created locally. Still frontend-only, harmless enough for now.");
+    onNoticeChange("Weighing draft created locally. Backend weighing preview delegate is intentionally not part of this phase.");
   }
 
   return (
@@ -106,7 +163,7 @@ export function RawMaterialDraftForms({ onNoticeChange }: RawMaterialDraftFormsP
       <Card className="rounded-xl bg-white">
         <CardHeader>
           <CardTitle>Create intake draft</CardTitle>
-          <CardDescription>Local component state only. This validates form shape before POST exists.</CardDescription>
+          <CardDescription>Backend preview delegate validates supplier, storage, and quantity before the draft stays local.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCreateIntakeDraft}>
@@ -130,7 +187,7 @@ export function RawMaterialDraftForms({ onNoticeChange }: RawMaterialDraftFormsP
                   <SelectValue placeholder="Select supplier" />
                 </SelectTrigger>
                 <SelectContent>
-                  {rawMaterialSuppliers.map((supplier) => (
+                  {suppliers.map((supplier) => (
                     <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -147,7 +204,7 @@ export function RawMaterialDraftForms({ onNoticeChange }: RawMaterialDraftFormsP
                   <SelectValue placeholder="Select storage" />
                 </SelectTrigger>
                 <SelectContent>
-                  {rawMaterialStorageLocations.map((storage) => (
+                  {storageLocations.map((storage) => (
                     <SelectItem key={storage.id} value={storage.id}>{storage.code} · {storage.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -166,7 +223,7 @@ export function RawMaterialDraftForms({ onNoticeChange }: RawMaterialDraftFormsP
             </div>
 
             <div className="md:col-span-2">
-              <Button type="submit">Create local intake draft</Button>
+              <Button type="submit">Preview and create local intake draft</Button>
             </div>
           </form>
 
@@ -181,7 +238,7 @@ export function RawMaterialDraftForms({ onNoticeChange }: RawMaterialDraftFormsP
                     <Badge variant="outline">{draft.status}</Badge>
                   </div>
                   <p className="mt-1 text-sm text-neutral-500">
-                    {formatRawMaterialWeight(draft.quantityKg)} · {getRawMaterialSupplierName(draft.supplierId)} · {getRawMaterialStorageLabel(draft.targetStorageId)}
+                    {formatRawMaterialWeight(draft.quantityKg)} · {getSupplierName(suppliers, draft.supplierId)} · {getStorageLabel(storageLocations, draft.targetStorageId)}
                   </p>
                 </div>
               ))
