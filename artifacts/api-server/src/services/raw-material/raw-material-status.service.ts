@@ -9,9 +9,9 @@ import {
   updateRawMaterialBatch,
 } from "./raw-material-batch.service.js";
 import {
-  cancelRawMaterialProcessingRun,
   updateRawMaterialProcessingRun,
 } from "./raw-material-processing-run.service.js";
+import { cancelRawMaterialProcessingRunWithStockReversal } from "./raw-material-processing-cancellation-reversal.service.js";
 import { updateRawMaterialPen } from "./raw-material-pen.service.js";
 
 type RawMaterialStatusParams = Readonly<{
@@ -81,7 +81,7 @@ export async function setRawMaterialProcessingStatus(params: RawMaterialStatusPa
   }
 
   if (status === "CANCELLED") {
-    return cancelRawMaterialProcessingRun(params);
+    return cancelRawMaterialProcessingRunWithStockReversal(params);
   }
 
   return updateRawMaterialProcessingRun({
