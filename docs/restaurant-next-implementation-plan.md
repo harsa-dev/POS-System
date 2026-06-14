@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 8A implemented
+Status: Phase 8B implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -21,8 +21,8 @@ Phase 7D - Order/payment/kitchen/serving preview delegate           Done
 Phase 7E - Order/write delegate                                    Done
 Phase 7F - Guarded workflow status delegate                        Done
 Phase 8A - Order/kitchen/serving/table status API route             Done
-Phase 8B - Status frontend action                                  Next
-Phase 8C - Order cancellation + stock/cashflow reversal workflow    Planned
+Phase 8B - Status frontend action                                  Done
+Phase 8C - Order cancellation + stock/cashflow reversal workflow    Next
 Phase 8D - Payment refund/void reversal workflow                   Planned
 Phase 8E - Generated API client consolidation                      Planned
 Phase 8F - Restaurant smoke test + scoped CI gate                   Planned
@@ -272,4 +272,26 @@ Implemented surfaces:
 - `targetStatus` drives the inferred surface: `PREPARING` and `READY` map to kitchen, while `SERVED` and `COMPLETED` map to serving.
 - `artifacts/pos-system/src/lib/api/restaurant-api.ts` exposes typed `previewOrderStatus` and `updateOrderStatus` helpers.
 
-The compatibility endpoints `POST /restaurant/kitchen/status` and `POST /restaurant/serving/status` remain available for old call sites. Phase 8B should move frontend action buttons to the canonical order status helpers.
+The compatibility endpoints `POST /restaurant/kitchen/status` and `POST /restaurant/serving/status` remain available for old call sites.
+
+## Phase 8B result
+
+Restaurant workspace status buttons now call the canonical order status API instead of legacy order status helpers.
+
+Updated workspaces:
+
+- `artifacts/pos-system/src/app/workspace/restaurant/restaurant-kitchen-workspace.tsx`
+- `artifacts/pos-system/src/app/workspace/restaurant/restaurant-serving-workspace.tsx`
+- `artifacts/pos-system/src/app/workspace/restaurant/restaurant-orders-workspace.tsx`
+
+Canonical client helper:
+
+- `restaurantApi.updateOrderStatus(orderId, { targetStatus })`
+
+Moved actions:
+
+- Kitchen: `PAID -> PREPARING`, `PREPARING -> READY`.
+- Serving: `READY -> SERVED`.
+- Orders: `SERVED -> COMPLETED`.
+
+The UI still keeps duplicate-submit guards, loading state, toast feedback, and queue reloads after successful status writes. Cancellation and reversal UI stay planned for Phase 8C.
