@@ -9,10 +9,22 @@ import type {
   RestaurantMenuItemDto,
   RestaurantOrderDto,
   RestaurantTableDto,
+  RestaurantWorkflowNextActionDto,
+  RestaurantWorkflowStageDto,
+  RestaurantWorkflowStageStatus,
+  RestaurantWorkflowSummaryDto,
 } from "./restaurant.types.js";
+import {
+  RESTAURANT_ACTIVE_ORDER_STATUSES,
+  RESTAURANT_KITCHEN_QUEUE_STATUSES,
+  RESTAURANT_ORDER_TRANSITIONS,
+  RESTAURANT_PAYMENT_QUEUE_STATUSES,
+  RESTAURANT_SERVING_QUEUE_STATUSES,
+  RESTAURANT_WORKFLOW_STAGE_DEFINITIONS,
+} from "./restaurant.workflow.js";
 
-const activeOrderStatuses: OrderStatus[] = ["PENDING_PAYMENT", "PAID", "PREPARING", "READY", "SERVED"];
-const kitchenQueueStatuses: OrderStatus[] = ["PAID", "PREPARING"];
+const activeOrderStatuses: OrderStatus[] = [...RESTAURANT_ACTIVE_ORDER_STATUSES];
+const kitchenQueueStatuses: OrderStatus[] = [...RESTAURANT_KITCHEN_QUEUE_STATUSES];
 const servingQueueStatuses: OrderStatus[] = ["READY"];
 
 const menuItemInclude = {
@@ -64,12 +76,16 @@ function startOfToday() {
   return date;
 }
 
+function getOrderAgeMinutes(order: { createdAt: Date }, now = new Date()) {
+  return Math.max(0, Math.round((now.getTime() - order.createdAt.getTime()) / 60000));
+}
+
 function getQueueAgeMinutes(orders: Array<{ createdAt: Date }>, now = new Date()) {
   if (orders.length === 0) return 0;
 
   const oldest = orders.reduce((currentOldest, order) => (order.createdAt < currentOldest ? order.createdAt : currentOldest), orders[0]?.createdAt ?? now);
 
-  return Math.max(0, Math.round((now.getTime() - oldest.getTime()) / 60000));
+  return getOrderAgeMinutes({ createdAt: oldest }, now);
 }
 
 function sumOrders(orders: Array<{ total: number }>) {
@@ -105,6 +121,43 @@ function getQueueSignal(key: string, label: string, ageMinutes: number, reviewTh
     status,
     message: `${label} oldest order age is ${ageMinutes} minutes.`,
   };
+}
+
+function getWorkflowStageStatus(count: number, oldestOrderAgeMinutes: number, reviewAgeMinutes: number, blockedAgeMinutes: number): RestaurantWorkflowStageStatus {
+  if (count === 0) return "empty";
+  if (blockedAgeMinutes > 0 && oldestOrderAgeMinutes >= blockedAgeMinutes) return "blocked";
+  if (reviewAgeMinutes > 0 && oldestOrderAgeMinutes >= reviewAgeMinutes) return "review";
+  return "healthy";
+}
+
+function getTransitionLabel(from: OrderStatus, to: OrderStatus) {
+  if (from === "PENDING_PAYMENT" && to === "PAID") return "Confirm payment";
+  if (from === "PAID" && to === "PREPARING") return "Send to kitchen";
+  if (from === "PREPARING" && to === "READY") return "Mark ready";
+  if (from === "READY" && to === "SERVED") return "Mark served";
+  if (from === "SERVED" && to === "COMPLETED") return "Complete order";
+  if (to === "CANCELLED") return "Cancel order";
+  return `Move ${from} to ${to}`;
+}
+
+function getTransitionRoleScope(from: OrderStatus, to: OrderStatus) {
+  if (to === "CANCELLED") return "manager" as const;
+  if (from === "PENDING_PAYMENT") return "cashier" as const;
+  if (from === "PAID" || from === "PREPARING") return "kitchen" as const;
+  if (from === "READY" || from === "SERVED") return "server" as const;
+  return "manager" as const;
+}
+
+function getWorkflowTransitions() {
+  return (Object.entries(RESTAURANT_ORDER_TRANSITIONS) as Array<[OrderStatus, readonly OrderStatus[]]>).flatMap(([from, nextStatuses]) =>
+    nextStatuses.map((to) => ({
+      from,
+      to,
+      actionKey: `${from.toLowerCase()}_to_${to.toLowerCase()}`,
+      label: getTransitionLabel(from, to),
+      roleScope: getTransitionRoleScope(from, to),
+    })),
+  );
 }
 
 function mapMenuItem(item: MenuItemRecord): RestaurantMenuItemDto {
@@ -234,7 +287,7 @@ export const restaurantPrismaRepository: RestaurantRepository = {
         select: { status: true, total: true, paymentMethod: true, createdAt: true, updatedAt: true, payment: { select: { status: true, paidAt: true } } },
       }),
       prisma.order.findMany({
-        where: { businessId: scope.businessId, status: { in: servingQueueStatuses } },
+        where: { businessId: scope.businessId, status: { in: ["READY"] } },
         select: { status: true, total: true, paymentMethod: true, createdAt: true, updatedAt: true, payment: { select: { status: true, paidAt: true } } },
       }),
       prisma.inventoryItem.findMany({
@@ -345,6 +398,93 @@ export const restaurantPrismaRepository: RestaurantRepository = {
         signals,
       },
     };
+  },
+
+  async getWorkflowSummary(scope) {
+    const today = startOfToday();
+    const now = new Date();
+
+    const workflowOrders = await prisma.order.findMany({
+      where: {
+        businessId: scope.businessId,
+        OR: [
+          { status: { in: [...RESTAURANT_ACTIVE_ORDER_STATUSES] } },
+          { status: { in: ["COMPLETED", "CANCELLED"] }, createdAt: { gte: today } },
+        ],
+      },
+      include: orderInclude,
+      orderBy: [{ status: "asc" }, { createdAt: "asc" }],
+      take: 200,
+    });
+
+    const mappedOrders = workflowOrders.map(mapOrder);
+    const orderById = new Map(mappedOrders.map((order) => [order.id, order]));
+
+    const stageOrderRecords = RESTAURANT_WORKFLOW_STAGE_DEFINITIONS.map((definition): RestaurantWorkflowStageDto => {
+      const definitionStatuses = [...definition.statuses] as OrderStatus[];
+      const records = workflowOrders.filter((order) => definitionStatuses.includes(order.status));
+      const orders = records.map((order) => orderById.get(order.id)).filter((order): order is RestaurantOrderDto => Boolean(order));
+      const oldestOrderAgeMinutes = getQueueAgeMinutes(records, now);
+      const status = getWorkflowStageStatus(records.length, oldestOrderAgeMinutes, definition.reviewAgeMinutes, definition.blockedAgeMinutes);
+
+      return {
+        id: definition.id,
+        title: definition.title,
+        description: definition.description,
+        statuses: definitionStatuses,
+        count: records.length,
+        totalValue: sumOrders(records),
+        oldestOrderAgeMinutes,
+        status,
+        orders,
+      };
+    });
+
+    const nextActions = stageOrderRecords
+      .filter((stage): stage is RestaurantWorkflowStageDto & { status: Exclude<RestaurantWorkflowStageStatus, "empty"> } => stage.status !== "empty")
+      .map<RestaurantWorkflowNextActionDto>((stage) => ({
+        key: `review_${stage.id}`,
+        stageId: stage.id,
+        label: stage.status === "blocked" ? `Unblock ${stage.title}` : `Review ${stage.title}`,
+        count: stage.count,
+        orderIds: stage.orders.map((order) => order.id),
+        status: stage.status,
+      }));
+
+    const stuckOrders = stageOrderRecords
+      .filter((stage) => stage.status === "review" || stage.status === "blocked")
+      .flatMap((stage) => stage.orders.filter((order) => {
+        const definition = RESTAURANT_WORKFLOW_STAGE_DEFINITIONS.find((item) => item.id === stage.id);
+        if (!definition || definition.reviewAgeMinutes === 0) return false;
+        return getOrderAgeMinutes({ createdAt: new Date(order.createdAt) }, now) >= definition.reviewAgeMinutes;
+      }));
+
+    const completedToday = stageOrderRecords.find((stage) => stage.id === "completed")?.count ?? 0;
+    const cancelledToday = stageOrderRecords.find((stage) => stage.id === "cancelled")?.count ?? 0;
+    const paymentQueue = stageOrderRecords.find((stage) => stage.id === "payment")?.count ?? 0;
+    const kitchenQueue = stageOrderRecords.find((stage) => stage.id === "kitchen")?.count ?? 0;
+    const servingQueue = stageOrderRecords.find((stage) => stage.id === "serving")?.count ?? 0;
+    const activeOrders = paymentQueue + kitchenQueue + servingQueue;
+    const blockedStages = stageOrderRecords.filter((stage) => stage.status === "blocked").length;
+    const operationalValue = sumOrders(stageOrderRecords.filter((stage) => stage.id !== "completed" && stage.id !== "cancelled").flatMap((stage) => stage.orders));
+
+    return {
+      generatedAt: now.toISOString(),
+      totals: {
+        activeOrders,
+        paymentQueue,
+        kitchenQueue,
+        servingQueue,
+        completedToday,
+        cancelledToday,
+        blockedStages,
+        operationalValue,
+      },
+      stages: stageOrderRecords,
+      transitions: getWorkflowTransitions(),
+      nextActions,
+      stuckOrders,
+    } satisfies RestaurantWorkflowSummaryDto;
   },
 
   async listMenuItems(scope) {
