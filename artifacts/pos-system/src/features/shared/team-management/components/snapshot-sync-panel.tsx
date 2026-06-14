@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, DatabaseZap, RefreshCw, Server } from "lucide-react";
+import { AlertTriangle, DatabaseZap, Eye, RefreshCw, RotateCcw, Server } from "lucide-react";
 
 import { StatusPill } from "@/features/shared/cards";
 import { DashboardPanel } from "@/features/shared/dashboard";
@@ -15,6 +15,8 @@ import {
   compareTeamManagementSnapshots,
   type TeamManagementSnapshotCounts,
 } from "../team-management-snapshot-compare";
+
+export type TeamManagementRuntimeMode = "localStorage" | "backend-preview";
 
 type SnapshotStatus = "idle" | "loading" | "success" | "error";
 
@@ -52,7 +54,17 @@ function CountGrid({ title, counts }: { title: string; counts: TeamManagementSna
   );
 }
 
-export function SnapshotSyncPanel({ store }: { store: RolePermissionStoreState }) {
+export function SnapshotSyncPanel({
+  store,
+  runtimeMode,
+  onUseBackendPreview,
+  onUseLocalStorage,
+}: {
+  store: RolePermissionStoreState;
+  runtimeMode: TeamManagementRuntimeMode;
+  onUseBackendPreview: (snapshot: TeamManagementSnapshotDto) => void;
+  onUseLocalStorage: () => void;
+}) {
   const [status, setStatus] = useState<SnapshotStatus>("idle");
   const [backendSnapshot, setBackendSnapshot] = useState<TeamManagementSnapshotDto | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -80,7 +92,7 @@ export function SnapshotSyncPanel({ store }: { store: RolePermissionStoreState }
   return (
     <DashboardPanel
       title="Backend Snapshot Check"
-      description="Manual comparison between localStorage demo state and the read-only backend snapshot. UI runtime still stays local until this is boringly reliable."
+      description="Manual comparison between localStorage demo state and the read-only backend snapshot. Backend preview can render API data without replacing local state."
     >
       <div className="grid gap-4 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-muted/20 p-4">
@@ -94,6 +106,9 @@ export function SnapshotSyncPanel({ store }: { store: RolePermissionStoreState }
                 <StatusPill tone={status === "success" ? "green" : status === "error" ? "rose" : status === "loading" ? "amber" : "slate"}>
                   {status}
                 </StatusPill>
+                <StatusPill tone={runtimeMode === "backend-preview" ? "blue" : "slate"}>
+                  runtime: {runtimeMode}
+                </StatusPill>
                 {comparison && (
                   <StatusPill tone={comparison.hasDrift ? "amber" : "green"}>
                     {comparison.hasDrift ? "drift detected" : "counts aligned"}
@@ -101,20 +116,44 @@ export function SnapshotSyncPanel({ store }: { store: RolePermissionStoreState }
                 )}
               </div>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                This does not replace local state. It only checks whether the backend snapshot is ready to become a future data source.
+                Check first, preview second. The preview mode renders backend data read-only and leaves localStorage untouched.
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={checkBackendSnapshot}
-            disabled={status === "loading"}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <RefreshCw className={status === "loading" ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-            Check Backend Snapshot
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={checkBackendSnapshot}
+              disabled={status === "loading"}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw className={status === "loading" ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+              Check Backend Snapshot
+            </button>
+
+            {backendSnapshot && (
+              <button
+                type="button"
+                onClick={() => onUseBackendPreview(backendSnapshot)}
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+              >
+                <Eye className="h-4 w-4" />
+                Use Backend Preview
+              </button>
+            )}
+
+            {runtimeMode === "backend-preview" && (
+              <button
+                type="button"
+                onClick={onUseLocalStorage}
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Back to LocalStorage
+              </button>
+            )}
+          </div>
         </div>
 
         {errorMessage && (
