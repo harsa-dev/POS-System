@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 3 implemented
+Status: Phase 4 implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -11,8 +11,8 @@ Restaurant mode is the canonical name for the old F&B flow. The old `features/fn
 Phase 1  - Restaurant scope audit + F&B legacy mapping             Done
 Phase 2  - Restaurant persistence foundation                       Done
 Phase 3  - Backend route, guard, workflow preview                  Done
-Phase 4  - Shared dashboard backend summary                        Next
-Phase 5  - Seed restaurant/menu/table/order/payment demo data       Planned
+Phase 4  - Shared dashboard backend summary                        Done
+Phase 5  - Seed restaurant/menu/table/order/payment demo data       Next
 Phase 6  - Frontend Restaurant workspace API wiring                Planned
 Phase 7A - Prisma schema model mapping                             Planned
 Phase 7B - Summary read delegate                                   Planned
@@ -92,6 +92,35 @@ Scoped endpoints:
 - `GET /restaurant/workflow-preview`
 
 The route enforces restaurant business mode through `requireBusinessContextForUser`. If a user from another business mode hits the route, it returns `businessModeMismatch`. Legacy `/orders`, `/menu`, `/tables`, and F&B dashboard routes stay mounted as compatibility during the migration.
+
+## Phase 4 result
+
+Restaurant now exposes backend-powered shared dashboard summaries through the scoped Restaurant API.
+
+Implemented endpoint:
+
+- `GET /restaurant/shared-dashboard/:dashboardId`
+
+Supported dashboard IDs match the shared dashboard bridge surface used by Retail:
+
+- `overview`
+- `sales`
+- `customers`
+- `inventory`
+- `cashflow`
+- `financial-reports`
+- `invoice-generator`
+- `shift-reports`
+- `team-management`
+- `employee-performance`
+- `approvals`
+- `audit-controls`
+- `roster-overview`
+- `employee-attendance`
+- `employee-contracts`
+- `payroll`
+
+The response is read-only and sourced from Restaurant menu, table, active order, kitchen queue, serving queue, recipe inventory, and completed-order revenue data. Heavy HR dashboards are intentionally returned as skipped/planned surfaces until Restaurant staff/payroll scope becomes active.
 
 ## Canonical target layout
 
