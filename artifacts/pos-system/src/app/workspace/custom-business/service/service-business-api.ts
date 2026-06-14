@@ -7,6 +7,8 @@ import {
 import type {
   AddServiceCostLineInput,
   ApproveServiceQuotationInput,
+  CancelServiceInvoiceInput,
+  CancelServiceQuotationInput,
   CreateServiceInvoiceInput,
   CreateServiceQuotationInput,
   CreateServiceRequestInput,
@@ -201,6 +203,19 @@ export const serviceBusinessApi = {
     );
   },
 
+  cancelQuotation(
+    input: CancelServiceQuotationInput,
+  ): Promise<ServiceBusinessMutationPreviewResponse> {
+    return unwrapData(
+      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
+        buildServiceBusinessApiPath("serviceBusinessCancelQuotation", {
+          pathParams: { id: input.quotationId },
+        }),
+        { json: { note: input.note } },
+      ),
+    );
+  },
+
   createInvoice(
     input: CreateServiceInvoiceInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
@@ -221,6 +236,19 @@ export const serviceBusinessApi = {
           pathParams: { id: input.invoiceId },
         }),
         { json: input },
+      ),
+    );
+  },
+
+  cancelInvoice(
+    input: CancelServiceInvoiceInput,
+  ): Promise<ServiceBusinessMutationPreviewResponse> {
+    return unwrapData(
+      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
+        buildServiceBusinessApiPath("serviceBusinessCancelInvoice", {
+          pathParams: { id: input.invoiceId },
+        }),
+        { json: { note: input.note } },
       ),
     );
   },
