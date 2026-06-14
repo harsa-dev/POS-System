@@ -179,7 +179,7 @@ export async function cancelRawMaterialProcessingRunWithStockReversal(params: {
       afterStorageUsedKg = batch.storageLocation.usedKg + reversalQuantity;
 
       assertRawMaterialPositiveMovementQuantity(reversalQuantity, "Processing cancellation reversal quantity");
-      assertRawMaterialQuantityRange({ afterQuantity, quantity: batch.quantity });
+      assertRawMaterialQuantityRange({ nextRemaining: afterQuantity, batchQuantity: batch.quantity });
       assertRawMaterialStorageUsage({ nextUsedKg: afterStorageUsedKg, capacityKg: batch.storageLocation.capacityKg });
 
       await tx.rawMaterialBatch.update({
@@ -194,7 +194,7 @@ export async function cancelRawMaterialProcessingRunWithStockReversal(params: {
       reversalMovementId = await createRawMaterialStockMovementRecord(tx, {
         businessId: businessContext.businessId,
         batchId: batch.id,
-        sourceStorageLocationId: null,
+        sourceStorageLocationId: batch.storageLocationId,
         targetStorageLocationId: batch.storageLocationId,
         type: "CORRECTION",
         reason: "CORRECTION",
