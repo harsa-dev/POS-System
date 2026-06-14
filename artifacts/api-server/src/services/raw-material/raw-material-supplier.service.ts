@@ -1,6 +1,7 @@
 import type { BusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
+import { writeRawMaterialAuditLog } from "./raw-material.audit.js";
 import { toRawMaterialSupplierDto } from "./raw-material-supplier.dto.js";
 import {
   createRawMaterialSupplierRecord,
@@ -119,8 +120,18 @@ export async function createRawMaterialSupplier(params: {
   await assertSupplierNameAvailable({ businessContext, name: payload.name });
 
   const supplier = await createRawMaterialSupplierRecord({ businessContext, payload });
+  const dto = toRawMaterialSupplierDto(supplier);
 
-  return toRawMaterialSupplierDto(supplier);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "CREATE",
+    entityType: "RawMaterialSupplier",
+    entityId: supplier.id,
+    changes: { payload, result: dto },
+  });
+
+  return dto;
 }
 
 export async function updateRawMaterialSupplier(params: {
@@ -132,7 +143,7 @@ export async function updateRawMaterialSupplier(params: {
   const { actor, businessContext, id, input } = params;
 
   assertCanManageRawMaterialSuppliers(actor);
-  await loadSupplierOrThrow(businessContext, id);
+  const existing = await loadSupplierOrThrow(businessContext, id);
 
   const payload = parseSupplierPayload(input);
   await assertSupplierNameAvailable({
@@ -142,8 +153,18 @@ export async function updateRawMaterialSupplier(params: {
   });
 
   const supplier = await updateRawMaterialSupplierRecord({ id, payload });
+  const dto = toRawMaterialSupplierDto(supplier);
 
-  return toRawMaterialSupplierDto(supplier);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "UPDATE",
+    entityType: "RawMaterialSupplier",
+    entityId: supplier.id,
+    changes: { before: toRawMaterialSupplierDto(existing), payload, result: dto },
+  });
+
+  return dto;
 }
 
 export async function deactivateRawMaterialSupplier(params: {
@@ -154,9 +175,19 @@ export async function deactivateRawMaterialSupplier(params: {
   const { actor, businessContext, id } = params;
 
   assertCanManageRawMaterialSuppliers(actor);
-  await loadSupplierOrThrow(businessContext, id);
+  const existing = await loadSupplierOrThrow(businessContext, id);
 
   const supplier = await deactivateRawMaterialSupplierRecord(id);
+  const dto = toRawMaterialSupplierDto(supplier);
 
-  return toRawMaterialSupplierDto(supplier);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "DELETE",
+    entityType: "RawMaterialSupplier",
+    entityId: supplier.id,
+    changes: { before: toRawMaterialSupplierDto(existing), result: dto },
+  });
+
+  return dto;
 }
