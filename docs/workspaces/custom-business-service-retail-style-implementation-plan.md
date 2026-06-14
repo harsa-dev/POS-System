@@ -24,6 +24,7 @@ summary read delegate
 workflow read delegate
 CRUD/billing write delegate
 guarded workflow status delegate
+service demo seed data
 ```
 
 Reference docs:
@@ -31,6 +32,7 @@ Reference docs:
 ```txt
 docs/workspaces/custom-business-service-backend-phases.md
 docs/workspaces/custom-business-service-prisma-delegate-cleanup.md
+docs/workspaces/custom-business-service-seed-demo-data.md
 ```
 
 Current known gap compared with Retail and Raw Material:
@@ -39,7 +41,6 @@ Current known gap compared with Retail and Raw Material:
 no root service:check gate
 no scoped service typecheck config
 no service smoke script
-no service seed script
 no service idempotent db apply/verify lane
 no service OpenAPI/client consolidation lane
 no explicit service audit + permission policy assertion lane
@@ -53,13 +54,19 @@ pnpm --filter @workspace/api-server run service:db:apply
 
 That command directly executes the original migration SQL. It is useful, but it is not yet equivalent to the Retail/Raw Material scoped DB baseline pattern with guard + idempotent SQL + verify.
 
+Service seed is now available:
+
+```txt
+pnpm --filter @workspace/api-server run service:seed
+```
+
 ## Retail-style Service Business phases
 
 ```txt
 Phase 1  - Service persistence foundation                         Done
 Phase 2  - Backend route, guard, workflow preview                 Done
 Phase 3  - Shared dashboard backend summary                       Done
-Phase 4  - Seed service request/job/quote/invoice demo data       Planned
+Phase 4  - Seed service request/job/quote/invoice demo data       Done
 Phase 5  - Frontend service workflow API wiring                   Partial
 Phase 6  - Service OpenAPI/client coverage                        Planned
 Phase 7A - Prisma schema model mapping                            Done
@@ -73,7 +80,7 @@ Phase 8B - Service status frontend action                         Planned
 Phase 8C - Quote/invoice cancellation reversal workflow           Planned
 Phase 8D - Payment reversal workflow                              Planned
 Phase 8E - Generated API client consolidation                     Planned
-Phase 8F - Service smoke test + scoped CI gate                    Planned
+Phase 8F - Service smoke test + scoped CI gate                    Next
 Phase 8G - Service migration baseline/idempotency hardening       Planned
 Phase 8H - Service audit + permission policy hardening            Planned
 ```
@@ -131,29 +138,36 @@ The frontend shared dashboard bridge reads backend summary first and falls back 
 
 ### Phase 4 - Seed service request/job/quote/invoice demo data
 
-Status: planned.
+Status: implemented.
 
-Recommended next implementation.
-
-Expected output:
+Implemented files:
 
 ```txt
 artifacts/api-server/scripts/seed-service-business-demo-data.ts
-api-server script: service:seed
-root or service docs command examples
+artifacts/api-server/package.json
+
+docs/workspaces/custom-business-service-seed-demo-data.md
 ```
 
-Seed should be idempotent and cover:
+Implemented command:
+
+```bash
+pnpm --filter @workspace/api-server run service:seed
+```
+
+Seed coverage:
 
 ```txt
-service requests
-service jobs across several workflow statuses
-cost lines
-approved quotation
-issued invoice
-paid or partially paid invoice
-service timeline items
+3 service requests
+3 service jobs across several workflow statuses
+6 cost lines
+3 quotations
+2 invoices
+6 checklist items
+5 timeline items
 ```
+
+The seed is idempotent through deterministic IDs scoped by business and Prisma upsert.
 
 ### Phase 5 - Frontend service workflow API wiring
 
@@ -308,7 +322,7 @@ Goal: centralize Service Business API calls by operation ID / generated-client b
 
 ### Phase 8F - Service smoke test + scoped CI gate
 
-Status: planned.
+Status: next.
 
 Expected output:
 
@@ -357,17 +371,16 @@ Because Service Business already has backend delegate work through Phase 7F, do 
 Recommended next sequence:
 
 ```txt
-1. Phase 4  - Seed service request/job/quote/invoice demo data
-2. Phase 8F - Service smoke test + scoped CI gate
-3. Phase 8G - Service migration baseline/idempotency hardening
-4. Phase 6  - Service OpenAPI/client coverage
-5. Phase 8E - Generated API client consolidation
-6. Phase 8H - Audit + permission policy hardening
-7. Phase 8A - Service status API route family
-8. Phase 8B - Service status frontend action
-9. Phase 7D - Quote/invoice/payment preview delegate
-10. Phase 8C - Quote/invoice cancellation reversal workflow
-11. Phase 8D - Payment reversal workflow
+1. Phase 8F - Service smoke test + scoped CI gate
+2. Phase 8G - Service migration baseline/idempotency hardening
+3. Phase 6  - Service OpenAPI/client coverage
+4. Phase 8E - Generated API client consolidation
+5. Phase 8H - Audit + permission policy hardening
+6. Phase 8A - Service status API route family
+7. Phase 8B - Service status frontend action
+8. Phase 7D - Quote/invoice/payment preview delegate
+9. Phase 8C - Quote/invoice cancellation reversal workflow
+10. Phase 8D - Payment reversal workflow
 ```
 
 Why this order:
@@ -384,7 +397,7 @@ reversal workflows should wait until schema and audit boundaries are confirmed
 ## Next phase
 
 ```txt
-Service Phase 4 - Seed service request/job/quote/invoice demo data
+Service Phase 8F - Service smoke test + scoped CI gate
 ```
 
-Keep it idempotent, small, and demo-focused. Do not unlock unrelated business modes in this phase.
+Keep it scoped. Do not unlock unrelated business modes in this phase.
