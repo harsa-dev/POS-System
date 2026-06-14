@@ -7,7 +7,9 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "retail:check": "node ./scripts/retail-check.mjs",
-    "retail:smoke": "node ./scripts/retail-api-smoke.mjs"
+    "retail:smoke": "node ./scripts/retail-api-smoke.mjs",
+    "raw-material:check": "node ./scripts/raw-material-check.mjs",
+    "raw-material:smoke": "node ./scripts/raw-material-api-smoke.mjs"
   },
   "private": true,
   "devDependencies": {
