@@ -198,6 +198,15 @@ export type RawMaterialBusinessScale = "small" | "medium" | "factory";
 
 export type RawMaterialScaleFeatureStatus = "available" | "new-dummy" | "future-production";
 
+export type RawMaterialScaleProfile = Readonly<{
+  scale: RawMaterialBusinessScale;
+  label: string;
+  businessShape: string;
+  operatingStyle: string;
+  mustHaveFocus: readonly string[];
+  dashboardGoal: string;
+}>;
+
 export type RawMaterialScaleFeature = Readonly<{
   id: string;
   scale: RawMaterialBusinessScale;
