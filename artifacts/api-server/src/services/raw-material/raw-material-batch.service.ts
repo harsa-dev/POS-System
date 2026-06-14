@@ -1,6 +1,7 @@
 import { RawMaterialIntakeStatus, Role } from "@prisma/client";
 
 import type { BusinessScopedUser as AuthenticatedUser } from "../../lib/auth.js";
+import { writeRawMaterialAuditLog } from "./raw-material.audit.js";
 import { toRawMaterialBatchDto } from "./raw-material-batch.presenter.js";
 import {
   createRawMaterialBatchRecord,
@@ -227,8 +228,18 @@ export async function createRawMaterialBatch(
   }
 
   const batch = await createRawMaterialBatchRecord(businessId, normalized);
+  const dto = toRawMaterialBatchDto(batch);
 
-  return toRawMaterialBatchDto(batch);
+  await writeRawMaterialAuditLog({
+    businessId,
+    userId: resolved.user.id,
+    action: "CREATE",
+    entityType: "RawMaterialBatch",
+    entityId: batch.id,
+    changes: { payload: normalized, result: dto },
+  });
+
+  return dto;
 }
 
 export async function updateRawMaterialBatch(
@@ -284,8 +295,18 @@ export async function updateRawMaterialBatch(
   assertRawMaterialBatchQuantityShape(nextQuantity, nextRemainingQuantity);
 
   const updated = await updateRawMaterialBatchRecord(existing.id, normalized);
+  const dto = toRawMaterialBatchDto(updated);
 
-  return toRawMaterialBatchDto(updated);
+  await writeRawMaterialAuditLog({
+    businessId,
+    userId: resolved.user.id,
+    action: "UPDATE",
+    entityType: "RawMaterialBatch",
+    entityId: updated.id,
+    changes: { before: toRawMaterialBatchDto(existing), payload: normalized, result: dto },
+  });
+
+  return dto;
 }
 
 export async function deactivateRawMaterialBatch(
@@ -315,6 +336,16 @@ export async function deactivateRawMaterialBatch(
   }
 
   const updated = await deactivateRawMaterialBatchRecord(existing.id);
+  const dto = toRawMaterialBatchDto(updated);
 
-  return toRawMaterialBatchDto(updated);
+  await writeRawMaterialAuditLog({
+    businessId,
+    userId: resolved.user.id,
+    action: "DELETE",
+    entityType: "RawMaterialBatch",
+    entityId: updated.id,
+    changes: { before: toRawMaterialBatchDto(existing), result: dto },
+  });
+
+  return dto;
 }
