@@ -29,6 +29,7 @@ workflow read delegate
 frontend list/workflow API wiring
 OpenAPI endpoint coverage
 frontend contract operationId mapping
+preview delegate
 ```
 
 ## Retail-style Raw Material phases
@@ -43,7 +44,7 @@ Phase 6  - Raw Material OpenAPI/client coverage               Done
 Phase 7A - Prisma schema model mapping                        Done
 Phase 7B - Summary read delegate                              Done
 Phase 7C - Workflow read delegate                             Done
-Phase 7D - Intake/batch/processing preview delegate           Next
+Phase 7D - Intake/batch/processing preview delegate           Done
 Phase 7E - Stock/write delegate                               Backend Done, Frontend Planned
 Phase 7F - Guarded workflow status delegate                   Backend Partial, Frontend Planned
 Phase 8A - Intake/processing/batch status API route           Planned
@@ -211,6 +212,49 @@ stock movement trail now reads from backend ledger rows
 write actions remain disabled
 ```
 
+## Phase 7D - Intake/batch/processing preview delegate
+
+Status: implemented.
+
+Implemented backend files:
+
+```txt
+artifacts/api-server/src/services/raw-material/raw-material-preview.service.ts
+artifacts/api-server/src/routes/raw-material-preview.ts
+artifacts/api-server/src/routes/index.ts
+artifacts/api-server/tsconfig.raw-material.json
+```
+
+Implemented frontend files:
+
+```txt
+artifacts/pos-system/src/features/raw-material/core-system/raw-material-preview.api-client.ts
+artifacts/pos-system/src/features/raw-material/core-system/index.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-draft-forms.tsx
+docs/workspaces/raw-material-preview-delegate.md
+```
+
+Preview endpoints:
+
+```txt
+POST /raw-material/previews/intake
+POST /raw-material/previews/batch
+POST /raw-material/previews/processing-run
+```
+
+Behavior:
+
+```txt
+preview endpoints are read-only
+preview response includes canProceed, blockingIssues, warnings, and estimates
+intake draft form calls backend preview first
+if backend preview blocks the intake draft, local draft is not created
+if preview API is unavailable, local fallback remains available
+batch and processing preview client functions are available for the next write UX delegate
+write buttons remain disabled
+```
+
 ## Phase 8F - Raw Material smoke test + scoped CI gate
 
 Status: implemented.
@@ -250,7 +294,6 @@ The scoped gate intentionally excludes global non-Raw-Material typecheck errors.
 Preferred path:
 
 ```txt
-Phase 7D - Intake/batch/processing preview delegate
 Phase 7E - Stock/write delegate frontend wiring
 Phase 7F - Guarded workflow status delegate
 Phase 8A - Status API route
