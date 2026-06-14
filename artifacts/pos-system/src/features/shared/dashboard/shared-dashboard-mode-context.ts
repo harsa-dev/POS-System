@@ -3,9 +3,11 @@ import {
   getBusinessModeConfig,
   isBusinessModeId,
   isBusinessModeSelectable,
-  type BusinessModeConfig,
-  type BusinessModeId,
-} from "@/components/core/business-mode";
+} from "@/components/core/business-mode/business-mode-registry";
+import type {
+  BusinessModeConfig,
+  BusinessModeId,
+} from "@/components/core/business-mode/business-mode.types";
 import { getCurrentBusinessMode } from "@/components/core/business-mode/business-mode-storage";
 
 export type SharedDashboardSurfaceId =
