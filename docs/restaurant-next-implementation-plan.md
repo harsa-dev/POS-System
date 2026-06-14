@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 8F implemented
+Status: Phase 8G implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -26,8 +26,8 @@ Phase 8C - Order cancellation + stock/cashflow reversal workflow    Done
 Phase 8D - Payment refund/void reversal workflow                   Done
 Phase 8E - Generated API client consolidation                      Done
 Phase 8F - Restaurant smoke test + scoped CI gate                   Done
-Phase 8G - Migration baseline/idempotency hardening                Next
-Phase 8H - Audit + permission policy hardening                     Planned
+Phase 8G - Migration baseline/idempotency hardening                Done
+Phase 8H - Audit + permission policy hardening                     Next
 ```
 
 ## Phase 1 result
@@ -88,3 +88,22 @@ Scoped endpoints:
 - `GET /restaurant/tables`
 - `GET /restaurant/orders/active`
 - `GET /restaurant/kitchen`
+- `GET /restaurant/serving`
+- `GET /restaurant/workflow-preview`
+
+## Phase 8G result
+
+Restaurant now has an explicit database baseline checker for migration drift and idempotency hardening.
+
+Implemented files:
+
+- `artifacts/api-server/scripts/check-restaurant-db-baseline.ts`
+- `docs/restaurant-phase-8g-migration-baseline.md`
+
+Implemented commands:
+
+- `pnpm restaurant:baseline`
+- `pnpm restaurant:check --baseline`
+- `pnpm --filter @workspace/api-server run restaurant:baseline:check`
+
+The baseline checker validates canonical role enum/data state, required `businessId` bridge columns, required seed indexes, and legacy columns that can break canonical Restaurant seed/write flows.
