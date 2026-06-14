@@ -69,6 +69,12 @@ export type UpdateServiceJobStatusInput = {
   note?: string;
 };
 
+export type UpdateServiceRequestStatusInput = {
+  requestId: string;
+  nextStatus: ServiceBusinessWorkflowStatus;
+  note?: string;
+};
+
 export type AddServiceCostLineInput = {
   jobId: string;
   label: string;
