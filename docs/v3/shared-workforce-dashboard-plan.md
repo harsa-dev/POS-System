@@ -49,6 +49,7 @@ Allowed now:
 - localStorage-backed Team Management role and permission simulation
 - frontend API contract definitions that are not wired into runtime yet
 - read-only Team Management backend snapshot API
+- manual localStorage vs backend snapshot comparison
 
 Not allowed yet:
 
@@ -60,6 +61,7 @@ Not allowed yet:
 - audit log writes
 - schema-level contract storage
 - Team Management mutation APIs
+- automatic Team Management runtime switch to backend data
 
 ## Team Management Frontend Phases
 
@@ -141,6 +143,20 @@ Reference doc:
 
 ```txt
 docs/v3/team-management-phase-5-readonly-snapshot-api.md
+```
+
+### Phase 6: Snapshot Comparison Panel
+
+The Team Management page now includes a manual backend snapshot comparison panel.
+
+It compares the current localStorage state against `GET /api/team-management/snapshot` only when the user clicks the check button.
+
+It does not replace local runtime state and does not auto-fetch on page load.
+
+Reference doc:
+
+```txt
+docs/v3/team-management-phase-6-snapshot-comparison.md
 ```
 
 ## Future Data Contract Draft
