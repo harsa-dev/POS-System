@@ -12,6 +12,7 @@ import {
   createManualCashflowEntry,
   exportCashflowEntries,
   getCashflowDashboard,
+  getCashflowReconciliation,
   listCashflowEntries,
   parseCashflowListQuery,
   syncOrderPaymentToCashflow,
@@ -56,6 +57,23 @@ router.get("/cashflow-dashboard", async (req, res) => {
       actor: getActor(user),
       businessContext,
       query: getQuery(req.query),
+    });
+
+    return successResponse(res, { data });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/cashflow-reconciliation", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+    const data = await getCashflowReconciliation({
+      actor: getActor(user),
+      businessContext,
     });
 
     return successResponse(res, { data });
