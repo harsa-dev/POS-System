@@ -10,6 +10,12 @@ export type RestaurantActorContext = RestaurantBusinessScope & {
   role: Role;
 };
 
+export type RestaurantPreviewSettingsDto = {
+  taxRate: number;
+  serviceChargeRate: number;
+  currency: string;
+};
+
 export type RestaurantCategoryDto = {
   id: string;
   name: string;
@@ -83,6 +89,99 @@ export type RestaurantOrderDto = {
   items: RestaurantOrderItemDto[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type RestaurantPreviewWarningStatus = "info" | "review" | "blocked";
+
+export type RestaurantPreviewWarningDto = {
+  key: string;
+  status: RestaurantPreviewWarningStatus;
+  message: string;
+};
+
+export type RestaurantOrderPreviewItemInput = {
+  menuItemId: string;
+  quantity: number;
+};
+
+export type RestaurantOrderPreviewInput = {
+  type: OrderType;
+  tableId?: string | null;
+  paymentMethod?: string | null;
+  amountPaid?: number | null;
+  items: RestaurantOrderPreviewItemInput[];
+};
+
+export type RestaurantOrderPreviewItemDto = RestaurantOrderItemDto & {
+  isAvailable: boolean;
+  stockStatus: "ok" | "low" | "out" | "no_recipe";
+  recipeIngredients: RestaurantRecipeIngredientDto[];
+};
+
+export type RestaurantOrderPreviewDto = {
+  kind: "order";
+  generatedAt: string;
+  table: RestaurantTableDto | null;
+  paymentMethod: string;
+  nextStatus: OrderStatus;
+  items: RestaurantOrderPreviewItemDto[];
+  totals: {
+    subtotal: number;
+    taxRate: number;
+    taxAmount: number;
+    serviceChargeRate: number;
+    serviceAmount: number;
+    total: number;
+    amountPaid: number;
+    changeAmount: number;
+  };
+  canSubmit: boolean;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "preview";
+};
+
+export type RestaurantPaymentPreviewInput = {
+  orderId: string;
+  paymentMethod?: string | null;
+  amountPaid?: number | null;
+};
+
+export type RestaurantPaymentPreviewDto = {
+  kind: "payment";
+  generatedAt: string;
+  order: RestaurantOrderDto | null;
+  paymentMethod: string | null;
+  amountDue: number;
+  amountPaid: number;
+  changeAmount: number;
+  currentStatus: OrderStatus | null;
+  nextStatus: OrderStatus | null;
+  canConfirm: boolean;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "preview";
+};
+
+export type RestaurantStatusActionSurface = "kitchen" | "serving";
+
+export type RestaurantStatusActionPreviewInput = {
+  orderId: string;
+  targetStatus?: OrderStatus | null;
+};
+
+export type RestaurantStatusActionPreviewDto = {
+  kind: RestaurantStatusActionSurface;
+  generatedAt: string;
+  order: RestaurantOrderDto | null;
+  currentStatus: OrderStatus | null;
+  targetStatus: OrderStatus | null;
+  allowed: boolean;
+  transition: {
+    actionKey: string;
+    label: string;
+    roleScope: "cashier" | "kitchen" | "server" | "manager";
+  } | null;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "preview";
 };
 
 export type RestaurantWorkflowStageStatus = "empty" | "healthy" | "review" | "blocked";
