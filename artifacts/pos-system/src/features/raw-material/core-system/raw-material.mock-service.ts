@@ -52,6 +52,10 @@ function textMatches(value: string, search?: string) {
   return value.toLowerCase().includes(search.toLowerCase());
 }
 
+function isBackendBackedPersistence(persistence: string) {
+  return persistence === "backend-backed" || persistence === "backend-backed-with-mock-fallback";
+}
+
 export const rawMaterialMockService = {
   getMetrics(): RawMaterialApiEnvelope<readonly RawMaterialMetric[]> {
     return createMockEnvelope(rawMaterialMetrics, rawMaterialMetrics.length);
@@ -138,9 +142,10 @@ export const rawMaterialMockService = {
     const contracts = rawMaterialApiContracts.filter((contract) => contract.moduleId === moduleId);
     const mockOnlyContracts = contracts.filter((contract) => contract.persistence === "mock-only").length;
     const futureDbContracts = contracts.filter((contract) => contract.persistence === "future-db").length;
+    const backendBackedContracts = contracts.filter((contract) => isBackendBackedPersistence(contract.persistence)).length;
     const hasReadContract = contracts.some((contract) => contract.method === "GET");
     const hasWriteContract = contracts.some(
-      (contract) => contract.method === "POST" || contract.method === "PATCH",
+      (contract) => contract.method === "POST" || contract.method === "PATCH" || contract.method === "DELETE",
     );
 
     return {
@@ -148,13 +153,16 @@ export const rawMaterialMockService = {
       totalContracts: contracts.length,
       mockOnlyContracts,
       futureDbContracts,
+      backendBackedContracts,
       hasReadContract,
       hasWriteContract,
-      readinessLabel: hasWriteContract
-        ? "write-planned"
-        : hasReadContract
-          ? "read-ready"
-          : "preview-only",
+      readinessLabel: backendBackedContracts > 0
+        ? "backend-ready"
+        : hasWriteContract
+          ? "write-planned"
+          : hasReadContract
+            ? "read-ready"
+            : "preview-only",
     };
   },
 };
