@@ -12,7 +12,7 @@ import type { ServiceBusinessMutationResult } from "./service-business.types.js"
 import type { ServiceBusinessResult } from "./service-business.crud.service.js";
 import { findServiceJob } from "./service-business.crud.repository.js";
 
-type CancellationResult = ServiceBusinessResult<ServiceBusinessMutationResult>;
+type ReversalResult = ServiceBusinessResult<ServiceBusinessMutationResult>;
 
 type CancelServiceQuotationInput = {
   businessId: string;
@@ -28,7 +28,15 @@ type CancelServiceInvoiceInput = {
   note?: string;
 };
 
-function conflict(message: string): CancellationResult {
+type ReverseServiceInvoicePaymentInput = {
+  businessId: string;
+  actorName: string;
+  id: string;
+  amount?: number | null;
+  note?: string;
+};
+
+function conflict(message: string): ReversalResult {
   return {
     ok: false,
     status: 409,
@@ -37,7 +45,7 @@ function conflict(message: string): CancellationResult {
   };
 }
 
-function notFound(message: string): CancellationResult {
+function notFound(message: string): ReversalResult {
   return {
     ok: false,
     status: 404,
@@ -46,7 +54,16 @@ function notFound(message: string): CancellationResult {
   };
 }
 
-function ok(message: string, job: ServiceBusinessMutationResult["job"], preview: Record<string, unknown>): CancellationResult {
+function validationError(message: string): ReversalResult {
+  return {
+    ok: false,
+    status: 400,
+    code: errorCodes.validation,
+    message,
+  };
+}
+
+function ok(message: string, job: ServiceBusinessMutationResult["job"], preview: Record<string, unknown>): ReversalResult {
   return {
     ok: true,
     data: {
@@ -63,12 +80,24 @@ function buildTimelineLabel(action: string, note?: string) {
   return note ? `${action}: ${note}` : action;
 }
 
+function getInvoiceStatusAfterPaymentReversal(total: number, nextPaidAmount: number) {
+  if (nextPaidAmount <= 0) return PrismaServiceBusinessInvoiceStatus.ISSUED;
+  if (nextPaidAmount >= total) return PrismaServiceBusinessInvoiceStatus.PAID;
+  return PrismaServiceBusinessInvoiceStatus.PARTIAL;
+}
+
+function getWorkflowStatusAfterPaymentReversal(nextInvoiceStatus: PrismaServiceBusinessInvoiceStatus) {
+  return nextInvoiceStatus === PrismaServiceBusinessInvoiceStatus.PAID
+    ? PrismaServiceBusinessWorkflowStatus.PAID
+    : PrismaServiceBusinessWorkflowStatus.INVOICED;
+}
+
 export async function cancelServiceBusinessQuotation({
   businessId,
   actorName,
   id,
   note,
-}: CancelServiceQuotationInput): Promise<CancellationResult> {
+}: CancelServiceQuotationInput): Promise<ReversalResult> {
   const quotation = await prisma.serviceQuotation.findFirst({
     where: {
       OR: [{ id }, { quotationCode: id }],
@@ -165,7 +194,7 @@ export async function cancelServiceBusinessInvoice({
   actorName,
   id,
   note,
-}: CancelServiceInvoiceInput): Promise<CancellationResult> {
+}: CancelServiceInvoiceInput): Promise<ReversalResult> {
   const invoice = await prisma.serviceInvoice.findFirst({
     where: {
       OR: [{ id }, { invoiceCode: id }],
@@ -243,6 +272,112 @@ export async function cancelServiceBusinessInvoice({
     invoiceCode: invoice.invoiceCode,
     previousInvoiceStatus: invoice.status,
     nextInvoiceStatus: PrismaServiceBusinessInvoiceStatus.CANCELLED,
+    previousWorkflowStatus,
+    nextWorkflowStatus,
+    quotationId: invoice.quotation?.id ?? null,
+    quotationCode: invoice.quotation?.quotationCode ?? null,
+    note: note ?? null,
+  });
+}
+
+export async function reverseServiceBusinessInvoicePayment({
+  businessId,
+  actorName,
+  id,
+  amount,
+  note,
+}: ReverseServiceInvoicePaymentInput): Promise<ReversalResult> {
+  const invoice = await prisma.serviceInvoice.findFirst({
+    where: {
+      OR: [{ id }, { invoiceCode: id }],
+      request: { businessId },
+    },
+    include: {
+      request: {
+        include: {
+          jobs: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
+      },
+      quotation: {
+        select: {
+          id: true,
+          quotationCode: true,
+        },
+      },
+    },
+  });
+
+  if (!invoice) return notFound("Service invoice not found.");
+  if (invoice.status === PrismaServiceBusinessInvoiceStatus.CANCELLED) {
+    return conflict("Cancelled invoices cannot receive payment reversals.");
+  }
+  if (invoice.paidAmount <= 0) {
+    return conflict("This invoice has no recorded payment to reverse.");
+  }
+
+  const reversalAmount = amount == null ? invoice.paidAmount : Math.round(amount);
+  if (!Number.isFinite(reversalAmount) || reversalAmount <= 0) {
+    return validationError("Payment reversal amount must be greater than zero.");
+  }
+  if (reversalAmount > invoice.paidAmount) {
+    return conflict("Payment reversal amount cannot exceed the current paid amount.");
+  }
+
+  const previousPaidAmount = invoice.paidAmount;
+  const nextPaidAmount = Math.max(0, previousPaidAmount - reversalAmount);
+  const previousInvoiceStatus = invoice.status;
+  const nextInvoiceStatus = getInvoiceStatusAfterPaymentReversal(invoice.total, nextPaidAmount);
+  const previousWorkflowStatus = invoice.request.status;
+  const nextWorkflowStatus = getWorkflowStatusAfterPaymentReversal(nextInvoiceStatus);
+  const jobId = invoice.request.jobs[0]?.id ?? null;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.serviceInvoice.update({
+      where: { id: invoice.id },
+      data: {
+        paidAmount: nextPaidAmount,
+        status: nextInvoiceStatus,
+        paidAt: nextInvoiceStatus === PrismaServiceBusinessInvoiceStatus.PAID ? invoice.paidAt ?? new Date() : null,
+      },
+    });
+
+    await tx.serviceRequest.update({
+      where: { id: invoice.requestId },
+      data: { status: nextWorkflowStatus },
+    });
+
+    if (jobId) {
+      await tx.serviceJob.update({
+        where: { id: jobId },
+        data: { status: nextWorkflowStatus },
+      });
+    }
+
+    await tx.serviceTimelineItem.create({
+      data: {
+        id: randomUUID(),
+        requestId: invoice.requestId,
+        label: buildTimelineLabel(`Payment reversed: ${reversalAmount}`, note),
+        actorName,
+      },
+    });
+  });
+
+  const job = await findServiceJob(businessId, jobId ?? invoice.requestId);
+
+  return ok("Service invoice payment reversed.", job, {
+    type: "invoice-payment-reversal",
+    invoiceId: invoice.id,
+    invoiceCode: invoice.invoiceCode,
+    invoiceTotal: invoice.total,
+    reversalAmount,
+    previousPaidAmount,
+    nextPaidAmount,
+    previousInvoiceStatus,
+    nextInvoiceStatus,
     previousWorkflowStatus,
     nextWorkflowStatus,
     quotationId: invoice.quotation?.id ?? null,
