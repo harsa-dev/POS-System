@@ -6,7 +6,7 @@ The goal is parity across business modes without pretending every mode needs the
 
 ## Current validation baseline
 
-Service Business backend implementation is mature through the delegate cleanup, status-route lanes, seeded demo data, scoped validation, idempotent DB setup, OpenAPI/client coverage, preview delegates, and quote/invoice cancellation reversal.
+Service Business backend implementation is mature through the delegate cleanup, status-route lanes, seeded demo data, scoped validation, idempotent DB setup, OpenAPI/client coverage, preview delegates, quote/invoice cancellation reversal, and payment reversal workflow.
 
 Known completed capabilities:
 
@@ -31,6 +31,7 @@ service demo seed data
 service OpenAPI/client coverage
 service quote/invoice/payment preview delegate
 service quote/invoice cancellation reversal workflow
+service invoice payment reversal workflow
 service smoke test + scoped CI gate
 service migration baseline/idempotency hardening
 ```
@@ -46,6 +47,7 @@ docs/workspaces/custom-business-service-preview-delegate.md
 docs/workspaces/custom-business-service-status-api-route.md
 docs/workspaces/custom-business-service-status-frontend-action.md
 docs/workspaces/custom-business-service-quote-invoice-cancellation-reversal.md
+docs/workspaces/custom-business-service-payment-reversal.md
 docs/workspaces/custom-business-service-smoke-test-scoped-ci.md
 docs/workspaces/custom-business-service-migration-baseline-idempotency.md
 ```
@@ -55,7 +57,6 @@ Current known gap compared with Retail and Raw Material:
 ```txt
 no full Service generated-client consolidation lane yet
 no explicit Service audit + permission policy assertion lane yet
-no Service payment reversal workflow yet
 ```
 
 ## Retail-style Service Business phases
@@ -76,8 +77,8 @@ Phase 7F - Guarded workflow status delegate                       Done
 Phase 8A - Service status API route family                        Done
 Phase 8B - Service status frontend action                         Done
 Phase 8C - Quote/invoice cancellation reversal workflow           Done
-Phase 8D - Payment reversal workflow                              Next
-Phase 8E - Generated API client consolidation                     Planned
+Phase 8D - Payment reversal workflow                              Done
+Phase 8E - Generated API client consolidation                     Next
 Phase 8F - Service smoke test + scoped CI gate                    Done
 Phase 8G - Service migration baseline/idempotency hardening       Done
 Phase 8H - Service audit + permission policy hardening            Planned
@@ -222,6 +223,7 @@ serviceBusinessCancelQuotation
 serviceBusinessCreateInvoice
 serviceBusinessRecordInvoicePayment
 serviceBusinessCancelInvoice
+serviceBusinessReverseInvoicePayment
 ```
 
 The handwritten frontend client routes through the Service operation registry. Full generated-client consolidation remains a later Phase 8E task.
@@ -266,28 +268,6 @@ POST /api/custom-business/service/previews/invoice
 POST /api/custom-business/service/previews/invoice-payment
 ```
 
-Implemented files:
-
-```txt
-artifacts/api-server/src/features/service-business/service-business-preview.service.ts
-artifacts/api-server/src/routes/service-business-preview.ts
-artifacts/api-server/src/routes/index.ts
-artifacts/api-server/tsconfig.service.json
-artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-operations.ts
-artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts
-artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
-lib/api-spec/service-business.openapi.yaml
-docs/workspaces/custom-business-service-preview-delegate.md
-```
-
-Preview behavior:
-
-```txt
-quotation preview calculates cost, margin, discount, tax, and projected total
-invoice preview calculates invoice total and warns about quote state/existing invoices
-invoice payment preview calculates remaining balance, applied amount, overflow, next invoice status, and next workflow status
-```
-
 No mutation happens in this phase.
 
 ### Phase 7E - Service write delegate
@@ -322,16 +302,6 @@ POST /api/custom-business/service/status/jobs/:id
 POST /api/custom-business/service/status/requests/:id
 ```
 
-Implemented files:
-
-```txt
-artifacts/api-server/src/routes/service-business-status.ts
-artifacts/api-server/src/routes/index.ts
-artifacts/api-server/tsconfig.service.json
-artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-operations.ts
-docs/workspaces/custom-business-service-status-api-route.md
-```
-
 Behavior:
 
 ```txt
@@ -346,15 +316,6 @@ keeps PATCH /custom-business/service/jobs/:id/guarded-status as compatibility ro
 ### Phase 8B - Service status frontend action
 
 Status: implemented.
-
-Implemented files:
-
-```txt
-artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
-artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts
-lib/api-spec/service-business.openapi.yaml
-docs/workspaces/custom-business-service-status-frontend-action.md
-```
 
 Frontend behavior:
 
@@ -376,20 +337,6 @@ POST /api/custom-business/service/reversals/quotations/:id/cancel
 POST /api/custom-business/service/reversals/invoices/:id/cancel
 ```
 
-Implemented files:
-
-```txt
-artifacts/api-server/src/features/service-business/service-business-reversal.service.ts
-artifacts/api-server/src/routes/service-business-reversal.ts
-artifacts/api-server/src/routes/index.ts
-artifacts/api-server/tsconfig.service.json
-artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-operations.ts
-artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts
-artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
-lib/api-spec/service-business.openapi.yaml
-docs/workspaces/custom-business-service-quote-invoice-cancellation-reversal.md
-```
-
 Behavior:
 
 ```txt
@@ -400,6 +347,43 @@ invoice cancellation sets invoice status to cancelled and workflow back to DELIV
 audit logs capture reversal type, previous status, next status, workflow rollback, entity code, and note
 payment reversal remains Phase 8D
 ```
+
+### Phase 8D - Payment reversal workflow
+
+Status: implemented.
+
+Implemented endpoint:
+
+```txt
+POST /api/custom-business/service/reversals/invoices/:id/reverse-payment
+```
+
+Implemented files:
+
+```txt
+artifacts/api-server/src/features/service-business/service-business-reversal.service.ts
+artifacts/api-server/src/routes/service-business-reversal.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-operations.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
+lib/api-spec/service-business.openapi.yaml
+docs/workspaces/custom-business-service-payment-reversal.md
+```
+
+Behavior:
+
+```txt
+reject cancelled invoices
+reject invoices with no paid amount
+allow full payment reversal by omitting amount
+allow partial reversal when amount is greater than zero and not above current paidAmount
+updates invoice paidAmount
+rolls invoice status back to issued, partial, or paid based on remaining paid amount
+rolls workflow back to INVOICED unless the invoice remains fully paid
+writes timeline item and ServiceInvoice audit entry
+```
+
+This phase does not create gateway refunds or cashflow refund entries.
 
 ### Phase 8F - Service smoke test + scoped CI gate
 
@@ -428,5 +412,5 @@ artifacts/api-server/prisma/sql/service-business-schema-verify.sql
 ## Next recommended phase
 
 ```txt
-Service Phase 8D - Payment reversal workflow
+Service Phase 8E - Generated API client consolidation
 ```
