@@ -54,8 +54,8 @@ export function CashflowAccountBalancesPanel({ reloadSignal = 0 }: { reloadSigna
 
   return (
     <DashboardPanel
-      title="Backend Account Balances"
-      description="Final account balances from posted ledger entries across the authenticated business. This is not calculated from the current table page."
+      title="Account Balances"
+      description="Final posted ledger balances per account. Current table filters do not change these totals."
     >
       <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
