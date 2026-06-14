@@ -1,5 +1,3 @@
-import { Prisma } from "@prisma/client";
-
 import type { BusinessContext } from "../../lib/business-context/business-context.types.js";
 import { prisma } from "../../lib/prisma.js";
 import { requireCashflowView } from "./cashflow.permissions.js";
