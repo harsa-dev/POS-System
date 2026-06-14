@@ -175,6 +175,16 @@ const checks = [
     content: files.controlRoom,
     expected: "Fallback Mock",
   }),
+  () => assertContains({
+    label: "internal monitoring control room route inventory section",
+    content: files.controlRoom,
+    expected: "Route Inventory",
+  }),
+  () => assertContains({
+    label: "internal monitoring control room integrity section",
+    content: files.controlRoom,
+    expected: "Data Integrity Checks",
+  }),
   () => assertFileExists("artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-data-source.ts"),
   () => assertContains({
     label: "internal monitoring data source",
@@ -186,6 +196,16 @@ const checks = [
     content: files.dataSource,
     expected: "getInternalMonitoringMockControlRoomData",
   }),
+  () => assertContains({
+    label: "internal monitoring data source route inventory fallback",
+    content: files.dataSource,
+    expected: "mockRouteInventory",
+  }),
+  () => assertContains({
+    label: "internal monitoring data source section fallbacks",
+    content: files.dataSource,
+    expected: "sectionFallbacks",
+  }),
   () => assertFileExists("artifacts/pos-system/src/lib/api/internal-monitoring-api.ts"),
   () => assertContains({
     label: "internal monitoring api client",
@@ -196,6 +216,21 @@ const checks = [
     label: "internal monitoring api client read-only endpoint",
     content: files.apiClient,
     expected: "/api/internal/health/summary",
+  }),
+  () => assertContains({
+    label: "internal monitoring api route inventory endpoint",
+    content: files.apiClient,
+    expected: "/api/internal/routes/inventory",
+  }),
+  () => assertContains({
+    label: "internal monitoring api contract readiness endpoint",
+    content: files.apiClient,
+    expected: "/api/internal/contracts/readiness",
+  }),
+  () => assertContains({
+    label: "internal monitoring api data integrity endpoint",
+    content: files.apiClient,
+    expected: "/api/internal/data-integrity/checks",
   }),
   () => assertFileExists("artifacts/api-server/src/routes/internal-monitoring.ts"),
   () => assertContains({
