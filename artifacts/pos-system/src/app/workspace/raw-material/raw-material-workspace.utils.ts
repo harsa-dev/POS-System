@@ -36,6 +36,18 @@ export function getRawMaterialBatchLabel(batchId?: string | null) {
   return batch ? batch.lotCode : "Unknown batch";
 }
 
+export function formatRawMaterialDate(value?: string | null) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
 export function toRawMaterialPositiveNumber(value: string) {
   const parsed = Number(value);
 
