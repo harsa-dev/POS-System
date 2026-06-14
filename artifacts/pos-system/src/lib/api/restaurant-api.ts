@@ -164,6 +164,47 @@ export type RestaurantOrderWriteResultDto = {
   source: "write";
 };
 
+export type RestaurantCancellationRouteInput = {
+  reason?: string | null;
+};
+
+export type RestaurantCashflowReversalDto = {
+  posted: boolean;
+  amount: number;
+  account: string | null;
+  sourceType: "REFUND" | null;
+  entryId: string | null;
+};
+
+export type RestaurantCancellationPreviewDto = {
+  kind: "cancellation";
+  generatedAt: string;
+  order: RestaurantOrderDto | null;
+  currentStatus: string | null;
+  targetStatus: "CANCELLED";
+  allowed: boolean;
+  reason: string | null;
+  stockWillBeRestored: boolean;
+  cashflowWillBeReversed: boolean;
+  tableWillBeReleased: boolean;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "preview";
+};
+
+export type RestaurantCancellationWriteDto = {
+  kind: "cancellation";
+  generatedAt: string;
+  order: RestaurantOrderDto;
+  previousStatus: string;
+  currentStatus: "CANCELLED";
+  reason: string | null;
+  stockMovements: RestaurantStockMovementWriteDto[];
+  cashflowReversal: RestaurantCashflowReversalDto;
+  tableStatusUpdated: boolean;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "write";
+};
+
 export type RestaurantStatusActionSurface = "kitchen" | "serving";
 
 export type RestaurantStatusActionPreviewInput = {
@@ -374,6 +415,10 @@ export const restaurantApi = {
     apiClient.post<ApiEnvelope<RestaurantStatusActionPreviewDto>>(`/restaurant/orders/${orderId}/status/preview`, input),
   updateOrderStatus: (orderId: string, input: RestaurantOrderStatusRouteInput) =>
     apiClient.post<ApiEnvelope<RestaurantStatusActionWriteDto>>(`/restaurant/orders/${orderId}/status`, input),
+  previewCancellation: (orderId: string, input: RestaurantCancellationRouteInput = {}) =>
+    apiClient.post<ApiEnvelope<RestaurantCancellationPreviewDto>>(`/restaurant/orders/${orderId}/cancellation/preview`, input),
+  cancelOrder: (orderId: string, input: RestaurantCancellationRouteInput = {}) =>
+    apiClient.post<ApiEnvelope<RestaurantCancellationWriteDto>>(`/restaurant/orders/${orderId}/cancel`, input),
   previewPayment: (input: RestaurantPaymentPreviewInput) =>
     apiClient.post<ApiEnvelope<RestaurantPaymentPreviewDto>>("/restaurant/payments/preview", input),
   confirmPayment: (input: RestaurantPaymentPreviewInput) =>
