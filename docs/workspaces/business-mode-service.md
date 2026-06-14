@@ -2,141 +2,93 @@
 
 ## Goal
 
-Create a single frontend service layer for business-mode selection, storage repair, route resolution, and workspace access checks.
+Create a single frontend service layer for business-mode selection, transition, storage repair, route resolution, workspace access checks, and shared-route isolation.
 
-The current project already has separate files for business-mode types, registry, storage, selector UI, switcher UI, route guard, and sidebar runtime filtering. This workspace exists to make that behavior easier to maintain before adding deeper mode-specific modules.
+The project has separate files for business-mode types, registry, storage, selector UI, switcher UI, route guard, sidebar runtime filtering, and route registration. This workspace keeps that behavior centralized before deeper mode-specific workflows are added.
 
-## Current baseline
-
-Repository branch:
-
-```txt
-workspace/business-mode-service
-```
-
-Primary files inspected:
+## Primary files
 
 ```txt
 artifacts/pos-system/src/components/core/business-mode/business-mode.types.ts
 artifacts/pos-system/src/components/core/business-mode/business-mode-registry.ts
 artifacts/pos-system/src/components/core/business-mode/business-mode-storage.ts
+artifacts/pos-system/src/components/core/business-mode/business-mode-service.ts
 artifacts/pos-system/src/components/core/business-mode/business-mode-switcher.tsx
 artifacts/pos-system/src/components/core/mode-selector/mode-selector.tsx
 artifacts/pos-system/src/components/core/route-guard/business-mode.ts
 artifacts/pos-system/src/components/core/route-guard/route-guard.tsx
-artifacts/pos-system/src/components/core/sidebar/sidebar.tsx
-artifacts/pos-system/src/app/registry/module-types.ts
-artifacts/pos-system/src/app/registry/sidebar-registry.ts
-artifacts/pos-system/src/app/registry/module-registry.ts
-artifacts/pos-system/src/app/registry/restaurant-modules.ts
-artifacts/pos-system/src/constants/routes.ts
 artifacts/pos-system/src/App.tsx
+artifacts/pos-system/src/app/registry/business-modules.ts
+artifacts/pos-system/src/app/registry/module-types.ts
 ```
 
-## New service file
-
-Created:
+## Current selectable modes
 
 ```txt
-artifacts/pos-system/src/components/core/business-mode/business-mode-service.ts
+restaurant
+retail
+raw-material
 ```
 
-The service provides:
+## Current planned / locked modes
+
+```txt
+custom-business
+```
+
+## Service responsibilities
+
+`business-mode-service.ts` now owns:
 
 - selectable mode list
 - planned mode list
 - locked mode list
 - entry route resolver
-- access check helper
+- route support resolver
+- route access helper
+- transition prepare/commit/switch helpers
 - workspace state helper
 - storage repair helper
-- workspace selection helper
-- service object export for easier future imports
+- legacy storage compatibility through the storage layer
+
+UI should use `businessModeService.switchMode()` instead of calling `setCurrentBusinessMode()` directly.
+
+## Route isolation rules
+
+Restaurant routes require `restaurant`.
+Retail routes require `retail`.
+Raw Material routes require `raw-material`.
+
+Shared business routes such as cashflow, financial reports, customers, invoice, and shift reports are allowed only when a valid active business mode exists. They must use the selected mode as their context.
+
+`App.tsx` subscribes to `business-mode:changed` and clears React Query cache, so shared dashboard data is refetched with the new `X-Business-Mode` header after switching mode.
 
 ## Important constraints
 
-Do not activate planned modes yet.
-
-Currently selectable:
-
-```txt
-restaurant
-```
-
-Currently planned / locked:
-
-```txt
-retail
-raw-material
-custom-business
-```
-
-The planned modes must stay visible for roadmap clarity, but they must not become operational until their own workflow, routes, permissions, and data model are implemented.
-
-## Recommended next patch
-
-Update this barrel file:
-
-```txt
-artifacts/pos-system/src/components/core/business-mode/index.ts
-```
-
-Suggested export block:
-
-```ts
-export {
-  businessModeService,
-  canEnterBusinessModeWorkspace,
-  ensureBusinessModeWorkspace,
-  getBusinessModeEntryRoute,
-  getBusinessModeWorkspaceState,
-  getLockedBusinessModes,
-  getPlannedBusinessModes,
-  getSelectableBusinessModes,
-  selectBusinessModeWorkspace,
-} from "./business-mode-service";
-
-export type {
-  BusinessModeAccessCheck,
-  BusinessModeSelectResult,
-  BusinessModeWorkspaceState,
-} from "./business-mode-service";
-```
-
-I attempted to patch the barrel automatically, but the GitHub update tool was blocked. Apply this manually or through Codex.
+- LocalStorage is not a backend security source of truth.
+- Backend must still validate business context from authenticated user/session.
+- `custom-business` remains visible but not selectable.
+- Do not reintroduce legacy runtime roles such as `CASHIER`, `KITCHEN`, or `SERVER` in V3 module metadata.
+- Do not rename `currentBusinessMode` without migration.
 
 ## Acceptance checklist
 
-Run from repo root:
-
-```bash
-pnpm install
-pnpm run typecheck
-pnpm --filter @workspace/pos-system run build
+```txt
+1. /select-mode loads.
+2. restaurant enters /workspace/restaurant/pos.
+3. retail enters /v3/retail/cashier.
+4. raw-material enters /v3/raw-material/kandang.
+5. custom-business is visible but disabled.
+6. wrong mode route redirects to /select-mode.
+7. switching mode clears shared route cache.
+8. cashflow/report pages refetch under the selected mode context.
+9. legacy values fnb/service/warehouse still repair into new ids.
 ```
 
-Expected behavior:
+## Next patches
 
-- `/select-mode` still loads.
-- Restaurant / F&B can still enter `/workspace/restaurant/pos`.
-- Retail, Raw Material, and Custom Business remain locked.
-- Sidebar still filters by current runtime mode.
-- Legacy values like `fnb`, `service`, and `warehouse` still repair into the new IDs.
-- No planned mode should become clickable just because a service helper exists.
-
-## Refactor order after this workspace
-
-1. Export the service from `business-mode/index.ts`.
-2. Replace duplicate mode helpers in `mode-selector`, `business-mode-switcher`, `route-guard`, and `App.tsx` with service calls.
-3. Keep storage behavior backward-compatible.
-4. Keep route constants as the single route source of truth.
-5. Only after typecheck passes, consider moving business mode logic out of `components/core` into a more neutral folder such as `app/services/business-mode`.
-
-## Do not do yet
-
-- Do not enable retail mode.
-- Do not enable raw-material mode.
-- Do not enable custom-business mode.
-- Do not create placeholder pages that pretend planned modules are ready.
-- Do not change backend permission rules based only on localStorage.
-- Do not rename `currentBusinessMode` without a migration path.
+```txt
+BM-3 - Sidebar/module filtering hardening
+BM-4 - Select-mode next-route flow
+BM-5 - Business-mode smoke checklist/script
+```
