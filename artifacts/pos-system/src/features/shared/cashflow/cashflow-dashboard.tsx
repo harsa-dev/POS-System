@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
+  CheckCircle2,
   Download,
   Landmark,
   RefreshCw,
@@ -24,7 +26,6 @@ import {
   DashboardTabs,
   getSharedDashboardModeContext,
 } from "@/features/shared/dashboard";
-import { exportCsv } from "@/features/shared/export";
 import { SearchFilter, SelectFilter, StatusFilter } from "@/features/shared/filters";
 import { formatCurrency, formatNumber } from "@/features/shared/format";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/features/shared/table";
@@ -36,6 +37,7 @@ import {
   type CashflowEntryStatus,
   type CashflowEntryType,
   type CashflowQuery,
+  type CashflowReconciliationDto,
 } from "@/lib/api/cashflow-api";
 import { getApiErrorMessage } from "@/lib/api/api-client";
 
@@ -169,6 +171,57 @@ function calculateDaysInRange(from?: string, to?: string) {
   return Math.max(1, Math.ceil((end - start) / day));
 }
 
+function getLedgerHealthStatus(reconciliation: CashflowReconciliationDto | null) {
+  if (!reconciliation) {
+    return {
+      label: "Loading",
+      note: "Checking ledger health",
+      tone: "slate" as const,
+      icon: RefreshCw,
+    };
+  }
+
+  const criticalCount = reconciliation.issues.filter((issue) => issue.severity === "critical").length;
+  const warningCount = reconciliation.issues.filter((issue) => issue.severity === "warning").length;
+  const unsyncedCount = reconciliation.unsyncedPaidOrders + reconciliation.unsyncedClosedShifts;
+
+  if (criticalCount > 0 || reconciliation.duplicateSourceWarnings > 0) {
+    return {
+      label: "Critical",
+      note: `${criticalCount + reconciliation.duplicateSourceWarnings} critical ledger issue(s)`,
+      tone: "rose" as const,
+      icon: XCircle,
+    };
+  }
+
+  if (warningCount > 0 || unsyncedCount > 0 || reconciliation.pendingEntries > 0) {
+    return {
+      label: "Needs Review",
+      note: `${warningCount + unsyncedCount + reconciliation.pendingEntries} item(s) need review`,
+      tone: "amber" as const,
+      icon: AlertTriangle,
+    };
+  }
+
+  return {
+    label: "Healthy",
+    note: "No active ledger issues detected",
+    tone: "green" as const,
+    icon: CheckCircle2,
+  };
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 function SummaryBars({
   data,
   total,
@@ -256,10 +309,12 @@ export function CashflowDashboard() {
   const [modeContext, setModeContext] = useState(() => getSharedDashboardModeContext("cashflow"));
 
   const [dashboard, setDashboard] = useState<CashflowDashboardDto | null>(null);
+  const [reconciliation, setReconciliation] = useState<CashflowReconciliationDto | null>(null);
   const [entries, setEntries] = useState<CashflowEntryDto[]>([]);
   const [pagination, setPagination] = useState<PaginationState>({ page: 1, limit: 25 });
   const [isFetching, setIsFetching] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
@@ -281,18 +336,25 @@ export function CashflowDashboard() {
     };
   }, [page, periodRange.from, periodRange.to, search, sourceAccount, statusFilter, typeFilter, viewMode]);
 
+  const exportQuery = useMemo<CashflowQuery>(() => {
+    const { page: _page, limit: _limit, ...filters } = query;
+    return filters;
+  }, [query]);
+
   const loadCashflow = useCallback(async () => {
     setIsFetching(true);
     setErrorMessage(null);
 
     try {
-      const [dashboardResponse, entriesResponse] = await Promise.all([
+      const [dashboardResponse, entriesResponse, reconciliationResponse] = await Promise.all([
         cashflowApi.getDashboard(query),
         cashflowApi.listEntries(query),
+        cashflowApi.getReconciliation(),
       ]);
 
       setDashboard(dashboardResponse.data);
       setEntries(entriesResponse.data);
+      setReconciliation(reconciliationResponse.data);
       setPagination(entriesResponse.meta?.pagination ?? { page, limit: 25 });
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error, "Failed to load cashflow data."));
@@ -321,11 +383,13 @@ export function CashflowDashboard() {
     voidedCount: 0,
   };
 
-  const cashDrawerBalance = entries
+  const currentPageCashNet = entries
     .filter((entry) => entry.account === "CASH")
     .reduce((total, entry) => total + getEntrySignedAmount(entry), 0);
   const daysInRange = calculateDaysInRange(periodRange.from, periodRange.to);
   const periodLabel = formatPeriodLabel(period, periodRange.from, periodRange.to);
+  const ledgerHealth = getLedgerHealthStatus(reconciliation);
+  const displayedIssues = reconciliation?.issues.slice(0, 5) ?? [];
 
   async function handleVoidEntry(entry: CashflowEntryDto) {
     if (entry.status === "VOIDED") return;
@@ -341,6 +405,23 @@ export function CashflowDashboard() {
       setActionMessage(getApiErrorMessage(error, "Failed to void cashflow entry."));
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleExportEntries() {
+    setIsExporting(true);
+    setActionMessage(null);
+
+    try {
+      const exportResult = await cashflowApi.downloadEntriesCsv(exportQuery);
+      downloadBlob(exportResult.blob, exportResult.filename);
+      setActionMessage(
+        `Cashflow export ready${exportResult.rowCount === null ? "" : ` · ${formatNumber(exportResult.rowCount)} rows`}.`,
+      );
+    } catch (error) {
+      setActionMessage(getApiErrorMessage(error, "Failed to export cashflow entries."));
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -407,25 +488,10 @@ export function CashflowDashboard() {
             </DashboardActionButton>
             <DashboardActionButton
               icon={Download}
-              onClick={() =>
-                exportCsv({
-                  filename: `cashflow-ledger-entries-${modeContext.activeMode}`,
-                  rows: entries,
-                  columns: [
-                    { key: "date", header: "Date", value: (row) => formatDateTime(row.occurredAt) },
-                    { key: "account", header: "Source Account", value: (row) => row.account },
-                    { key: "type", header: "Type", value: (row) => row.type },
-                    { key: "status", header: "Status", value: (row) => row.status },
-                    { key: "sourceType", header: "Source Type", value: (row) => row.sourceType },
-                    { key: "sourceId", header: "Source ID", value: (row) => row.sourceId ?? "" },
-                    { key: "category", header: "Category", value: (row) => row.category },
-                    { key: "counterparty", header: "Customer / Supplier", value: (row) => row.counterpartyName ?? "" },
-                    { key: "amount", header: "Amount", value: (row) => row.amount },
-                  ],
-                })
-              }
+              onClick={() => void handleExportEntries()}
+              disabled={isExporting || isFetching}
             >
-              Export
+              {isExporting ? "Exporting..." : "Export"}
             </DashboardActionButton>
           </DashboardActions>
         </div>
@@ -496,10 +562,45 @@ export function CashflowDashboard() {
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Total Income" value={formatCurrency(summary.totalIncome)} note="Posted cash in" icon={ArrowUpRight} tone="green" />
         <StatCard label="Total Expense" value={formatCurrency(summary.totalExpense)} note="Posted cash out" icon={ArrowDownRight} tone="rose" />
-        <StatCard label="Cash Drawer Balance" value={formatCurrency(cashDrawerBalance)} note="Current page cash ledger" icon={WalletCards} tone="amber" />
+        <StatCard label="Current Page Cash" value={formatCurrency(currentPageCashNet)} note="Visible page only, not final balance" icon={WalletCards} tone="amber" />
         <StatCard label="Pending Amount" value={formatCurrency(summary.pendingAmount)} note="Pending ledger value" icon={BarChart3} tone="blue" />
         <StatCard label="Current Balance" value={formatCurrency(summary.currentBalance)} note="Backend ledger balance" icon={Landmark} tone="slate" />
       </div>
+
+      <DashboardPanel title="Ledger Health" description="Backend reconciliation checks for unsynced sources, duplicate source rows, pending entries, and voided ledger records.">
+        <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-6">
+          <StatCard label="Health" value={ledgerHealth.label} note={ledgerHealth.note} icon={ledgerHealth.icon} tone={ledgerHealth.tone} />
+          <StatCard label="Unsynced Orders" value={formatNumber(reconciliation?.unsyncedPaidOrders ?? 0)} note="Paid orders not in ledger" icon={ArrowUpRight} tone={(reconciliation?.unsyncedPaidOrders ?? 0) > 0 ? "amber" : "green"} />
+          <StatCard label="Unsynced Shifts" value={formatNumber(reconciliation?.unsyncedClosedShifts ?? 0)} note="Closed shifts not in ledger" icon={WalletCards} tone={(reconciliation?.unsyncedClosedShifts ?? 0) > 0 ? "amber" : "green"} />
+          <StatCard label="Duplicate Sources" value={formatNumber(reconciliation?.duplicateSourceWarnings ?? 0)} note="Possible duplicate source sync" icon={AlertTriangle} tone={(reconciliation?.duplicateSourceWarnings ?? 0) > 0 ? "rose" : "green"} />
+          <StatCard label="Pending Entries" value={formatNumber(reconciliation?.pendingEntries ?? 0)} note="Waiting to be posted" icon={BarChart3} tone={(reconciliation?.pendingEntries ?? 0) > 0 ? "amber" : "green"} />
+          <StatCard label="Last Synced" value={formatDate(reconciliation?.lastSyncedAt)} note="Latest non-manual source sync" icon={RefreshCw} tone="blue" />
+        </div>
+
+        <div className="border-t border-neutral-200 p-4">
+          {displayedIssues.length === 0 ? (
+            <p className="text-sm font-medium text-neutral-500">No ledger health issues detected for the active business.</p>
+          ) : (
+            <div className="space-y-3">
+              {displayedIssues.map((issue, index) => (
+                <div
+                  key={`${issue.sourceType}-${issue.sourceId ?? "none"}-${index}`}
+                  className="rounded-lg border border-neutral-200 bg-white p-3 text-sm"
+                >
+                  <div className="flex flex-wrap items-center gap-2 font-semibold text-neutral-800">
+                    <StatusPill tone={issue.severity === "critical" ? "rose" : issue.severity === "warning" ? "amber" : "blue"}>
+                      {displayEnum(issue.severity)}
+                    </StatusPill>
+                    <span>{displayEnum(issue.sourceType)}</span>
+                    {issue.sourceId && <span className="text-neutral-500">· {issue.sourceId}</span>}
+                  </div>
+                  <p className="mt-2 text-neutral-600">{issue.message}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </DashboardPanel>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
         <DashboardPanel title="Monthly Cashflow Trend">
