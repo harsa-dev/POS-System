@@ -2,6 +2,7 @@ export * from "./raw-material.api-client";
 export * from "./raw-material.api-contract";
 export * from "./raw-material-preview.api-client";
 export * from "./raw-material-stock-write.api-client";
+export * from "./raw-material-workflow-read-error";
 export * from "./raw-material-workflow-status.api-client";
 export * from "./raw-material.mock-data";
 export * from "./raw-material.mock-service";
