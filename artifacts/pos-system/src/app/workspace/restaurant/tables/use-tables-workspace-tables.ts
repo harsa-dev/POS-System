@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { restaurantApi, type RestaurantTableDto } from "@/lib/api";
+import { restaurantClient, type RestaurantTableDto } from "@/lib/api";
 import {
   normalizeRestaurantTableStatus,
   restaurantTableStatusLabels,
@@ -68,7 +68,7 @@ export function useTablesWorkspaceTables(): TablesWorkspaceResult {
     setErrorMessage(null);
 
     try {
-      const response = await restaurantApi.listTables();
+      const response = await restaurantClient.listTables();
 
       if (!response.success) {
         throw new Error(response.message ?? "Failed to load restaurant tables");
