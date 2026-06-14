@@ -188,7 +188,7 @@ paths:
     patch:
       operationId: serviceBusinessUpdateJobStatus
       tags: [service-business]
-      summary: Update Service Business job status through guarded workflow
+      summary: Update Service Business job status through legacy guarded workflow route
       parameters:
         - name: id
           in: path
@@ -211,6 +211,60 @@ paths:
           description: Service Business status transition rejected
         "422":
           description: Service Business status requirements are not met
+  /custom-business/service/status/jobs/{id}:
+    post:
+      operationId: serviceBusinessSetJobStatus
+      tags: [service-business]
+      summary: Update Service Business job status through explicit status route
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessStatusFacadeInput"
+      responses:
+        "200":
+          description: Service Business job status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+        "409":
+          description: Service Business job status transition rejected
+        "422":
+          description: Service Business job status requirements are not met
+  /custom-business/service/status/requests/{id}:
+    post:
+      operationId: serviceBusinessSetRequestStatus
+      tags: [service-business]
+      summary: Update Service Business request status through explicit status route
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessStatusFacadeInput"
+      responses:
+        "200":
+          description: Service Business request status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+        "409":
+          description: Service Business request status transition rejected
+        "422":
+          description: Service Business request status requirements are not met
   /custom-business/service/jobs/{id}/cost-lines:
     post:
       operationId: serviceBusinessAddCostLine
@@ -342,6 +396,15 @@ components:
           $ref: "#/components/schemas/ServiceBusinessWorkflowStatus"
         note: { type: string }
       required: [nextStatus]
+    ServiceBusinessStatusFacadeInput:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/ServiceBusinessWorkflowStatus"
+        nextStatus:
+          $ref: "#/components/schemas/ServiceBusinessWorkflowStatus"
+        note: { type: string }
+      required: [status]
     ServiceBusinessObject:
       type: object
       additionalProperties: true
