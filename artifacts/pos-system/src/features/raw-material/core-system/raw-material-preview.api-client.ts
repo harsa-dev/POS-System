@@ -1,4 +1,6 @@
-import { apiClient, getApiErrorMessage, type ApiEnvelope } from "@/lib/api/api-client";
+import { getApiErrorMessage } from "@/lib/api/api-client";
+
+import { rawMaterialGeneratedApiData } from "./raw-material.generated-api-client";
 
 export type RawMaterialPreviewKind = "intake" | "batch" | "processing-run";
 
@@ -68,23 +70,6 @@ export type RawMaterialProcessingPreviewEstimates = Readonly<{
   status: string;
 }>;
 
-async function postPreview<TData extends Record<string, unknown>>(
-  path: string,
-  body: Record<string, unknown>,
-  signal?: AbortSignal,
-) {
-  const payload = await apiClient.post<ApiEnvelope<RawMaterialPreviewResult<TData>>>(path, {
-    json: body,
-    signal,
-  });
-
-  if (!payload.success || !payload.data) {
-    throw new Error(`Raw Material preview API returned an empty response for ${path}.`);
-  }
-
-  return payload.data;
-}
-
 export function getRawMaterialPreviewErrorMessage(error: unknown) {
   return getApiErrorMessage(error, "Raw Material preview API is unavailable. Falling back to local preview.");
 }
@@ -93,21 +78,30 @@ export function previewRawMaterialIntake(
   body: Record<string, unknown>,
   signal?: AbortSignal,
 ) {
-  return postPreview<RawMaterialIntakePreviewEstimates>("/raw-material/previews/intake", body, signal);
+  return rawMaterialGeneratedApiData<RawMaterialPreviewResult<RawMaterialIntakePreviewEstimates>>("rawMaterialPreviewIntake", {
+    json: body,
+    signal,
+  });
 }
 
 export function previewRawMaterialBatch(
   body: Record<string, unknown>,
   signal?: AbortSignal,
 ) {
-  return postPreview<RawMaterialBatchPreviewEstimates>("/raw-material/previews/batch", body, signal);
+  return rawMaterialGeneratedApiData<RawMaterialPreviewResult<RawMaterialBatchPreviewEstimates>>("rawMaterialPreviewBatch", {
+    json: body,
+    signal,
+  });
 }
 
 export function previewRawMaterialProcessingRun(
   body: Record<string, unknown>,
   signal?: AbortSignal,
 ) {
-  return postPreview<RawMaterialProcessingPreviewEstimates>("/raw-material/previews/processing-run", body, signal);
+  return rawMaterialGeneratedApiData<RawMaterialPreviewResult<RawMaterialProcessingPreviewEstimates>>("rawMaterialPreviewProcessingRun", {
+    json: body,
+    signal,
+  });
 }
 
 export const rawMaterialPreviewApiClient = {
