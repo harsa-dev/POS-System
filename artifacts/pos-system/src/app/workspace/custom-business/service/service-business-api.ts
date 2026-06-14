@@ -14,6 +14,7 @@ import type {
   CreateServiceRequestInput,
   ListServiceBusinessJobsQuery,
   RecordServiceInvoicePaymentInput,
+  ReverseServiceInvoicePaymentInput,
   ServiceBusinessInvoicePaymentPreviewEstimates,
   ServiceBusinessInvoicePreviewEstimates,
   ServiceBusinessMutationPreviewResponse,
@@ -236,6 +237,24 @@ export const serviceBusinessApi = {
           pathParams: { id: input.invoiceId },
         }),
         { json: input },
+      ),
+    );
+  },
+
+  reverseInvoicePayment(
+    input: ReverseServiceInvoicePaymentInput,
+  ): Promise<ServiceBusinessMutationPreviewResponse> {
+    return unwrapData(
+      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
+        buildServiceBusinessApiPath("serviceBusinessReverseInvoicePayment", {
+          pathParams: { id: input.invoiceId },
+        }),
+        {
+          json: {
+            amount: input.amount,
+            note: input.note,
+          },
+        },
       ),
     );
   },
