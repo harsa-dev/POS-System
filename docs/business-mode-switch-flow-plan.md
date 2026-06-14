@@ -134,9 +134,29 @@ switcher transition usage
 query cache reset
 sidebar route-support filtering
 generalized runtime role mapping
+optional browser smoke script presence
 ```
 
 It is not a browser automation test. It is a fast source-level guard that catches accidental drift in the switch-flow contract.
+
+## Optional browser smoke
+
+Business-mode switch flow also has an optional browser smoke command:
+
+```bash
+pnpm business-mode:browser-smoke
+```
+
+Environment:
+
+```txt
+BUSINESS_MODE_APP_URL=http://localhost:5173
+BUSINESS_MODE_SMOKE_COOKIE=<browser cookie for authenticated checks>
+BUSINESS_MODE_SMOKE_HEADLESS=false
+BUSINESS_MODE_SMOKE_SKIP_AUTH=true
+```
+
+This browser smoke checks protected route redirection, safe `next` continuation, mode storage after selection, and shared dashboard active-mode context. It requires Playwright to be installed locally when browser smoke is needed.
 
 ## Implemented in this phase
 
@@ -147,7 +167,8 @@ BM-2B - Route separation and shared cache reset guard               Done
 BM-3 - Sidebar/module filtering hardening                          Done
 BM-4 - Select-mode next-route flow                                  Done
 BM-5 - Business-mode smoke checklist/script                         Done
-BM-6 - Optional browser switch-flow smoke                           Next
+BM-6 - Optional browser switch-flow smoke                           Done
+BM-7 - Browser E2E dependency/config hardening                      Next
 ```
 
 ## Manual smoke
@@ -164,4 +185,5 @@ BM-6 - Optional browser switch-flow smoke                           Next
 9. Sidebar title follows active mode label.
 10. custom-business remains visible but not selectable.
 11. Run pnpm business-mode:check before touching mode switch flow again.
+12. Run pnpm business-mode:browser-smoke when the dev server and authenticated cookie are available.
 ```
