@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { tablesApi } from "@/lib/api";
+import { restaurantApi, type RestaurantTableDto } from "@/lib/api";
 import {
   normalizeRestaurantTableStatus,
   restaurantTableStatusLabels,
@@ -29,16 +29,8 @@ type TablesWorkspaceResult = {
   reload: () => Promise<void>;
 };
 
-type TableResponse = {
-  id: string;
-  name: string;
-  capacity?: number | null;
-  status?: string | null;
-  isActive?: boolean | null;
-};
-
 function mapTableToWorkspaceTable(
-  table: TableResponse,
+  table: RestaurantTableDto,
 ): TablesWorkspaceTable {
   const status = normalizeRestaurantTableStatus(table.status);
   const isActive = table.isActive ?? true;
@@ -56,7 +48,7 @@ function mapTableToWorkspaceTable(
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) return error.message;
-  return "Tables are unavailable.";
+  return "Restaurant tables are unavailable.";
 }
 
 export function useTablesWorkspaceTables(): TablesWorkspaceResult {
@@ -76,10 +68,10 @@ export function useTablesWorkspaceTables(): TablesWorkspaceResult {
     setErrorMessage(null);
 
     try {
-      const response = await tablesApi.list<TableResponse[]>();
+      const response = await restaurantApi.listTables();
 
       if (!response.success) {
-        throw new Error(response.message ?? "Failed to load tables");
+        throw new Error(response.message ?? "Failed to load restaurant tables");
       }
 
       const mappedTables = (response.data ?? [])
