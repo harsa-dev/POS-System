@@ -7,7 +7,7 @@ import {
   Scissors,
   ShoppingBag,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 
 import {
@@ -49,6 +49,7 @@ export function ModeSelector() {
   const [currentMode, setCurrentMode] = useState<BusinessModeId>(() =>
     businessModeService.getCurrentMode(),
   );
+  const nextRoute = useMemo(() => businessModeService.getNextRoute(location), [location]);
 
   useEffect(() => {
     setCurrentMode(repairBusinessModeStorage("select-mode"));
@@ -72,8 +73,14 @@ export function ModeSelector() {
 
     setCurrentMode(transition.toMode);
 
-    if (transition.shouldRedirect) {
-      setLocation(transition.route);
+    const redirectRoute = businessModeService.getSelectionRedirectRoute({
+      targetMode: mode.id,
+      nextRoute,
+      fallbackRoute: transition.route,
+    });
+
+    if (transition.shouldRedirect || redirectRoute !== location) {
+      setLocation(redirectRoute);
     }
   }
 
@@ -90,6 +97,11 @@ export function ModeSelector() {
           <p className="mt-3 text-sm leading-6 text-neutral-600 sm:text-base">
             Choose the workspace context for this session. The selected mode controls route access, sidebar modules, API headers, and cached shared-dashboard data for this browser session.
           </p>
+          {nextRoute ? (
+            <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              Select a compatible business mode to continue to <span className="font-semibold">{nextRoute}</span>.
+            </div>
+          ) : null}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -98,6 +110,9 @@ export function ModeSelector() {
             const StatusIcon = getModeStatusIcon(mode);
             const isActive = currentMode === mode.id;
             const actionLabel = getModeActionLabel(mode);
+            const canContinueToNext = nextRoute
+              ? businessModeService.isRouteSupportedByMode(mode.id, nextRoute)
+              : false;
 
             return (
               <button
@@ -119,6 +134,11 @@ export function ModeSelector() {
                       <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
                         <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                         Active
+                      </span>
+                    ) : null}
+                    {canContinueToNext ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+                        Continue route
                       </span>
                     ) : null}
                     <span
@@ -185,7 +205,7 @@ export function ModeSelector() {
                         : "text-neutral-400"
                     }
                   >
-                    {actionLabel}
+                    {canContinueToNext ? "Continue to requested route" : actionLabel}
                   </span>
                   <span className="text-neutral-300">→</span>
                 </span>
