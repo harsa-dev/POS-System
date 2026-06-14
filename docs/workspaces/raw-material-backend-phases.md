@@ -15,9 +15,16 @@ artifacts/api-server/src/routes/raw-material.ts
 artifacts/api-server/src/routes/raw-material-processing.ts
 artifacts/api-server/src/routes/raw-material-pens.ts
 artifacts/api-server/src/routes/raw-material-stock-movements.ts
-artifacts/api-server/src/routes/raw-material-summary.ts
 artifacts/api-server/src/services/raw-material/
 artifacts/api-server/prisma/schema.prisma
+```
+
+Existing frontend / shared surfaces:
+
+```txt
+artifacts/pos-system/src/app/workspace/raw-material/
+artifacts/pos-system/src/features/raw-material/core-system/
+artifacts/pos-system/src/features/shared/raw-material-bridge/
 ```
 
 Known modules:
@@ -31,7 +38,6 @@ batches
 processing runs
 kandang pens
 stock movements
-shared dashboard summary
 shared dashboard bridge
 ```
 
@@ -39,10 +45,12 @@ shared dashboard bridge
 
 Status: implemented.
 
-Implemented output:
+Goal:
 
 ```txt
-docs/workspaces/raw-material-backend-phases.md
+Bring docs in line with actual repository state.
+Stop treating Raw Material mode as mock-only when backend code and Prisma models already exist.
+Define the implementation phases before adding more logic.
 ```
 
 Important correction:
@@ -53,9 +61,20 @@ It still says mock-only / no Prisma / no migration.
 The current main branch already contains Raw Material Prisma models, migrations, routes, services, and stock movement handlers.
 ```
 
+No code behavior was changed in this phase.
+
 ## Phase 1 - Baseline backend audit and route contract normalization
 
 Status: implemented.
+
+Goal:
+
+```txt
+Audit existing route behavior.
+Normalize response shape.
+Normalize endpoint naming between frontend API contract and API server.
+Document what is already production-backed versus still preview-only.
+```
 
 Implemented output:
 
@@ -113,35 +132,20 @@ Implemented files:
 ```txt
 artifacts/api-server/src/services/raw-material/raw-material.workflow.ts
 artifacts/api-server/src/services/raw-material/raw-material.stock-rules.ts
-artifacts/api-server/src/services/raw-material/raw-material-processing-run.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-pen.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-stock-movement.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-stock-movement.types.ts
-artifacts/api-server/src/services/raw-material/raw-material-stock-movement.validation.ts
-artifacts/api-server/src/services/raw-material/index.ts
 docs/workspaces/raw-material-workflow-guards.md
 ```
 
-Covered workflow areas:
+Guarded areas:
 
 ```txt
-processing status transitions
-processing output/input invariants
-stock adjustment guards
-stock transfer guards
-processing stock consumption guards
-kandang occupancy/capacity guards
-kandang feed batch guards
-stock movement enum alignment with Prisma schema
+intake quality status
+batch quality status
+processing status
+kandang health status
+stock movement type/reason/source
 ```
 
-No Prisma schema or migration was changed in this phase.
-
 ## Phase 4 - Service layer cleanup
-
-Status: implemented.
-
-### Phase 4A - Stock movement repository split
 
 Status: implemented.
 
@@ -149,56 +153,25 @@ Implemented files:
 
 ```txt
 artifacts/api-server/src/services/raw-material/raw-material-stock-movement.repository.ts
-artifacts/api-server/src/services/raw-material/raw-material-stock-movement.service.ts
-docs/workspaces/raw-material-service-layer-cleanup.md
-```
-
-### Phase 4B - Processing run repository/presenter split
-
-Status: implemented.
-
-Implemented files:
-
-```txt
 artifacts/api-server/src/services/raw-material/raw-material-processing-run.repository.ts
 artifacts/api-server/src/services/raw-material/raw-material-processing-run.presenter.ts
-artifacts/api-server/src/services/raw-material/raw-material-processing-run.dto.ts
-artifacts/api-server/src/services/raw-material/raw-material-processing-run.service.ts
-docs/workspaces/raw-material-service-layer-cleanup.md
-```
-
-### Phase 4C - Intake and batch repository/presenter split
-
-Status: implemented.
-
-Implemented files:
-
-```txt
 artifacts/api-server/src/services/raw-material/raw-material-intake.repository.ts
 artifacts/api-server/src/services/raw-material/raw-material-intake.presenter.ts
-artifacts/api-server/src/services/raw-material/raw-material-intake.dto.ts
-artifacts/api-server/src/services/raw-material/raw-material-intake.service.ts
 artifacts/api-server/src/services/raw-material/raw-material-batch.repository.ts
 artifacts/api-server/src/services/raw-material/raw-material-batch.presenter.ts
-artifacts/api-server/src/services/raw-material/raw-material-batch.dto.ts
-artifacts/api-server/src/services/raw-material/raw-material-batch.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-supplier.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-storage-location.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-pen.repository.ts
 docs/workspaces/raw-material-service-layer-cleanup.md
 ```
 
-### Phase 4D - Supplier, storage, and pen service split
-
-Status: implemented.
-
-Implemented files:
+Phase 4 slices:
 
 ```txt
-artifacts/api-server/src/services/raw-material/raw-material-supplier.repository.ts
-artifacts/api-server/src/services/raw-material/raw-material-supplier.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-storage-location.repository.ts
-artifacts/api-server/src/services/raw-material/raw-material-storage-location.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-pen.repository.ts
-artifacts/api-server/src/services/raw-material/raw-material-pen.service.ts
-docs/workspaces/raw-material-service-layer-cleanup.md
+Phase 4A - stock movement repository split
+Phase 4B - processing run repository/presenter split
+Phase 4C - intake and batch repository/presenter split
+Phase 4D - supplier/storage/pen repository split
 ```
 
 ## Phase 5 - Audit integration
@@ -209,18 +182,10 @@ Implemented files:
 
 ```txt
 artifacts/api-server/src/services/raw-material/raw-material.audit.ts
-artifacts/api-server/src/services/raw-material/raw-material-supplier.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-storage-location.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-intake.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-weighing.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-batch.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-processing-run.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-pen.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-stock-movement.service.ts
 docs/workspaces/raw-material-audit-integration.md
 ```
 
-Audited mutation groups:
+Audited mutations:
 
 ```txt
 supplier create/update/deactivate
@@ -234,8 +199,6 @@ stock adjustment
 stock transfer
 processing consumption
 ```
-
-No Prisma schema or migration was changed in this phase.
 
 ## Phase 6 - Shared dashboard backend summary
 
@@ -299,24 +262,19 @@ raw-material.ts batch qualityStatus query mismatch
 raw-material.audit.ts audit client cast mismatch
 ```
 
-Export surface cleanup:
-
-```txt
-services/raw-material/index.ts now exposes permissions, audit, and summary helpers.
-```
-
-Validation note:
-
-```txt
-The user reported the Raw Material lane as safe after rerunning API server typecheck.
-Remaining global typecheck errors are non-Raw-Material and intentionally out of scope.
-```
-
 No Prisma schema, migration, route behavior, or frontend contract was changed in this phase.
 
 ## Phase 8 - Stock mutation hardening
 
-Status: next.
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/api-server/src/services/raw-material/raw-material.stock-rules.ts
+artifacts/api-server/src/services/raw-material/raw-material-stock-movement.service.ts
+docs/workspaces/raw-material-stock-mutation-hardening.md
+```
 
 Goal:
 
@@ -325,13 +283,59 @@ Treat stock movement as a guarded ledger operation.
 Make adjustment, transfer, and processing consumption safe, scoped, and auditable.
 ```
 
+Implemented hardening:
+
+```txt
+finite quantity guards
+storage containment guard
+manual adjustment reason guard
+ledger semantics guard
+adjustment source/target storage alignment
+transfer type/reason/source/storage alignment
+production usage processing-run source alignment
+source storage quantity check before reductions
+```
+
+No Prisma schema, migration, route path, frontend contract, or non-Raw-Material file was changed in this phase.
+
 ## Phase 9 - Frontend API sync
 
-Status: planned.
+Status: next.
 
 Goal:
 
 ```txt
 Update frontend raw-material API contract and workspace bridge to match real backend capabilities.
 Keep mock fallback for unauthenticated/dev preview states.
+```
+
+Expected outputs:
+
+```txt
+raw-material API client
+API-first bridge
+contract persistence labels updated
+workspace action buttons wired only when safe
+mock fallback retained
+```
+
+## Non-goals
+
+Do not do these unless a later phase explicitly approves it:
+
+```txt
+Do not redesign raw material schema from scratch.
+Do not remove existing routes.
+Do not delete frontend mock data.
+Do not merge raw material stock with restaurant inventory stock.
+Do not unlock unrelated business modes.
+Do not change restaurant/service-business workflows while doing raw material work.
+```
+
+## Current recommended next action
+
+Start with Phase 9:
+
+```txt
+Frontend API sync.
 ```
