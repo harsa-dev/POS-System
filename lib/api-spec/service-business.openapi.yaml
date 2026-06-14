@@ -420,6 +420,31 @@ paths:
                 $ref: "#/components/schemas/ServiceBusinessObjectResponse"
         "409":
           description: Service invoice cannot be cancelled until payment reversal is handled
+  /custom-business/service/reversals/invoices/{id}/reverse-payment:
+    post:
+      operationId: serviceBusinessReverseInvoicePayment
+      tags: [service-business]
+      summary: Reverse a recorded Service Business invoice payment and rollback invoice collection state
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessObject"
+      responses:
+        "200":
+          description: Service Business invoice payment reversed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+        "409":
+          description: Service invoice payment cannot be reversed because state or amount blocks reversal
 components:
   schemas:
     ServiceBusinessWorkflowStatus:
