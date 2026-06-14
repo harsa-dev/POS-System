@@ -102,7 +102,15 @@ export type RawMaterialModuleMetadata = Readonly<{
   checkpoints: readonly string[];
 }>;
 
-export type RawMaterialApiMethod = "GET" | "POST" | "PATCH";
+export type RawMaterialApiMethod = "GET" | "POST" | "PATCH" | "DELETE";
+
+export type RawMaterialApiPersistence =
+  | "mock-only"
+  | "future-db"
+  | "backend-backed"
+  | "backend-backed-with-mock-fallback";
+
+export type RawMaterialApiSource = "mock" | "api" | "api-with-mock-fallback";
 
 export type RawMaterialApiContract = Readonly<{
   id: string;
@@ -112,15 +120,15 @@ export type RawMaterialApiContract = Readonly<{
   purpose: string;
   requestShape: string;
   responseShape: string;
-  persistence: "mock-only" | "future-db";
+  persistence: RawMaterialApiPersistence;
 }>;
 
 export type RawMaterialApiEnvelope<TData> = Readonly<{
   success: true;
   data: TData;
   meta: {
-    source: "mock";
-    schemaTouched: false;
+    source: RawMaterialApiSource;
+    schemaTouched: boolean;
     generatedAt: string;
     total?: number;
   };
@@ -148,9 +156,10 @@ export type RawMaterialContractReadiness = Readonly<{
   totalContracts: number;
   mockOnlyContracts: number;
   futureDbContracts: number;
+  backendBackedContracts: number;
   hasReadContract: boolean;
   hasWriteContract: boolean;
-  readinessLabel: "preview-only" | "read-ready" | "write-planned";
+  readinessLabel: "preview-only" | "read-ready" | "write-planned" | "backend-ready";
 }>;
 
 export type RawMaterialBusinessScale = "small" | "medium" | "factory";
