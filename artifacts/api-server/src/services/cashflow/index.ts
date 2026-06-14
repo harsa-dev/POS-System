@@ -9,6 +9,8 @@ export {
   voidCashflowEntry,
 } from "./cashflow.service.js";
 
+export { getCashflowReconciliation } from "./cashflow.reconciliation.js";
+
 export type {
   CashflowAccount,
   CashflowActor,
