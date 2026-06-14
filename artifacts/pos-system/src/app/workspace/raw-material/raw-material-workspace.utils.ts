@@ -28,7 +28,9 @@ export function getRawMaterialIntakeLabel(intakeId: string) {
   return intake ? intake.referenceNumber : "Unknown intake";
 }
 
-export function getRawMaterialBatchLabel(batchId: string) {
+export function getRawMaterialBatchLabel(batchId?: string | null) {
+  if (!batchId) return "No feed batch";
+
   const batch = rawMaterialBatches.find((candidate) => candidate.id === batchId);
 
   return batch ? batch.lotCode : "Unknown batch";
