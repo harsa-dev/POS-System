@@ -10,6 +10,7 @@
     "start": "node --env-file-if-exists=.env --enable-source-maps ./dist/index.mjs",
     "typecheck": "pnpm run generate && tsc -p tsconfig.json --noEmit",
     "typecheck:retail": "pnpm run generate && tsc -p tsconfig.retail.json --noEmit",
+    "typecheck:raw-material": "pnpm run generate && tsc -p tsconfig.raw-material.json --noEmit",
     "retail:db:apply": "node ./scripts/apply-retail-db.mjs",
     "retail:seed": "tsx ./scripts/seed-retail-demo-data.ts",
     "retail:schema:sync": "tsx ./scripts/sync-retail-return-prisma-schema.ts",
