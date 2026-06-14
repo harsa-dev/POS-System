@@ -8,7 +8,7 @@ import type {
   PosCategoryItem,
   PosProductItem,
 } from "@/app/workspace/restaurant/pos/pos-workspace-types";
-import { menuApi } from "@/lib/api";
+import { restaurantApi, type RestaurantMenuItemDto } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils/format";
 
 type MenuCatalogStatus = "loading" | "ready" | "error";
@@ -20,12 +20,6 @@ type MenuCatalogState = {
   errorMessage: string | null;
   isUsingFallback: boolean;
 };
-
-type MenuItemResponse = Awaited<ReturnType<typeof menuApi.listMenuItems>>;
-type MenuItem = NonNullable<MenuItemResponse["data"]>[number];
-
-type CategoryResponse = Awaited<ReturnType<typeof menuApi.listCategories>>;
-type Category = NonNullable<CategoryResponse["data"]>[number];
 
 const fallbackProducts: PosProductItem[] = v3PosProducts.map(
   (product, index) => ({
@@ -47,13 +41,18 @@ const fallbackCategories: PosCategoryItem[] = v3PosCategories.map(
   }),
 );
 
-function getProductStatus(menuItem: MenuItem) {
-  if (menuItem.availabilityStatus === "AVAILABLE") return "Ready";
-  if (menuItem.availabilityStatus === "OUT_OF_STOCK") return "Out";
-  return "Recipe";
+function getProductStatus(menuItem: RestaurantMenuItemDto) {
+  if (!menuItem.isAvailable) return "Out";
+  if (menuItem.recipeIngredients.length === 0) return "Recipe";
+
+  const hasStockRisk = menuItem.recipeIngredients.some(
+    (ingredient) => ingredient.currentStock < ingredient.quantityNeeded,
+  );
+
+  return hasStockRisk ? "Out" : "Ready";
 }
 
-function mapMenuItemToProduct(menuItem: MenuItem): PosProductItem {
+function mapMenuItemToProduct(menuItem: RestaurantMenuItemDto): PosProductItem {
   return {
     id: menuItem.id,
     name: menuItem.name,
@@ -61,36 +60,20 @@ function mapMenuItemToProduct(menuItem: MenuItem): PosProductItem {
     price: formatCurrency(menuItem.price),
     priceValue: menuItem.price,
     status: getProductStatus(menuItem),
-    imageUrl: menuItem.imageUrl,
+    imageUrl: menuItem.imageUrl ?? "",
   };
 }
 
-function isSellableMenuItem(menuItem: MenuItem) {
+function isSellableMenuItem(menuItem: RestaurantMenuItemDto) {
   if (menuItem.isAvailable === false) return false;
-  if (menuItem.availabilityStatus === "NO_RECIPE") return false;
-  if (menuItem.hasRecipe === false) return false;
-  if (
-    "recipeCount" in menuItem &&
-    typeof menuItem.recipeCount === "number" &&
-    menuItem.recipeCount <= 0
-  ) {
-    return false;
-  }
-  if (
-    "recipes" in menuItem &&
-    Array.isArray(menuItem.recipes) &&
-    menuItem.recipes.length === 0
-  ) {
-    return false;
-  }
+  if (menuItem.recipeIngredients.length === 0) return false;
 
-  return true;
+  return menuItem.recipeIngredients.every(
+    (ingredient) => ingredient.currentStock >= ingredient.quantityNeeded,
+  );
 }
 
-function mapCategories(
-  categories: Category[],
-  products: PosProductItem[],
-): PosCategoryItem[] {
+function mapCategories(products: PosProductItem[]): PosCategoryItem[] {
   const categoryCounts = new Map<string, number>();
 
   for (const product of products) {
@@ -100,11 +83,13 @@ function mapCategories(
     );
   }
 
-  const mappedCategories = categories.map((category) => ({
-    label: category.name,
-    count: categoryCounts.get(category.name) ?? 0,
-    tone: "bg-white text-neutral-700",
-  }));
+  const mappedCategories = Array.from(categoryCounts.entries())
+    .map(([label, count]) => ({
+      label,
+      count,
+      tone: "bg-white text-neutral-700",
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label));
 
   return [
     {
@@ -118,7 +103,7 @@ function mapCategories(
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) return error.message;
-  return "Menu catalog is unavailable. Showing static preview data.";
+  return "Restaurant menu catalog is unavailable. Showing static preview data.";
 }
 
 export function usePosMenuCatalog(): MenuCatalogState {
@@ -137,30 +122,18 @@ export function usePosMenuCatalog(): MenuCatalogState {
       setErrorMessage(null);
 
       try {
-        const [menuItemsResponse, categoriesResponse] = await Promise.all([
-          menuApi.listMenuItems(),
-          menuApi.listCategories(),
-        ]);
+        const response = await restaurantApi.listMenuItems();
         if (!isMounted) return;
 
-        if (!menuItemsResponse.success) {
-          throw new Error(menuItemsResponse.message ?? "Failed to load menu");
+        if (!response.success) {
+          throw new Error(response.message ?? "Failed to load restaurant menu");
         }
 
-        if (!categoriesResponse.success) {
-          throw new Error(
-            categoriesResponse.message ?? "Failed to load categories",
-          );
-        }
-
-        const menuItems = (menuItemsResponse.data ?? []).filter(
-          isSellableMenuItem,
-        );
-        const categoryData = categoriesResponse.data ?? [];
+        const menuItems = (response.data ?? []).filter(isSellableMenuItem);
         const mappedProducts = menuItems.map(mapMenuItemToProduct);
 
         setProducts(mappedProducts);
-        setCategories(mapCategories(categoryData, mappedProducts));
+        setCategories(mapCategories(mappedProducts));
         setIsUsingFallback(false);
 
         setStatus("ready");
