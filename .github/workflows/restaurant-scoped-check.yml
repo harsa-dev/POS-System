@@ -1,0 +1,63 @@
+name: Restaurant scoped check
+
+on:
+  pull_request:
+    paths:
+      - "artifacts/api-server/src/routes/restaurant.ts"
+      - "artifacts/api-server/src/routes/restaurant-payment-reversal.ts"
+      - "artifacts/api-server/src/services/restaurant/**"
+      - "artifacts/api-server/scripts/*restaurant*"
+      - "artifacts/api-server/tsconfig.restaurant.json"
+      - "artifacts/pos-system/src/app/workspace/restaurant/**"
+      - "artifacts/pos-system/src/lib/api/restaurant*.ts"
+      - "artifacts/pos-system/tsconfig.restaurant.json"
+      - "docs/restaurant-*.md"
+      - "scripts/restaurant-*.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/restaurant-scoped-check.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "artifacts/api-server/src/routes/restaurant.ts"
+      - "artifacts/api-server/src/routes/restaurant-payment-reversal.ts"
+      - "artifacts/api-server/src/services/restaurant/**"
+      - "artifacts/api-server/scripts/*restaurant*"
+      - "artifacts/api-server/tsconfig.restaurant.json"
+      - "artifacts/pos-system/src/app/workspace/restaurant/**"
+      - "artifacts/pos-system/src/lib/api/restaurant*.ts"
+      - "artifacts/pos-system/tsconfig.restaurant.json"
+      - "docs/restaurant-*.md"
+      - "scripts/restaurant-*.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/restaurant-scoped-check.yml"
+
+jobs:
+  restaurant-scoped-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Restaurant scoped check
+        run: pnpm restaurant:check
