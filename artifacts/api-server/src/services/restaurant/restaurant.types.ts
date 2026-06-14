@@ -189,7 +189,7 @@ export type RestaurantCashflowReversalDto = {
   posted: boolean;
   amount: number;
   account: string | null;
-  sourceType: "REFUND" | null;
+  sourceType: string | null;
   entryId: string | null;
 };
 
