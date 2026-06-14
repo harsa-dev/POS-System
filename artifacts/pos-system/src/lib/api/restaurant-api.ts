@@ -171,6 +171,10 @@ export type RestaurantStatusActionPreviewInput = {
   targetStatus?: string | null;
 };
 
+export type RestaurantOrderStatusRouteInput = {
+  targetStatus: string;
+};
+
 export type RestaurantStatusActionTransitionDto = {
   actionKey: string;
   label: string;
@@ -366,6 +370,10 @@ export const restaurantApi = {
     apiClient.post<ApiEnvelope<RestaurantOrderPreviewDto>>("/restaurant/orders/preview", input),
   createOrder: (input: RestaurantOrderPreviewInput) =>
     apiClient.post<ApiEnvelope<RestaurantOrderWriteResultDto>>("/restaurant/orders", input),
+  previewOrderStatus: (orderId: string, input: RestaurantOrderStatusRouteInput) =>
+    apiClient.post<ApiEnvelope<RestaurantStatusActionPreviewDto>>(`/restaurant/orders/${orderId}/status/preview`, input),
+  updateOrderStatus: (orderId: string, input: RestaurantOrderStatusRouteInput) =>
+    apiClient.post<ApiEnvelope<RestaurantStatusActionWriteDto>>(`/restaurant/orders/${orderId}/status`, input),
   previewPayment: (input: RestaurantPaymentPreviewInput) =>
     apiClient.post<ApiEnvelope<RestaurantPaymentPreviewDto>>("/restaurant/payments/preview", input),
   confirmPayment: (input: RestaurantPaymentPreviewInput) =>
