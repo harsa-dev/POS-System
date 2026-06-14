@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 
 import {
   findServiceWorkflowTarget,
@@ -25,7 +25,7 @@ import { successResponse } from "../lib/responses/success-response.js";
 
 const router = Router();
 
-async function handleServiceStatusUpdate(req: Parameters<Parameters<typeof router.post>[1]>[0], res: Parameters<Parameters<typeof router.post>[1]>[1]) {
+async function handleServiceStatusUpdate(req: Request, res: Response) {
   try {
     const user = await requireServiceBusinessPermission(
       req,
