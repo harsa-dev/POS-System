@@ -75,6 +75,10 @@ export const SERVICE_BUSINESS_OPENAPI_OPERATIONS = {
     method: "POST",
     path: "/custom-business/service/reversals/invoices/{id}/cancel",
   },
+  serviceBusinessReverseInvoicePayment: {
+    method: "POST",
+    path: "/custom-business/service/reversals/invoices/{id}/reverse-payment",
+  },
 } as const;
 
 export type ServiceBusinessOpenApiOperationId = keyof typeof SERVICE_BUSINESS_OPENAPI_OPERATIONS;
