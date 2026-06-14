@@ -148,7 +148,7 @@ export const restaurantPrismaRepository: RestaurantRepository = {
       pendingPayments,
       kitchenQueue,
       servingQueue,
-      lowStockItems,
+      inventoryStockLevels,
       completedToday,
       todayRevenue,
     ] = await Promise.all([
@@ -160,11 +160,9 @@ export const restaurantPrismaRepository: RestaurantRepository = {
       prisma.order.count({ where: { businessId: scope.businessId, status: "PENDING_PAYMENT" } }),
       prisma.order.count({ where: { businessId: scope.businessId, status: { in: kitchenQueueStatuses } } }),
       prisma.order.count({ where: { businessId: scope.businessId, status: { in: servingQueueStatuses } } }),
-      prisma.inventoryItem.count({
-        where: {
-          businessId: scope.businessId,
-          currentStock: { lte: prisma.inventoryItem.fields.minimumStock },
-        },
+      prisma.inventoryItem.findMany({
+        where: { businessId: scope.businessId },
+        select: { currentStock: true, minimumStock: true },
       }),
       prisma.order.count({
         where: {
@@ -184,6 +182,7 @@ export const restaurantPrismaRepository: RestaurantRepository = {
     ]);
 
     const revenue = todayRevenue._sum.total ?? 0;
+    const lowStockItems = inventoryStockLevels.filter((item) => item.currentStock <= item.minimumStock).length;
 
     return {
       totals: {
