@@ -1,12 +1,18 @@
 #!/usr/bin/env node
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const rootDir = process.cwd();
 
 function read(path) {
   return readFileSync(resolve(rootDir, path), "utf8");
+}
+
+function assertFileExists(path) {
+  if (!existsSync(resolve(rootDir, path))) {
+    throw new Error(`Expected file to exist: ${path}`);
+  }
 }
 
 function assertContains({ label, content, expected }) {
@@ -32,6 +38,7 @@ const files = {
   switcher: read("artifacts/pos-system/src/components/core/business-mode/business-mode-switcher.tsx"),
   sidebar: read("artifacts/pos-system/src/components/core/sidebar/sidebar.tsx"),
   permissionCompat: read("artifacts/pos-system/src/app/registry/permission-compat.ts"),
+  browserSmoke: read("scripts/business-mode-browser-smoke.mjs"),
   docs: read("docs/business-mode-switch-flow-plan.md"),
 };
 
@@ -157,6 +164,17 @@ const checks = [
       throw new Error("permission-compat.ts still contains legacy runtime roles CASHIER/KITCHEN/SERVER");
     }
   },
+  () => assertFileExists("scripts/business-mode-browser-smoke.mjs"),
+  () => assertContains({
+    label: "business mode browser smoke",
+    content: files.browserSmoke,
+    expected: "BUSINESS_MODE_SMOKE_COOKIE",
+  }),
+  () => assertContains({
+    label: "business mode browser smoke",
+    content: files.browserSmoke,
+    expected: "business-mode browser smoke passed",
+  }),
   () => assertContains({
     label: "business mode docs",
     content: files.docs,
