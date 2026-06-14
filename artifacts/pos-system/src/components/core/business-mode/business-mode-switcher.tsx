@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
   Building2,
@@ -19,9 +19,9 @@ import {
 } from "./business-mode-registry";
 import {
   getCurrentBusinessMode,
-  setCurrentBusinessMode,
   subscribeToBusinessModeChanges,
 } from "./business-mode-storage";
+import { businessModeService } from "./business-mode-service";
 import type { BusinessModeConfig, BusinessModeId } from "./business-mode.types";
 
 const modeIcons: Record<BusinessModeId, typeof UtensilsCrossed> = {
@@ -37,7 +37,8 @@ function getModeButtonLabel(mode: BusinessModeConfig) {
 }
 
 export function BusinessModeSwitcher() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const detailsRef = useRef<HTMLDetailsElement | null>(null);
   const [activeModeId, setActiveModeId] = useState<BusinessModeId>(() =>
     getCurrentBusinessMode(),
   );
@@ -58,20 +59,28 @@ export function BusinessModeSwitcher() {
   const ActiveIcon = modeIcons[activeMode.id] ?? Building2;
 
   function handleSelectMode(mode: BusinessModeConfig) {
-    if (!mode.isSelectable) return;
+    const transition = businessModeService.switchMode({
+      targetMode: mode.id,
+      source: "switcher",
+      currentPath: location,
+    });
 
-    const isChanged = setCurrentBusinessMode(mode.id, "switcher");
-
-    if (!isChanged) {
+    if (!transition.success) {
       setActiveModeId(getCurrentBusinessMode());
+      return;
     }
 
-    setLocation(mode.route);
+    detailsRef.current?.removeAttribute("open");
+    setActiveModeId(transition.toMode);
+
+    if (transition.shouldRedirect) {
+      setLocation(transition.route);
+    }
   }
 
   return (
     <div className="relative hidden min-w-0 shrink-0 sm:block">
-      <details className="group">
+      <details ref={detailsRef} className="group">
         <summary className="flex h-11 cursor-pointer list-none items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-3 text-left text-sm font-semibold text-neutral-800 shadow-sm transition hover:bg-neutral-50 [&::-webkit-details-marker]:hidden">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
             <ActiveIcon className="h-4 w-4" aria-hidden="true" />
@@ -96,9 +105,7 @@ export function BusinessModeSwitcher() {
           <div className="border-b border-neutral-100 px-4 py-3">
             <p className="text-sm font-bold text-neutral-950">Business mode</p>
             <p className="mt-1 text-xs leading-5 text-neutral-500">
-              Restaurant / F&amp;B is production-focused. Raw Material / Livestock
-              is enabled as a preview workspace for route, sidebar, API header,
-              and tenant-scope testing.
+              Switching mode changes route, sidebar, API header, and cached shared-dashboard context. Shared modules stay separated by the active mode.
             </p>
           </div>
 
@@ -115,6 +122,7 @@ export function BusinessModeSwitcher() {
                   disabled={isLocked}
                   onClick={() => handleSelectMode(mode)}
                   className="flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left transition enabled:hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-70"
+                  aria-current={isActive ? "page" : undefined}
                   aria-label={getModeButtonLabel(mode)}
                   title={mode.unavailableReason ?? getModeButtonLabel(mode)}
                 >
