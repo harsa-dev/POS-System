@@ -1,4 +1,5 @@
 import { apiFetch, apiJson, type ApiEnvelope } from "@/lib/api/api-client";
+import { readApiEnvelope } from "@/lib/api/read-api-envelope";
 
 type ApiRecord = Record<string, unknown>;
 
@@ -15,43 +16,6 @@ export type UpdateOrderStatusPayload = {
 export type MoveTablePayload = {
   tableId: string;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isApiEnvelope<T>(value: unknown): value is ApiEnvelope<T> {
-  return isRecord(value) && typeof value.success === "boolean";
-}
-
-async function readApiEnvelope<T>(response: Response): Promise<ApiEnvelope<T>> {
-  const rawText = await response.text();
-
-  if (!rawText.trim()) {
-    return {
-      success: false,
-      message: `Empty order API response (${response.status})`,
-    };
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(rawText);
-
-    if (isApiEnvelope<T>(parsed)) {
-      return parsed;
-    }
-
-    return {
-      success: false,
-      message: `Unexpected order API response (${response.status})`,
-    };
-  } catch {
-    return {
-      success: false,
-      message: rawText,
-    };
-  }
-}
 
 export const orderApi = {
   listOrdersResponse() {
@@ -96,7 +60,7 @@ export const orderApi = {
     return {
       ok: response.ok,
       status: response.status,
-      body: await readApiEnvelope<T>(response),
+      body: await readApiEnvelope<T>(response, "order"),
     };
   },
 
@@ -123,7 +87,7 @@ export const orderApi = {
     return {
       ok: response.ok,
       status: response.status,
-      body: await readApiEnvelope<T>(response),
+      body: await readApiEnvelope<T>(response, "order"),
     };
   },
 

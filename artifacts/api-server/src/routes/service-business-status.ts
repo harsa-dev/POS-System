@@ -47,7 +47,8 @@ async function handleServiceStatusUpdate(req: Request, res: Response) {
       });
     }
 
-    const target = await findServiceWorkflowTarget(businessContext.businessId, req.params.id ?? "");
+    const targetId = typeof req.params.id === "string" ? req.params.id.trim() : "";
+    const target = await findServiceWorkflowTarget(businessContext.businessId, targetId);
     if (!target) {
       return errorResponse(res, {
         status: 404,

@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { mkdirSync } from "fs";
-import { Router, type RequestHandler } from "express";
-import multer from "multer";
+import { Router, type Request, type RequestHandler } from "express";
+import multer, { MulterError, diskStorage, type File as MulterFile } from "multer";
 import path from "path";
 import { MANAGEMENT_ROLES } from "../lib/constants.js";
 import { requireRole } from "../lib/auth.js";
@@ -24,7 +24,16 @@ const ALLOWED_IMAGE_EXTENSIONS = new Set(ALLOWED_IMAGE_TYPES.values());
 
 mkdirSync(UPLOADS_DIR, { recursive: true });
 
-function getAllowedImageExtension(file: Express.Multer.File) {
+type UploadRequest = Request & {
+  files?:
+    | {
+        image?: MulterFile[];
+        file?: MulterFile[];
+      }
+    | MulterFile[];
+};
+
+function getAllowedImageExtension(file: MulterFile) {
   const mimeExtension = ALLOWED_IMAGE_TYPES.get(file.mimetype.toLowerCase());
   if (mimeExtension) return mimeExtension;
 
@@ -34,11 +43,11 @@ function getAllowedImageExtension(file: Express.Multer.File) {
   return null;
 }
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
+const storage = diskStorage({
+  destination: (_req: Request, _file: MulterFile, cb) => {
     cb(null, UPLOADS_DIR);
   },
-  filename: (_req, file, cb) => {
+  filename: (_req: Request, file: MulterFile, cb) => {
     const extension = getAllowedImageExtension(file) ?? ".jpg";
     cb(null, `${Date.now()}-${randomUUID()}${extension}`);
   },
@@ -49,7 +58,7 @@ const upload = multer({
   limits: {
     fileSize: MAX_IMAGE_SIZE_BYTES,
   },
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (_req: Request, file: MulterFile, cb) => {
     if (getAllowedImageExtension(file)) {
       cb(null, true);
       return;
@@ -88,7 +97,7 @@ const uploadSingleImage: RequestHandler = (req, res, next) => {
       return;
     }
 
-    if (error instanceof multer.MulterError) {
+    if (error instanceof MulterError) {
       const message =
         error.code === "LIMIT_FILE_SIZE"
           ? "Image too large"
@@ -122,20 +131,16 @@ const uploadSingleImage: RequestHandler = (req, res, next) => {
 };
 
 router.post("/", requireUploadAccess, uploadSingleImage, (req, res) => {
-  const files = req.files as
-    | {
-        image?: Express.Multer.File[];
-        file?: Express.Multer.File[];
-      }
-    | undefined;
-  const uploadedFile = files?.image?.[0] ?? files?.file?.[0];
+  const files = (req as UploadRequest).files;
+  const fieldFiles = Array.isArray(files) ? {} : files;
+  const uploadedFile = fieldFiles?.image?.[0] ?? fieldFiles?.file?.[0];
 
   if (!uploadedFile) {
     logger.warn(
       {
         url: req.originalUrl,
         status: 400,
-        fields: files ? Object.keys(files) : [],
+        fields: fieldFiles ? Object.keys(fieldFiles) : [],
       },
       "Upload request did not include an image file",
     );
@@ -150,7 +155,7 @@ router.post("/", requireUploadAccess, uploadSingleImage, (req, res) => {
   logger.info(
     {
       url: req.originalUrl,
-      field: files?.image?.[0] ? "image" : "file",
+      field: fieldFiles?.image?.[0] ? "image" : "file",
       originalName: uploadedFile.originalname,
       mimetype: uploadedFile.mimetype,
       size: uploadedFile.size,

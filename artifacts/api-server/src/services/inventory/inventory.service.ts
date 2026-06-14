@@ -52,9 +52,7 @@ function restaurantScope(businessContext: BusinessContext) {
 }
 
 function writableBusinessId(businessContext: BusinessContext) {
-  return businessContext.businessId === businessContext.restaurantId
-    ? null
-    : businessContext.businessId;
+  return businessContext.businessId;
 }
 
 async function loadInventoryItemOrThrow(businessContext: BusinessContext, id: string) {
@@ -222,10 +220,8 @@ export async function createInventoryItem(params: {
           inventoryItemId: item.id,
           type: "IN",
           quantity: openingStock,
-          previousStock: 0,
-          newStock: openingStock,
-          unitCostSnapshot: costPerUnit,
           sourceType: "MANUAL",
+          source: "MANUAL",
           sourceId: null,
           reason: "OPENING_STOCK",
           note: "Opening stock",
@@ -240,6 +236,7 @@ export async function createInventoryItem(params: {
 
     await tx.auditLog.create({
       data: {
+        businessId,
         restaurantId: businessContext.restaurantId,
         userId: actor.id,
         action: "CREATE",
@@ -336,10 +333,8 @@ export async function updateInventoryItem(params: {
           inventoryItemId: existing.id,
           type: "ADJUSTMENT",
           quantity: targetStock,
-          previousStock: existing.currentStock,
-          newStock: targetStock,
-          unitCostSnapshot: item.costPerUnit,
           sourceType: "MANUAL",
+          source: "MANUAL",
           sourceId: null,
           reason: "MANUAL_ADJUSTMENT",
           note: "Manual stock adjustment from inventory item update",
@@ -366,6 +361,7 @@ export async function updateInventoryItem(params: {
 
     await tx.auditLog.create({
       data: {
+        businessId: writableBusinessId(businessContext),
         restaurantId: businessContext.restaurantId,
         userId: actor.id,
         action: "UPDATE",
@@ -419,6 +415,7 @@ export async function deleteInventoryItem(params: {
 
     await tx.auditLog.create({
       data: {
+        businessId: writableBusinessId(businessContext),
         restaurantId: businessContext.restaurantId,
         userId: actor.id,
         action: "DELETE",
@@ -575,10 +572,8 @@ export async function createStockMovement(params: {
         inventoryItemId: parsed.inventoryItemId,
         type: parsed.type,
         quantity: parsed.quantity,
-        previousStock: existing.currentStock,
-        newStock: updatedItem.currentStock,
-        unitCostSnapshot: existing.costPerUnit,
         sourceType: movementSourceType,
+        source: movementSourceType,
         sourceId: parsed.sourceId,
         note: parsed.note,
         reason: effectiveReason,
@@ -588,6 +583,7 @@ export async function createStockMovement(params: {
 
     await tx.auditLog.create({
       data: {
+        businessId: movementBusinessId,
         restaurantId: businessContext.restaurantId,
         userId: actor.id,
         action: "CREATE",

@@ -4,6 +4,7 @@ import {
   apiJson,
   type ApiEnvelope,
 } from "@/lib/api/api-client";
+import { readApiEnvelope } from "@/lib/api/read-api-envelope";
 
 import type {
   Category,
@@ -60,43 +61,6 @@ type ListMenuItemsOptions = {
   includeUnavailable?: boolean;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isApiEnvelope<T>(value: unknown): value is ApiEnvelope<T> {
-  return isRecord(value) && typeof value.success === "boolean";
-}
-
-async function readApiEnvelope<T>(response: Response): Promise<ApiEnvelope<T>> {
-  const rawText = await response.text();
-
-  if (!rawText.trim()) {
-    return {
-      success: false,
-      message: `Empty menu API response (${response.status})`,
-    };
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(rawText);
-
-    if (isApiEnvelope<T>(parsed)) {
-      return parsed;
-    }
-
-    return {
-      success: false,
-      message: `Unexpected menu API response (${response.status})`,
-    };
-  } catch {
-    return {
-      success: false,
-      message: rawText,
-    };
-  }
-}
-
 export const menuApi = {
   listMenuItems() {
     return apiClient.get<ApiEnvelope<MenuItem[]>>("/api/menu-items");
@@ -135,7 +99,7 @@ export const menuApi = {
     return {
       ok: response.ok,
       status: response.status,
-      body: await readApiEnvelope<T>(response),
+      body: await readApiEnvelope<T>(response, "menu"),
     };
   },
 
@@ -159,7 +123,7 @@ export const menuApi = {
     return {
       ok: response.ok,
       status: response.status,
-      body: await readApiEnvelope<T>(response),
+      body: await readApiEnvelope<T>(response, "menu"),
     };
   },
 
@@ -214,7 +178,7 @@ export const menuApi = {
     return {
       ok: response.ok,
       status: response.status,
-      body: await readApiEnvelope<T>(response),
+      body: await readApiEnvelope<T>(response, "menu"),
     };
   },
 
@@ -238,7 +202,7 @@ export const menuApi = {
     return {
       ok: response.ok,
       status: response.status,
-      body: await readApiEnvelope<T>(response),
+      body: await readApiEnvelope<T>(response, "menu"),
     };
   },
 
@@ -257,7 +221,7 @@ export const menuApi = {
     return {
       ok: response.ok,
       status: response.status,
-      body: await readApiEnvelope<T>(response),
+      body: await readApiEnvelope<T>(response, "menu"),
     };
   },
 

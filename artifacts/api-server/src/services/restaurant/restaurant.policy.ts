@@ -54,7 +54,7 @@ export function getRestaurantRolesForCapability(capability: RestaurantPermission
 }
 
 export function canRestaurantRole(role: Role, capability: RestaurantPermissionCapability) {
-  return RESTAURANT_PERMISSION_MATRIX[capability].includes(role);
+  return RESTAURANT_PERMISSION_MATRIX[capability].some((candidate) => candidate === role);
 }
 
 export const RESTAURANT_READ_ROLES = getRestaurantRolesForCapability("restaurant:read");

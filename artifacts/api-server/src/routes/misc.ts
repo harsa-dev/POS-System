@@ -252,7 +252,7 @@ router.delete("/recipes/:id", async (req, res) => {
     }
 
     await prisma.recipe.delete({ where: { id } });
-    return successResponse(res, { message: "Recipe deleted." });
+    return successResponse(res, { data: { id }, message: "Recipe deleted." });
   } catch (error) {
     return handleApiError(res, error);
   }

@@ -179,6 +179,7 @@ async function logSalesAnalyticsExport(params: {
 }) {
   await prisma.auditLog.create({
     data: {
+      businessId: params.businessContext.businessId,
       restaurantId: params.businessContext.restaurantId,
       userId: params.actor.id,
       action: AuditAction.CREATE,
