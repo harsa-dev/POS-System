@@ -22,6 +22,7 @@ export const TEAM_MANAGEMENT_API_ENDPOINTS = {
 } as const;
 
 export type TeamManagementDataSource = "localStorage" | "api";
+export type PersistableTeamMemberStatus = Extract<TeamMemberStatus, "Active" | "Suspended">;
 
 export type TeamManagementSnapshotDto = {
   contractVersion: typeof TEAM_MANAGEMENT_API_CONTRACT_VERSION;
@@ -60,7 +61,7 @@ export type AssignTeamMemberRolePayload = {
 };
 
 export type UpdateTeamMemberStatusPayload = {
-  status: TeamMemberStatus;
+  status: PersistableTeamMemberStatus;
   reason?: string;
 };
 
