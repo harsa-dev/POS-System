@@ -91,6 +91,11 @@ export type RawMaterialAdjustmentInput = Readonly<{
   note?: unknown;
 }>;
 
+export type RawMaterialAdjustmentReversalInput = Readonly<{
+  movementId?: unknown;
+  note?: unknown;
+}>;
+
 export type RawMaterialTransferInput = Readonly<{
   batchId?: unknown;
   targetStorageLocationId?: unknown;
