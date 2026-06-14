@@ -1,4 +1,4 @@
-import { apiClient, getApiErrorMessage, type ApiEnvelope } from "@/lib/api";
+import { apiClient, getApiErrorMessage, type ApiEnvelope } from "@/lib/api/api-client";
 
 import type { RawMaterialStockMovement } from "./raw-material.types";
 
