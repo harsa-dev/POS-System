@@ -1,3 +1,4 @@
+import type { OrderStatus } from "@prisma/client";
 import { Router, type IRouter, type Request, type Response } from "express";
 
 import { requireRole } from "../lib/auth.js";
@@ -24,6 +25,7 @@ import type {
   RestaurantPaymentPreviewInput,
   RestaurantSharedDashboardId,
   RestaurantStatusActionPreviewInput,
+  RestaurantStatusActionSurface,
 } from "../services/restaurant/restaurant.types.js";
 
 const router: IRouter = Router();
@@ -45,6 +47,10 @@ const restaurantSharedDashboardIds = new Set<string>([
   "employee-contracts",
   "payroll",
 ]);
+const RESTAURANT_STATUS_WRITE_ROLES = Array.from(new Set([
+  ...RESTAURANT_KITCHEN_ROLES,
+  ...RESTAURANT_SERVING_ROLES,
+]));
 
 function isRestaurantSharedDashboardId(value: string): value is RestaurantSharedDashboardId {
   return restaurantSharedDashboardIds.has(value);
@@ -135,6 +141,55 @@ function readStatusActionPreviewInput(req: Request, res: Response): RestaurantSt
     orderId: req.body.orderId,
     targetStatus: typeof req.body.targetStatus === "string" ? req.body.targetStatus as RestaurantStatusActionPreviewInput["targetStatus"] : null,
   };
+}
+
+function readCanonicalOrderStatusInput(req: Request, res: Response): RestaurantStatusActionPreviewInput | null {
+  const orderId = req.params.orderId;
+
+  if (typeof orderId !== "string" || orderId.length === 0) {
+    badRequest(res, "Restaurant order status route requires orderId in the URL.");
+    return null;
+  }
+
+  if (!isObject(req.body)) {
+    badRequest(res, "Restaurant order status route requires an object body.");
+    return null;
+  }
+
+  if (typeof req.body.targetStatus !== "string" || req.body.targetStatus.length === 0) {
+    badRequest(res, "Restaurant order status route requires targetStatus in the body.");
+    return null;
+  }
+
+  return {
+    orderId,
+    targetStatus: req.body.targetStatus as OrderStatus,
+  };
+}
+
+function getSurfaceForTargetStatus(targetStatus: OrderStatus): RestaurantStatusActionSurface | null {
+  if (targetStatus === "PREPARING" || targetStatus === "READY") return "kitchen";
+  if (targetStatus === "SERVED" || targetStatus === "COMPLETED") return "serving";
+  return null;
+}
+
+function getCanonicalOrderStatusSurface(input: RestaurantStatusActionPreviewInput, res: Response) {
+  if (!input.targetStatus) {
+    badRequest(res, "Restaurant order status route requires targetStatus in the body.");
+    return null;
+  }
+
+  const surface = getSurfaceForTargetStatus(input.targetStatus);
+
+  if (!surface) {
+    badRequest(
+      res,
+      "Restaurant order status route only handles kitchen/serving workflow targets. Use payment confirm for PAID and cancellation reversal workflow for CANCELLED.",
+    );
+    return null;
+  }
+
+  return surface;
 }
 
 async function getRestaurantRequestContext(req: Request, res: Response, roles = RESTAURANT_READ_ROLES) {
@@ -299,6 +354,48 @@ router.post("/restaurant/orders", async (req, res) => {
       status: 201,
       data: await restaurantOrderWriteService.createOrder(context.actor, input),
       message: "Restaurant order created.",
+    });
+  } catch (error) {
+    const handledWriteError = handleRestaurantWriteError(res, error);
+    if (handledWriteError) return handledWriteError;
+
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/restaurant/orders/:orderId/status/preview", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res);
+    if (!context) return;
+
+    const input = readCanonicalOrderStatusInput(req, res);
+    if (!input) return;
+
+    const surface = getCanonicalOrderStatusSurface(input, res);
+    if (!surface) return;
+
+    return successResponse(res, {
+      data: await restaurantPreviewService.previewStatusAction(context.scope, surface, input),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/restaurant/orders/:orderId/status", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res, RESTAURANT_STATUS_WRITE_ROLES);
+    if (!context) return;
+
+    const input = readCanonicalOrderStatusInput(req, res);
+    if (!input) return;
+
+    const surface = getCanonicalOrderStatusSurface(input, res);
+    if (!surface) return;
+
+    return successResponse(res, {
+      data: await restaurantStatusWriteService.updateStatus(context.actor, surface, input),
+      message: "Restaurant order workflow status updated.",
     });
   } catch (error) {
     const handledWriteError = handleRestaurantWriteError(res, error);
