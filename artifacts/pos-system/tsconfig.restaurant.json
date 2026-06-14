@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/app/workspace/restaurant/**/*.ts",
+    "src/app/workspace/restaurant/**/*.tsx",
+    "src/components/ui/badge.tsx",
+    "src/components/ui/button.tsx",
+    "src/components/ui/card.tsx",
+    "src/components/ui/tabs.tsx",
+    "src/components/ui/table.tsx",
+    "src/components/ui/progress.tsx",
+    "src/components/ui/scroll-area.tsx",
+    "src/lib/api/**/*.ts",
+    "src/lib/utils/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist",
+    "**/*.test.ts",
+    "src/features/fnb/**",
+    "src/features/retail/**",
+    "src/features/raw-material/**"
+  ]
+}
