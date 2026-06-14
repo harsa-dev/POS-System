@@ -100,11 +100,21 @@ export type ApproveServiceQuotationInput = {
   note?: string;
 };
 
+export type CancelServiceQuotationInput = {
+  quotationId: string;
+  note?: string;
+};
+
 export type CreateServiceInvoiceInput = {
   requestId: string;
   quotationId: string;
   dueDate: string;
   paymentTermDays: number;
+};
+
+export type CancelServiceInvoiceInput = {
+  invoiceId: string;
+  note?: string;
 };
 
 export type RecordServiceInvoicePaymentInput = {
