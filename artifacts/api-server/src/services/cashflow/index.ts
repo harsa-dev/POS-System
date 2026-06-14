@@ -10,6 +10,12 @@ export {
 } from "./cashflow.service.js";
 
 export { getCashflowReconciliation } from "./cashflow.reconciliation.js";
+export { getCashflowAccountBalances } from "./cashflow.account-balances.js";
+
+export type {
+  CashflowAccountBalanceDto,
+  CashflowAccountBalancesDto,
+} from "./cashflow.account-balances.js";
 
 export type {
   CashflowAccount,
