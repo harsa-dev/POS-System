@@ -16,6 +16,7 @@ export * from "./raw-material-batch.validation.js";
 export * from "./raw-material-processing-run.dto.js";
 export * from "./raw-material-processing-run.service.js";
 export * from "./raw-material-processing-run.validation.js";
+export * from "./raw-material-processing-cancellation-reversal.service.js";
 export * from "./raw-material-pen.dto.js";
 export * from "./raw-material-pen.service.js";
 export * from "./raw-material-pen.validation.js";
