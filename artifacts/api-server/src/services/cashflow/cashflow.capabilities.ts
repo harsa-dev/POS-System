@@ -3,7 +3,7 @@ import { hasPermission, permissionKeys } from "../permissions/index.js";
 import type { CashflowActor } from "./cashflow.types.js";
 
 export type CashflowCapabilitiesDto = {
-  mode: BusinessContext["mode"];
+  businessMode: BusinessContext["businessMode"];
   businessId: string;
   canView: boolean;
   canCreate: boolean;
@@ -18,11 +18,11 @@ export function getCashflowCapabilities(params: {
   actor: CashflowActor;
   businessContext: BusinessContext;
 }): CashflowCapabilitiesDto {
-  const mode = params.businessContext.mode;
-  const isPlannedMode = mode === "SERVICE";
+  const businessMode = params.businessContext.businessMode;
+  const isPlannedMode = businessMode === "custom-business";
 
   return {
-    mode,
+    businessMode,
     businessId: params.businessContext.businessId,
     canView: hasPermission(params.actor.role, permissionKeys.shared.cashflow.view),
     canCreate:
@@ -37,7 +37,7 @@ export function getCashflowCapabilities(params: {
     canExport: hasPermission(params.actor.role, permissionKeys.shared.cashflow.export),
     isPlannedMode,
     plannedReason: isPlannedMode
-      ? "Service mode cashflow is planned and not operational yet."
+      ? "Service/custom business cashflow is planned and not operational yet."
       : null,
   };
 }
