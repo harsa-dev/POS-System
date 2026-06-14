@@ -12,13 +12,12 @@ import { useLocation } from "wouter";
 
 import {
   businessModeRegistry,
-  getCurrentBusinessMode,
   repairBusinessModeStorage,
-  setCurrentBusinessMode,
   subscribeToBusinessModeChanges,
   type BusinessModeConfig,
   type BusinessModeId,
 } from "@/components/core/business-mode";
+import { businessModeService } from "@/components/core/business-mode/business-mode-service";
 
 const modeIcons: Record<BusinessModeId, typeof ChefHat> = {
   restaurant: ChefHat,
@@ -46,9 +45,9 @@ function getModeStatusIcon(mode: BusinessModeConfig) {
 }
 
 export function ModeSelector() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [currentMode, setCurrentMode] = useState<BusinessModeId>(() =>
-    getCurrentBusinessMode(),
+    businessModeService.getCurrentMode(),
   );
 
   useEffect(() => {
@@ -60,15 +59,22 @@ export function ModeSelector() {
   }, []);
 
   function handleSelectMode(mode: BusinessModeConfig) {
-    if (!mode.isSelectable) return;
+    const transition = businessModeService.switchMode({
+      targetMode: mode.id,
+      source: "select-mode",
+      currentPath: location,
+    });
 
-    const changed = setCurrentBusinessMode(mode.id, "select-mode");
-
-    if (!changed) {
-      setCurrentMode(getCurrentBusinessMode());
+    if (!transition.success) {
+      setCurrentMode(businessModeService.getCurrentMode());
+      return;
     }
 
-    setLocation(mode.route);
+    setCurrentMode(transition.toMode);
+
+    if (transition.shouldRedirect) {
+      setLocation(transition.route);
+    }
   }
 
   return (
@@ -82,11 +88,7 @@ export function ModeSelector() {
             Select business mode
           </h1>
           <p className="mt-3 text-sm leading-6 text-neutral-600 sm:text-base">
-            Choose the workspace context for this session. Restaurant / F&amp;B is
-            the main operational workspace, while Raw Material / Livestock is
-            enabled as a controlled preview so route, sidebar, API header, and
-            tenant-scope bugs can be found before real production workflows are
-            added.
+            Choose the workspace context for this session. The selected mode controls route access, sidebar modules, API headers, and cached shared-dashboard data for this browser session.
           </p>
         </div>
 
@@ -104,6 +106,7 @@ export function ModeSelector() {
                 onClick={() => handleSelectMode(mode)}
                 disabled={!mode.isSelectable}
                 title={!mode.isSelectable ? mode.unavailableReason : undefined}
+                aria-current={isActive ? "page" : undefined}
                 className="group flex min-h-64 flex-col justify-between rounded-xl border border-neutral-200 bg-white p-5 text-left shadow-sm transition enabled:hover:border-blue-300 enabled:hover:bg-blue-50/40 enabled:hover:shadow-md disabled:cursor-not-allowed disabled:opacity-80"
               >
                 <span className="flex items-start justify-between gap-3">
@@ -184,25 +187,12 @@ export function ModeSelector() {
                   >
                     {actionLabel}
                   </span>
-                  {!mode.isSelectable ? (
-                    <Lock className="h-4 w-4 text-neutral-300" aria-hidden="true" />
-                  ) : (
-                    <CheckCircle2
-                      className="h-4 w-4 text-blue-600"
-                      aria-hidden="true"
-                    />
-                  )}
+                  <span className="text-neutral-300">→</span>
                 </span>
               </button>
             );
           })}
         </div>
-
-        <p className="mt-6 max-w-3xl text-xs leading-5 text-neutral-500">
-          Business mode selection is a frontend workspace preference for this
-          stage. Backend permission, tenant scope, and data ownership remain the
-          real source of truth for protected operations.
-        </p>
       </div>
     </main>
   );
