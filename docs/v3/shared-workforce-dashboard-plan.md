@@ -26,6 +26,13 @@ artifacts/pos-system/src/features/shared/workforce-operations/
 artifacts/pos-system/src/pages/dashboard/
 ```
 
+The advanced Team Management role and permission workspace now lives in:
+
+```txt
+artifacts/pos-system/src/features/shared/team-management/
+artifacts/pos-system/src/pages/dashboard/team-management.tsx
+```
+
 This follows the existing project structure while staying aligned with the V3 target direction where shared business management modules eventually belong under `business/`.
 
 ## Current Rule
@@ -39,6 +46,7 @@ Allowed now:
 - dashboard route wiring
 - sidebar registry wiring
 - data-contract planning docs
+- localStorage-backed Team Management role and permission simulation
 
 Not allowed yet:
 
@@ -49,6 +57,43 @@ Not allowed yet:
 - approval mutation APIs
 - audit log writes
 - schema-level contract storage
+
+## Team Management Frontend Phases
+
+### Phase 1: Panel Refactor
+
+The existing Team Management dashboard was split into focused frontend components without changing behavior:
+
+- overview cards
+- job role preset panel
+- draft role builder
+- permission matrix
+- role registry
+- assignment/import-export panel
+- access changelog
+
+The route remains `/dashboard/team-management`.
+
+Storage remains localStorage-backed through `role-permission-store.ts`.
+
+No backend API or Prisma schema changes were introduced.
+
+### Phase 2: Local UX Upgrade
+
+The Team Management dashboard now has a stronger local UX layer while still remaining frontend-only:
+
+- searchable member table
+- member status filter
+- member role filter
+- member overview counts
+- assignment impact preview
+- assigned-user count per role
+- two-step custom role delete confirmation
+- warning when deleting a role that is assigned to members
+
+Deleting an assigned custom role still uses the existing dummy behavior: affected members are reassigned to Viewer in localStorage.
+
+This is intentionally not real employee management yet. The purpose is to validate UX, role-risk flow, and future API contracts before committing to schema work. Revolutionary restraint, apparently.
 
 ## Future Data Contract Draft
 
@@ -94,15 +139,22 @@ Possible future entities:
 
 Future source candidates:
 
+- existing `User`
 - employee profile
 - role
 - department
 - employment status
 - workload target
 - account access state
+- permission assignment history
+- audit event history
 
 Possible future entities:
 
+- existing `User`
+- existing `Permission`
+- existing `RolePermission`
+- existing `AuditLog`
 - `EmployeeProfile`
 - `Department`
 - `EmployeeRoleAssignment`

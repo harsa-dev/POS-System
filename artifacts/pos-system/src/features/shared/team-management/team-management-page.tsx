@@ -1,30 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
+import { DashboardShell } from "@/features/shared/dashboard";
+
 import {
-  AlertTriangle,
-  BriefcaseBusiness,
-  CheckCircle2,
-  Copy,
-  Download,
-  KeyRound,
-  LockKeyhole,
-  Plus,
-  RefreshCcw,
-  Save,
-  Search,
-  ShieldCheck,
-  Trash2,
-  Upload,
-  UserCog,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
-
-import { StatCard, StatusPill } from "@/features/shared/cards";
-import { DashboardPanel, DashboardShell } from "@/features/shared/dashboard";
-import type { DashboardTone } from "@/features/shared/types";
-
+  AccessChangelogPanel,
+  AssignmentImportExportPanel,
+  JobRolePresetPanel,
+  PermissionMatrixPanel,
+  RoleBuilderPanel,
+  RoleRegistryPanel,
+  TeamMemberTable,
+  TeamOverviewCards,
+} from "./components";
+import {
+  getJobRoleById,
+  jobRoleLibrary,
+  type BusinessRoleSector,
+  type JobRoleProfile,
+} from "./job-role-library";
 import {
   clonePermissionState,
   countGrantedPermissions,
@@ -38,18 +33,8 @@ import {
   validateRoleName,
   type ManagedRole,
   type PermissionActionId,
-  type PermissionState,
-  type SystemRole,
   type TeamMemberStatus,
 } from "./role-permission-library";
-import {
-  getJobRoleById,
-  getJobRoleCountBySector,
-  jobRoleLibrary,
-  sectorLabels,
-  type BusinessRoleSector,
-  type JobRoleProfile,
-} from "./job-role-library";
 import {
   exportRolePermissionStore,
   loadRolePermissionStore,
@@ -57,50 +42,13 @@ import {
   saveRolePermissionStore,
   type RolePermissionStoreState,
 } from "./role-permission-store";
-
-type DraftRole = {
-  id?: string;
-  name: string;
-  description: string;
-  baseRole: SystemRole;
-  permissions: PermissionState;
-  sourceJobId?: string;
-};
-
-type RoleFilter = "all" | "locked" | "custom" | "risk";
-
-const baseRoles: SystemRole[] = ["OWNER", "MANAGER", "ADMIN", "OPERATOR", "STAFF", "VIEWER"];
-const sectors: BusinessRoleSector[] = [
-  "restaurant",
-  "retail",
-  "raw-material",
-  "custom-business",
-];
-
-const statusTone: Record<string, DashboardTone> = {
-  Active: "green",
-  Pending: "amber",
-  Suspended: "rose",
-  Locked: "slate",
-  Custom: "blue",
-  Draft: "amber",
-  "Job Preset": "green",
-};
-
-const filterLabels: Record<RoleFilter, string> = {
-  all: "All roles",
-  locked: "System locked",
-  custom: "Custom roles",
-  risk: "Risky access",
-};
-
-function getStatusTone(status: string): DashboardTone {
-  return statusTone[status] ?? "slate";
-}
-
-function hasPermission(permissions: PermissionState, moduleId: string, actionId: PermissionActionId) {
-  return (permissions[moduleId] ?? []).includes(actionId);
-}
+import {
+  baseRoles,
+  businessRoleSectors,
+  type DraftRole,
+  type MemberStatusFilter,
+  type RoleFilter,
+} from "./team-management.types";
 
 function jobToDraft(job: JobRoleProfile): DraftRole {
   return {
@@ -132,64 +80,21 @@ function buildPolicyPayload(role: ManagedRole | DraftRole) {
   };
 }
 
-function PermissionCheckbox({
-  checked,
-  label,
-  description,
-  destructive,
-  elevated,
-  onChange,
-}: {
-  checked: boolean;
-  label: string;
-  description: string;
-  destructive?: boolean;
-  elevated?: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <label className={["flex cursor-pointer items-start gap-3 rounded-2xl border p-3 transition", checked ? "border-primary/40 bg-primary/5" : "border-border bg-background hover:bg-muted/30"].join(" ")}>
-      <input type="checkbox" checked={checked} onChange={onChange} className="mt-1 h-4 w-4 rounded border-border" />
-      <span className="min-w-0">
-        <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
-          {label}
-          {destructive && <StatusPill tone="rose">Risk</StatusPill>}
-          {elevated && <StatusPill tone="amber">Elevated</StatusPill>}
-        </span>
-        <span className="mt-1 block text-xs leading-5 text-muted-foreground">{description}</span>
-      </span>
-    </label>
-  );
-}
-
-function MiniStat({
-  label,
-  value,
-  note,
-  icon: Icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  note: string;
-  icon: LucideIcon;
-  tone: DashboardTone;
-}) {
-  return <StatCard label={label} value={value} note={note} icon={Icon} tone={tone} />;
-}
-
 export function TeamManagementRolePermissionPage() {
   const [store, setStore] = useState<RolePermissionStoreState>(() => loadRolePermissionStore());
-  const [selectedSector, setSelectedSector] =
-    useState<BusinessRoleSector>("custom-business");
+  const [selectedSector, setSelectedSector] = useState<BusinessRoleSector>("custom-business");
   const [selectedJobId, setSelectedJobId] = useState("service-operations-manager");
   const [selectedRoleId, setSelectedRoleId] = useState("owner-default");
   const [draft, setDraft] = useState<DraftRole>(() => jobToDraft(getJobRoleById("service-operations-manager")));
   const [query, setQuery] = useState("");
   const [jobQuery, setJobQuery] = useState("");
   const [filter, setFilter] = useState<RoleFilter>("all");
+  const [memberQuery, setMemberQuery] = useState("");
+  const [memberStatusFilter, setMemberStatusFilter] = useState<MemberStatusFilter>("all");
+  const [memberRoleFilter, setMemberRoleFilter] = useState("all");
   const [selectedMemberId, setSelectedMemberId] = useState("usr-001");
   const [selectedAssignRoleId, setSelectedAssignRoleId] = useState("operator-default");
+  const [pendingDeleteRoleId, setPendingDeleteRoleId] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
   const [notice, setNotice] = useState("Real-world job role library ready. Still dummy, but at least it stopped inventing jobs out of dashboard fog.");
 
@@ -202,6 +107,31 @@ export function TeamManagementRolePermissionPage() {
   const draftRiskCount = useMemo(() => countRiskyPermissions(draft.permissions), [draft.permissions]);
   const customRoleCount = roles.filter((role) => !role.locked).length;
   const lockedRoleCount = roles.filter((role) => role.locked).length;
+  const activeMemberCount = members.filter((member) => member.status === "Active").length;
+  const pendingMemberCount = members.filter((member) => member.status === "Pending").length;
+  const suspendedMemberCount = members.filter((member) => member.status === "Suspended").length;
+
+  const filteredMembers = useMemo(() => {
+    const normalizedQuery = memberQuery.trim().toLowerCase();
+
+    return members.filter((member) => {
+      const role = roles.find((item) => item.id === member.roleId);
+      const searchable = [
+        member.name,
+        member.email,
+        member.area,
+        member.status,
+        role?.name ?? "",
+        role?.baseRole ?? "",
+      ].join(" ").toLowerCase();
+
+      const matchesQuery = !normalizedQuery || searchable.includes(normalizedQuery);
+      const matchesStatus = memberStatusFilter === "all" || member.status === memberStatusFilter;
+      const matchesRole = memberRoleFilter === "all" || member.roleId === memberRoleFilter;
+
+      return matchesQuery && matchesStatus && matchesRole;
+    });
+  }, [memberQuery, memberRoleFilter, memberStatusFilter, members, roles]);
 
   const filteredJobRoles = useMemo(() => {
     const normalizedQuery = jobQuery.trim().toLowerCase();
@@ -247,6 +177,10 @@ export function TeamManagementRolePermissionPage() {
 
   function updateStore(updater: (current: RolePermissionStoreState) => RolePermissionStoreState) {
     setStore((current) => updater(current));
+  }
+
+  function getAssignedMemberCount(roleId: string) {
+    return members.filter((member) => member.roleId === roleId).length;
   }
 
   function applyJobPreset(jobId: string) {
@@ -346,7 +280,9 @@ export function TeamManagementRolePermissionPage() {
       category: draft.sourceJobId ? "job" : "library",
       locked: false,
       description: draft.description.trim() || "Custom role created from job role library.",
-      recommendedFor: draft.sourceJobId ? [getJobRoleById(draft.sourceJobId).sector, getJobRoleById(draft.sourceJobId).department] : ["Custom business workflow"],
+      recommendedFor: draft.sourceJobId
+        ? [getJobRoleById(draft.sourceJobId).sector, getJobRoleById(draft.sourceJobId).department]
+        : ["Custom business workflow"],
       permissions: clonePermissionState(draft.permissions),
       assignedUsers: 0,
       status: draft.sourceJobId ? "Job Preset" : "Draft",
@@ -378,6 +314,7 @@ export function TeamManagementRolePermissionPage() {
 
     setSelectedRoleId(role.id);
     setDraft(roleToDraft(role));
+    setPendingDeleteRoleId(null);
   }
 
   function cloneSelectedRole() {
@@ -408,6 +345,19 @@ export function TeamManagementRolePermissionPage() {
     setNotice("Selected role cloned.");
   }
 
+  function requestDeleteRole(roleId: string) {
+    const target = roles.find((role) => role.id === roleId);
+    if (!target || target.locked) return;
+
+    const assignedMemberCount = getAssignedMemberCount(roleId);
+    setPendingDeleteRoleId(roleId);
+    setNotice(
+      assignedMemberCount > 0
+        ? `${target.name} is assigned to ${assignedMemberCount} member(s). Confirm delete to move them to Viewer.`
+        : `Confirm deletion for custom role: ${target.name}.`,
+    );
+  }
+
   function deleteRole(roleId: string) {
     const target = roles.find((role) => role.id === roleId);
     if (!target || target.locked) return;
@@ -424,6 +374,7 @@ export function TeamManagementRolePermissionPage() {
     }));
 
     setSelectedRoleId("owner-default");
+    setPendingDeleteRoleId(null);
     setNotice("Custom role deleted.");
   }
 
@@ -446,7 +397,10 @@ export function TeamManagementRolePermissionPage() {
     const next = resetRolePermissionStore();
     setStore(next);
     setSelectedRoleId("owner-default");
-    setSelectedSector("custom-business");
+    setPendingDeleteRoleId(null);
+    setMemberQuery("");
+    setMemberStatusFilter("all");
+    setMemberRoleFilter("all");
     applyJobPreset("service-operations-manager");
     setNotice("Demo role store reset.");
   }
@@ -471,6 +425,7 @@ export function TeamManagementRolePermissionPage() {
         members: parsed.members,
         logs: [createAccessLog("RESET_DEMO", "Imported state", "Imported dummy role permission JSON."), ...(Array.isArray(parsed.logs) ? parsed.logs : [])],
       });
+      setPendingDeleteRoleId(null);
       setNotice("Imported dummy role permission state.");
     } catch {
       setNotice("Import failed. JSON payload is invalid.");
@@ -484,329 +439,96 @@ export function TeamManagementRolePermissionPage() {
     >
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{notice}</div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <MiniStat label="System Roles" value={String(lockedRoleCount)} note="Default locked access model" icon={LockKeyhole} tone="slate" />
-        <MiniStat label="Job Presets" value={String(jobRoleLibrary.length)} note="Restaurant, retail, raw material, custom" icon={BriefcaseBusiness} tone="blue" />
-        <MiniStat label="Granted Actions" value={`${draftPermissionCount}/${totalPermissions}`} note={`${draftRiskCount} elevated/destructive in draft`} icon={KeyRound} tone={draftRiskCount > 5 ? "rose" : "green"} />
-        <MiniStat label="Custom Roles" value={String(customRoleCount)} note="Persisted in localStorage dummy" icon={ShieldCheck} tone="amber" />
-      </div>
+      <TeamOverviewCards
+        totalMemberCount={members.length}
+        activeMemberCount={activeMemberCount}
+        pendingMemberCount={pendingMemberCount}
+        suspendedMemberCount={suspendedMemberCount}
+        lockedRoleCount={lockedRoleCount}
+        jobPresetCount={jobRoleLibrary.length}
+        draftPermissionCount={draftPermissionCount}
+        totalPermissions={totalPermissions}
+        draftRiskCount={draftRiskCount}
+        customRoleCount={customRoleCount}
+      />
+
+      <TeamMemberTable
+        members={filteredMembers}
+        roles={roles}
+        memberQuery={memberQuery}
+        memberStatusFilter={memberStatusFilter}
+        memberRoleFilter={memberRoleFilter}
+        selectedMemberId={selectedMemberId}
+        onMemberQueryChange={setMemberQuery}
+        onMemberStatusFilterChange={setMemberStatusFilter}
+        onMemberRoleFilterChange={setMemberRoleFilter}
+        onSelectMember={setSelectedMemberId}
+      />
 
       <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-        <DashboardPanel title="Real-world Job Role Library" description="Pick a real-world job profile, then convert it into system role + permission preset. Tidak lagi role karangan kabut.">
-          <div className="grid gap-4 p-4">
-            <div className="grid gap-2 sm:grid-cols-4">
-              {sectors.map((sector) => (
-                <button
-                  key={sector}
-                  type="button"
-                  onClick={() => setSelectedSector(sector)}
-                  className={[
-                    "rounded-2xl border p-3 text-left transition",
-                    selectedSector === sector ? "border-primary bg-primary/5" : "border-border bg-background hover:bg-muted/30",
-                  ].join(" ")}
-                >
-                  <p className="text-sm font-semibold text-foreground">{sectorLabels[sector]}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{getJobRoleCountBySector(sector)} presets</p>
-                </button>
-              ))}
-            </div>
+        <JobRolePresetPanel
+          sectors={businessRoleSectors}
+          selectedSector={selectedSector}
+          selectedJobId={selectedJobId}
+          jobQuery={jobQuery}
+          filteredJobRoles={filteredJobRoles}
+          onSectorChange={setSelectedSector}
+          onJobQueryChange={setJobQuery}
+          onApplyJobPreset={applyJobPreset}
+        />
 
-            <label className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={jobQuery}
-                onChange={(event) => setJobQuery(event.target.value)}
-                placeholder="Search job title, department, alias..."
-                className="h-11 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm outline-none ring-primary/20 transition focus:ring-4"
-              />
-            </label>
-
-            <div className="grid max-h-[620px] gap-3 overflow-auto">
-              {filteredJobRoles.map((job) => {
-                const selected = selectedJobId === job.id;
-                const risk = countRiskyPermissions(job.recommendedPermissions);
-
-                return (
-                  <button
-                    key={job.id}
-                    type="button"
-                    onClick={() => applyJobPreset(job.id)}
-                    className={[
-                      "rounded-2xl border p-4 text-left transition",
-                      selected ? "border-primary bg-primary/5" : "border-border bg-background hover:bg-muted/30",
-                    ].join(" ")}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-semibold text-foreground">{job.title}</p>
-                          <StatusPill tone="slate">{job.baseRole}</StatusPill>
-                          <StatusPill tone="blue">{job.department}</StatusPill>
-                          {risk > 0 && <StatusPill tone="amber">{risk} risk</StatusPill>}
-                        </div>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">{job.description}</p>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {job.aliases.slice(0, 4).map((alias) => (
-                        <span key={alias} className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">{alias}</span>
-                      ))}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </DashboardPanel>
-
-        <DashboardPanel title="Draft Role Builder" description="Job preset masuk ke sini. Review permission, ubah base role, lalu simpan sebagai custom role dummy.">
-          <div className="grid gap-4 p-4">
-            <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
-              <label className="grid gap-2">
-                <span className="text-sm font-medium text-foreground">Role name</span>
-                <input
-                  value={draft.name}
-                  onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-                  className="h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none ring-primary/20 transition focus:ring-4"
-                />
-              </label>
-
-              <label className="grid gap-2">
-                <span className="text-sm font-medium text-foreground">Base role</span>
-                <select
-                  value={draft.baseRole}
-                  onChange={(event) => setDraft((current) => ({ ...current, baseRole: event.target.value as SystemRole }))}
-                  className="h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none ring-primary/20 transition focus:ring-4"
-                >
-                  {baseRoles.map((role) => <option key={role} value={role}>{role}</option>)}
-                </select>
-              </label>
-            </div>
-
-            <label className="grid gap-2">
-              <span className="text-sm font-medium text-foreground">Description</span>
-              <textarea
-                value={draft.description}
-                onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
-                rows={4}
-                className="rounded-xl border border-border bg-background px-3 py-3 text-sm outline-none ring-primary/20 transition focus:ring-4"
-              />
-            </label>
-
-            <div className="rounded-2xl border border-border bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
-              <div className="mb-2 flex items-center gap-2 font-semibold text-foreground">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                Risk guard preview
-              </div>
-              Draft ini punya <strong>{draftRiskCount}</strong> elevated/destructive permissions. Backend nanti harus require approval untuk action berisiko.
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={saveDraftAsRole} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90">
-                <Save className="h-4 w-4" />
-                Save Role
-              </button>
-              <button type="button" onClick={cloneSelectedRole} className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted">
-                <Copy className="h-4 w-4" />
-                Clone Selected
-              </button>
-              <button type="button" onClick={resetDemo} className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted">
-                <RefreshCcw className="h-4 w-4" />
-                Reset Demo
-              </button>
-            </div>
-
-            <pre className="max-h-60 overflow-auto rounded-xl bg-slate-950 p-4 text-xs leading-5 text-slate-100">{draftPayload}</pre>
-          </div>
-        </DashboardPanel>
+        <RoleBuilderPanel
+          draft={draft}
+          setDraft={setDraft}
+          baseRoles={baseRoles}
+          draftRiskCount={draftRiskCount}
+          draftPayload={draftPayload}
+          onSaveDraftAsRole={saveDraftAsRole}
+          onCloneSelectedRole={cloneSelectedRole}
+          onResetDemo={resetDemo}
+        />
       </div>
 
-      <DashboardPanel title="Permission Matrix" description="Permission tetap bisa diedit manual setelah memilih job preset. Ini pemisahan yang benar: job title bukan permission final.">
-        <div className="grid gap-4 p-4 lg:grid-cols-2">
-          {permissionModules.map((module) => (
-            <section key={module.id} className="rounded-2xl border border-border bg-muted/10 p-4">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-foreground">{module.label}</p>
-                    <StatusPill tone={module.scope === "admin" ? "rose" : module.scope === "finance" ? "amber" : "blue"}>{module.scope}</StatusPill>
-                  </div>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{module.description}</p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setModulePermissions(module.id, "all")} className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted">All</button>
-                  <button type="button" onClick={() => setModulePermissions(module.id, "view")} className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted">View</button>
-                  <button type="button" onClick={() => setModulePermissions(module.id, "none")} className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted">None</button>
-                </div>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                {module.actions.map((action) => (
-                  <PermissionCheckbox
-                    key={`${module.id}-${action.id}`}
-                    checked={hasPermission(draft.permissions, module.id, action.id)}
-                    label={action.label}
-                    description={action.description}
-                    destructive={action.destructive}
-                    elevated={action.elevated}
-                    onChange={() => togglePermission(module.id, action.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      </DashboardPanel>
+      <PermissionMatrixPanel
+        permissions={draft.permissions}
+        onTogglePermission={togglePermission}
+        onSetModulePermissions={setModulePermissions}
+      />
 
       <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <DashboardPanel title="Role Registry" description="Registry role default + custom + job preset. Cari role, filter, pilih untuk diedit atau assign.">
-          <div className="grid gap-4 p-4">
-            <div className="grid gap-3 md:grid-cols-[1fr_180px]">
-              <label className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search role..."
-                  className="h-11 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm outline-none ring-primary/20 transition focus:ring-4"
-                />
-              </label>
+        <RoleRegistryPanel
+          filteredRoles={filteredRoles}
+          selectedRoleId={selectedRoleId}
+          pendingDeleteRoleId={pendingDeleteRoleId}
+          query={query}
+          filter={filter}
+          totalPermissions={totalPermissions}
+          getAssignedMemberCount={getAssignedMemberCount}
+          onQueryChange={setQuery}
+          onFilterChange={setFilter}
+          onSelectRole={selectRole}
+          onRequestDeleteRole={requestDeleteRole}
+          onCancelDeleteRole={() => setPendingDeleteRoleId(null)}
+          onConfirmDeleteRole={deleteRole}
+        />
 
-              <select
-                value={filter}
-                onChange={(event) => setFilter(event.target.value as RoleFilter)}
-                className="h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none ring-primary/20 transition focus:ring-4"
-              >
-                {Object.entries(filterLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </div>
-
-            <div className="grid gap-3">
-              {filteredRoles.map((role) => {
-                const granted = countGrantedPermissions(role.permissions);
-                const risk = countRiskyPermissions(role.permissions);
-                const selected = role.id === selectedRoleId;
-
-                return (
-                  <button key={role.id} type="button" onClick={() => selectRole(role.id)} className={["w-full rounded-2xl border p-4 text-left transition", selected ? "border-primary bg-primary/5" : "border-border bg-background hover:bg-muted/30"].join(" ")}>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-semibold text-foreground">{role.name}</p>
-                          <StatusPill tone={getStatusTone(role.status)}>{role.status}</StatusPill>
-                          <StatusPill tone="slate">{role.baseRole}</StatusPill>
-                          {risk > 0 && <StatusPill tone="amber">{risk} risk</StatusPill>}
-                        </div>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">{role.description}</p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <StatusPill tone="green">{granted}/{totalPermissions}</StatusPill>
-                        {!role.locked && (
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              deleteRole(role.id);
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                deleteRole(role.id);
-                              }
-                            }}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition hover:bg-rose-50 hover:text-rose-600"
-                            aria-label={`Delete ${role.name}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </DashboardPanel>
-
-        <DashboardPanel title="Assignment + Import / Export" description="Dummy assignment flow + local JSON portability. Belum backend, tapi contract shape sudah kelihatan.">
-          <div className="grid gap-4 p-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="grid gap-2">
-                <span className="text-sm font-medium text-foreground">Member</span>
-                <select value={selectedMemberId} onChange={(event) => setSelectedMemberId(event.target.value)} className="h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none ring-primary/20 transition focus:ring-4">
-                  {members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
-                </select>
-              </label>
-
-              <label className="grid gap-2">
-                <span className="text-sm font-medium text-foreground">Role</span>
-                <select value={selectedAssignRoleId} onChange={(event) => setSelectedAssignRoleId(event.target.value)} className="h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none ring-primary/20 transition focus:ring-4">
-                  {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
-                </select>
-              </label>
-            </div>
-
-            <button type="button" onClick={assignRoleToMember} className="inline-flex w-fit items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90">
-              <UserCog className="h-4 w-4" />
-              Assign Role
-            </button>
-
-            <div className="rounded-2xl border border-border bg-background">
-              {members.map((member) => {
-                const role = roles.find((item) => item.id === member.roleId);
-                return (
-                  <div key={member.id} className="flex items-center justify-between gap-4 border-b border-border px-4 py-3 last:border-b-0">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{member.name}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{member.email} · {member.area}</p>
-                    </div>
-                    <div className="text-right">
-                      <StatusPill tone={getStatusTone(member.status)}>{member.status}</StatusPill>
-                      <p className="mt-1 text-xs text-muted-foreground">{role?.name ?? "Unknown role"}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={exportState} className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted">
-                <Download className="h-4 w-4" />
-                Export JSON
-              </button>
-              <button type="button" onClick={importState} className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted">
-                <Upload className="h-4 w-4" />
-                Import JSON
-              </button>
-            </div>
-
-            <textarea value={importText} onChange={(event) => setImportText(event.target.value)} rows={7} className="rounded-xl border border-border bg-background px-3 py-3 font-mono text-xs outline-none ring-primary/20 transition focus:ring-4" />
-
-            <pre className="max-h-56 overflow-auto rounded-xl bg-slate-950 p-4 text-xs leading-5 text-slate-100">{selectedRolePayload}</pre>
-          </div>
-        </DashboardPanel>
+        <AssignmentImportExportPanel
+          members={members}
+          roles={roles}
+          selectedMemberId={selectedMemberId}
+          selectedAssignRoleId={selectedAssignRoleId}
+          importText={importText}
+          selectedRolePayload={selectedRolePayload}
+          onMemberChange={setSelectedMemberId}
+          onAssignRoleChange={setSelectedAssignRoleId}
+          onAssignRoleToMember={assignRoleToMember}
+          onExportState={exportState}
+          onImportState={importState}
+          onImportTextChange={setImportText}
+        />
       </div>
 
-      <DashboardPanel title="Access Changelog" description="Audit-style dummy log. Backend nanti bisa pindah ke AuditLog business scope.">
-        <div className="grid max-h-[420px] gap-3 overflow-auto p-4 md:grid-cols-2">
-          {logs.map((log) => (
-            <article key={log.id} className="rounded-2xl border border-border bg-background p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                <p className="font-semibold text-foreground">{log.action}</p>
-                <StatusPill tone="slate">{new Date(log.at).toLocaleString()}</StatusPill>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{log.target}</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">{log.note}</p>
-            </article>
-          ))}
-        </div>
-      </DashboardPanel>
+      <AccessChangelogPanel logs={logs} />
     </DashboardShell>
   );
 }
