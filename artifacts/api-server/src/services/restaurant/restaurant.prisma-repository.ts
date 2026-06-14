@@ -4,6 +4,8 @@ import { prisma } from "../../lib/prisma.js";
 import type { RestaurantRepository } from "./restaurant.repository.js";
 import type {
   RestaurantBusinessScope,
+  RestaurantDashboardHealthSignalDto,
+  RestaurantDashboardSummaryDto,
   RestaurantMenuItemDto,
   RestaurantOrderDto,
   RestaurantTableDto,
@@ -36,6 +38,18 @@ type MenuItemRecord = Prisma.MenuItemGetPayload<{ include: typeof menuItemInclud
 type OrderRecord = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
 type TableRecord = Prisma.DiningTableGetPayload<{}>;
 
+type SummaryOrderRecord = {
+  status: OrderStatus;
+  total: number;
+  paymentMethod: string;
+  createdAt: Date;
+  updatedAt: Date;
+  payment: {
+    status: string;
+    paidAt: Date | null;
+  } | null;
+};
+
 function toIsoDate(value: Date | null | undefined) {
   return value ? value.toISOString() : null;
 }
@@ -48,6 +62,49 @@ function startOfToday() {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
   return date;
+}
+
+function getQueueAgeMinutes(orders: Array<{ createdAt: Date }>, now = new Date()) {
+  if (orders.length === 0) return 0;
+
+  const oldest = orders.reduce((currentOldest, order) => (order.createdAt < currentOldest ? order.createdAt : currentOldest), orders[0]?.createdAt ?? now);
+
+  return Math.max(0, Math.round((now.getTime() - oldest.getTime()) / 60000));
+}
+
+function sumOrders(orders: Array<{ total: number }>) {
+  return orders.reduce((total, order) => total + order.total, 0);
+}
+
+function getOrderStatusCounts(orders: SummaryOrderRecord[]) {
+  return orders.reduce<Partial<Record<OrderStatus, number>>>((counts, order) => {
+    counts[order.status] = (counts[order.status] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function getPaymentMethodTotals(orders: SummaryOrderRecord[]) {
+  return orders.reduce<Record<string, number>>((totals, order) => {
+    const key = order.paymentMethod || "UNKNOWN";
+    totals[key] = (totals[key] ?? 0) + order.total;
+    return totals;
+  }, {});
+}
+
+function getHealthStatus(signals: RestaurantDashboardHealthSignalDto[]): RestaurantDashboardSummaryDto["health"]["status"] {
+  if (signals.some((signal) => signal.status === "blocked")) return "blocked";
+  if (signals.some((signal) => signal.status === "review")) return "review";
+  return "healthy";
+}
+
+function getQueueSignal(key: string, label: string, ageMinutes: number, reviewThreshold: number, blockedThreshold: number): RestaurantDashboardHealthSignalDto {
+  const status = ageMinutes >= blockedThreshold ? "blocked" : ageMinutes >= reviewThreshold ? "review" : "healthy";
+
+  return {
+    key,
+    status,
+    message: `${label} oldest order age is ${ageMinutes} minutes.`,
+  };
 }
 
 function mapMenuItem(item: MenuItemRecord): RestaurantMenuItemDto {
@@ -138,31 +195,59 @@ async function listOrdersByStatuses(scope: RestaurantBusinessScope, statuses: Or
 export const restaurantPrismaRepository: RestaurantRepository = {
   async getDashboardSummary(scope) {
     const today = startOfToday();
+    const now = new Date();
 
     const [
+      restaurantSettings,
       menuItems,
       activeMenuItems,
       tables,
       occupiedTables,
       activeOrders,
-      pendingPayments,
-      kitchenQueue,
-      servingQueue,
+      pendingPaymentOrders,
+      kitchenQueueOrders,
+      servingQueueOrders,
       inventoryStockLevels,
+      menuRecipeLinks,
+      todaysOrders,
       completedToday,
       todayRevenue,
     ] = await Promise.all([
+      prisma.restaurant.findUnique({
+        where: { businessId: scope.businessId },
+        select: { timezone: true },
+      }),
       prisma.menuItem.count({ where: { businessId: scope.businessId } }),
       prisma.menuItem.count({ where: { businessId: scope.businessId, isAvailable: true } }),
       prisma.diningTable.count({ where: { businessId: scope.businessId, isActive: true } }),
       prisma.diningTable.count({ where: { businessId: scope.businessId, isActive: true, status: "OCCUPIED" } }),
-      prisma.order.count({ where: { businessId: scope.businessId, status: { in: activeOrderStatuses } } }),
-      prisma.order.count({ where: { businessId: scope.businessId, status: "PENDING_PAYMENT" } }),
-      prisma.order.count({ where: { businessId: scope.businessId, status: { in: kitchenQueueStatuses } } }),
-      prisma.order.count({ where: { businessId: scope.businessId, status: { in: servingQueueStatuses } } }),
+      prisma.order.findMany({
+        where: { businessId: scope.businessId, status: { in: activeOrderStatuses } },
+        select: { status: true, total: true, paymentMethod: true, createdAt: true, updatedAt: true, payment: { select: { status: true, paidAt: true } } },
+      }),
+      prisma.order.findMany({
+        where: { businessId: scope.businessId, status: "PENDING_PAYMENT" },
+        select: { status: true, total: true, paymentMethod: true, createdAt: true, updatedAt: true, payment: { select: { status: true, paidAt: true } } },
+      }),
+      prisma.order.findMany({
+        where: { businessId: scope.businessId, status: { in: kitchenQueueStatuses } },
+        select: { status: true, total: true, paymentMethod: true, createdAt: true, updatedAt: true, payment: { select: { status: true, paidAt: true } } },
+      }),
+      prisma.order.findMany({
+        where: { businessId: scope.businessId, status: { in: servingQueueStatuses } },
+        select: { status: true, total: true, paymentMethod: true, createdAt: true, updatedAt: true, payment: { select: { status: true, paidAt: true } } },
+      }),
       prisma.inventoryItem.findMany({
         where: { businessId: scope.businessId },
         select: { currentStock: true, minimumStock: true },
+      }),
+      prisma.menuItem.findMany({
+        where: { businessId: scope.businessId },
+        select: { id: true, recipes: { select: { id: true }, take: 1 } },
+      }),
+      prisma.order.findMany({
+        where: { businessId: scope.businessId, createdAt: { gte: today } },
+        select: { status: true, total: true, paymentMethod: true, createdAt: true, updatedAt: true, payment: { select: { status: true, paidAt: true } } },
       }),
       prisma.order.count({
         where: {
@@ -182,24 +267,82 @@ export const restaurantPrismaRepository: RestaurantRepository = {
     ]);
 
     const revenue = todayRevenue._sum.total ?? 0;
+    const paidTodayOrders = todaysOrders.filter((order) => order.payment?.status === "PAID");
     const lowStockItems = inventoryStockLevels.filter((item) => item.currentStock <= item.minimumStock).length;
+    const outOfStockItems = inventoryStockLevels.filter((item) => item.currentStock <= 0).length;
+    const recipeLinkedMenuItems = menuRecipeLinks.filter((item) => item.recipes.length > 0).length;
+    const menuItemsWithoutRecipe = menuRecipeLinks.length - recipeLinkedMenuItems;
+    const tableOccupancyRate = tables > 0 ? Math.round((occupiedTables / tables) * 100) : 0;
+    const kitchenQueueAgeMinutes = getQueueAgeMinutes(kitchenQueueOrders, now);
+    const servingQueueAgeMinutes = getQueueAgeMinutes(servingQueueOrders, now);
+    const pendingPaymentValue = sumOrders(pendingPaymentOrders);
+
+    const signals: RestaurantDashboardHealthSignalDto[] = [
+      {
+        key: "payments.pending",
+        status: pendingPaymentOrders.length > 0 ? "review" : "healthy",
+        message: `${pendingPaymentOrders.length} orders are waiting for payment.`,
+      },
+      getQueueSignal("operations.kitchen_age", "Kitchen queue", kitchenQueueAgeMinutes, 15, 30),
+      getQueueSignal("operations.serving_age", "Serving queue", servingQueueAgeMinutes, 5, 15),
+      {
+        key: "inventory.low_stock",
+        status: outOfStockItems > 0 ? "blocked" : lowStockItems > 0 ? "review" : "healthy",
+        message: `${lowStockItems} inventory items are at or below minimum stock, ${outOfStockItems} are out of stock.`,
+      },
+      {
+        key: "tables.occupancy",
+        status: tableOccupancyRate >= 95 ? "review" : "healthy",
+        message: `Dining room occupancy is ${tableOccupancyRate}%.`,
+      },
+    ];
 
     return {
+      generatedAt: now.toISOString(),
+      window: {
+        start: today.toISOString(),
+        end: now.toISOString(),
+        timezone: restaurantSettings?.timezone ?? "Asia/Jakarta",
+      },
       totals: {
         menuItems,
         activeMenuItems,
         tables,
         occupiedTables,
-        activeOrders,
-        pendingPayments,
-        kitchenQueue,
-        servingQueue,
+        activeOrders: activeOrders.length,
+        pendingPayments: pendingPaymentOrders.length,
+        kitchenQueue: kitchenQueueOrders.length,
+        servingQueue: servingQueueOrders.length,
         lowStockItems,
       },
       sales: {
         todayRevenue: revenue,
         completedOrdersToday: completedToday,
         averageOrderValueToday: completedToday > 0 ? Math.round(revenue / completedToday) : 0,
+        paidRevenueToday: sumOrders(paidTodayOrders),
+        activeOrderValue: sumOrders(activeOrders),
+        pendingPaymentValue,
+      },
+      payments: {
+        pendingPayments: pendingPaymentOrders.length,
+        paidPaymentsToday: paidTodayOrders.length,
+        byMethodToday: getPaymentMethodTotals(todaysOrders),
+      },
+      operations: {
+        tableOccupancyRate,
+        activeOrdersByStatus: getOrderStatusCounts(activeOrders),
+        kitchenQueueAgeMinutes,
+        servingQueueAgeMinutes,
+      },
+      inventory: {
+        lowStockItems,
+        outOfStockItems,
+        recipeLinkedMenuItems,
+        menuItemsWithoutRecipe,
+      },
+      health: {
+        status: getHealthStatus(signals),
+        signals,
       },
     };
   },
