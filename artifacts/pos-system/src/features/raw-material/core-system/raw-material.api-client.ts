@@ -1,4 +1,4 @@
-import { apiClient, getApiErrorMessage, type ApiEnvelope } from "@/lib/api";
+import { apiClient, getApiErrorMessage, type ApiEnvelope } from "@/lib/api/api-client";
 
 import { formatRawMaterialWeight } from "./raw-material.mock-data";
 import type {
@@ -378,54 +378,75 @@ export async function fetchRawMaterialSummary(signal?: AbortSignal) {
 }
 
 export function getRawMaterialSummaryErrorMessage(error: unknown) {
-  return getApiErrorMessage(error, "Raw Material summary API is unavailable. Falling back to mock data.");
+  return getApiErrorMessage(error, "Raw Material summary API is unavailable. Using mock fallback data.");
 }
 
-export function getRawMaterialWorkflowReadErrorMessage(error: unknown) {
-  return getApiErrorMessage(error, "Raw Material workflow read API is unavailable. Falling back to mock lists.");
+export function createRawMaterialSummaryMetrics(summary: RawMaterialSummaryResponse): readonly RawMaterialMetric[] {
+  return [
+    {
+      label: "Accepted material",
+      value: formatRawMaterialWeight(summary.intakes.acceptedQuantity),
+      helper: `${summary.intakes.acceptanceRate.toFixed(1)}% acceptance rate across ${summary.intakes.total} intakes`,
+    },
+    {
+      label: "Active batches",
+      value: String(summary.batches.active),
+      helper: `${formatRawMaterialWeight(summary.batches.remainingQuantity)} remaining from ${summary.batches.total} batches`,
+    },
+    {
+      label: "Storage usage",
+      value: `${summary.storage.usageRate.toFixed(1)}%`,
+      helper: `${formatRawMaterialWeight(summary.storage.availableKg)} available across ${summary.storage.activeLocations} active locations`,
+    },
+    {
+      label: "Processing yield",
+      value: `${summary.processing.yieldRate.toFixed(1)}%`,
+      helper: `${formatRawMaterialWeight(summary.processing.outputQuantity)} output from ${summary.processing.totalRuns} runs`,
+    },
+  ];
 }
 
-export async function fetchRawMaterialSuppliers(signal?: AbortSignal) {
-  const data = await fetchRawMaterialData<BackendRawMaterialSupplier[]>("/raw-material/suppliers", signal);
-  return data.map(toRawMaterialSupplier);
+export async function listRawMaterialSuppliers(signal?: AbortSignal) {
+  const rows = await fetchRawMaterialData<BackendRawMaterialSupplier[]>("/raw-material/suppliers", signal);
+  return rows.map(toRawMaterialSupplier);
 }
 
-export async function fetchRawMaterialStorageLocations(signal?: AbortSignal) {
-  const data = await fetchRawMaterialData<BackendRawMaterialStorageLocation[]>("/raw-material/storage-locations", signal);
-  return data.map(toRawMaterialStorageLocation);
+export async function listRawMaterialStorageLocations(signal?: AbortSignal) {
+  const rows = await fetchRawMaterialData<BackendRawMaterialStorageLocation[]>("/raw-material/storage-locations", signal);
+  return rows.map(toRawMaterialStorageLocation);
 }
 
-export async function fetchRawMaterialIntakes(signal?: AbortSignal) {
-  const data = await fetchRawMaterialData<BackendRawMaterialIntake[]>("/raw-material/intakes", signal);
-  return data.map(toRawMaterialIntake);
+export async function listRawMaterialIntakes(signal?: AbortSignal) {
+  const rows = await fetchRawMaterialData<BackendRawMaterialIntake[]>("/raw-material/intakes", signal);
+  return rows.map(toRawMaterialIntake);
 }
 
-export async function fetchRawMaterialWeighings(signal?: AbortSignal) {
-  const data = await fetchRawMaterialData<BackendRawMaterialWeighing[]>("/raw-material/weighings", signal);
-  return data.map(toRawMaterialWeighing);
+export async function listRawMaterialWeighings(signal?: AbortSignal) {
+  const rows = await fetchRawMaterialData<BackendRawMaterialWeighing[]>("/raw-material/weighings", signal);
+  return rows.map(toRawMaterialWeighing);
 }
 
-export async function fetchRawMaterialBatches(signal?: AbortSignal) {
-  const data = await fetchRawMaterialData<BackendRawMaterialBatch[]>("/raw-material/batches", signal);
-  return data.map(toRawMaterialBatch);
+export async function listRawMaterialBatches(signal?: AbortSignal) {
+  const rows = await fetchRawMaterialData<BackendRawMaterialBatch[]>("/raw-material/batches", signal);
+  return rows.map(toRawMaterialBatch);
 }
 
-export async function fetchRawMaterialProcessingRuns(signal?: AbortSignal) {
-  const data = await fetchRawMaterialData<BackendRawMaterialProcessingRun[]>("/raw-material/processing-runs", signal);
-  return data.map(toRawMaterialProcessingRun);
+export async function listRawMaterialProcessingRuns(signal?: AbortSignal) {
+  const rows = await fetchRawMaterialData<BackendRawMaterialProcessingRun[]>("/raw-material/processing-runs", signal);
+  return rows.map(toRawMaterialProcessingRun);
 }
 
-export async function fetchRawMaterialKandangPens(signal?: AbortSignal) {
-  const data = await fetchRawMaterialData<BackendRawMaterialKandangPen[]>("/raw-material/pens", signal);
-  return data.map(toRawMaterialKandangPen);
+export async function listRawMaterialKandangPens(signal?: AbortSignal) {
+  const rows = await fetchRawMaterialData<BackendRawMaterialKandangPen[]>("/raw-material/pens", signal);
+  return rows.map(toRawMaterialKandangPen);
 }
 
-export async function fetchRawMaterialStockMovements(signal?: AbortSignal) {
-  const data = await fetchRawMaterialData<BackendRawMaterialStockMovement[]>("/raw-material/stock-movements", signal);
-  return data.map(toRawMaterialStockMovement);
+export async function listRawMaterialStockMovements(signal?: AbortSignal) {
+  const rows = await fetchRawMaterialData<BackendRawMaterialStockMovement[]>("/raw-material/stock-movements", signal);
+  return rows.map(toRawMaterialStockMovement);
 }
 
-export async function fetchRawMaterialWorkflowReads(signal?: AbortSignal): Promise<RawMaterialWorkflowReadData> {
+export async function getRawMaterialWorkflowReads(signal?: AbortSignal): Promise<RawMaterialWorkflowReadData> {
   const [
     suppliers,
     storageLocations,
@@ -436,14 +457,14 @@ export async function fetchRawMaterialWorkflowReads(signal?: AbortSignal): Promi
     kandangPens,
     stockMovements,
   ] = await Promise.all([
-    fetchRawMaterialSuppliers(signal),
-    fetchRawMaterialStorageLocations(signal),
-    fetchRawMaterialIntakes(signal),
-    fetchRawMaterialWeighings(signal),
-    fetchRawMaterialBatches(signal),
-    fetchRawMaterialProcessingRuns(signal),
-    fetchRawMaterialKandangPens(signal),
-    fetchRawMaterialStockMovements(signal),
+    listRawMaterialSuppliers(signal),
+    listRawMaterialStorageLocations(signal),
+    listRawMaterialIntakes(signal),
+    listRawMaterialWeighings(signal),
+    listRawMaterialBatches(signal),
+    listRawMaterialProcessingRuns(signal),
+    listRawMaterialKandangPens(signal),
+    listRawMaterialStockMovements(signal),
   ]);
 
   return {
@@ -458,42 +479,15 @@ export async function fetchRawMaterialWorkflowReads(signal?: AbortSignal): Promi
   };
 }
 
-export function createRawMaterialSummaryMetrics(
-  summary: RawMaterialSummaryResponse,
-): readonly RawMaterialMetric[] {
-  return [
-    {
-      label: "Accepted material",
-      value: formatRawMaterialWeight(summary.intakes.acceptedQuantity),
-      helper: `Backend summary · ${summary.intakes.acceptanceRate}% acceptance rate`,
-    },
-    {
-      label: "Active batches",
-      value: String(summary.batches.active),
-      helper: `${formatRawMaterialWeight(summary.batches.remainingQuantity)} remaining across active lots`,
-    },
-    {
-      label: "Storage usage",
-      value: `${summary.storage.usageRate}%`,
-      helper: `${formatRawMaterialWeight(summary.storage.usedKg)} used from ${formatRawMaterialWeight(summary.storage.capacityKg)}`,
-    },
-    {
-      label: "Processing yield",
-      value: `${summary.processing.yieldRate}%`,
-      helper: `${summary.processing.totalRuns} runs · ${formatRawMaterialWeight(summary.processing.outputQuantity)} output`,
-    },
-  ];
-}
-
 export const rawMaterialApiClient = {
   getSummary: fetchRawMaterialSummary,
-  getWorkflowReads: fetchRawMaterialWorkflowReads,
-  listSuppliers: fetchRawMaterialSuppliers,
-  listStorageLocations: fetchRawMaterialStorageLocations,
-  listIntakes: fetchRawMaterialIntakes,
-  listWeighings: fetchRawMaterialWeighings,
-  listBatches: fetchRawMaterialBatches,
-  listProcessingRuns: fetchRawMaterialProcessingRuns,
-  listKandangPens: fetchRawMaterialKandangPens,
-  listStockMovements: fetchRawMaterialStockMovements,
+  getWorkflowReads: getRawMaterialWorkflowReads,
+  listSuppliers: listRawMaterialSuppliers,
+  listStorageLocations: listRawMaterialStorageLocations,
+  listIntakes: listRawMaterialIntakes,
+  listWeighings: listRawMaterialWeighings,
+  listBatches: listRawMaterialBatches,
+  listProcessingRuns: listRawMaterialProcessingRuns,
+  listKandangPens: listRawMaterialKandangPens,
+  listStockMovements: listRawMaterialStockMovements,
 };
