@@ -38,6 +38,7 @@ import {
 import {
   exportRolePermissionStore,
   loadRolePermissionStore,
+  normalizeRolePermissionStore,
   resetRolePermissionStore,
   saveRolePermissionStore,
   type RolePermissionStoreState,
@@ -174,6 +175,27 @@ export function TeamManagementRolePermissionPage() {
   useEffect(() => {
     saveRolePermissionStore(store);
   }, [store]);
+
+  useEffect(() => {
+    if (roles.some((role) => role.id === selectedRoleId)) return;
+    const fallbackRole = roles[0];
+    if (fallbackRole) {
+      setSelectedRoleId(fallbackRole.id);
+      setDraft(roleToDraft(fallbackRole));
+    }
+  }, [roles, selectedRoleId]);
+
+  useEffect(() => {
+    if (members.some((member) => member.id === selectedMemberId)) return;
+    const fallbackMember = members[0];
+    if (fallbackMember) setSelectedMemberId(fallbackMember.id);
+  }, [members, selectedMemberId]);
+
+  useEffect(() => {
+    if (roles.some((role) => role.id === selectedAssignRoleId)) return;
+    const fallbackRole = roles.find((role) => role.id === "operator-default") ?? roles[0];
+    if (fallbackRole) setSelectedAssignRoleId(fallbackRole.id);
+  }, [roles, selectedAssignRoleId]);
 
   function updateStore(updater: (current: RolePermissionStoreState) => RolePermissionStoreState) {
     setStore((current) => updater(current));
@@ -414,19 +436,16 @@ export function TeamManagementRolePermissionPage() {
 
   function importState() {
     try {
-      const parsed = JSON.parse(importText) as RolePermissionStoreState;
-      if (parsed.version !== 3 || !Array.isArray(parsed.roles) || !Array.isArray(parsed.members)) {
-        throw new Error("Invalid payload.");
-      }
+      const parsed = normalizeRolePermissionStore(JSON.parse(importText));
 
       setStore({
-        version: 3,
-        roles: parsed.roles,
-        members: parsed.members,
-        logs: [createAccessLog("RESET_DEMO", "Imported state", "Imported dummy role permission JSON."), ...(Array.isArray(parsed.logs) ? parsed.logs : [])],
+        ...parsed,
+        logs: [createAccessLog("RESET_DEMO", "Imported state", "Imported sanitized dummy role permission JSON."), ...parsed.logs],
       });
+      setSelectedRoleId(parsed.roles[0]?.id ?? "owner-default");
+      setSelectedMemberId(parsed.members[0]?.id ?? "usr-001");
       setPendingDeleteRoleId(null);
-      setNotice("Imported dummy role permission state.");
+      setNotice("Imported and sanitized dummy role permission state.");
     } catch {
       setNotice("Import failed. JSON payload is invalid.");
     }
