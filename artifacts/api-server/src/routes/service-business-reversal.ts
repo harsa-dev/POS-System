@@ -111,7 +111,7 @@ router.post("/custom-business/service/reversals/quotations/:id/cancel", async (r
     });
 
     await auditServiceReversal(context, result, (data) => {
-      const preview = data.preview ?? {};
+      const preview = (data.preview ?? {}) as Record<string, unknown>;
       const quotationId = typeof preview.quotationId === "string" ? preview.quotationId : "";
       if (!quotationId) return null;
 
@@ -154,7 +154,7 @@ router.post("/custom-business/service/reversals/invoices/:id/cancel", async (req
     });
 
     await auditServiceReversal(context, result, (data) => {
-      const preview = data.preview ?? {};
+      const preview = (data.preview ?? {}) as Record<string, unknown>;
       const invoiceId = typeof preview.invoiceId === "string" ? preview.invoiceId : "";
       if (!invoiceId) return null;
 
