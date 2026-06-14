@@ -146,6 +146,7 @@ export type RawMaterialApiSource = "mock" | "api" | "api-with-mock-fallback";
 export type RawMaterialApiContract = Readonly<{
   id: string;
   moduleId: RawMaterialWorkspaceModuleId;
+  operationId: string;
   method: RawMaterialApiMethod;
   path: string;
   purpose: string;
@@ -206,13 +207,4 @@ export type RawMaterialScaleFeature = Readonly<{
   whyItMatters: string;
   status: RawMaterialScaleFeatureStatus;
   dummyMetric: string;
-}>;
-
-export type RawMaterialScaleProfile = Readonly<{
-  scale: RawMaterialBusinessScale;
-  label: string;
-  businessShape: string;
-  operatingStyle: string;
-  mustHaveFocus: readonly string[];
-  dashboardGoal: string;
 }>;
