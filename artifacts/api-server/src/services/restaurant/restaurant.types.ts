@@ -84,7 +84,19 @@ export type RestaurantOrderDto = {
   updatedAt: string;
 };
 
+export type RestaurantDashboardHealthSignalDto = {
+  key: string;
+  status: "healthy" | "review" | "blocked";
+  message: string;
+};
+
 export type RestaurantDashboardSummaryDto = {
+  generatedAt: string;
+  window: {
+    start: string;
+    end: string;
+    timezone: string;
+  };
   totals: {
     menuItems: number;
     activeMenuItems: number;
@@ -100,6 +112,30 @@ export type RestaurantDashboardSummaryDto = {
     todayRevenue: number;
     completedOrdersToday: number;
     averageOrderValueToday: number;
+    paidRevenueToday: number;
+    activeOrderValue: number;
+    pendingPaymentValue: number;
+  };
+  payments: {
+    pendingPayments: number;
+    paidPaymentsToday: number;
+    byMethodToday: Record<string, number>;
+  };
+  operations: {
+    tableOccupancyRate: number;
+    activeOrdersByStatus: Partial<Record<OrderStatus, number>>;
+    kitchenQueueAgeMinutes: number;
+    servingQueueAgeMinutes: number;
+  };
+  inventory: {
+    lowStockItems: number;
+    outOfStockItems: number;
+    recipeLinkedMenuItems: number;
+    menuItemsWithoutRecipe: number;
+  };
+  health: {
+    status: "healthy" | "review" | "blocked";
+    signals: RestaurantDashboardHealthSignalDto[];
   };
 };
 
