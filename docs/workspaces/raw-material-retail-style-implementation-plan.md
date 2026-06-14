@@ -38,6 +38,7 @@ stock adjustment reversal workflow
 processing cancellation reversal workflow
 generated API client consolidation boundary
 migration baseline/idempotency hardening
+audit + permission policy hardening
 ```
 
 ## Retail-style Raw Material phases
@@ -62,7 +63,7 @@ Phase 8D - Processing cancellation reversal workflow          Done
 Phase 8E - Generated API client consolidation                 Done
 Phase 8F - Raw Material smoke test + scoped CI gate           Done
 Phase 8G - Migration baseline/idempotency hardening           Done
-Phase 8H - Audit + permission policy hardening                Next
+Phase 8H - Audit + permission policy hardening                Done
 ```
 
 ## Phase execution notes
@@ -152,6 +153,7 @@ Wired write endpoints:
 POST /raw-material/stock-movements/adjust
 POST /raw-material/stock-movements/transfer
 POST /raw-material/stock-movements/consume-processing
+POST /raw-material/stock-movements/{id}/reverse-adjustment
 ```
 
 Behavior:
@@ -316,8 +318,43 @@ idempotent migration creates or verifies Raw Material enums, tables, and indexes
 verify script fails loudly on missing Raw Material tables, columns, or enum values
 ```
 
-## Next phase
+### Phase 8H - Audit + permission policy hardening
+
+Status: implemented.
+
+Implemented files:
 
 ```txt
-Phase 8H - Audit + permission policy hardening
+artifacts/api-server/src/services/raw-material/raw-material.audit.ts
+artifacts/api-server/src/services/raw-material/raw-material.policy.ts
+artifacts/api-server/src/services/raw-material/index.ts
+artifacts/api-server/scripts/check-raw-material-policy.ts
+artifacts/api-server/package.json
+scripts/raw-material-check.mjs
+docs/workspaces/raw-material-audit-permission-policy-hardening.md
+```
+
+Behavior:
+
+```txt
+audit entity and operation constants are centralized
+route/action permission policy is documented in a typechecked matrix
+sensitive mutation surfaces declare audit requirements
+read-only and preview endpoints are marked intentionally non-audited
+raw-material:check runs raw-material:policy:check as part of the scoped gate
+```
+
+## Current status
+
+```txt
+Raw Material Retail-style implementation plan is complete through Phase 8H.
+```
+
+## Recommended follow-up lanes
+
+```txt
+Raw Material authenticated integration smoke
+Raw Material create intake/batch/processing write UX
+Raw Material exact OpenAPI schema expansion
+Global non-Raw-Material typecheck cleanup
 ```
