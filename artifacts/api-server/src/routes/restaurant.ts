@@ -8,12 +8,15 @@ import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import { RestaurantWriteError, restaurantOrderWriteService } from "../services/restaurant/restaurant.order-write.js";
 import {
+  RESTAURANT_KITCHEN_ROLES,
   RESTAURANT_PAYMENT_ROLES,
   RESTAURANT_POS_ROLES,
   RESTAURANT_READ_ROLES,
+  RESTAURANT_SERVING_ROLES,
 } from "../services/restaurant/restaurant.policy.js";
 import { restaurantPreviewService } from "../services/restaurant/restaurant.preview.js";
 import { restaurantService } from "../services/restaurant/restaurant.service.js";
+import { restaurantStatusWriteService } from "../services/restaurant/restaurant.status-write.js";
 import type {
   RestaurantActorContext,
   RestaurantBusinessScope,
@@ -370,6 +373,26 @@ router.post("/restaurant/kitchen/preview", async (req, res) => {
   }
 });
 
+router.post("/restaurant/kitchen/status", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res, RESTAURANT_KITCHEN_ROLES);
+    if (!context) return;
+
+    const input = readStatusActionPreviewInput(req, res);
+    if (!input) return;
+
+    return successResponse(res, {
+      data: await restaurantStatusWriteService.updateStatus(context.actor, "kitchen", input),
+      message: "Restaurant kitchen workflow status updated.",
+    });
+  } catch (error) {
+    const handledWriteError = handleRestaurantWriteError(res, error);
+    if (handledWriteError) return handledWriteError;
+
+    return handleApiError(res, error);
+  }
+});
+
 router.get("/restaurant/serving", async (req, res) => {
   try {
     const context = await getRestaurantRequestContext(req, res);
@@ -395,6 +418,26 @@ router.post("/restaurant/serving/preview", async (req, res) => {
       data: await restaurantPreviewService.previewStatusAction(context.scope, "serving", input),
     });
   } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/restaurant/serving/status", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res, RESTAURANT_SERVING_ROLES);
+    if (!context) return;
+
+    const input = readStatusActionPreviewInput(req, res);
+    if (!input) return;
+
+    return successResponse(res, {
+      data: await restaurantStatusWriteService.updateStatus(context.actor, "serving", input),
+      message: "Restaurant serving workflow status updated.",
+    });
+  } catch (error) {
+    const handledWriteError = handleRestaurantWriteError(res, error);
+    if (handledWriteError) return handledWriteError;
+
     return handleApiError(res, error);
   }
 });
