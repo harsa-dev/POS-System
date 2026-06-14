@@ -12,6 +12,7 @@
     "typecheck:restaurant": "pnpm run restaurant:schema:verify && pnpm run generate && tsc -p tsconfig.restaurant.json --noEmit",
     "typecheck:retail": "pnpm run generate && tsc -p tsconfig.retail.json --noEmit",
     "typecheck:raw-material": "pnpm run generate && tsc -p tsconfig.raw-material.json --noEmit",
+    "typecheck:service": "pnpm run generate && tsc -p tsconfig.service.json --noEmit",
     "restaurant:schema:verify": "node ./scripts/verify-restaurant-prisma-schema.mjs",
     "restaurant:baseline:check": "tsx ./scripts/check-restaurant-db-baseline.ts",
     "restaurant:roles:normalize": "tsx ./scripts/normalize-legacy-user-roles.ts",
