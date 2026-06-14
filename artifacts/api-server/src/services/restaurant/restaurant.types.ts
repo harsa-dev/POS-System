@@ -161,6 +161,67 @@ export type RestaurantPaymentPreviewDto = {
   source: "preview";
 };
 
+export type RestaurantStockMovementWriteDto = {
+  inventoryItemId: string;
+  inventoryItemName: string;
+  quantity: number;
+  beforeStock: number;
+  afterStock: number;
+  unit: string;
+};
+
+export type RestaurantOrderWriteResultDto = {
+  kind: "order_create" | "payment_confirm";
+  generatedAt: string;
+  order: RestaurantOrderDto;
+  stockMovements: RestaurantStockMovementWriteDto[];
+  cashflowPosted: boolean;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "write";
+};
+
+export type RestaurantCancellationPreviewInput = {
+  orderId: string;
+  reason?: string | null;
+};
+
+export type RestaurantCashflowReversalDto = {
+  posted: boolean;
+  amount: number;
+  account: string | null;
+  sourceType: "REFUND" | null;
+  entryId: string | null;
+};
+
+export type RestaurantCancellationPreviewDto = {
+  kind: "cancellation";
+  generatedAt: string;
+  order: RestaurantOrderDto | null;
+  currentStatus: OrderStatus | null;
+  targetStatus: "CANCELLED";
+  allowed: boolean;
+  reason: string | null;
+  stockWillBeRestored: boolean;
+  cashflowWillBeReversed: boolean;
+  tableWillBeReleased: boolean;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "preview";
+};
+
+export type RestaurantCancellationWriteDto = {
+  kind: "cancellation";
+  generatedAt: string;
+  order: RestaurantOrderDto;
+  previousStatus: OrderStatus;
+  currentStatus: "CANCELLED";
+  reason: string | null;
+  stockMovements: RestaurantStockMovementWriteDto[];
+  cashflowReversal: RestaurantCashflowReversalDto;
+  tableStatusUpdated: boolean;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "write";
+};
+
 export type RestaurantStatusActionSurface = "kitchen" | "serving";
 
 export type RestaurantStatusActionPreviewInput = {
