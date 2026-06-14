@@ -112,6 +112,60 @@ paths:
                 $ref: "#/components/schemas/ServiceBusinessObjectResponse"
         "400":
           description: Missing or invalid nextStatus
+  /custom-business/service/previews/quotation:
+    post:
+      operationId: serviceBusinessPreviewQuotation
+      tags: [service-business]
+      summary: Preview Service Business quotation totals without creating a quotation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessObject"
+      responses:
+        "200":
+          description: Service Business quotation preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+  /custom-business/service/previews/invoice:
+    post:
+      operationId: serviceBusinessPreviewInvoice
+      tags: [service-business]
+      summary: Preview Service Business invoice totals without creating an invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessObject"
+      responses:
+        "200":
+          description: Service Business invoice preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+  /custom-business/service/previews/invoice-payment:
+    post:
+      operationId: serviceBusinessPreviewInvoicePayment
+      tags: [service-business]
+      summary: Preview Service Business invoice payment effects without recording payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessObject"
+      responses:
+        "200":
+          description: Service Business invoice payment preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
   /custom-business/service/requests:
     post:
       operationId: serviceBusinessCreateRequest
@@ -268,15 +322,17 @@ components:
       type: string
       enum:
         - REQUEST_INTAKE
-        - TRIAGE
+        - JOB_PLANNING
         - QUOTATION_DRAFT
-        - QUOTATION_SENT
         - QUOTATION_APPROVED
         - IN_PROGRESS
-        - QUALITY_CHECK
-        - READY_FOR_DELIVERY
-        - COMPLETED
+        - READY_FOR_REVIEW
+        - DELIVERED
+        - INVOICED
+        - PAID
+        - CLOSED
         - CANCELLED
+        - REJECTED
     ServiceBusinessStatusUpdateInput:
       type: object
       properties:
