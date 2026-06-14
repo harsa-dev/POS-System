@@ -89,6 +89,11 @@ const files = {
   controlRoom: read("artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-control-room.tsx"),
   dataSource: read("artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-data-source.ts"),
   apiClient: read("artifacts/pos-system/src/lib/api/internal-monitoring-api.ts"),
+  backendRoute: read("artifacts/api-server/src/routes/internal-monitoring.ts"),
+  backendRouteIndex: read("artifacts/api-server/src/routes/index.ts"),
+  backendPolicy: read("artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.policy.ts"),
+  backendService: read("artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.service.ts"),
+  backendRepository: read("artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.mock-repository.ts"),
   contractsMock: read("artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-contracts.mock.ts"),
   upgradeMock: read("artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-upgrade.mock.ts"),
 };
@@ -191,6 +196,52 @@ const checks = [
     label: "internal monitoring api client read-only endpoint",
     content: files.apiClient,
     expected: "/api/internal/health/summary",
+  }),
+  () => assertFileExists("artifacts/api-server/src/routes/internal-monitoring.ts"),
+  () => assertContains({
+    label: "internal monitoring backend route",
+    content: files.backendRoute,
+    expected: "router.get(\"/internal/health/summary\"",
+  }),
+  () => assertContains({
+    label: "internal monitoring backend route",
+    content: files.backendRoute,
+    expected: "router.get(\"/internal/routes/inventory\"",
+  }),
+  () => assertContains({
+    label: "internal monitoring backend route",
+    content: files.backendRoute,
+    expected: "router.get(\"/internal/contracts/readiness\"",
+  }),
+  () => assertContains({
+    label: "internal monitoring backend route",
+    content: files.backendRoute,
+    expected: "router.get(\"/internal/data-integrity/checks\"",
+  }),
+  () => assertContains({
+    label: "internal monitoring backend route index",
+    content: files.backendRouteIndex,
+    expected: "internalMonitoringRouter",
+  }),
+  () => assertContains({
+    label: "internal monitoring backend policy",
+    content: files.backendPolicy,
+    expected: "platform-admin.internal-monitoring.read",
+  }),
+  () => assertContains({
+    label: "internal monitoring backend policy",
+    content: files.backendPolicy,
+    expected: "blockedMutations",
+  }),
+  () => assertContains({
+    label: "internal monitoring backend service",
+    content: files.backendService,
+    expected: "getInternalMonitoringControlRoom",
+  }),
+  () => assertContains({
+    label: "internal monitoring backend repository",
+    content: files.backendRepository,
+    expected: "getInternalMonitoringDataIntegrityChecks",
   }),
   () => assertContains({
     label: "internal monitoring contracts mock",
