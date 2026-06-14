@@ -19,6 +19,18 @@ export const SERVICE_BUSINESS_OPENAPI_OPERATIONS = {
     method: "GET",
     path: "/custom-business/service/jobs/{id}/transition-preview",
   },
+  serviceBusinessPreviewQuotation: {
+    method: "POST",
+    path: "/custom-business/service/previews/quotation",
+  },
+  serviceBusinessPreviewInvoice: {
+    method: "POST",
+    path: "/custom-business/service/previews/invoice",
+  },
+  serviceBusinessPreviewInvoicePayment: {
+    method: "POST",
+    path: "/custom-business/service/previews/invoice-payment",
+  },
   serviceBusinessCreateRequest: {
     method: "POST",
     path: "/custom-business/service/requests",
