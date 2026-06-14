@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: retail
     description: Retail mode operations
+  - name: raw-material
+    description: Raw Material mode operations
 paths:
   /healthz:
     get:
@@ -264,6 +266,436 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RetailReturnResponse"
+  /raw-material/summary:
+    get:
+      operationId: rawMaterialGetSummary
+      tags: [raw-material]
+      summary: Get Raw Material dashboard summary
+      responses:
+        "200":
+          description: Raw Material dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialObjectResponse"
+  /raw-material/suppliers:
+    get:
+      operationId: rawMaterialListSuppliers
+      tags: [raw-material]
+      summary: List Raw Material suppliers
+      parameters:
+        - name: includeInactive
+          in: query
+          required: false
+          schema: { type: boolean }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Raw Material suppliers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialArrayResponse"
+    post:
+      operationId: rawMaterialCreateSupplier
+      tags: [raw-material]
+      summary: Create Raw Material supplier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RawMaterialObject"
+      responses:
+        "201":
+          description: Raw Material supplier created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialObjectResponse"
+  /raw-material/storage-locations:
+    get:
+      operationId: rawMaterialListStorageLocations
+      tags: [raw-material]
+      summary: List Raw Material storage locations
+      parameters:
+        - name: includeInactive
+          in: query
+          required: false
+          schema: { type: boolean }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Raw Material storage locations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialArrayResponse"
+    post:
+      operationId: rawMaterialCreateStorageLocation
+      tags: [raw-material]
+      summary: Create Raw Material storage location
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RawMaterialObject"
+      responses:
+        "201":
+          description: Raw Material storage location created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialObjectResponse"
+  /raw-material/intakes:
+    get:
+      operationId: rawMaterialListIntakes
+      tags: [raw-material]
+      summary: List Raw Material intakes
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: supplierId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: targetStorageLocationId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Raw Material intakes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialArrayResponse"
+    post:
+      operationId: rawMaterialCreateIntake
+      tags: [raw-material]
+      summary: Create Raw Material intake
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RawMaterialObject"
+      responses:
+        "201":
+          description: Raw Material intake created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialObjectResponse"
+  /raw-material/weighings:
+    get:
+      operationId: rawMaterialListWeighings
+      tags: [raw-material]
+      summary: List Raw Material weighings
+      parameters:
+        - name: intakeId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: stationName
+          in: query
+          required: false
+          schema: { type: string }
+        - name: operatorName
+          in: query
+          required: false
+          schema: { type: string }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Raw Material weighings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialArrayResponse"
+    post:
+      operationId: rawMaterialCreateWeighing
+      tags: [raw-material]
+      summary: Create Raw Material weighing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RawMaterialObject"
+      responses:
+        "201":
+          description: Raw Material weighing created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialObjectResponse"
+  /raw-material/batches:
+    get:
+      operationId: rawMaterialListBatches
+      tags: [raw-material]
+      summary: List Raw Material batches
+      parameters:
+        - name: intakeId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: storageLocationId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: qualityStatus
+          in: query
+          required: false
+          schema: { type: string }
+        - name: isActive
+          in: query
+          required: false
+          schema: { type: boolean }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Raw Material batches
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialArrayResponse"
+    post:
+      operationId: rawMaterialCreateBatch
+      tags: [raw-material]
+      summary: Create Raw Material batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RawMaterialObject"
+      responses:
+        "201":
+          description: Raw Material batch created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialObjectResponse"
+  /raw-material/processing-runs:
+    get:
+      operationId: rawMaterialListProcessingRuns
+      tags: [raw-material]
+      summary: List Raw Material processing runs
+      parameters:
+        - name: inputBatchId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Raw Material processing runs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialArrayResponse"
+    post:
+      operationId: rawMaterialCreateProcessingRun
+      tags: [raw-material]
+      summary: Create Raw Material processing run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RawMaterialObject"
+      responses:
+        "201":
+          description: Raw Material processing run created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialObjectResponse"
+  /raw-material/processing-runs/{id}/cancel:
+    post:
+      operationId: rawMaterialCancelProcessingRun
+      tags: [raw-material]
+      summary: Cancel Raw Material processing run
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Raw Material processing run cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialObjectResponse"
+  /raw-material/pens:
+    get:
+      operationId: rawMaterialListPens
+      tags: [raw-material]
+      summary: List Raw Material kandang pens
+      parameters:
+        - name: feedBatchId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: healthStatus
+          in: query
+          required: false
+          schema: { type: string }
+        - name: isActive
+          in: query
+          required: false
+          schema: { type: boolean }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Raw Material kandang pens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialArrayResponse"
+    post:
+      operationId: rawMaterialCreatePen
+      tags: [raw-material]
+      summary: Create Raw Material kandang pen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RawMaterialObject"
+      responses:
+        "201":
+          description: Raw Material kandang pen created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialObjectResponse"
+  /raw-material/stock-movements:
+    get:
+      operationId: rawMaterialListStockMovements
+      tags: [raw-material]
+      summary: List Raw Material stock movements
+      parameters:
+        - name: batchId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: type
+          in: query
+          required: false
+          schema: { type: string }
+        - name: reason
+          in: query
+          required: false
+          schema: { type: string }
+        - name: source
+          in: query
+          required: false
+          schema: { type: string }
+        - name: sourceId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: storageLocationId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Raw Material stock movements
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialArrayResponse"
+  /raw-material/stock-movements/adjust:
+    post:
+      operationId: rawMaterialAdjustStock
+      tags: [raw-material]
+      summary: Adjust Raw Material batch stock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RawMaterialObject"
+      responses:
+        "201":
+          description: Raw Material stock adjusted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialObjectResponse"
+  /raw-material/stock-movements/transfer:
+    post:
+      operationId: rawMaterialTransferStock
+      tags: [raw-material]
+      summary: Transfer Raw Material batch stock between storage locations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RawMaterialObject"
+      responses:
+        "201":
+          description: Raw Material batch transferred
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialObjectResponse"
+  /raw-material/stock-movements/consume-processing:
+    post:
+      operationId: rawMaterialConsumeProcessingStock
+      tags: [raw-material]
+      summary: Consume Raw Material batch stock for processing run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RawMaterialObject"
+      responses:
+        "201":
+          description: Raw Material stock consumed for processing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawMaterialObjectResponse"
 components:
   schemas:
     HealthStatus:
@@ -432,5 +864,28 @@ components:
         success: { type: boolean }
         data:
           $ref: "#/components/schemas/RetailObject"
+        message: { type: string }
+      required: [success, data]
+    RawMaterialObject:
+      type: object
+      additionalProperties: true
+    RawMaterialArray:
+      type: array
+      items:
+        $ref: "#/components/schemas/RawMaterialObject"
+    RawMaterialObjectResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/RawMaterialObject"
+        message: { type: string }
+      required: [success, data]
+    RawMaterialArrayResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/RawMaterialArray"
         message: { type: string }
       required: [success, data]
