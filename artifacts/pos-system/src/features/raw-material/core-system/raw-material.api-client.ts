@@ -1,7 +1,18 @@
 import { apiClient, getApiErrorMessage, type ApiEnvelope } from "@/lib/api";
 
 import { formatRawMaterialWeight } from "./raw-material.mock-data";
-import type { RawMaterialMetric } from "./raw-material.types";
+import type {
+  RawMaterialBatch,
+  RawMaterialIntake,
+  RawMaterialKandangPen,
+  RawMaterialMetric,
+  RawMaterialProcessingRun,
+  RawMaterialStockMovement,
+  RawMaterialStorageLocation,
+  RawMaterialSupplier,
+  RawMaterialWeighing,
+  RawMaterialWorkflowReadData,
+} from "./raw-material.types";
 
 type DistributionItem = Readonly<{
   key: string;
@@ -89,20 +100,362 @@ export type RawMaterialSummaryResponse = Readonly<{
   latestActivity: LatestRawMaterialActivity | null;
 }>;
 
-export async function fetchRawMaterialSummary(signal?: AbortSignal) {
-  const payload = await apiClient.get<ApiEnvelope<RawMaterialSummaryResponse>>("/raw-material/summary", {
-    signal,
-  });
+type BackendRawMaterialSupplier = Readonly<{
+  id: string;
+  name: string;
+  contactPerson: string | null;
+  phone: string | null;
+  email?: string | null;
+  category: string;
+  reliabilityScore: number;
+  leadTimeDays: number;
+}>;
+
+type BackendRawMaterialStorageLocation = Readonly<{
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  capacityKg: number;
+  usedKg: number;
+}>;
+
+type BackendRawMaterialIntake = Readonly<{
+  id: string;
+  referenceNumber: string;
+  supplierId: string;
+  materialName: string;
+  unit: string;
+  receivedQuantity: number;
+  acceptedQuantity: number;
+  rejectedQuantity: number;
+  qualityStatus: string;
+  receivedAt: string;
+  targetStorageLocationId: string;
+}>;
+
+type BackendRawMaterialWeighing = Readonly<{
+  id: string;
+  referenceNumber: string;
+  intakeId: string;
+  stationName: string;
+  grossKg: number;
+  tareKg: number;
+  netKg: number;
+  operatorName: string;
+  measuredAt: string;
+}>;
+
+type BackendRawMaterialBatch = Readonly<{
+  id: string;
+  lotCode: string;
+  intakeId: string;
+  materialName: string;
+  quantity: number;
+  remainingQuantity: number;
+  qualityStatus: string;
+  expiryDate: string | null;
+  storageLocationId: string;
+}>;
+
+type BackendRawMaterialProcessingRun = Readonly<{
+  id: string;
+  runNumber: string;
+  inputBatchId: string;
+  outputName: string;
+  inputQuantity: number;
+  outputQuantity: number;
+  byproductQuantity: number;
+  status: string;
+}>;
+
+type BackendRawMaterialKandangPen = Readonly<{
+  id: string;
+  code: string;
+  flockName: string;
+  capacity: number;
+  occupancy: number;
+  feedBatchId: string | null;
+  healthStatus: string;
+}>;
+
+type BackendRawMaterialStockMovement = Readonly<{
+  id: string;
+  batchId: string;
+  batchLotCode: string | null;
+  materialName: string | null;
+  sourceStorageLocationId: string | null;
+  sourceStorageCode: string | null;
+  targetStorageLocationId: string | null;
+  targetStorageCode: string | null;
+  type: string;
+  reason: string;
+  source: string;
+  sourceId: string | null;
+  quantity: number;
+  beforeQuantity: number | null;
+  afterQuantity: number | null;
+  note: string | null;
+  createdAt: string;
+}>;
+
+async function fetchRawMaterialData<TData>(path: string, signal?: AbortSignal) {
+  const payload = await apiClient.get<ApiEnvelope<TData>>(path, { signal });
 
   if (!payload.success || !payload.data) {
-    throw new Error("Raw Material summary API returned an empty response.");
+    throw new Error(`Raw Material API returned an empty response for ${path}.`);
   }
 
   return payload.data;
 }
 
+function normalizeUpperSnake(value: string) {
+  return value.trim().toUpperCase();
+}
+
+function toQualityStatus(value: string): RawMaterialIntake["qualityStatus"] {
+  const normalized = normalizeUpperSnake(value);
+  if (normalized === "ACCEPTED") return "accepted";
+  if (normalized === "REJECTED") return "rejected";
+  return "inspection";
+}
+
+function toUnit(value: string): RawMaterialIntake["unit"] {
+  const normalized = normalizeUpperSnake(value);
+  if (normalized === "SACK") return "sack";
+  if (normalized === "CRATE") return "crate";
+  if (normalized === "HEAD") return "head";
+  return "kg";
+}
+
+function toSupplierCategory(value: string): RawMaterialSupplier["category"] {
+  const normalized = normalizeUpperSnake(value);
+  if (normalized === "FEED") return "Feed";
+  if (normalized === "LIVESTOCK") return "Livestock";
+  if (normalized === "PACKAGING") return "Packaging";
+  return "Raw Goods";
+}
+
+function toStorageType(value: string): RawMaterialStorageLocation["type"] {
+  const normalized = normalizeUpperSnake(value);
+  if (normalized === "COLD") return "Cold";
+  if (normalized === "OPEN_YARD") return "Open Yard";
+  if (normalized === "KANDANG_SUPPORT") return "Kandang Support";
+  return "Dry";
+}
+
+function toProcessingStatus(value: string): RawMaterialProcessingRun["status"] {
+  const normalized = normalizeUpperSnake(value);
+  if (normalized === "RUNNING") return "running";
+  if (normalized === "COMPLETED") return "completed";
+  if (normalized === "CANCELLED") return "cancelled";
+  return "planned";
+}
+
+function toHealthStatus(value: string): RawMaterialKandangPen["healthStatus"] {
+  const normalized = normalizeUpperSnake(value);
+  if (normalized === "MONITORING") return "monitoring";
+  if (normalized === "CRITICAL") return "critical";
+  return "stable";
+}
+
+function toRawMaterialSupplier(row: BackendRawMaterialSupplier): RawMaterialSupplier {
+  return {
+    id: row.id,
+    name: row.name,
+    contactPerson: row.contactPerson ?? row.email ?? "No contact person",
+    phone: row.phone ?? "-",
+    category: toSupplierCategory(row.category),
+    reliabilityScore: row.reliabilityScore,
+    leadTimeDays: row.leadTimeDays,
+  };
+}
+
+function toRawMaterialStorageLocation(row: BackendRawMaterialStorageLocation): RawMaterialStorageLocation {
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    type: toStorageType(row.type),
+    capacityKg: row.capacityKg,
+    usedKg: row.usedKg,
+  };
+}
+
+function toRawMaterialIntake(row: BackendRawMaterialIntake): RawMaterialIntake {
+  return {
+    id: row.id,
+    referenceNumber: row.referenceNumber,
+    supplierId: row.supplierId,
+    materialName: row.materialName,
+    unit: toUnit(row.unit),
+    receivedQuantity: row.receivedQuantity,
+    acceptedQuantity: row.acceptedQuantity,
+    rejectedQuantity: row.rejectedQuantity,
+    qualityStatus: toQualityStatus(row.qualityStatus),
+    receivedAt: row.receivedAt,
+    targetStorageId: row.targetStorageLocationId,
+  };
+}
+
+function toRawMaterialWeighing(row: BackendRawMaterialWeighing): RawMaterialWeighing {
+  return {
+    id: row.id,
+    referenceNumber: row.referenceNumber,
+    intakeId: row.intakeId,
+    stationName: row.stationName,
+    grossKg: row.grossKg,
+    tareKg: row.tareKg,
+    netKg: row.netKg,
+    operatorName: row.operatorName,
+    measuredAt: row.measuredAt,
+  };
+}
+
+function toRawMaterialBatch(row: BackendRawMaterialBatch): RawMaterialBatch {
+  return {
+    id: row.id,
+    lotCode: row.lotCode,
+    intakeId: row.intakeId,
+    materialName: row.materialName,
+    quantityKg: row.quantity,
+    remainingKg: row.remainingQuantity,
+    qualityStatus: toQualityStatus(row.qualityStatus),
+    expiryDate: row.expiryDate ?? "No expiry date",
+    storageId: row.storageLocationId,
+  };
+}
+
+function toRawMaterialProcessingRun(row: BackendRawMaterialProcessingRun): RawMaterialProcessingRun {
+  return {
+    id: row.id,
+    runNumber: row.runNumber,
+    inputBatchId: row.inputBatchId,
+    outputName: row.outputName,
+    inputKg: row.inputQuantity,
+    outputKg: row.outputQuantity,
+    byproductKg: row.byproductQuantity,
+    status: toProcessingStatus(row.status),
+  };
+}
+
+function toRawMaterialKandangPen(row: BackendRawMaterialKandangPen): RawMaterialKandangPen {
+  return {
+    id: row.id,
+    code: row.code,
+    flockName: row.flockName,
+    capacity: row.capacity,
+    occupancy: row.occupancy,
+    feedBatchId: row.feedBatchId,
+    healthStatus: toHealthStatus(row.healthStatus),
+  };
+}
+
+function toRawMaterialStockMovement(row: BackendRawMaterialStockMovement): RawMaterialStockMovement {
+  return {
+    id: row.id,
+    batchId: row.batchId,
+    batchLotCode: row.batchLotCode,
+    materialName: row.materialName,
+    sourceStorageLocationId: row.sourceStorageLocationId,
+    sourceStorageCode: row.sourceStorageCode,
+    targetStorageLocationId: row.targetStorageLocationId,
+    targetStorageCode: row.targetStorageCode,
+    type: row.type,
+    reason: row.reason,
+    source: row.source,
+    sourceId: row.sourceId,
+    quantity: row.quantity,
+    beforeQuantity: row.beforeQuantity,
+    afterQuantity: row.afterQuantity,
+    note: row.note,
+    createdAt: row.createdAt,
+  };
+}
+
+export async function fetchRawMaterialSummary(signal?: AbortSignal) {
+  return fetchRawMaterialData<RawMaterialSummaryResponse>("/raw-material/summary", signal);
+}
+
 export function getRawMaterialSummaryErrorMessage(error: unknown) {
   return getApiErrorMessage(error, "Raw Material summary API is unavailable. Falling back to mock data.");
+}
+
+export function getRawMaterialWorkflowReadErrorMessage(error: unknown) {
+  return getApiErrorMessage(error, "Raw Material workflow read API is unavailable. Falling back to mock lists.");
+}
+
+export async function fetchRawMaterialSuppliers(signal?: AbortSignal) {
+  const data = await fetchRawMaterialData<BackendRawMaterialSupplier[]>("/raw-material/suppliers", signal);
+  return data.map(toRawMaterialSupplier);
+}
+
+export async function fetchRawMaterialStorageLocations(signal?: AbortSignal) {
+  const data = await fetchRawMaterialData<BackendRawMaterialStorageLocation[]>("/raw-material/storage-locations", signal);
+  return data.map(toRawMaterialStorageLocation);
+}
+
+export async function fetchRawMaterialIntakes(signal?: AbortSignal) {
+  const data = await fetchRawMaterialData<BackendRawMaterialIntake[]>("/raw-material/intakes", signal);
+  return data.map(toRawMaterialIntake);
+}
+
+export async function fetchRawMaterialWeighings(signal?: AbortSignal) {
+  const data = await fetchRawMaterialData<BackendRawMaterialWeighing[]>("/raw-material/weighings", signal);
+  return data.map(toRawMaterialWeighing);
+}
+
+export async function fetchRawMaterialBatches(signal?: AbortSignal) {
+  const data = await fetchRawMaterialData<BackendRawMaterialBatch[]>("/raw-material/batches", signal);
+  return data.map(toRawMaterialBatch);
+}
+
+export async function fetchRawMaterialProcessingRuns(signal?: AbortSignal) {
+  const data = await fetchRawMaterialData<BackendRawMaterialProcessingRun[]>("/raw-material/processing-runs", signal);
+  return data.map(toRawMaterialProcessingRun);
+}
+
+export async function fetchRawMaterialKandangPens(signal?: AbortSignal) {
+  const data = await fetchRawMaterialData<BackendRawMaterialKandangPen[]>("/raw-material/pens", signal);
+  return data.map(toRawMaterialKandangPen);
+}
+
+export async function fetchRawMaterialStockMovements(signal?: AbortSignal) {
+  const data = await fetchRawMaterialData<BackendRawMaterialStockMovement[]>("/raw-material/stock-movements", signal);
+  return data.map(toRawMaterialStockMovement);
+}
+
+export async function fetchRawMaterialWorkflowReads(signal?: AbortSignal): Promise<RawMaterialWorkflowReadData> {
+  const [
+    suppliers,
+    storageLocations,
+    intakes,
+    weighings,
+    batches,
+    processingRuns,
+    kandangPens,
+    stockMovements,
+  ] = await Promise.all([
+    fetchRawMaterialSuppliers(signal),
+    fetchRawMaterialStorageLocations(signal),
+    fetchRawMaterialIntakes(signal),
+    fetchRawMaterialWeighings(signal),
+    fetchRawMaterialBatches(signal),
+    fetchRawMaterialProcessingRuns(signal),
+    fetchRawMaterialKandangPens(signal),
+    fetchRawMaterialStockMovements(signal),
+  ]);
+
+  return {
+    suppliers,
+    storageLocations,
+    intakes,
+    weighings,
+    batches,
+    processingRuns,
+    kandangPens,
+    stockMovements,
+  };
 }
 
 export function createRawMaterialSummaryMetrics(
@@ -134,4 +487,13 @@ export function createRawMaterialSummaryMetrics(
 
 export const rawMaterialApiClient = {
   getSummary: fetchRawMaterialSummary,
+  getWorkflowReads: fetchRawMaterialWorkflowReads,
+  listSuppliers: fetchRawMaterialSuppliers,
+  listStorageLocations: fetchRawMaterialStorageLocations,
+  listIntakes: fetchRawMaterialIntakes,
+  listWeighings: fetchRawMaterialWeighings,
+  listBatches: fetchRawMaterialBatches,
+  listProcessingRuns: fetchRawMaterialProcessingRuns,
+  listKandangPens: fetchRawMaterialKandangPens,
+  listStockMovements: fetchRawMaterialStockMovements,
 };
