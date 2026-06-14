@@ -101,10 +101,10 @@ async function main() {
         WHERE table_name = 'CashflowEntry'
           AND column_name = 'title'
       ) THEN
-        EXECUTE '
+        EXECUTE $sql$
           UPDATE "CashflowEntry"
-          SET "category" = COALESCE(NULLIF("title", ''''), NULLIF("category", ''''), ''General'')
-        ';
+          SET "category" = COALESCE(NULLIF("title", ''), NULLIF("category", ''), 'General')
+        $sql$;
       END IF;
     END $$;
   `);
