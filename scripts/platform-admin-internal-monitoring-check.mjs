@@ -87,6 +87,8 @@ const files = {
   content: read("artifacts/pos-system/src/features/shared/platform-monitoring/platform-monitoring-content.tsx"),
   dashboard: read("artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-dashboard.tsx"),
   controlRoom: read("artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-control-room.tsx"),
+  dataSource: read("artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-data-source.ts"),
+  apiClient: read("artifacts/pos-system/src/lib/api/internal-monitoring-api.ts"),
   contractsMock: read("artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-contracts.mock.ts"),
   upgradeMock: read("artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-upgrade.mock.ts"),
 };
@@ -157,6 +159,38 @@ const checks = [
     label: "internal monitoring control room",
     content: files.controlRoom,
     expected: "Dev Action Queue",
+  }),
+  () => assertContains({
+    label: "internal monitoring control room uses data source",
+    content: files.controlRoom,
+    expected: "loadInternalMonitoringControlRoomData",
+  }),
+  () => assertContains({
+    label: "internal monitoring control room source badge",
+    content: files.controlRoom,
+    expected: "Fallback Mock",
+  }),
+  () => assertFileExists("artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-data-source.ts"),
+  () => assertContains({
+    label: "internal monitoring data source",
+    content: files.dataSource,
+    expected: "loadInternalMonitoringControlRoomData",
+  }),
+  () => assertContains({
+    label: "internal monitoring data source fallback",
+    content: files.dataSource,
+    expected: "getInternalMonitoringMockControlRoomData",
+  }),
+  () => assertFileExists("artifacts/pos-system/src/lib/api/internal-monitoring-api.ts"),
+  () => assertContains({
+    label: "internal monitoring api client",
+    content: files.apiClient,
+    expected: "internalMonitoringApi",
+  }),
+  () => assertContains({
+    label: "internal monitoring api client read-only endpoint",
+    content: files.apiClient,
+    expected: "/api/internal/health/summary",
   }),
   () => assertContains({
     label: "internal monitoring contracts mock",
