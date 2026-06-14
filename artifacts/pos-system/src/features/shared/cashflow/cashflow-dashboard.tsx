@@ -337,7 +337,9 @@ export function CashflowDashboard() {
   }, [page, periodRange.from, periodRange.to, search, sourceAccount, statusFilter, typeFilter, viewMode]);
 
   const exportQuery = useMemo<CashflowQuery>(() => {
-    const { page: _page, limit: _limit, ...filters } = query;
+    const filters: CashflowQuery = { ...query };
+    delete filters.page;
+    delete filters.limit;
     return filters;
   }, [query]);
 
