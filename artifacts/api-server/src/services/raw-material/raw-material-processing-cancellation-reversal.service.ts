@@ -23,7 +23,10 @@ import {
   findRawMaterialStockMovementRowById,
   type RawMaterialRepositoryTx,
 } from "./raw-material-stock-movement.repository.js";
-import type { RawMaterialStockMovementRow } from "./raw-material-stock-movement.types.js";
+import type {
+  RawMaterialStockMovementDto,
+  RawMaterialStockMovementRow,
+} from "./raw-material-stock-movement.types.js";
 
 const manageRoles = new Set<Role>([Role.OWNER, Role.MANAGER, Role.ADMIN, Role.OPERATOR]);
 
@@ -124,7 +127,7 @@ export async function cancelRawMaterialProcessingRunWithStockReversal(params: {
     );
 
     const beforeProcessingRun = toRawMaterialProcessingRunDto(run);
-    let reversalMovement = null;
+    let reversalMovement: RawMaterialStockMovementDto | null = null;
     let reversalMovementId: string | null = null;
     let beforeQuantity: number | null = null;
     let afterQuantity: number | null = null;
