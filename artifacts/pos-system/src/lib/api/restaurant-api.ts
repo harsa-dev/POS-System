@@ -171,6 +171,12 @@ export type RestaurantStatusActionPreviewInput = {
   targetStatus?: string | null;
 };
 
+export type RestaurantStatusActionTransitionDto = {
+  actionKey: string;
+  label: string;
+  roleScope: "cashier" | "kitchen" | "server" | "manager";
+};
+
 export type RestaurantStatusActionPreviewDto = {
   kind: RestaurantStatusActionSurface;
   generatedAt: string;
@@ -178,13 +184,21 @@ export type RestaurantStatusActionPreviewDto = {
   currentStatus: string | null;
   targetStatus: string | null;
   allowed: boolean;
-  transition: {
-    actionKey: string;
-    label: string;
-    roleScope: "cashier" | "kitchen" | "server" | "manager";
-  } | null;
+  transition: RestaurantStatusActionTransitionDto | null;
   warnings: RestaurantPreviewWarningDto[];
   source: "preview";
+};
+
+export type RestaurantStatusActionWriteDto = {
+  kind: RestaurantStatusActionSurface;
+  generatedAt: string;
+  order: RestaurantOrderDto;
+  previousStatus: string;
+  currentStatus: string;
+  transition: RestaurantStatusActionTransitionDto;
+  tableStatusUpdated: boolean;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "write";
 };
 
 export type RestaurantWorkflowStageStatus = "empty" | "healthy" | "review" | "blocked";
@@ -359,9 +373,13 @@ export const restaurantApi = {
   listKitchenQueue: () => apiClient.get<ApiEnvelope<RestaurantOrderDto[]>>("/restaurant/kitchen"),
   previewKitchenAction: (input: RestaurantStatusActionPreviewInput) =>
     apiClient.post<ApiEnvelope<RestaurantStatusActionPreviewDto>>("/restaurant/kitchen/preview", input),
+  updateKitchenStatus: (input: RestaurantStatusActionPreviewInput) =>
+    apiClient.post<ApiEnvelope<RestaurantStatusActionWriteDto>>("/restaurant/kitchen/status", input),
   listServingQueue: () => apiClient.get<ApiEnvelope<RestaurantOrderDto[]>>("/restaurant/serving"),
   previewServingAction: (input: RestaurantStatusActionPreviewInput) =>
     apiClient.post<ApiEnvelope<RestaurantStatusActionPreviewDto>>("/restaurant/serving/preview", input),
+  updateServingStatus: (input: RestaurantStatusActionPreviewInput) =>
+    apiClient.post<ApiEnvelope<RestaurantStatusActionWriteDto>>("/restaurant/serving/status", input),
   getWorkflow: () => apiClient.get<ApiEnvelope<RestaurantWorkflowSummaryDto>>("/restaurant/workflow"),
   getWorkflowPreview: () => apiClient.get<ApiEnvelope<RestaurantWorkflowPreviewDto>>("/restaurant/workflow-preview"),
 };
