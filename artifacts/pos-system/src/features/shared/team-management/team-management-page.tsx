@@ -14,6 +14,7 @@ import {
   SnapshotSyncPanel,
   TeamMemberTable,
   TeamOverviewCards,
+  type TeamManagementRuntimeMode,
 } from "./components";
 import {
   getJobRoleById,
@@ -44,6 +45,7 @@ import {
   saveRolePermissionStore,
   type RolePermissionStoreState,
 } from "./role-permission-store";
+import type { TeamManagementSnapshotDto } from "./team-management-contract";
 import {
   baseRoles,
   businessRoleSectors,
@@ -82,8 +84,19 @@ function buildPolicyPayload(role: ManagedRole | DraftRole) {
   };
 }
 
+function snapshotToStore(snapshot: TeamManagementSnapshotDto): RolePermissionStoreState {
+  return {
+    version: 3,
+    roles: snapshot.roles,
+    members: snapshot.members,
+    logs: snapshot.logs,
+  };
+}
+
 export function TeamManagementRolePermissionPage() {
-  const [store, setStore] = useState<RolePermissionStoreState>(() => loadRolePermissionStore());
+  const [localStore, setLocalStore] = useState<RolePermissionStoreState>(() => loadRolePermissionStore());
+  const [runtimeMode, setRuntimeMode] = useState<TeamManagementRuntimeMode>("localStorage");
+  const [backendPreviewSnapshot, setBackendPreviewSnapshot] = useState<TeamManagementSnapshotDto | null>(null);
   const [selectedSector, setSelectedSector] = useState<BusinessRoleSector>("custom-business");
   const [selectedJobId, setSelectedJobId] = useState("service-operations-manager");
   const [selectedRoleId, setSelectedRoleId] = useState("owner-default");
@@ -100,7 +113,16 @@ export function TeamManagementRolePermissionPage() {
   const [importText, setImportText] = useState("");
   const [notice, setNotice] = useState("Real-world job role library ready. Still dummy, but at least it stopped inventing jobs out of dashboard fog.");
 
-  const { roles, members, logs } = store;
+  const activeStore = useMemo<RolePermissionStoreState>(() => {
+    if (runtimeMode === "backend-preview" && backendPreviewSnapshot) {
+      return snapshotToStore(backendPreviewSnapshot);
+    }
+
+    return localStore;
+  }, [backendPreviewSnapshot, localStore, runtimeMode]);
+
+  const isBackendPreview = runtimeMode === "backend-preview";
+  const { roles, members, logs } = activeStore;
   const selectedRole = roles.find((role) => role.id === selectedRoleId) ?? roles[0];
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? members[0];
 
@@ -174,8 +196,8 @@ export function TeamManagementRolePermissionPage() {
   const draftPayload = useMemo(() => JSON.stringify(buildPolicyPayload(draft), null, 2), [draft]);
 
   useEffect(() => {
-    saveRolePermissionStore(store);
-  }, [store]);
+    saveRolePermissionStore(localStore);
+  }, [localStore]);
 
   useEffect(() => {
     if (roles.some((role) => role.id === selectedRoleId)) return;
@@ -199,7 +221,7 @@ export function TeamManagementRolePermissionPage() {
   }, [roles, selectedAssignRoleId]);
 
   function updateStore(updater: (current: RolePermissionStoreState) => RolePermissionStoreState) {
-    setStore((current) => updater(current));
+    setLocalStore((current) => updater(current));
   }
 
   function getAssignedMemberCount(roleId: string) {
@@ -253,7 +275,7 @@ export function TeamManagementRolePermissionPage() {
   }
 
   function saveDraftAsRole() {
-    const error = validateRoleName(draft.name, roles, draft.id);
+    const error = validateRoleName(draft.name, localStore.roles, draft.id);
     if (error) {
       setNotice(error);
       return;
@@ -262,7 +284,7 @@ export function TeamManagementRolePermissionPage() {
     const now = new Date().toISOString();
 
     if (draft.id) {
-      const existing = roles.find((role) => role.id === draft.id);
+      const existing = localStore.roles.find((role) => role.id === draft.id);
 
       if (!existing || existing.locked) {
         setNotice("Locked system roles cannot be overwritten. Clone first.");
@@ -369,10 +391,15 @@ export function TeamManagementRolePermissionPage() {
   }
 
   function requestDeleteRole(roleId: string) {
-    const target = roles.find((role) => role.id === roleId);
+    if (isBackendPreview) {
+      setNotice("Backend preview is read-only. Switch back to localStorage before editing demo roles.");
+      return;
+    }
+
+    const target = localStore.roles.find((role) => role.id === roleId);
     if (!target || target.locked) return;
 
-    const assignedMemberCount = getAssignedMemberCount(roleId);
+    const assignedMemberCount = localStore.members.filter((member) => member.roleId === roleId).length;
     setPendingDeleteRoleId(roleId);
     setNotice(
       assignedMemberCount > 0
@@ -382,7 +409,12 @@ export function TeamManagementRolePermissionPage() {
   }
 
   function deleteRole(roleId: string) {
-    const target = roles.find((role) => role.id === roleId);
+    if (isBackendPreview) {
+      setNotice("Backend preview is read-only. Switch back to localStorage before editing demo roles.");
+      return;
+    }
+
+    const target = localStore.roles.find((role) => role.id === roleId);
     if (!target || target.locked) return;
 
     const fallbackRoleId = "viewer-default";
@@ -402,23 +434,26 @@ export function TeamManagementRolePermissionPage() {
   }
 
   function assignRoleToMember() {
-    const role = roles.find((item) => item.id === selectedAssignRoleId);
-    if (!selectedMember || !role) return;
+    const role = localStore.roles.find((item) => item.id === selectedAssignRoleId);
+    const member = localStore.members.find((item) => item.id === selectedMemberId);
+    if (!member || !role) return;
 
     updateStore((current) => ({
       ...current,
-      members: current.members.map((member) =>
-        member.id === selectedMember.id ? { ...member, roleId: role.id, status: "Active" as TeamMemberStatus } : member,
+      members: current.members.map((currentMember) =>
+        currentMember.id === member.id ? { ...currentMember, roleId: role.id, status: "Active" as TeamMemberStatus } : currentMember,
       ),
-      logs: [createAccessLog("ASSIGN_ROLE", selectedMember.name, `Assigned role ${role.name}.`), ...current.logs],
+      logs: [createAccessLog("ASSIGN_ROLE", member.name, `Assigned role ${role.name}.`), ...current.logs],
     }));
 
-    setNotice(`Assigned ${role.name} to ${selectedMember.name} in local dummy store.`);
+    setNotice(`Assigned ${role.name} to ${member.name} in local dummy store.`);
   }
 
   function resetDemo() {
     const next = resetRolePermissionStore();
-    setStore(next);
+    setLocalStore(next);
+    setRuntimeMode("localStorage");
+    setBackendPreviewSnapshot(null);
     setSelectedRoleId("owner-default");
     setPendingDeleteRoleId(null);
     setMemberQuery("");
@@ -429,7 +464,7 @@ export function TeamManagementRolePermissionPage() {
   }
 
   function exportState() {
-    const payload = exportRolePermissionStore(store);
+    const payload = exportRolePermissionStore(localStore);
     void navigator.clipboard?.writeText(payload);
     setImportText(payload);
     setNotice("Export JSON copied to clipboard and textarea.");
@@ -439,10 +474,12 @@ export function TeamManagementRolePermissionPage() {
     try {
       const parsed = normalizeRolePermissionStore(JSON.parse(importText));
 
-      setStore({
+      setLocalStore({
         ...parsed,
         logs: [createAccessLog("RESET_DEMO", "Imported state", "Imported sanitized dummy role permission JSON."), ...parsed.logs],
       });
+      setRuntimeMode("localStorage");
+      setBackendPreviewSnapshot(null);
       setSelectedRoleId(parsed.roles[0]?.id ?? "owner-default");
       setSelectedMemberId(parsed.members[0]?.id ?? "usr-001");
       setPendingDeleteRoleId(null);
@@ -452,12 +489,36 @@ export function TeamManagementRolePermissionPage() {
     }
   }
 
+  function useBackendPreview(snapshot: TeamManagementSnapshotDto) {
+    setBackendPreviewSnapshot(snapshot);
+    setRuntimeMode("backend-preview");
+    setSelectedRoleId(snapshot.roles[0]?.id ?? "owner-default");
+    setSelectedMemberId(snapshot.members[0]?.id ?? "usr-001");
+    setPendingDeleteRoleId(null);
+    setNotice("Backend preview enabled. This view is read-only and localStorage remains unchanged.");
+  }
+
+  function useLocalStorageRuntime() {
+    setRuntimeMode("localStorage");
+    setBackendPreviewSnapshot(null);
+    setSelectedRoleId(localStore.roles[0]?.id ?? "owner-default");
+    setSelectedMemberId(localStore.members[0]?.id ?? "usr-001");
+    setPendingDeleteRoleId(null);
+    setNotice("Returned to localStorage runtime.");
+  }
+
   return (
     <DashboardShell
       title="Team Management"
       description="Advanced role library with real-world job presets for Restaurant, Retail, Raw Material, and planned Custom Business."
     >
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{notice}</div>
+
+      {isBackendPreview && (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+          Backend preview mode is active. The dashboard is rendering read-only API snapshot data, while localStorage demo data is preserved.
+        </div>
+      )}
 
       <TeamOverviewCards
         totalMemberCount={members.length}
@@ -472,7 +533,12 @@ export function TeamManagementRolePermissionPage() {
         customRoleCount={customRoleCount}
       />
 
-      <SnapshotSyncPanel store={store} />
+      <SnapshotSyncPanel
+        store={localStore}
+        runtimeMode={runtimeMode}
+        onUseBackendPreview={useBackendPreview}
+        onUseLocalStorage={useLocalStorageRuntime}
+      />
 
       <TeamMemberTable
         members={filteredMembers}
@@ -487,41 +553,11 @@ export function TeamManagementRolePermissionPage() {
         onSelectMember={setSelectedMemberId}
       />
 
-      <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-        <JobRolePresetPanel
-          sectors={businessRoleSectors}
-          selectedSector={selectedSector}
-          selectedJobId={selectedJobId}
-          jobQuery={jobQuery}
-          filteredJobRoles={filteredJobRoles}
-          onSectorChange={setSelectedSector}
-          onJobQueryChange={setJobQuery}
-          onApplyJobPreset={applyJobPreset}
-        />
-
-        <RoleBuilderPanel
-          draft={draft}
-          setDraft={setDraft}
-          baseRoles={baseRoles}
-          draftRiskCount={draftRiskCount}
-          draftPayload={draftPayload}
-          onSaveDraftAsRole={saveDraftAsRole}
-          onCloneSelectedRole={cloneSelectedRole}
-          onResetDemo={resetDemo}
-        />
-      </div>
-
-      <PermissionMatrixPanel
-        permissions={draft.permissions}
-        onTogglePermission={togglePermission}
-        onSetModulePermissions={setModulePermissions}
-      />
-
-      <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+      {isBackendPreview ? (
         <RoleRegistryPanel
           filteredRoles={filteredRoles}
           selectedRoleId={selectedRoleId}
-          pendingDeleteRoleId={pendingDeleteRoleId}
+          pendingDeleteRoleId={null}
           query={query}
           filter={filter}
           totalPermissions={totalPermissions}
@@ -533,22 +569,72 @@ export function TeamManagementRolePermissionPage() {
           onCancelDeleteRole={() => setPendingDeleteRoleId(null)}
           onConfirmDeleteRole={deleteRole}
         />
+      ) : (
+        <>
+          <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+            <JobRolePresetPanel
+              sectors={businessRoleSectors}
+              selectedSector={selectedSector}
+              selectedJobId={selectedJobId}
+              jobQuery={jobQuery}
+              filteredJobRoles={filteredJobRoles}
+              onSectorChange={setSelectedSector}
+              onJobQueryChange={setJobQuery}
+              onApplyJobPreset={applyJobPreset}
+            />
 
-        <AssignmentImportExportPanel
-          members={members}
-          roles={roles}
-          selectedMemberId={selectedMemberId}
-          selectedAssignRoleId={selectedAssignRoleId}
-          importText={importText}
-          selectedRolePayload={selectedRolePayload}
-          onMemberChange={setSelectedMemberId}
-          onAssignRoleChange={setSelectedAssignRoleId}
-          onAssignRoleToMember={assignRoleToMember}
-          onExportState={exportState}
-          onImportState={importState}
-          onImportTextChange={setImportText}
-        />
-      </div>
+            <RoleBuilderPanel
+              draft={draft}
+              setDraft={setDraft}
+              baseRoles={baseRoles}
+              draftRiskCount={draftRiskCount}
+              draftPayload={draftPayload}
+              onSaveDraftAsRole={saveDraftAsRole}
+              onCloneSelectedRole={cloneSelectedRole}
+              onResetDemo={resetDemo}
+            />
+          </div>
+
+          <PermissionMatrixPanel
+            permissions={draft.permissions}
+            onTogglePermission={togglePermission}
+            onSetModulePermissions={setModulePermissions}
+          />
+
+          <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+            <RoleRegistryPanel
+              filteredRoles={filteredRoles}
+              selectedRoleId={selectedRoleId}
+              pendingDeleteRoleId={pendingDeleteRoleId}
+              query={query}
+              filter={filter}
+              totalPermissions={totalPermissions}
+              getAssignedMemberCount={getAssignedMemberCount}
+              onQueryChange={setQuery}
+              onFilterChange={setFilter}
+              onSelectRole={selectRole}
+              onRequestDeleteRole={requestDeleteRole}
+              onCancelDeleteRole={() => setPendingDeleteRoleId(null)}
+              onConfirmDeleteRole={deleteRole}
+            />
+
+            <AssignmentImportExportPanel
+              members={members}
+              roles={roles}
+              selectedMemberId={selectedMemberId}
+              selectedAssignRoleId={selectedAssignRoleId}
+              importText={importText}
+              selectedRolePayload={selectedRolePayload}
+              onMemberChange={setSelectedMemberId}
+              onAssignRoleChange={setSelectedAssignRoleId}
+              onAssignRoleToMember={assignRoleToMember}
+              onExportState={exportState}
+              onImportState={importState}
+              onImportTextChange={setImportText}
+            />
+          </div>
+        </>
+      )}
 
       <AccessChangelogPanel logs={logs} />
     </DashboardShell>
