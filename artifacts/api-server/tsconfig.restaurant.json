@@ -4,6 +4,7 @@
     "noEmit": true
   },
   "include": [
+    "scripts/seed-restaurant-demo-data.ts",
     "src/routes/restaurant.ts",
     "src/services/restaurant/**/*.ts",
     "src/lib/auth.ts",
