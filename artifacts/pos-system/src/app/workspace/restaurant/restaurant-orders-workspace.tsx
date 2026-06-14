@@ -8,7 +8,7 @@ import {
 } from "@/app/workspace/restaurant/orders/use-orders-workspace-orders";
 import { WorkspaceShell } from "@/app/workspace/workspace-shell";
 import { ROUTES } from "@/constants/routes";
-import { getApiErrorMessage, orderApi } from "@/lib/api";
+import { getApiErrorMessage, restaurantApi } from "@/lib/api";
 
 export default function RestaurantOrdersWorkspace() {
   const orders = useOrdersWorkspaceOrders();
@@ -18,7 +18,7 @@ export default function RestaurantOrdersWorkspace() {
   async function handleCompleteOrder(order: OrdersWorkspaceOrder) {
     if (updatingOrderIdRef.current !== null) {
       if (import.meta.env.DEV) {
-        console.debug("[orders-v3] duplicate completion blocked", {
+        console.debug("[restaurant-orders] duplicate completion blocked", {
           activeOrderId: updatingOrderIdRef.current,
           orderId: order.id,
         });
@@ -31,15 +31,12 @@ export default function RestaurantOrdersWorkspace() {
     setUpdatingOrderId(order.id);
 
     try {
-      const result = await orderApi.updateStatusWithResult(order.id, {
-        status: "COMPLETED",
+      const response = await restaurantApi.updateOrderStatus(order.id, {
+        targetStatus: "COMPLETED",
       });
 
-      if (!result.ok || !result.body.success) {
-        toast.error(
-          result.body.message ||
-            `Failed to complete order (${result.status})`,
-        );
+      if (!response.success) {
+        toast.error(response.message || "Failed to complete order");
         return;
       }
 
@@ -61,7 +58,7 @@ export default function RestaurantOrdersWorkspace() {
   return (
     <WorkspaceShell
       title="Restaurant Orders Workspace"
-      description="V3 order lifecycle workspace for observing orders and safely completing served orders."
+      description="Restaurant order lifecycle workspace for observing active orders and safely completing served orders."
       currentRouteLabel="current Orders route"
       currentRoutePath={ROUTES.ORDERS}
     >
