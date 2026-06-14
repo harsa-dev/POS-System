@@ -8,7 +8,7 @@ import {
 } from "@/app/workspace/restaurant/serving/use-serving-orders";
 import { WorkspaceShell } from "@/app/workspace/workspace-shell";
 import { ROUTES } from "@/constants/routes";
-import { getApiErrorMessage, restaurantApi } from "@/lib/api";
+import { getApiErrorMessage, restaurantClient } from "@/lib/api";
 
 export default function RestaurantServingWorkspace() {
   const servingOrders = useServingOrders();
@@ -35,7 +35,7 @@ export default function RestaurantServingWorkspace() {
     setUpdatingOrderId(orderId);
 
     try {
-      const response = await restaurantApi.updateOrderStatus(orderId, {
+      const response = await restaurantClient.updateOrderStatus(orderId, {
         targetStatus: status,
       });
 
