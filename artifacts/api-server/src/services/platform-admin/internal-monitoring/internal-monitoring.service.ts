@@ -8,7 +8,7 @@ import {
   getInternalMonitoringCards,
   getInternalMonitoringDataIntegrityChecks,
   getInternalMonitoringDevActionItems,
-  getInternalMonitoringRouteInventory,
+  getInternalMonitoringRouteInventory as getMockInternalMonitoringRouteInventory,
   getInternalMonitoringSchemaDecisionRecords,
   getInternalMonitoringSignals,
 } from "./internal-monitoring.mock-repository.js";
@@ -40,7 +40,7 @@ export function getInternalMonitoringControlRoom(): InternalMonitoringControlRoo
 }
 
 export function getInternalMonitoringRouteInventory(): InternalMonitoringRouteInventoryItemDto[] {
-  return getInternalMonitoringRouteInventory();
+  return getMockInternalMonitoringRouteInventory();
 }
 
 export function getInternalMonitoringContractReadiness() {
