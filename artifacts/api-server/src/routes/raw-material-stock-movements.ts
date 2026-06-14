@@ -12,6 +12,7 @@ import {
   adjustRawMaterialBatchStock,
   consumeRawMaterialForProcessingRun,
   listRawMaterialStockMovements,
+  reverseRawMaterialStockAdjustment,
   transferRawMaterialBatchStorage,
 } from "../services/raw-material/index.js";
 
@@ -58,6 +59,25 @@ router.post("/raw-material/stock-movements/adjust", async (req, res) => {
       input: req.body ?? {},
     });
     return successResponse(res, { data, status: 201, message: "Raw material stock adjusted." });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/raw-material/stock-movements/:id/reverse-adjustment", async (req, res) => {
+  try {
+    const user = await requireRawMaterialPermission(req, res, RAW_MATERIAL_PERMISSIONS.stockAdjust);
+    if (!user) return;
+    const businessContext = await requireBusinessContextForRequest(req, user);
+    const data = await reverseRawMaterialStockAdjustment({
+      actor: getActor(user),
+      businessContext,
+      input: {
+        ...(req.body ?? {}),
+        movementId: req.params.id,
+      },
+    });
+    return successResponse(res, { data, status: 201, message: "Raw material stock adjustment reversed." });
   } catch (error) {
     return handleApiError(res, error);
   }
