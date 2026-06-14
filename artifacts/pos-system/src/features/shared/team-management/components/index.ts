@@ -4,5 +4,6 @@ export { JobRolePresetPanel } from "./job-role-preset-panel";
 export { PermissionMatrixPanel } from "./permission-matrix-panel";
 export { RoleBuilderPanel } from "./role-builder-panel";
 export { RoleRegistryPanel } from "./role-registry-panel";
+export { SnapshotSyncPanel } from "./snapshot-sync-panel";
 export { TeamMemberTable } from "./team-member-table";
 export { TeamOverviewCards } from "./team-overview-cards";
