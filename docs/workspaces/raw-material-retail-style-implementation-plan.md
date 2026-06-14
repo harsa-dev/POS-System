@@ -32,6 +32,7 @@ frontend contract operationId mapping
 preview delegate
 stock write delegate
 workflow status delegate
+status API route family
 ```
 
 ## Retail-style Raw Material phases
@@ -49,8 +50,8 @@ Phase 7C - Workflow read delegate                             Done
 Phase 7D - Intake/batch/processing preview delegate           Done
 Phase 7E - Stock/write delegate                               Done
 Phase 7F - Guarded workflow status delegate                   Done
-Phase 8A - Intake/processing/batch status API route           Next
-Phase 8B - Status frontend action                             Planned
+Phase 8A - Intake/processing/batch status API route           Done
+Phase 8B - Status frontend action                             Next
 Phase 8C - Stock adjustment reversal workflow                 Planned
 Phase 8D - Processing cancellation reversal workflow          Planned
 Phase 8E - Generated API client consolidation                 Planned
@@ -218,6 +219,41 @@ successful status action refreshes workflow reads
 backend remains source of truth for intake cancellation, batch quality/quarantine, processing transition, processing cancellation, and kandang health guards
 ```
 
+### Phase 8A - Intake/processing/batch status API route
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/api-server/src/services/raw-material/raw-material-status.service.ts
+artifacts/api-server/src/routes/raw-material-status.ts
+artifacts/api-server/src/routes/index.ts
+artifacts/api-server/tsconfig.raw-material.json
+artifacts/api-server/src/services/raw-material/index.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
+docs/workspaces/raw-material-status-api-route.md
+```
+
+New backend status routes:
+
+```txt
+POST /raw-material/status/intakes/{id}
+POST /raw-material/status/batches/{id}
+POST /raw-material/status/processing-runs/{id}
+POST /raw-material/status/pens/{id}
+```
+
+Behavior:
+
+```txt
+intake route currently supports status=CANCELLED only
+batch route supports quality status changes and QUARANTINED alias
+processing route supports guarded transition and CANCELLED alias
+pen route supports health status changes through existing kandang guard
+compatibility routes remain available until Phase 8B migrates frontend actions
+```
+
 ### Phase 8F - Raw Material smoke test + scoped CI gate
 
 Status: implemented.
@@ -249,7 +285,6 @@ The scoped gate intentionally excludes global non-Raw-Material typecheck errors.
 Preferred path:
 
 ```txt
-Phase 8A - Intake/processing/batch status API route
 Phase 8B - Status frontend action
 Phase 8C - Stock adjustment reversal workflow
 Phase 8D - Processing cancellation reversal workflow
