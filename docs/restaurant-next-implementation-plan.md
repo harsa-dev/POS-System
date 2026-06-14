@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 7A implemented
+Status: Phase 7B implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -15,8 +15,8 @@ Phase 4  - Shared dashboard backend summary                        Done
 Phase 5  - Seed restaurant/menu/table/order/payment demo data       Done
 Phase 6  - Frontend Restaurant workspace API wiring                Done
 Phase 7A - Prisma schema model mapping                             Done
-Phase 7B - Summary read delegate                                   Next
-Phase 7C - Workflow read delegate                                  Planned
+Phase 7B - Summary read delegate                                   Done
+Phase 7C - Workflow read delegate                                  Next
 Phase 7D - Order/payment/kitchen/serving preview delegate           Planned
 Phase 7E - Order/write delegate                                    Planned
 Phase 7F - Guarded workflow status delegate                        Planned
@@ -178,72 +178,21 @@ Implemented files:
 
 - `artifacts/api-server/src/services/restaurant/restaurant.prisma-model-map.ts`
 - `artifacts/api-server/scripts/verify-restaurant-prisma-schema.mjs`
-- `docs/restaurant-phase-7a-prisma-schema-mapping.md`
 
 Package command:
 
 - `pnpm --filter @workspace/api-server run restaurant:schema:verify`
 
-`typecheck:restaurant` now runs the schema verifier before Prisma generate and TypeScript.
+The backend scoped typecheck now runs schema verification before Prisma generate and TypeScript. The mapping is intentionally schema-text based and does not require a database connection.
 
-Canonical Restaurant models:
+## Phase 7B result
 
-- `Business`
-- `Restaurant`
-- `Category`
-- `MenuItem`
-- `InventoryItem`
-- `Recipe`
-- `DiningTable`
-- `Order`
-- `OrderItem`
-- `Payment`
-- `StockMovement`
-- `CashflowEntry`
-- `AuditLog`
+Restaurant dashboard summary now has an enriched read delegate while preserving the older `totals` and `sales` fields used by existing dashboards.
 
-This phase does not create tables or run migrations. It guards the existing canonical schema and keeps legacy F&B compatibility fields as temporary compatibility only.
+Implemented surfaces:
 
-## Canonical target layout
+- `RestaurantDashboardSummaryDto` now includes `generatedAt`, `window`, `payments`, `operations`, `inventory`, and `health` sections.
+- `restaurantPrismaRepository.getDashboardSummary` now computes status breakdowns, payment method totals, queue ages, table occupancy rate, inventory risk, and health signals.
+- `artifacts/pos-system/src/lib/api/restaurant-api.ts` mirrors the expanded summary DTO for frontend consumers.
 
-Frontend target:
-
-```text
-artifacts/pos-system/src/app/workspace/restaurant/
-  restaurant-pos-workspace.tsx
-  restaurant-menu-workspace.tsx
-  restaurant-recipes-workspace.tsx
-  restaurant-tables-workspace.tsx
-  restaurant-kitchen-workspace.tsx
-  restaurant-serving-workspace.tsx
-  restaurant-orders-workspace.tsx
-```
-
-Backend target:
-
-```text
-artifacts/api-server/src/services/restaurant/
-  restaurant.types.ts
-  restaurant.repository.ts
-  restaurant.prisma-repository.ts
-  restaurant.repository-provider.ts
-  restaurant.service.ts
-  restaurant.policy.ts
-  restaurant.audit.ts
-  restaurant.prisma-model-map.ts
-```
-
-Route target:
-
-```text
-artifacts/api-server/src/routes/restaurant.ts
-```
-
-Validation target:
-
-```bash
-pnpm --filter @workspace/api-server run restaurant:schema:verify
-pnpm --filter @workspace/api-server run typecheck:restaurant
-pnpm --filter @workspace/pos-system run typecheck:restaurant
-pnpm restaurant:check
-```
+This phase remains read-only. It does not create, update, cancel, refund, or transition orders. Those stay in later workflow phases.
