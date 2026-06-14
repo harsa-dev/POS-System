@@ -25,6 +25,10 @@ export type CashflowExportFormat = "csv" | "json";
 
 export type CashflowReconciliationIssueSeverity = "info" | "warning" | "critical";
 
+export type CashflowBusinessMode = "restaurant" | "retail" | "custom-business" | "raw-material";
+
+export type CashflowSyncSourceKind = "ORDER" | "SHIFT";
+
 type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 
 type ApiListEnvelope<T> = ApiEnvelope<T> & {
@@ -62,6 +66,18 @@ export type CashflowEntryDto = {
   metadata: unknown;
   createdAt: string;
   updatedAt: string;
+};
+
+export type CashflowCapabilitiesDto = {
+  businessMode: CashflowBusinessMode;
+  businessId: string;
+  canView: boolean;
+  canCreate: boolean;
+  canSync: boolean;
+  canVoid: boolean;
+  canExport: boolean;
+  isPlannedMode: boolean;
+  plannedReason: string | null;
 };
 
 export type CashflowAccountBalanceDto = {
@@ -132,6 +148,34 @@ export type CashflowReconciliationDto = {
   issues: CashflowReconciliationIssue[];
 };
 
+export type CashflowSyncOrderSourceDto = {
+  id: string;
+  orderNumber: number;
+  total: number;
+  paymentMethod: string;
+  status: string;
+  paymentStatus: string | null;
+  paidAt: string | null;
+  createdAt: string;
+};
+
+export type CashflowSyncShiftSourceDto = {
+  id: string;
+  cashierName: string | null;
+  openedAt: string;
+  closedAt: string | null;
+  expectedCash: number;
+  closingCash: number | null;
+  cashDifference: number | null;
+};
+
+export type CashflowSyncSourcesDto = {
+  generatedAt: string;
+  limit: number;
+  unsyncedOrders: CashflowSyncOrderSourceDto[];
+  unsyncedShifts: CashflowSyncShiftSourceDto[];
+};
+
 export type CashflowCsvDownload = {
   blob: Blob;
   filename: string;
@@ -190,6 +234,10 @@ function getFilenameFromContentDisposition(value: string | null) {
 }
 
 export const cashflowApi = {
+  getCapabilities() {
+    return apiClient.get<ApiDataEnvelope<CashflowCapabilitiesDto>>("/api/cashflow-capabilities");
+  },
+
   getDashboard(params?: CashflowQuery) {
     return apiClient.get<ApiDataEnvelope<CashflowDashboardDto>>(
       `/api/cashflow-dashboard${buildCashflowQuery(params)}`,
@@ -205,6 +253,13 @@ export const cashflowApi = {
   getReconciliation() {
     return apiClient.get<ApiDataEnvelope<CashflowReconciliationDto>>(
       "/api/cashflow-reconciliation",
+    );
+  },
+
+  getSyncSources(limit?: number) {
+    const query = limit ? `?limit=${encodeURIComponent(String(limit))}` : "";
+    return apiClient.get<ApiDataEnvelope<CashflowSyncSourcesDto>>(
+      `/api/cashflow-sync-sources${query}`,
     );
   },
 
