@@ -59,6 +59,10 @@ export const SERVICE_BUSINESS_OPENAPI_OPERATIONS = {
     method: "PATCH",
     path: "/custom-business/service/quotations/{id}/approve",
   },
+  serviceBusinessCancelQuotation: {
+    method: "POST",
+    path: "/custom-business/service/reversals/quotations/{id}/cancel",
+  },
   serviceBusinessCreateInvoice: {
     method: "POST",
     path: "/custom-business/service/invoices",
@@ -66,6 +70,10 @@ export const SERVICE_BUSINESS_OPENAPI_OPERATIONS = {
   serviceBusinessRecordInvoicePayment: {
     method: "PATCH",
     path: "/custom-business/service/invoices/{id}/payment",
+  },
+  serviceBusinessCancelInvoice: {
+    method: "POST",
+    path: "/custom-business/service/reversals/invoices/{id}/cancel",
   },
 } as const;
 
