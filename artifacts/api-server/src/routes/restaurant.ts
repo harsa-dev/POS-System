@@ -7,8 +7,10 @@ import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
+import { restaurantCancellationService } from "../services/restaurant/restaurant.cancellation.js";
 import { RestaurantWriteError, restaurantOrderWriteService } from "../services/restaurant/restaurant.order-write.js";
 import {
+  RESTAURANT_CANCELLATION_ROLES,
   RESTAURANT_KITCHEN_ROLES,
   RESTAURANT_PAYMENT_ROLES,
   RESTAURANT_POS_ROLES,
@@ -21,6 +23,7 @@ import { restaurantStatusWriteService } from "../services/restaurant/restaurant.
 import type {
   RestaurantActorContext,
   RestaurantBusinessScope,
+  RestaurantCancellationPreviewInput,
   RestaurantOrderPreviewInput,
   RestaurantPaymentPreviewInput,
   RestaurantSharedDashboardId,
@@ -164,6 +167,27 @@ function readCanonicalOrderStatusInput(req: Request, res: Response): RestaurantS
   return {
     orderId,
     targetStatus: req.body.targetStatus as OrderStatus,
+  };
+}
+
+function readCancellationPreviewInput(req: Request, res: Response): RestaurantCancellationPreviewInput | null {
+  const orderId = req.params.orderId;
+
+  if (typeof orderId !== "string" || orderId.length === 0) {
+    badRequest(res, "Restaurant cancellation route requires orderId in the URL.");
+    return null;
+  }
+
+  if (req.body !== undefined && req.body !== null && !isObject(req.body)) {
+    badRequest(res, "Restaurant cancellation route requires an object body when a body is provided.");
+    return null;
+  }
+
+  const body = isObject(req.body) ? req.body : {};
+
+  return {
+    orderId,
+    reason: typeof body.reason === "string" ? body.reason : null,
   };
 }
 
@@ -396,6 +420,42 @@ router.post("/restaurant/orders/:orderId/status", async (req, res) => {
     return successResponse(res, {
       data: await restaurantStatusWriteService.updateStatus(context.actor, surface, input),
       message: "Restaurant order workflow status updated.",
+    });
+  } catch (error) {
+    const handledWriteError = handleRestaurantWriteError(res, error);
+    if (handledWriteError) return handledWriteError;
+
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/restaurant/orders/:orderId/cancellation/preview", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res);
+    if (!context) return;
+
+    const input = readCancellationPreviewInput(req, res);
+    if (!input) return;
+
+    return successResponse(res, {
+      data: await restaurantCancellationService.previewCancellation(context.scope, input),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/restaurant/orders/:orderId/cancel", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res, RESTAURANT_CANCELLATION_ROLES);
+    if (!context) return;
+
+    const input = readCancellationPreviewInput(req, res);
+    if (!input) return;
+
+    return successResponse(res, {
+      data: await restaurantCancellationService.cancelOrder(context.actor, input),
+      message: "Restaurant order cancelled with reversal workflow.",
     });
   } catch (error) {
     const handledWriteError = handleRestaurantWriteError(res, error);
