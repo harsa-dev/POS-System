@@ -1,4 +1,4 @@
-import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
+import { apiClient, apiFetch, type ApiEnvelope } from "@/lib/api/api-client";
 
 export type CashflowEntryType =
   | "INCOME"
@@ -20,6 +20,10 @@ export type CashflowSourceType =
   | "INVENTORY_PURCHASE"
   | "REFUND"
   | "SYSTEM";
+
+export type CashflowExportFormat = "csv" | "json";
+
+export type CashflowReconciliationIssueSeverity = "info" | "warning" | "critical";
 
 type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 
@@ -88,6 +92,36 @@ export type CashflowDashboardDto = {
   recentEntries: CashflowEntryDto[];
 };
 
+export type CashflowExportDto = {
+  exportedAt: string;
+  rowCount: number;
+  entries: CashflowEntryDto[];
+};
+
+export type CashflowReconciliationIssue = {
+  severity: CashflowReconciliationIssueSeverity;
+  sourceType: CashflowSourceType;
+  sourceId: string | null;
+  message: string;
+};
+
+export type CashflowReconciliationDto = {
+  unsyncedPaidOrders: number;
+  unsyncedClosedShifts: number;
+  duplicateSourceWarnings: number;
+  pendingEntries: number;
+  voidedEntries: number;
+  lastSyncedAt: string | null;
+  issues: CashflowReconciliationIssue[];
+};
+
+export type CashflowCsvDownload = {
+  blob: Blob;
+  filename: string;
+  rowCount: number | null;
+  exportedAt: string | null;
+};
+
 export type CashflowQuery = {
   from?: string;
   to?: string;
@@ -111,23 +145,31 @@ export type CreateCashflowEntryPayload = {
   occurredAt?: string;
 };
 
-function buildCashflowQuery(params?: CashflowQuery) {
-  if (!params) return "";
-
+function buildCashflowQuery(params?: CashflowQuery, extra?: Record<string, string>) {
   const searchParams = new URLSearchParams();
 
-  if (params.from) searchParams.set("from", params.from);
-  if (params.to) searchParams.set("to", params.to);
-  if (params.account) searchParams.set("account", params.account);
-  if (params.type) searchParams.set("type", params.type);
-  if (params.status) searchParams.set("status", params.status);
-  if (params.sourceType) searchParams.set("sourceType", params.sourceType);
-  if (params.search) searchParams.set("search", params.search);
-  if (params.page) searchParams.set("page", String(params.page));
-  if (params.limit) searchParams.set("limit", String(params.limit));
+  if (params?.from) searchParams.set("from", params.from);
+  if (params?.to) searchParams.set("to", params.to);
+  if (params?.account) searchParams.set("account", params.account);
+  if (params?.type) searchParams.set("type", params.type);
+  if (params?.status) searchParams.set("status", params.status);
+  if (params?.sourceType) searchParams.set("sourceType", params.sourceType);
+  if (params?.search) searchParams.set("search", params.search);
+  if (params?.page) searchParams.set("page", String(params.page));
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+
+  for (const [key, value] of Object.entries(extra ?? {})) {
+    searchParams.set(key, value);
+  }
 
   const query = searchParams.toString();
   return query ? `?${query}` : "";
+}
+
+function getFilenameFromContentDisposition(value: string | null) {
+  if (!value) return "cashflow-export.csv";
+  const match = /filename="?([^";]+)"?/i.exec(value);
+  return match?.[1] ?? "cashflow-export.csv";
 }
 
 export const cashflowApi = {
@@ -137,10 +179,41 @@ export const cashflowApi = {
     );
   },
 
+  getReconciliation() {
+    return apiClient.get<ApiDataEnvelope<CashflowReconciliationDto>>(
+      "/api/cashflow-reconciliation",
+    );
+  },
+
   listEntries(params?: CashflowQuery) {
     return apiClient.get<ApiListEnvelope<CashflowEntryDto[]>>(
       `/api/cashflow-entries${buildCashflowQuery(params)}`,
     );
+  },
+
+  exportEntriesJson(params?: CashflowQuery) {
+    return apiClient.get<ApiDataEnvelope<CashflowExportDto>>(
+      `/api/cashflow-entries/export${buildCashflowQuery(params, { format: "json" })}`,
+    );
+  },
+
+  async downloadEntriesCsv(params?: CashflowQuery): Promise<CashflowCsvDownload> {
+    const response = await apiFetch(
+      `/api/cashflow-entries/export${buildCashflowQuery(params, { format: "csv" })}`,
+      { method: "GET" },
+    );
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || `Cashflow export failed with status ${response.status}`);
+    }
+
+    return {
+      blob: await response.blob(),
+      filename: getFilenameFromContentDisposition(response.headers.get("content-disposition")),
+      rowCount: Number(response.headers.get("x-row-count")) || null,
+      exportedAt: response.headers.get("x-exported-at"),
+    };
   },
 
   createEntry(payload: CreateCashflowEntryPayload) {
