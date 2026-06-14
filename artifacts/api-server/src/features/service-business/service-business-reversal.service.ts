@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   ServiceBusinessInvoiceStatus as PrismaServiceBusinessInvoiceStatus,
   ServiceBusinessQuoteStatus as PrismaServiceBusinessQuoteStatus,
@@ -143,7 +145,7 @@ export async function cancelServiceBusinessQuotation({
 
     await tx.serviceTimelineItem.create({
       data: {
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         requestId: quotation.requestId,
         label: buildTimelineLabel("Quotation cancelled", note),
         actorName,
@@ -232,7 +234,7 @@ export async function cancelServiceBusinessInvoice({
 
     await tx.serviceTimelineItem.create({
       data: {
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         requestId: invoice.requestId,
         label: buildTimelineLabel("Invoice cancelled", note),
         actorName,
