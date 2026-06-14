@@ -1,5 +1,6 @@
 export {
   createManualCashflowEntry,
+  exportCashflowEntries,
   getCashflowDashboard,
   listCashflowEntries,
   parseCashflowListQuery,
@@ -15,6 +16,10 @@ export type {
   CashflowEntryDto,
   CashflowEntryStatus,
   CashflowEntryType,
+  CashflowExportDto,
+  CashflowExportFormat,
+  CashflowExportResult,
   CashflowQuery,
+  CashflowReconciliationDto,
   CashflowSourceType,
 } from "./cashflow.types.js";
