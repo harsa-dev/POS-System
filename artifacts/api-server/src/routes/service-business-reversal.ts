@@ -14,9 +14,10 @@ import {
 import {
   cancelServiceBusinessInvoice,
   cancelServiceBusinessQuotation,
+  reverseServiceBusinessInvoicePayment,
 } from "../features/service-business/service-business-reversal.service.js";
 import { presentServiceBusinessMutation } from "../features/service-business/service-business.presenter.js";
-import { requireBodyObject, getText } from "../features/service-business/service-business.validators.js";
+import { requireBodyObject, getFiniteNumber, getText } from "../features/service-business/service-business.validators.js";
 import {
   writeServiceBusinessAuditLog,
   type ServiceBusinessAuditAction,
@@ -166,6 +167,57 @@ router.post("/custom-business/service/reversals/invoices/:id/cancel", async (req
           message: data.message,
           reversalType: "invoice-cancellation",
           invoiceCode: typeof preview.invoiceCode === "string" ? preview.invoiceCode : null,
+          previousInvoiceStatus: typeof preview.previousInvoiceStatus === "string" ? preview.previousInvoiceStatus : null,
+          nextInvoiceStatus: typeof preview.nextInvoiceStatus === "string" ? preview.nextInvoiceStatus : null,
+          previousWorkflowStatus: typeof preview.previousWorkflowStatus === "string" ? preview.previousWorkflowStatus : null,
+          nextWorkflowStatus: typeof preview.nextWorkflowStatus === "string" ? preview.nextWorkflowStatus : null,
+          quotationId: typeof preview.quotationId === "string" ? preview.quotationId : null,
+          quotationCode: typeof preview.quotationCode === "string" ? preview.quotationCode : null,
+          note: typeof preview.note === "string" ? preview.note : null,
+        },
+      };
+    });
+
+    return sendReversalResult(res, result);
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/custom-business/service/reversals/invoices/:id/reverse-payment", async (req, res) => {
+  try {
+    const context = await getServiceReversalContext(req, res, SERVICE_BUSINESS_PERMISSIONS.invoicePaymentRecord);
+    if (!context) return;
+
+    const body = readBodyOrEmpty(req.body);
+    const amount = getFiniteNumber(body.amount ?? body.reversalAmount ?? body.paidAmount);
+    const note = getText(body.note) || undefined;
+
+    const result = await reverseServiceBusinessInvoicePayment({
+      businessId: context.businessId,
+      actorName: context.actorName,
+      id: req.params.id,
+      amount,
+      note,
+    });
+
+    await auditServiceReversal(context, result, (data) => {
+      const preview = (data.preview ?? {}) as Record<string, unknown>;
+      const invoiceId = typeof preview.invoiceId === "string" ? preview.invoiceId : "";
+      if (!invoiceId) return null;
+
+      return {
+        action: "UPDATE",
+        entityType: "ServiceInvoice",
+        entityId: invoiceId,
+        changes: {
+          message: data.message,
+          reversalType: "invoice-payment-reversal",
+          invoiceCode: typeof preview.invoiceCode === "string" ? preview.invoiceCode : null,
+          invoiceTotal: typeof preview.invoiceTotal === "number" ? preview.invoiceTotal : null,
+          reversalAmount: typeof preview.reversalAmount === "number" ? preview.reversalAmount : null,
+          previousPaidAmount: typeof preview.previousPaidAmount === "number" ? preview.previousPaidAmount : null,
+          nextPaidAmount: typeof preview.nextPaidAmount === "number" ? preview.nextPaidAmount : null,
           previousInvoiceStatus: typeof preview.previousInvoiceStatus === "string" ? preview.previousInvoiceStatus : null,
           nextInvoiceStatus: typeof preview.nextInvoiceStatus === "string" ? preview.nextInvoiceStatus : null,
           previousWorkflowStatus: typeof preview.previousWorkflowStatus === "string" ? preview.previousWorkflowStatus : null,
