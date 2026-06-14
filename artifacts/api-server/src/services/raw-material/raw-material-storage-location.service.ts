@@ -1,6 +1,7 @@
 import type { BusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
+import { writeRawMaterialAuditLog } from "./raw-material.audit.js";
 import { toRawMaterialStorageLocationDto } from "./raw-material-storage-location.dto.js";
 import {
   createRawMaterialStorageLocationRecord,
@@ -130,8 +131,18 @@ export async function createRawMaterialStorageLocation(params: {
   await assertStorageCodeAvailable({ businessContext, code: payload.code });
 
   const storageLocation = await createRawMaterialStorageLocationRecord({ businessContext, payload });
+  const dto = toRawMaterialStorageLocationDto(storageLocation);
 
-  return toRawMaterialStorageLocationDto(storageLocation);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "CREATE",
+    entityType: "RawMaterialStorageLocation",
+    entityId: storageLocation.id,
+    changes: { payload, result: dto },
+  });
+
+  return dto;
 }
 
 export async function updateRawMaterialStorageLocation(params: {
@@ -143,7 +154,7 @@ export async function updateRawMaterialStorageLocation(params: {
   const { actor, businessContext, id, input } = params;
 
   assertCanManageRawMaterialStorage(actor);
-  await loadStorageOrThrow(businessContext, id);
+  const existing = await loadStorageOrThrow(businessContext, id);
 
   const payload = parseStoragePayload(input);
   await assertStorageCodeAvailable({
@@ -153,8 +164,18 @@ export async function updateRawMaterialStorageLocation(params: {
   });
 
   const storageLocation = await updateRawMaterialStorageLocationRecord({ id, payload });
+  const dto = toRawMaterialStorageLocationDto(storageLocation);
 
-  return toRawMaterialStorageLocationDto(storageLocation);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "UPDATE",
+    entityType: "RawMaterialStorageLocation",
+    entityId: storageLocation.id,
+    changes: { before: toRawMaterialStorageLocationDto(existing), payload, result: dto },
+  });
+
+  return dto;
 }
 
 export async function deactivateRawMaterialStorageLocation(params: {
@@ -165,9 +186,19 @@ export async function deactivateRawMaterialStorageLocation(params: {
   const { actor, businessContext, id } = params;
 
   assertCanManageRawMaterialStorage(actor);
-  await loadStorageOrThrow(businessContext, id);
+  const existing = await loadStorageOrThrow(businessContext, id);
 
   const storageLocation = await deactivateRawMaterialStorageLocationRecord(id);
+  const dto = toRawMaterialStorageLocationDto(storageLocation);
 
-  return toRawMaterialStorageLocationDto(storageLocation);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "DELETE",
+    entityType: "RawMaterialStorageLocation",
+    entityId: storageLocation.id,
+    changes: { before: toRawMaterialStorageLocationDto(existing), result: dto },
+  });
+
+  return dto;
 }
