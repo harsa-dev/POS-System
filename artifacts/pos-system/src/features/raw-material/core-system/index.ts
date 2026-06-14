@@ -1,3 +1,4 @@
+export * from "./raw-material.generated-api-client";
 export * from "./raw-material.api-client";
 export * from "./raw-material.api-contract";
 export * from "./raw-material-preview.api-client";
