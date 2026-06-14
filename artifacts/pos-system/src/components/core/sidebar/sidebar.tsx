@@ -24,8 +24,9 @@ import {
 } from "lucide-react";
 import { authApi } from "@/lib/api";
 import { getSidebarItemsForRuntimeMode } from "@/app/registry/sidebar-registry";
-import type { V3ModuleId } from "@/app/registry/module-types";
+import { V3_BUSINESS_MODES, type V3ModuleId, type V3RuntimeRole } from "@/app/registry/module-types";
 import {
+  businessModeService,
   getCurrentBusinessMode,
   subscribeToBusinessModeChanges,
   type BusinessModeId,
@@ -112,18 +113,30 @@ function getRegistrySidebarIcon(moduleId: V3ModuleId): ElementType {
   }
 }
 
+function isRuntimeRole(role: string): role is V3RuntimeRole {
+  return V3_BUSINESS_MODES.length > 0 && [
+    "OWNER",
+    "MANAGER",
+    "ADMIN",
+    "OPERATOR",
+    "STAFF",
+    "VIEWER",
+  ].includes(role);
+}
+
 function createModeAwareMenuGroups(
   currentMode: BusinessModeId | null,
   role: string,
 ): MenuGroup[] {
-  if (!currentMode) return [];
+  if (!currentMode || !isRuntimeRole(role)) return [];
 
   const groups = new Map<string, MenuItem[]>();
 
   for (const item of getSidebarItemsForRuntimeMode(currentMode)) {
-    const allowedRoles: readonly string[] = item.requiredRoles;
+    const routeSupport = businessModeService.getRouteSupport(item.routePath);
 
-    if (!allowedRoles.includes(role)) continue;
+    if (!routeSupport.supportedModes.includes(currentMode)) continue;
+    if (!item.requiredRoles.includes(role)) continue;
 
     const groupItems = groups.get(item.group) ?? [];
 
@@ -143,6 +156,15 @@ function createModeAwareMenuGroups(
 
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "U";
+}
+
+function getCurrentModeLabel(currentMode: BusinessModeId | null) {
+  if (!currentMode) return "Select Business Mode";
+
+  const workspaceState = businessModeService.getWorkspaceState();
+  if (workspaceState.currentMode === currentMode) return workspaceState.currentModeConfig.label;
+
+  return currentMode;
 }
 
 function SidebarContent({
@@ -177,6 +199,7 @@ function SidebarContent({
     () => createModeAwareMenuGroups(currentMode, role),
     [currentMode, role],
   );
+  const modeLabel = getCurrentModeLabel(currentMode);
 
   async function handleLogout() {
     await authApi.logout();
@@ -203,7 +226,7 @@ function SidebarContent({
               </h1>
 
               <p className="truncate text-xs text-neutral-500">
-                Restaurant Platform
+                {modeLabel} Workspace
               </p>
             </div>
           )}
@@ -222,6 +245,12 @@ function SidebarContent({
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-4 pb-4">
+        {visibleGroups.length === 0 && !isCollapsed && (
+          <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-500">
+            No modules available for this role and business mode.
+          </div>
+        )}
+
         {visibleGroups.map((group) => (
           <div key={group.title}>
             {!isCollapsed && (
