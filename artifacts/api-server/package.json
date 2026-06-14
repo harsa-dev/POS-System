@@ -21,7 +21,7 @@
     "raw-material:db:apply": "node ./scripts/apply-raw-material-db.mjs",
     "raw-material:policy:check": "tsx ./scripts/check-raw-material-policy.ts",
     "raw-material:seed": "tsx ./scripts/seed-raw-material-demo-data.ts",
-    "service:db:apply": "prisma db execute --file prisma/migrations/202606140002_add_service_business_core/migration.sql",
+    "service:db:apply": "node ./scripts/apply-service-business-db.mjs",
     "service:seed": "tsx ./scripts/seed-service-business-demo-data.ts",
     "backfill:businesses": "node --env-file-if-exists=.env --import tsx ./scripts/backfill-business-tenant-bridge.ts",
     "backfill:inventory-business-scope": "node --env-file-if-exists=.env --import tsx ./scripts/backfill-inventory-business-scope.ts"
