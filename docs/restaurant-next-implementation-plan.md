@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 7C implemented
+Status: Phase 7D implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -17,8 +17,8 @@ Phase 6  - Frontend Restaurant workspace API wiring                Done
 Phase 7A - Prisma schema model mapping                             Done
 Phase 7B - Summary read delegate                                   Done
 Phase 7C - Workflow read delegate                                  Done
-Phase 7D - Order/payment/kitchen/serving preview delegate           Next
-Phase 7E - Order/write delegate                                    Planned
+Phase 7D - Order/payment/kitchen/serving preview delegate           Done
+Phase 7E - Order/write delegate                                    Next
 Phase 7F - Guarded workflow status delegate                        Planned
 Phase 8A - Order/kitchen/serving/table status API route             Planned
 Phase 8B - Status frontend action                                  Planned
@@ -211,3 +211,18 @@ Implemented surfaces:
 - `artifacts/pos-system/src/lib/api/restaurant-api.ts` mirrors the workflow summary DTO.
 
 This phase remains read-only. It does not perform workflow transitions yet.
+
+## Phase 7D result
+
+Restaurant now has read-only preview delegates for order creation, payment confirmation, kitchen status movement, and serving status movement.
+
+Implemented surfaces:
+
+- `artifacts/api-server/src/services/restaurant/restaurant.preview.ts` simulates Restaurant workflow operations without writing to the database.
+- `POST /restaurant/orders/preview` previews order totals, tax/service charge, table assignment, recipe stock warnings, and whether the order can be submitted.
+- `POST /restaurant/payments/preview` previews payment amount due, change, and whether the order can move from `PENDING_PAYMENT` to `PAID`.
+- `POST /restaurant/kitchen/preview` previews kitchen transitions such as `PAID -> PREPARING` and `PREPARING -> READY`.
+- `POST /restaurant/serving/preview` previews serving transitions such as `READY -> SERVED` and `SERVED -> COMPLETED`.
+- `artifacts/pos-system/src/lib/api/restaurant-api.ts` mirrors the preview DTOs and exposes typed preview client helpers.
+
+This phase does not create orders, confirm payments, update kitchen status, update serving status, cancel orders, refund payments, or mutate stock. It is a safety preview layer before Phase 7E/7F write delegates.
