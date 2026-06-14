@@ -11,6 +11,7 @@ import {
   PermissionMatrixPanel,
   RoleBuilderPanel,
   RoleRegistryPanel,
+  SnapshotSyncPanel,
   TeamMemberTable,
   TeamOverviewCards,
 } from "./components";
@@ -470,6 +471,8 @@ export function TeamManagementRolePermissionPage() {
         draftRiskCount={draftRiskCount}
         customRoleCount={customRoleCount}
       />
+
+      <SnapshotSyncPanel store={store} />
 
       <TeamMemberTable
         members={filteredMembers}
