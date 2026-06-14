@@ -74,7 +74,7 @@ export type RawMaterialProcessingRun = Readonly<{
   inputKg: number;
   outputKg: number;
   byproductKg: number;
-  status: "planned" | "running" | "completed";
+  status: "planned" | "running" | "completed" | "cancelled";
 }>;
 
 export type RawMaterialKandangPen = Readonly<{
@@ -83,8 +83,39 @@ export type RawMaterialKandangPen = Readonly<{
   flockName: string;
   capacity: number;
   occupancy: number;
-  feedBatchId: string;
+  feedBatchId: string | null;
   healthStatus: "stable" | "monitoring" | "critical";
+}>;
+
+export type RawMaterialStockMovement = Readonly<{
+  id: string;
+  batchId: string;
+  batchLotCode: string | null;
+  materialName: string | null;
+  sourceStorageLocationId: string | null;
+  sourceStorageCode: string | null;
+  targetStorageLocationId: string | null;
+  targetStorageCode: string | null;
+  type: string;
+  reason: string;
+  source: string;
+  sourceId: string | null;
+  quantity: number;
+  beforeQuantity: number | null;
+  afterQuantity: number | null;
+  note: string | null;
+  createdAt: string;
+}>;
+
+export type RawMaterialWorkflowReadData = Readonly<{
+  suppliers: readonly RawMaterialSupplier[];
+  storageLocations: readonly RawMaterialStorageLocation[];
+  intakes: readonly RawMaterialIntake[];
+  weighings: readonly RawMaterialWeighing[];
+  batches: readonly RawMaterialBatch[];
+  processingRuns: readonly RawMaterialProcessingRun[];
+  kandangPens: readonly RawMaterialKandangPen[];
+  stockMovements: readonly RawMaterialStockMovement[];
 }>;
 
 export type RawMaterialMetric = Readonly<{
