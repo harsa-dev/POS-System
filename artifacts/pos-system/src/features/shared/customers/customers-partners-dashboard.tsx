@@ -136,6 +136,23 @@ export function CustomersPartnersDashboard() {
     setError(null);
 
     try {
+      const capabilityResponse = await customersPartnersApi.getCapabilities();
+      setCapabilities(capabilityResponse.data);
+
+      if (!capabilityResponse.data.canView) {
+        setCustomers([]);
+        setSuppliers([]);
+        setLoyaltyTiers([]);
+        setSummary({
+          totalCustomers: 0,
+          totalSuppliers: 0,
+          totalCustomerSpending: 0,
+          totalSupplierPurchases: 0,
+        });
+        setError(capabilityResponse.data.plannedReason ?? "Customers & Partners is not available for this mode.");
+        return;
+      }
+
       const response = await customersPartnersApi.getDashboard({ search });
       setCapabilities(response.data.capabilities);
       setSummary(response.data.summary);
