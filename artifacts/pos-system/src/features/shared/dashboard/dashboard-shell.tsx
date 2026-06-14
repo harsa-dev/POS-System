@@ -12,6 +12,12 @@ import {
 } from "@/features/shared/service-business/service-business-shared-dashboard-config";
 import { cn } from "@/lib/utils";
 
+import {
+  getSharedDashboardModeContext,
+  type SharedDashboardModeContext,
+  type SharedDashboardSurfaceId,
+} from "./shared-dashboard-mode-context";
+
 const serviceBusinessSurfaceByTitle: Record<string, ServiceBusinessSharedSurface> = {
   "Shared Business Dashboard": "business-overview",
   "Sales Analytics": "sales",
@@ -40,6 +46,30 @@ function isServiceBusinessPreviewModeActive(): boolean {
   return rawMode === "custom-business" || rawMode === "service";
 }
 
+function SharedDashboardModeBadge({ context }: { context?: SharedDashboardModeContext }) {
+  if (!context) return null;
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold">
+      <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">
+        Mode: {context.activeModeShortLabel}
+      </span>
+      <span className="rounded-full bg-neutral-100 px-3 py-1 text-neutral-600">
+        Scope: {context.queryScopeKey}
+      </span>
+      {context.isSupported ? (
+        <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+          Mode supported
+        </span>
+      ) : (
+        <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700">
+          Mode unsupported
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function DashboardShell({
   title,
   description,
@@ -50,6 +80,9 @@ export function DashboardShell({
   children: ReactNode;
 }) {
   const serviceBusinessSurface = serviceBusinessSurfaceByTitle[title];
+  const sharedDashboardModeContext = serviceBusinessSurface
+    ? getSharedDashboardModeContext(serviceBusinessSurface as SharedDashboardSurfaceId)
+    : undefined;
   const isServicePreview = isServiceBusinessPreviewModeActive();
   const shouldCallServiceBridge = serviceBusinessSurface
     ? shouldCallServiceBusinessSharedSurface(serviceBusinessSurface)
@@ -62,7 +95,14 @@ export function DashboardShell({
 
   return (
     <section className="flex min-h-0 flex-col gap-5">
-      <DashboardHeader title={title} description={description} />
+      <DashboardHeader title={title} description={description} modeContext={sharedDashboardModeContext} />
+      {sharedDashboardModeContext?.emptyStateMessage ? (
+        <DashboardPanel title="Mode context unavailable" description="This shared dashboard is protected by the active business mode context.">
+          <p className="p-4 text-sm font-medium text-amber-700">
+            {sharedDashboardModeContext.emptyStateMessage}
+          </p>
+        </DashboardPanel>
+      ) : null}
       {serviceBusinessSurface && shouldCallServiceBridge ? (
         <ServiceBusinessSharedDashboardBridge surface={serviceBusinessSurface} />
       ) : null}
@@ -78,9 +118,11 @@ export function DashboardShell({
 export function DashboardHeader({
   title,
   description,
+  modeContext,
 }: {
   title: string;
   description: string;
+  modeContext?: SharedDashboardModeContext;
 }) {
   return (
     <header className="border-b border-border pb-5">
@@ -90,6 +132,7 @@ export function DashboardHeader({
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
         {description}
       </p>
+      <SharedDashboardModeBadge context={modeContext} />
     </header>
   );
 }
