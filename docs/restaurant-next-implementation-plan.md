@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 6 implemented
+Status: Phase 7A implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -14,8 +14,8 @@ Phase 3  - Backend route, guard, workflow preview                  Done
 Phase 4  - Shared dashboard backend summary                        Done
 Phase 5  - Seed restaurant/menu/table/order/payment demo data       Done
 Phase 6  - Frontend Restaurant workspace API wiring                Done
-Phase 7A - Prisma schema model mapping                             Next
-Phase 7B - Summary read delegate                                   Planned
+Phase 7A - Prisma schema model mapping                             Done
+Phase 7B - Summary read delegate                                   Next
 Phase 7C - Workflow read delegate                                  Planned
 Phase 7D - Order/payment/kitchen/serving preview delegate           Planned
 Phase 7E - Order/write delegate                                    Planned
@@ -170,6 +170,40 @@ Scoped frontend typecheck:
 
 Status mutations still use legacy order/status endpoints until Phase 7E/7F/8A/8B. This keeps compatibility while the Restaurant read surface moves to canonical scoped APIs.
 
+## Phase 7A result
+
+Restaurant now has an explicit Prisma model mapping contract and a schema verifier.
+
+Implemented files:
+
+- `artifacts/api-server/src/services/restaurant/restaurant.prisma-model-map.ts`
+- `artifacts/api-server/scripts/verify-restaurant-prisma-schema.mjs`
+- `docs/restaurant-phase-7a-prisma-schema-mapping.md`
+
+Package command:
+
+- `pnpm --filter @workspace/api-server run restaurant:schema:verify`
+
+`typecheck:restaurant` now runs the schema verifier before Prisma generate and TypeScript.
+
+Canonical Restaurant models:
+
+- `Business`
+- `Restaurant`
+- `Category`
+- `MenuItem`
+- `InventoryItem`
+- `Recipe`
+- `DiningTable`
+- `Order`
+- `OrderItem`
+- `Payment`
+- `StockMovement`
+- `CashflowEntry`
+- `AuditLog`
+
+This phase does not create tables or run migrations. It guards the existing canonical schema and keeps legacy F&B compatibility fields as temporary compatibility only.
+
 ## Canonical target layout
 
 Frontend target:
@@ -196,6 +230,7 @@ artifacts/api-server/src/services/restaurant/
   restaurant.service.ts
   restaurant.policy.ts
   restaurant.audit.ts
+  restaurant.prisma-model-map.ts
 ```
 
 Route target:
@@ -207,6 +242,7 @@ artifacts/api-server/src/routes/restaurant.ts
 Validation target:
 
 ```bash
+pnpm --filter @workspace/api-server run restaurant:schema:verify
 pnpm --filter @workspace/api-server run typecheck:restaurant
 pnpm --filter @workspace/pos-system run typecheck:restaurant
 pnpm restaurant:check
