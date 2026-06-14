@@ -3,11 +3,18 @@ import { Router, type IRouter, type Request, type Response } from "express";
 
 import { requireRole } from "../lib/auth.js";
 import { requireBusinessContextForUser } from "../lib/business-context/index.js";
-import { ALL_ROLES, MANAGEMENT_ROLES, OPERATIONS_ROLES } from "../lib/constants.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
+import {
+  RETAIL_CANCELLATION_ROLES,
+  RETAIL_CHECKOUT_ROLES,
+  RETAIL_READ_ROLES,
+  RETAIL_RECEIVING_ROLES,
+  RETAIL_RETURN_PREVIEW_ROLES,
+  RETAIL_RETURN_ROLES,
+} from "../services/retail/retail.policy.js";
 import { cancelRetailSaleWithDelegate } from "../services/retail/retail.sale-cancellation-repository.js";
 import { retailService } from "../services/retail/retail.service.js";
 import { updateRetailReceivingStatusWithDelegate } from "../services/retail/retail.workflow-status.repository.js";
@@ -83,7 +90,7 @@ function isReturnPreviewInput(value: unknown): value is RetailReturnPreviewInput
   return Array.isArray(candidate.lines) && typeof candidate.reason === "string";
 }
 
-async function getRetailRequestContext(req: Request, res: Response, roles: Role[] = ALL_ROLES) {
+async function getRetailRequestContext(req: Request, res: Response, roles: Role[] = RETAIL_READ_ROLES) {
   const user = await requireRole(req, res, roles);
   if (!user) return null;
 
@@ -260,7 +267,7 @@ router.get("/retail/receiving", async (req, res) => {
 
 router.patch("/retail/receiving/:id/status", async (req, res) => {
   try {
-    const context = await getRetailRequestContext(req, res, OPERATIONS_ROLES);
+    const context = await getRetailRequestContext(req, res, RETAIL_RECEIVING_ROLES);
     if (!context) return;
 
     if (!isReceivingStatusUpdateBody(req.body)) {
@@ -322,7 +329,7 @@ router.get("/retail/command-center", async (req, res) => {
 
 router.post("/retail/sales/preview", async (req, res) => {
   try {
-    const context = await getRetailRequestContext(req, res, OPERATIONS_ROLES);
+    const context = await getRetailRequestContext(req, res, RETAIL_CHECKOUT_ROLES);
     if (!context) return;
 
     if (!isSalePreviewInput(req.body)) {
@@ -343,7 +350,7 @@ router.post("/retail/sales/preview", async (req, res) => {
 
 router.post("/retail/sales/mock-checkout", async (req, res) => {
   try {
-    const context = await getRetailRequestContext(req, res, OPERATIONS_ROLES);
+    const context = await getRetailRequestContext(req, res, RETAIL_CHECKOUT_ROLES);
     if (!context) return;
 
     if (!isSalePreviewInput(req.body)) {
@@ -370,7 +377,7 @@ router.post("/retail/sales/mock-checkout", async (req, res) => {
 
 router.post("/retail/sales/checkout", async (req, res) => {
   try {
-    const context = await getRetailRequestContext(req, res, OPERATIONS_ROLES);
+    const context = await getRetailRequestContext(req, res, RETAIL_CHECKOUT_ROLES);
     if (!context) return;
 
     if (!isSalePreviewInput(req.body)) {
@@ -397,7 +404,7 @@ router.post("/retail/sales/checkout", async (req, res) => {
 
 router.post("/retail/sales/:id/cancel", async (req, res) => {
   try {
-    const context = await getRetailRequestContext(req, res, MANAGEMENT_ROLES);
+    const context = await getRetailRequestContext(req, res, RETAIL_CANCELLATION_ROLES);
     if (!context) return;
 
     if (!isSaleCancellationInput(req.body)) {
@@ -429,7 +436,7 @@ router.post("/retail/sales/:id/cancel", async (req, res) => {
 
 router.post("/retail/returns/preview", async (req, res) => {
   try {
-    const context = await getRetailRequestContext(req, res, OPERATIONS_ROLES);
+    const context = await getRetailRequestContext(req, res, RETAIL_RETURN_PREVIEW_ROLES);
     if (!context) return;
 
     if (!isReturnPreviewInput(req.body)) {
@@ -450,7 +457,7 @@ router.post("/retail/returns/preview", async (req, res) => {
 
 router.post("/retail/returns", async (req, res) => {
   try {
-    const context = await getRetailRequestContext(req, res, OPERATIONS_ROLES);
+    const context = await getRetailRequestContext(req, res, RETAIL_RETURN_ROLES);
     if (!context) return;
 
     if (!isReturnPreviewInput(req.body)) {
