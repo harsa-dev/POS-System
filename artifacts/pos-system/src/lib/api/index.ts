@@ -92,6 +92,13 @@ export {
   type RestaurantPaymentReversalWriteDto,
 } from "@/lib/api/restaurant-payment-reversal-api";
 export {
+  restaurantSecurityApi,
+  type RestaurantAuditEventDto,
+  type RestaurantPermissionCapability,
+  type RestaurantRole,
+  type RestaurantSecurityPolicyDto,
+} from "@/lib/api/restaurant-security-api";
+export {
   invoiceApi,
   type InvoiceApiResult,
   type InvoiceBackendStatus,
