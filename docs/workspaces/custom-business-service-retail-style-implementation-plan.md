@@ -6,7 +6,7 @@ The goal is parity across business modes without pretending every mode needs the
 
 ## Current validation baseline
 
-Service Business backend implementation is already mature through the delegate cleanup lane.
+Service Business backend implementation is mature through the delegate cleanup and status-route lanes.
 
 Known completed capabilities:
 
@@ -24,6 +24,7 @@ summary read delegate
 workflow read delegate
 CRUD/billing write delegate
 guarded workflow status delegate
+explicit service status API route family
 service demo tenant helper
 service demo seed data
 service OpenAPI/client coverage
@@ -40,6 +41,7 @@ docs/workspaces/custom-business-service-prisma-delegate-cleanup.md
 docs/workspaces/custom-business-service-seed-demo-data.md
 docs/workspaces/custom-business-service-openapi-client-coverage.md
 docs/workspaces/custom-business-service-preview-delegate.md
+docs/workspaces/custom-business-service-status-api-route.md
 docs/workspaces/custom-business-service-smoke-test-scoped-ci.md
 docs/workspaces/custom-business-service-migration-baseline-idempotency.md
 ```
@@ -49,7 +51,7 @@ Current known gap compared with Retail and Raw Material:
 ```txt
 no full Service generated-client consolidation lane yet
 no explicit Service audit + permission policy assertion lane yet
-no explicit Service status API route family yet
+no Service status frontend action migration yet
 no Service quote/invoice/payment reversal workflow yet
 ```
 
@@ -68,8 +70,8 @@ Phase 7C - Workflow read delegate                                 Done
 Phase 7D - Service quote/invoice preview delegate                 Done
 Phase 7E - Service write delegate                                 Done
 Phase 7F - Guarded workflow status delegate                       Done
-Phase 8A - Service status API route family                        Next
-Phase 8B - Service status frontend action                         Planned
+Phase 8A - Service status API route family                        Done
+Phase 8B - Service status frontend action                         Next
 Phase 8C - Quote/invoice cancellation reversal workflow           Planned
 Phase 8D - Payment reversal workflow                              Planned
 Phase 8E - Generated API client consolidation                     Planned
@@ -208,6 +210,8 @@ serviceBusinessPreviewInvoice
 serviceBusinessPreviewInvoicePayment
 serviceBusinessCreateRequest
 serviceBusinessUpdateJobStatus
+serviceBusinessSetJobStatus
+serviceBusinessSetRequestStatus
 serviceBusinessAddCostLine
 serviceBusinessCreateQuotation
 serviceBusinessApproveQuotation
@@ -215,7 +219,7 @@ serviceBusinessCreateInvoice
 serviceBusinessRecordInvoicePayment
 ```
 
-The handwritten frontend client now routes through the Service operation registry. Full generated-client consolidation remains a later Phase 8E task.
+The handwritten frontend client routes through the Service operation registry. Full generated-client consolidation remains a later Phase 8E task.
 
 ### Phase 7A - Prisma schema model mapping
 
@@ -302,8 +306,42 @@ Status: implemented.
 
 Guarded workflow status transition writes now use generated Prisma delegates.
 
+### Phase 8A - Service status API route family
+
+Status: implemented.
+
+Implemented endpoints:
+
+```txt
+POST /api/custom-business/service/status/jobs/:id
+POST /api/custom-business/service/status/requests/:id
+```
+
+Implemented files:
+
+```txt
+artifacts/api-server/src/routes/service-business-status.ts
+artifacts/api-server/src/routes/index.ts
+artifacts/api-server/tsconfig.service.json
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-operations.ts
+docs/workspaces/custom-business-service-status-api-route.md
+```
+
+Behavior:
+
+```txt
+uses service-business.job.status.update permission
+reuses workflow target lookup
+reuses readiness and transition preview guard
+rejects invalid/disallowed/unmet status transitions
+writes ServiceWorkflowStatus audit entry on success
+keeps PATCH /custom-business/service/jobs/:id/guarded-status as compatibility route
+```
+
+Frontend migration remains Phase 8B.
+
 ## Next recommended phase
 
 ```txt
-Service Phase 8A - Service status API route family
+Service Phase 8B - Service status frontend action
 ```
