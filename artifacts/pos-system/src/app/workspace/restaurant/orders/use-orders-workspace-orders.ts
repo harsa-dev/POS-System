@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { orderApi } from "@/lib/api";
+import { restaurantApi, type RestaurantOrderDto } from "@/lib/api";
 import {
   formatCurrency,
   formatDateTime,
@@ -49,35 +49,12 @@ type OrdersWorkspaceResult = {
   reload: () => Promise<void>;
 };
 
-type OrderResponse = {
-  id: string;
-  orderNumber: number;
-  status: string;
-  total: number;
-  createdAt: string;
-  type: "DINE_IN" | "TAKEAWAY";
-  table?: { name?: string | null } | null;
-  payment?: { status?: string | null } | null;
-  restaurant?: {
-    currency?: string | null;
-    timezone?: string | null;
-    orderPrefix?: string | null;
-  } | null;
-  items: Array<{
-    id: string;
-    quantity: number;
-    price: number;
-    subtotal: number;
-    menuItem?: { name?: string | null } | null;
-  }>;
-};
-
-type OrdersWorkspaceOrderResponse = OrderResponse & {
+type OrdersWorkspaceOrderResponse = RestaurantOrderDto & {
   status: OrdersWorkspaceStatus;
 };
 
 function isOrdersWorkspaceOrderResponse(
-  order: OrderResponse,
+  order: RestaurantOrderDto,
 ): order is OrdersWorkspaceOrderResponse {
   return isRestaurantOrderStatus(order.status);
 }
@@ -85,21 +62,18 @@ function isOrdersWorkspaceOrderResponse(
 function mapOrderToWorkspaceOrder(
   order: OrdersWorkspaceOrderResponse,
 ): OrdersWorkspaceOrder {
-  const currency = order.restaurant?.currency ?? "IDR";
-  const timezone = order.restaurant?.timezone ?? "Asia/Makassar";
-  const orderPrefix = order.restaurant?.orderPrefix ?? "ORD";
   const isDineIn = order.type === "DINE_IN";
   const items = order.items.map((item) => ({
     id: item.id,
-    name: item.menuItem?.name ?? "Unnamed item",
+    name: item.name,
     quantity: item.quantity,
-    priceLabel: formatCurrency(item.price, currency),
-    subtotalLabel: formatCurrency(item.subtotal, currency),
+    priceLabel: formatCurrency(item.price),
+    subtotalLabel: formatCurrency(item.subtotal),
   }));
 
   return {
     id: order.id,
-    orderCode: formatOrderNumber(order.orderNumber, orderPrefix),
+    orderCode: order.code || formatOrderNumber(order.orderNumber, "ORD"),
     orderNumber: order.orderNumber,
     status: order.status,
     statusLabel: restaurantOrderStatusLabels[order.status],
@@ -110,8 +84,8 @@ function mapOrderToWorkspaceOrder(
     isDineIn,
     orderTypeLabel: isDineIn ? "Dine In" : "Takeaway",
     createdAt: order.createdAt,
-    createdAtLabel: formatDateTime(order.createdAt, timezone),
-    totalLabel: formatCurrency(order.total, currency),
+    createdAtLabel: formatDateTime(order.createdAt, "Asia/Makassar"),
+    totalLabel: formatCurrency(order.total),
     itemCount: items.reduce((total, item) => total + item.quantity, 0),
     items,
   };
@@ -119,7 +93,7 @@ function mapOrderToWorkspaceOrder(
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) return error.message;
-  return "Orders are unavailable.";
+  return "Restaurant orders are unavailable.";
 }
 
 export function useOrdersWorkspaceOrders(): OrdersWorkspaceResult {
@@ -139,10 +113,10 @@ export function useOrdersWorkspaceOrders(): OrdersWorkspaceResult {
     setErrorMessage(null);
 
     try {
-      const response = await orderApi.listOrders<OrderResponse[]>();
+      const response = await restaurantApi.listActiveOrders();
 
       if (!response.success) {
-        throw new Error(response.message ?? "Failed to load orders");
+        throw new Error(response.message ?? "Failed to load restaurant orders");
       }
 
       const mappedOrders = (response.data ?? [])
