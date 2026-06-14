@@ -5,6 +5,7 @@
     "rootDir": "."
   },
   "include": [
+    "scripts/ensure-restaurant-profile-compatible.ts",
     "scripts/seed-restaurant-demo-data.ts",
     "src/routes/restaurant.ts",
     "src/services/restaurant/**/*.ts",
