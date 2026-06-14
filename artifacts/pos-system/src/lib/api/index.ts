@@ -52,6 +52,13 @@ export {
   type RestaurantWorkflowPreviewDto,
 } from "@/lib/api/restaurant-api";
 export {
+  restaurantPaymentReversalApi,
+  type RestaurantPaymentReversalAction,
+  type RestaurantPaymentReversalInput,
+  type RestaurantPaymentReversalPreviewDto,
+  type RestaurantPaymentReversalWriteDto,
+} from "@/lib/api/restaurant-payment-reversal-api";
+export {
   invoiceApi,
   type InvoiceApiResult,
   type InvoiceBackendStatus,
