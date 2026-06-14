@@ -79,14 +79,27 @@ Raw Material routes require `raw-material`:
 
 Shared routes such as cashflow/reports/customers/invoice are allowed only inside a valid active mode context. When the mode changes, query cache is cleared so shared pages refetch under the new mode header instead of reusing stale data.
 
+## Sidebar/module visibility
+
+Sidebar visibility is also mode-scoped. A sidebar item must pass all checks:
+
+```txt
+1. active mode is valid
+2. item supports active mode
+3. item route support includes active mode
+4. user runtime role is allowed by the item's permissions
+```
+
+This prevents Restaurant links from staying visible in Retail, Retail links from staying visible in Restaurant, and shared links from bypassing active mode context.
+
 ## Implemented in this phase
 
 ```txt
 BM-1 - Docs and role model reconciliation                          Done
 BM-2 - Centralized transition service                              Done
 BM-2B - Route separation and shared cache reset guard               Done
-BM-3 - Sidebar/module filtering hardening                          Next
-BM-4 - Select-mode next-route flow                                  Planned
+BM-3 - Sidebar/module filtering hardening                          Done
+BM-4 - Select-mode next-route flow                                  Next
 BM-5 - Business-mode smoke checklist/script                         Planned
 ```
 
@@ -100,5 +113,7 @@ BM-5 - Business-mode smoke checklist/script                         Planned
 5. Open a restaurant route while retail is active -> /select-mode.
 6. Open a retail route while restaurant is active -> /select-mode.
 7. Open cashflow, switch mode, then return to cashflow -> page refetches with selected mode context.
-8. custom-business remains visible but not selectable.
+8. Sidebar title follows active mode label.
+9. Sidebar links only show modules supported by the active mode and user role.
+10. custom-business remains visible but not selectable.
 ```
