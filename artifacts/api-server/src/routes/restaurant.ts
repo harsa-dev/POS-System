@@ -7,11 +7,15 @@ import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import { RESTAURANT_READ_ROLES } from "../services/restaurant/restaurant.policy.js";
+import { restaurantPreviewService } from "../services/restaurant/restaurant.preview.js";
 import { restaurantService } from "../services/restaurant/restaurant.service.js";
 import type {
   RestaurantActorContext,
   RestaurantBusinessScope,
+  RestaurantOrderPreviewInput,
+  RestaurantPaymentPreviewInput,
   RestaurantSharedDashboardId,
+  RestaurantStatusActionPreviewInput,
 } from "../services/restaurant/restaurant.types.js";
 
 const router: IRouter = Router();
@@ -36,6 +40,63 @@ const restaurantSharedDashboardIds = new Set<string>([
 
 function isRestaurantSharedDashboardId(value: string): value is RestaurantSharedDashboardId {
   return restaurantSharedDashboardIds.has(value);
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function badRequest(res: Response, message: string) {
+  return errorResponse(res, {
+    status: 400,
+    code: errorCodes.badRequest,
+    message,
+  });
+}
+
+function readOrderPreviewInput(req: Request, res: Response): RestaurantOrderPreviewInput | null {
+  if (!isObject(req.body)) return badRequest(res, "Restaurant order preview requires an object body.") as null;
+  if (!Array.isArray(req.body.items)) return badRequest(res, "Restaurant order preview requires an items array.") as null;
+
+  return {
+    type: req.body.type === "TAKEAWAY" ? "TAKEAWAY" : "DINE_IN",
+    tableId: typeof req.body.tableId === "string" ? req.body.tableId : null,
+    paymentMethod: typeof req.body.paymentMethod === "string" ? req.body.paymentMethod : "CASH",
+    amountPaid: typeof req.body.amountPaid === "number" ? req.body.amountPaid : null,
+    items: req.body.items.map((item) => {
+      if (!isObject(item)) return { menuItemId: "", quantity: 0 };
+
+      return {
+        menuItemId: typeof item.menuItemId === "string" ? item.menuItemId : "",
+        quantity: typeof item.quantity === "number" ? item.quantity : 0,
+      };
+    }),
+  };
+}
+
+function readPaymentPreviewInput(req: Request, res: Response): RestaurantPaymentPreviewInput | null {
+  if (!isObject(req.body)) return badRequest(res, "Restaurant payment preview requires an object body.") as null;
+  if (typeof req.body.orderId !== "string" || req.body.orderId.length === 0) {
+    return badRequest(res, "Restaurant payment preview requires orderId.") as null;
+  }
+
+  return {
+    orderId: req.body.orderId,
+    paymentMethod: typeof req.body.paymentMethod === "string" ? req.body.paymentMethod : null,
+    amountPaid: typeof req.body.amountPaid === "number" ? req.body.amountPaid : null,
+  };
+}
+
+function readStatusActionPreviewInput(req: Request, res: Response): RestaurantStatusActionPreviewInput | null {
+  if (!isObject(req.body)) return badRequest(res, "Restaurant status preview requires an object body.") as null;
+  if (typeof req.body.orderId !== "string" || req.body.orderId.length === 0) {
+    return badRequest(res, "Restaurant status preview requires orderId.") as null;
+  }
+
+  return {
+    orderId: req.body.orderId,
+    targetStatus: typeof req.body.targetStatus === "string" ? req.body.targetStatus as RestaurantStatusActionPreviewInput["targetStatus"] : null,
+  };
 }
 
 async function getRestaurantRequestContext(req: Request, res: Response, roles = RESTAURANT_READ_ROLES) {
@@ -172,6 +233,38 @@ router.get("/restaurant/orders/active", async (req, res) => {
   }
 });
 
+router.post("/restaurant/orders/preview", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res);
+    if (!context) return;
+
+    const input = readOrderPreviewInput(req, res);
+    if (!input) return;
+
+    return successResponse(res, {
+      data: await restaurantPreviewService.previewOrder(context.scope, input),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/restaurant/payments/preview", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res);
+    if (!context) return;
+
+    const input = readPaymentPreviewInput(req, res);
+    if (!input) return;
+
+    return successResponse(res, {
+      data: await restaurantPreviewService.previewPayment(context.scope, input),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
 router.get("/restaurant/kitchen", async (req, res) => {
   try {
     const context = await getRestaurantRequestContext(req, res);
@@ -185,6 +278,22 @@ router.get("/restaurant/kitchen", async (req, res) => {
   }
 });
 
+router.post("/restaurant/kitchen/preview", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res);
+    if (!context) return;
+
+    const input = readStatusActionPreviewInput(req, res);
+    if (!input) return;
+
+    return successResponse(res, {
+      data: await restaurantPreviewService.previewStatusAction(context.scope, "kitchen", input),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
 router.get("/restaurant/serving", async (req, res) => {
   try {
     const context = await getRestaurantRequestContext(req, res);
@@ -192,6 +301,22 @@ router.get("/restaurant/serving", async (req, res) => {
 
     return successResponse(res, {
       data: await restaurantService.listServingQueue(context.scope),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/restaurant/serving/preview", async (req, res) => {
+  try {
+    const context = await getRestaurantRequestContext(req, res);
+    if (!context) return;
+
+    const input = readStatusActionPreviewInput(req, res);
+    if (!input) return;
+
+    return successResponse(res, {
+      data: await restaurantPreviewService.previewStatusAction(context.scope, "serving", input),
     });
   } catch (error) {
     return handleApiError(res, error);
