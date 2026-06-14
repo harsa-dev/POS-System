@@ -12,6 +12,7 @@
     "typecheck:restaurant": "pnpm run generate && tsc -p tsconfig.restaurant.json --noEmit",
     "typecheck:retail": "pnpm run generate && tsc -p tsconfig.retail.json --noEmit",
     "typecheck:raw-material": "pnpm run generate && tsc -p tsconfig.raw-material.json --noEmit",
+    "restaurant:seed": "tsx ./scripts/seed-restaurant-demo-data.ts",
     "retail:db:apply": "node ./scripts/apply-retail-db.mjs",
     "retail:seed": "tsx ./scripts/seed-retail-demo-data.ts",
     "retail:schema:sync": "tsx ./scripts/sync-retail-return-prisma-schema.ts",
