@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { restaurantApi, type RestaurantOrderDto } from "@/lib/api";
+import { restaurantClient, type RestaurantOrderDto } from "@/lib/api";
 import { formatDateTime, formatOrderNumber } from "@/lib/utils/format";
 import { kitchenOrderStatusLabels } from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
 
@@ -96,7 +96,7 @@ export function useKitchenOrders(): KitchenOrdersResult {
     setErrorMessage(null);
 
     try {
-      const response = await restaurantApi.listKitchenQueue();
+      const response = await restaurantClient.listKitchenQueue();
 
       if (!response.success) {
         throw new Error(response.message ?? "Failed to load kitchen orders");
