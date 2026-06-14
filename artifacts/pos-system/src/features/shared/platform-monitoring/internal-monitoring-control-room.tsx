@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, AlertTriangle, ClipboardList, Database, GitBranch, RefreshCw, ServerCog } from "lucide-react";
+import { Activity, AlertTriangle, ClipboardList, Database, GitBranch, RefreshCw, Route, ServerCog, ShieldCheck } from "lucide-react";
 
 import { StatCard, StatusPill } from "@/features/shared/cards";
 import { DashboardActionButton, DashboardActions, DashboardPanel } from "@/features/shared/dashboard";
@@ -10,7 +10,9 @@ import type { DashboardTone } from "@/features/shared/types";
 import type {
   InternalMonitoringApiImplementationStepDto,
   InternalMonitoringControlRoomSignalDto,
+  InternalMonitoringDataIntegrityCheckDto,
   InternalMonitoringDevActionItemDto,
+  InternalMonitoringRouteInventoryItemDto,
   InternalMonitoringSchemaDecisionRecordDto,
   InternalMonitoringSource,
 } from "@/lib/api/internal-monitoring-api";
@@ -36,6 +38,16 @@ const toneMap: Record<string, DashboardTone> = {
   Todo: "slate",
   Doing: "blue",
   Waiting: "amber",
+  active: "green",
+  planned: "amber",
+  blocked: "rose",
+  auth: "amber",
+  "platform-admin": "green",
+  pass: "green",
+  watch: "amber",
+  critical: "rose",
+  info: "blue",
+  warning: "amber",
   api: "green",
   mock: "blue",
   fallback: "amber",
@@ -73,6 +85,21 @@ const apiColumns: DataTableColumn<InternalMonitoringApiImplementationStepDto>[] 
   { key: "contractStatus", header: "Contract", cell: (row) => <StatusPill tone={tone(row.contractStatus)}>{row.contractStatus}</StatusPill> },
   { key: "implementationRule", header: "Rule", cell: (row) => <span className="text-sm text-muted-foreground">{row.implementationRule}</span> },
   { key: "testPlan", header: "Test Plan", cell: (row) => <span className="text-sm text-muted-foreground">{row.testPlan}</span> },
+];
+
+const routeInventoryColumns: DataTableColumn<InternalMonitoringRouteInventoryItemDto>[] = [
+  { key: "route", header: "Route", cell: (row) => <code className="text-xs text-muted-foreground">{row.route}</code> },
+  { key: "owner", header: "Owner", cell: (row) => <span className="font-medium text-foreground">{row.owner}</span> },
+  { key: "guard", header: "Guard", cell: (row) => <StatusPill tone={tone(row.guard)}>{row.guard}</StatusPill> },
+  { key: "status", header: "Status", cell: (row) => <StatusPill tone={tone(row.status)}>{row.status}</StatusPill> },
+  { key: "notes", header: "Notes", cell: (row) => <span className="text-sm text-muted-foreground">{row.notes}</span> },
+];
+
+const integrityColumns: DataTableColumn<InternalMonitoringDataIntegrityCheckDto>[] = [
+  { key: "check", header: "Check", cell: (row) => <span className="font-medium text-foreground">{row.check}</span> },
+  { key: "status", header: "Status", cell: (row) => <StatusPill tone={tone(row.status)}>{row.status}</StatusPill> },
+  { key: "severity", header: "Severity", cell: (row) => <StatusPill tone={tone(row.severity)}>{row.severity}</StatusPill> },
+  { key: "detail", header: "Detail", cell: (row) => <span className="text-sm text-muted-foreground">{row.detail}</span> },
 ];
 
 const schemaColumns: DataTableColumn<InternalMonitoringSchemaDecisionRecordDto>[] = [
@@ -131,7 +158,7 @@ export function InternalMonitoringControlRoom() {
               Generated: {formatGeneratedAt(controlRoomData.generatedAt)}
             </span>
             <span className="rounded-full bg-muted px-3 py-1">
-              Endpoint: GET /api/internal/health/summary
+              Endpoints: 4 GET-only internal monitoring APIs
             </span>
             {controlRoomData.fallbackReason ? (
               <span className="rounded-full bg-chart-3/15 px-3 py-1 text-foreground">
@@ -139,6 +166,16 @@ export function InternalMonitoringControlRoom() {
               </span>
             ) : null}
           </div>
+          {controlRoomData.sectionFallbacks.length > 0 ? (
+            <div className="rounded-lg border border-chart-3/30 bg-chart-3/10 p-3 text-sm text-foreground">
+              <p className="font-semibold">Section fallback active</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {controlRoomData.sectionFallbacks.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {controlRoomData.cards.map((card) => (
               <StatCard key={card.id} label={card.label} value={card.value} note={card.note} icon={Activity} tone={card.tone} />
@@ -152,26 +189,40 @@ export function InternalMonitoringControlRoom() {
           <DataTable columns={signalColumns} data={controlRoomData.signals} getRowKey={(row) => row.id} minWidth={1180} pagination={false} />
         </DashboardPanel>
 
+        <DashboardPanel title="Route Inventory" description="Route internal yang sudah terlihat dari endpoint read-only. Guard dedicated masih fase berikutnya.">
+          <DataTable columns={routeInventoryColumns} data={controlRoomData.routeInventory} getRowKey={(row) => row.id} minWidth={1250} pagination={false} />
+        </DashboardPanel>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+        <DashboardPanel title="API Implementation Blueprint" description="Blueprint teknis per endpoint: dari mock source, contract status, rule implementasi, sampai test plan.">
+          <DataTable columns={apiColumns} data={controlRoomData.contractReadiness} getRowKey={(row) => row.id} minWidth={1700} pagination={false} />
+        </DashboardPanel>
+
+        <DashboardPanel title="Data Integrity Checks" description="Read-only checks yang memastikan dashboard internal tidak diam-diam berubah jadi mutation surface.">
+          <DataTable columns={integrityColumns} data={controlRoomData.dataIntegrityChecks} getRowKey={(row) => row.id} minWidth={1200} pagination={false} />
+        </DashboardPanel>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+        <DashboardPanel title="Schema Decision Records" description="Keputusan sementara untuk kandidat schema. Prisma tetap tidak disentuh sampai proof-nya cukup.">
+          <DataTable columns={schemaColumns} data={controlRoomData.schemaDecisionRecords} getRowKey={(row) => row.id} minWidth={1350} pagination={false} />
+        </DashboardPanel>
+
         <DashboardPanel title="Dev Action Queue" description="Action item paling penting sebelum dashboard ini naik dari mock ke endpoint asli.">
           <DataTable columns={actionColumns} data={controlRoomData.devActionItems} getRowKey={(row) => row.id} minWidth={1100} pagination={false} />
         </DashboardPanel>
       </div>
 
-      <DashboardPanel title="API Implementation Blueprint" description="Blueprint teknis per endpoint: dari mock source, contract status, rule implementasi, sampai test plan.">
-        <DataTable columns={apiColumns} data={controlRoomData.apiImplementationSteps} getRowKey={(row) => row.id} minWidth={1700} pagination={false} />
-      </DashboardPanel>
-
-      <DashboardPanel title="Schema Decision Records" description="Keputusan sementara untuk kandidat schema. Prisma tetap tidak disentuh sampai proof-nya cukup.">
-        <DataTable columns={schemaColumns} data={controlRoomData.schemaDecisionRecords} getRowKey={(row) => row.id} minWidth={1350} pagination={false} />
-      </DashboardPanel>
-
-      <DashboardPanel title="Next Promotion Checklist" description="Checklist keras sebelum fase backend. Ini bukan ritual, ini pertahanan hidup dari migration yang sembrono.">
+      <DashboardPanel title="Next Promotion Checklist" description="Checklist keras sebelum fase mutation. Ini bukan ritual, ini pertahanan hidup dari migration yang sembrono.">
         <div className="grid gap-3 p-4 md:grid-cols-3">
           {[
             [GitBranch, "Route wired", `P0 actions: ${summary.p0Actions}. Route harus render dulu.`],
-            [ServerCog, "API read-only", `${summary.readyContracts} contracts ready. Mulai dari GET endpoint.`],
+            [ServerCog, "API read-only", `${summary.readyContracts} contracts ready. Semua endpoint harus GET.`],
             [Database, "Schema locked", `${summary.blockedSignals} blocked signal. Schema baru tetap hold.`],
             [ClipboardList, "Contracts synced", `${summary.totalSignals} signals wajib cocok dengan docs.`],
+            [ShieldCheck, "Integrity checked", `${controlRoomData.dataIntegrityChecks.length} checks loaded from API/fallback.`],
+            [Route, "Routes inventoried", `${controlRoomData.routeInventory.length} internal routes visible.`],
             [AlertTriangle, "Mutation guarded", "PATCH/POST internal harus nunggu audit + permission."],
             [Activity, "Fallback ready", `${sourceLabel(controlRoomData.source)} source keeps UI alive while backend catches up.`],
           ].map(([Icon, title, note]) => {
