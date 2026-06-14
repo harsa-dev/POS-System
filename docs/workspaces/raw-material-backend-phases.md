@@ -1,8 +1,8 @@
 # Raw Material Backend Phases
 
-This document defines the backend phase plan for Raw Material mode.
+This document defines the backend/frontend phase plan for Raw Material mode.
 
-It follows the same phase discipline used for Custom Business / Service mode, but the scope is different because Raw Material already has active Prisma models, migrations, Express routes, backend services, stock movement logic, processing routes, kandang pen routes, and shared dashboard bridge code.
+It follows the same phase discipline used for Custom Business / Service mode, but the scope is different because Raw Material already has active Prisma models, migrations, Express routes, backend services, stock movement logic, processing routes, kandang pen routes, shared dashboard bridge code, and frontend workspace routes.
 
 ## Current baseline
 
@@ -15,6 +15,7 @@ artifacts/api-server/src/routes/raw-material.ts
 artifacts/api-server/src/routes/raw-material-processing.ts
 artifacts/api-server/src/routes/raw-material-pens.ts
 artifacts/api-server/src/routes/raw-material-stock-movements.ts
+artifacts/api-server/src/routes/raw-material-summary.ts
 artifacts/api-server/src/services/raw-material/
 artifacts/api-server/prisma/schema.prisma
 ```
@@ -39,6 +40,7 @@ processing runs
 kandang pens
 stock movements
 shared dashboard bridge
+frontend API summary bridge
 ```
 
 ## Phase 0 - Documentation alignment
@@ -67,28 +69,10 @@ No code behavior was changed in this phase.
 
 Status: implemented.
 
-Goal:
-
-```txt
-Audit existing route behavior.
-Normalize response shape.
-Normalize endpoint naming between frontend API contract and API server.
-Document what is already production-backed versus still preview-only.
-```
-
 Implemented output:
 
 ```txt
 docs/workspaces/raw-material-backend-audit.md
-```
-
-Current mismatch to review later:
-
-```txt
-Frontend contract uses /api/v3/raw-material/*.
-API server currently registers /raw-material/* under the API router.
-Some frontend contract entries still mark mock-only/future-db.
-Backend already persists data for many of those surfaces.
 ```
 
 ## Phase 2 - Permission hardening
@@ -276,13 +260,6 @@ artifacts/api-server/src/services/raw-material/raw-material-stock-movement.servi
 docs/workspaces/raw-material-stock-mutation-hardening.md
 ```
 
-Goal:
-
-```txt
-Treat stock movement as a guarded ledger operation.
-Make adjustment, transfer, and processing consumption safe, scoped, and auditable.
-```
-
 Implemented hardening:
 
 ```txt
@@ -300,28 +277,56 @@ No Prisma schema, migration, route path, frontend contract, or non-Raw-Material 
 
 ## Phase 9 - Frontend API sync
 
-Status: next.
+Status: implemented.
 
-Goal:
+Implemented files:
 
 ```txt
-Update frontend raw-material API contract and workspace bridge to match real backend capabilities.
-Keep mock fallback for unauthenticated/dev preview states.
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.types.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-client.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.mock-service.ts
+artifacts/pos-system/src/features/raw-material/core-system/index.ts
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-readonly-sections.tsx
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-placeholder-workspace.tsx
+docs/workspaces/raw-material-frontend-api-sync.md
 ```
 
-Expected outputs:
+Implemented frontend sync:
 
 ```txt
 raw-material API client
-API-first bridge
+API-first summary metrics bridge
 contract persistence labels updated
-workspace action buttons wired only when safe
+backend-backed route paths displayed
 mock fallback retained
+write buttons intentionally kept as previews
 ```
+
+API-first endpoint used by frontend:
+
+```txt
+GET /raw-material/summary
+```
+
+Mock fallback retained for:
+
+```txt
+intake list table
+batch traceability cards
+storage snapshots
+processing snapshots
+kandang snapshots
+supplier filter cards
+scale profile dashboard
+scale feature dashboard
+```
+
+No Prisma schema, migration, backend route behavior, or non-Raw-Material mode was changed in this phase.
 
 ## Non-goals
 
-Do not do these unless a later phase explicitly approves it:
+Do not do these unless a later lane explicitly approves it:
 
 ```txt
 Do not redesign raw material schema from scratch.
@@ -329,13 +334,18 @@ Do not remove existing routes.
 Do not delete frontend mock data.
 Do not merge raw material stock with restaurant inventory stock.
 Do not unlock unrelated business modes.
-Do not change restaurant/service-business workflows while doing raw material work.
+Do not change restaurant/service-business/retail workflows while doing raw material work.
 ```
 
 ## Current recommended next action
 
-Start with Phase 9:
+Raw Material phase plan 0-9 is implemented.
+
+Recommended new lanes:
 
 ```txt
-Frontend API sync.
+Raw Material frontend write UX hardening
+Raw Material list API hydration
+Raw Material shared dashboard API hydration
+Global non-Raw-Material typecheck cleanup
 ```
