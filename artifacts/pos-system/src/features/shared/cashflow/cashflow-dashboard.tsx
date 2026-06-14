@@ -1,14 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
   Download,
   Landmark,
-  Link2,
-  Plus,
   RefreshCw,
   Search,
   WalletCards,
@@ -62,17 +60,6 @@ type TypeFilter = (typeof transactionTypes)[number];
 
 const statusOptions = ["All", "POSTED", "PENDING", "VOIDED"] as const;
 type StatusFilterValue = (typeof statusOptions)[number];
-
-const defaultEntryForm = {
-  account: "CASH" as CashflowAccount,
-  type: "EXPENSE" as CashflowEntryType,
-  status: "POSTED" as CashflowEntryStatus,
-  category: "Operational",
-  counterpartyName: "",
-  description: "",
-  amount: "",
-  occurredAt: new Date().toISOString().slice(0, 10),
-};
 
 type PaginationState = {
   page?: number;
@@ -276,12 +263,6 @@ export function CashflowDashboard() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
-  const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
-  const [isSyncOpen, setIsSyncOpen] = useState(false);
-  const [entryForm, setEntryForm] = useState(defaultEntryForm);
-  const [syncForm, setSyncForm] = useState({ orderId: "", shiftId: "" });
-
   const periodRange = useMemo(() => getPeriodRange(period), [period]);
 
   const query = useMemo<CashflowQuery>(() => {
@@ -343,87 +324,8 @@ export function CashflowDashboard() {
   const cashDrawerBalance = entries
     .filter((entry) => entry.account === "CASH")
     .reduce((total, entry) => total + getEntrySignedAmount(entry), 0);
-
   const daysInRange = calculateDaysInRange(periodRange.from, periodRange.to);
   const periodLabel = formatPeriodLabel(period, periodRange.from, periodRange.to);
-
-  async function handleCreateManualEntry(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setActionMessage(null);
-
-    const amount = Number(entryForm.amount);
-    if (!entryForm.category.trim() || !Number.isInteger(amount) || amount <= 0) {
-      setActionMessage("Category and a positive integer amount are required.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await cashflowApi.createEntry({
-        account: entryForm.account,
-        type: entryForm.type,
-        status: entryForm.status,
-        category: entryForm.category.trim(),
-        counterpartyName: entryForm.counterpartyName.trim() || undefined,
-        description: entryForm.description.trim() || undefined,
-        amount,
-        occurredAt: entryForm.occurredAt
-          ? new Date(entryForm.occurredAt).toISOString()
-          : undefined,
-      });
-
-      setEntryForm(defaultEntryForm);
-      setIsManualEntryOpen(false);
-      setActionMessage("Manual cashflow entry created.");
-      await loadCashflow();
-    } catch (error) {
-      setActionMessage(getApiErrorMessage(error, "Failed to create cashflow entry."));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleSyncOrder() {
-    const orderId = syncForm.orderId.trim();
-    if (!orderId) {
-      setActionMessage("Order ID is required before syncing order payment.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setActionMessage(null);
-    try {
-      await cashflowApi.syncOrder(orderId);
-      setSyncForm((current) => ({ ...current, orderId: "" }));
-      setActionMessage("Order payment synced to cashflow.");
-      await loadCashflow();
-    } catch (error) {
-      setActionMessage(getApiErrorMessage(error, "Failed to sync order payment."));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleSyncShift() {
-    const shiftId = syncForm.shiftId.trim();
-    if (!shiftId) {
-      setActionMessage("Shift ID is required before syncing shift close.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setActionMessage(null);
-    try {
-      await cashflowApi.syncShift(shiftId);
-      setSyncForm((current) => ({ ...current, shiftId: "" }));
-      setActionMessage("Shift close synced to cashflow.");
-      await loadCashflow();
-    } catch (error) {
-      setActionMessage(getApiErrorMessage(error, "Failed to sync shift close."));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
 
   async function handleVoidEntry(entry: CashflowEntryDto) {
     if (entry.status === "VOIDED") return;
@@ -456,11 +358,7 @@ export function CashflowDashboard() {
     {
       key: "amount",
       header: "Amount",
-      cell: (row) => (
-        <span className="font-semibold text-neutral-950">
-          {formatCurrency(row.amount)}
-        </span>
-      ),
+      cell: (row) => <span className="font-semibold text-neutral-950">{formatCurrency(row.amount)}</span>,
     },
     {
       key: "status",
@@ -503,56 +401,33 @@ export function CashflowDashboard() {
               {formatNumber(pagination.totalItems ?? entries.length)} Ledger Entries
             </span>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <DashboardTabs
-              value={period}
-              options={[...periodOptions]}
-              onChange={(value) => {
-                setPeriod(value as CashflowPeriod);
-                setPage(1);
-              }}
-            />
-            <DashboardActions>
-              <DashboardActionButton icon={RefreshCw} onClick={() => void loadCashflow()} disabled={isFetching}>
-                Refresh
-              </DashboardActionButton>
-              <DashboardActionButton icon={Plus} variant="primary" onClick={() => setIsManualEntryOpen(true)}>
-                Manual Entry
-              </DashboardActionButton>
-              <DashboardActionButton icon={Link2} onClick={() => setIsSyncOpen(true)}>
-                Sync Source
-              </DashboardActionButton>
-              <DashboardActionButton
-                icon={BarChart3}
-                variant="primary"
-                onClick={() => setIsAnalysisOpen(true)}
-              >
-                Analysis
-              </DashboardActionButton>
-              <DashboardActionButton
-                icon={Download}
-                onClick={() =>
-                  exportCsv({
-                    filename: `cashflow-ledger-entries-${modeContext.activeMode}`,
-                    rows: entries,
-                    columns: [
-                      { key: "date", header: "Date", value: (row) => formatDateTime(row.occurredAt) },
-                      { key: "account", header: "Source Account", value: (row) => row.account },
-                      { key: "type", header: "Type", value: (row) => row.type },
-                      { key: "status", header: "Status", value: (row) => row.status },
-                      { key: "sourceType", header: "Source Type", value: (row) => row.sourceType },
-                      { key: "sourceId", header: "Source ID", value: (row) => row.sourceId ?? "" },
-                      { key: "category", header: "Category", value: (row) => row.category },
-                      { key: "counterparty", header: "Customer / Supplier", value: (row) => row.counterpartyName ?? "" },
-                      { key: "amount", header: "Amount", value: (row) => row.amount },
-                    ],
-                  })
-                }
-              >
-                Export
-              </DashboardActionButton>
-            </DashboardActions>
-          </div>
+          <DashboardActions>
+            <DashboardActionButton icon={RefreshCw} onClick={() => void loadCashflow()} disabled={isFetching}>
+              Refresh
+            </DashboardActionButton>
+            <DashboardActionButton
+              icon={Download}
+              onClick={() =>
+                exportCsv({
+                  filename: `cashflow-ledger-entries-${modeContext.activeMode}`,
+                  rows: entries,
+                  columns: [
+                    { key: "date", header: "Date", value: (row) => formatDateTime(row.occurredAt) },
+                    { key: "account", header: "Source Account", value: (row) => row.account },
+                    { key: "type", header: "Type", value: (row) => row.type },
+                    { key: "status", header: "Status", value: (row) => row.status },
+                    { key: "sourceType", header: "Source Type", value: (row) => row.sourceType },
+                    { key: "sourceId", header: "Source ID", value: (row) => row.sourceId ?? "" },
+                    { key: "category", header: "Category", value: (row) => row.category },
+                    { key: "counterparty", header: "Customer / Supplier", value: (row) => row.counterpartyName ?? "" },
+                    { key: "amount", header: "Amount", value: (row) => row.amount },
+                  ],
+                })
+              }
+            >
+              Export
+            </DashboardActionButton>
+          </DashboardActions>
         </div>
       </DashboardPanel>
 
@@ -562,68 +437,120 @@ export function CashflowDashboard() {
         </div>
       )}
 
-      <DashboardPanel>
-        <TableToolbar
-          filters={
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <DashboardFilters className="xl:min-w-[860px]">
-                <SelectFilter
-                  label="Source Account"
-                  value={sourceAccount}
-                  options={[...accountOptions]}
-                  onChange={(value) => {
-                    setSourceAccount(value as AccountFilter);
-                    setPage(1);
-                  }}
-                />
-                <SelectFilter
-                  label="View Mode"
-                  value={viewMode}
-                  options={[...viewModes]}
-                  onChange={(value) => {
-                    setViewMode(value as CashflowViewMode);
-                    setPage(1);
-                  }}
-                />
-                <StatusFilter
-                  label="Type"
-                  value={typeFilter}
-                  options={[...transactionTypes]}
-                  onChange={(value) => {
-                    setTypeFilter(value as TypeFilter);
-                    setPage(1);
-                  }}
-                />
-                <StatusFilter
-                  label="Status"
-                  value={statusFilter}
-                  options={[...statusOptions]}
-                  onChange={(value) => {
-                    setStatusFilter(value as StatusFilterValue);
-                    setPage(1);
-                  }}
-                />
-              </DashboardFilters>
-              <SearchFilter
-                value={search}
+      <TableToolbar
+        filters={
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <DashboardFilters className="xl:min-w-[860px]">
+              <SelectFilter
+                label="Source Account"
+                value={sourceAccount}
+                options={[...accountOptions]}
                 onChange={(value) => {
-                  setSearch(value);
+                  setSourceAccount(value as AccountFilter);
                   setPage(1);
                 }}
-                placeholder="Search source, category, description..."
               />
-            </div>
-          }
+              <SelectFilter
+                label="Transaction Type"
+                value={typeFilter}
+                options={[...transactionTypes]}
+                onChange={(value) => {
+                  setTypeFilter(value as TypeFilter);
+                  setPage(1);
+                }}
+              />
+              <StatusFilter
+                value={statusFilter}
+                options={[...statusOptions]}
+                onChange={(value) => {
+                  setStatusFilter(value as StatusFilterValue);
+                  setPage(1);
+                }}
+              />
+            </DashboardFilters>
+            <DashboardTabs
+              value={viewMode}
+              options={[...viewModes]}
+              onChange={(value) => {
+                setViewMode(value as CashflowViewMode);
+                setPage(1);
+              }}
+            />
+          </div>
+        }
+        actions={
+          <div className="max-w-md">
+            <SearchFilter
+              label="Search transactions"
+              value={search}
+              placeholder="Search source, category, or notes..."
+              onChange={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
+            />
+          </div>
+        }
+      />
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <StatCard label="Total Income" value={formatCurrency(summary.totalIncome)} note="Posted cash in" icon={ArrowUpRight} tone="green" />
+        <StatCard label="Total Expense" value={formatCurrency(summary.totalExpense)} note="Posted cash out" icon={ArrowDownRight} tone="rose" />
+        <StatCard label="Cash Drawer Balance" value={formatCurrency(cashDrawerBalance)} note="Current page cash ledger" icon={WalletCards} tone="amber" />
+        <StatCard label="Pending Amount" value={formatCurrency(summary.pendingAmount)} note="Pending ledger value" icon={BarChart3} tone="blue" />
+        <StatCard label="Current Balance" value={formatCurrency(summary.currentBalance)} note="Backend ledger balance" icon={Landmark} tone="slate" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+        <DashboardPanel title="Monthly Cashflow Trend">
+          <TrendChart data={dashboard?.trend ?? []} />
+        </DashboardPanel>
+        <DashboardPanel title="Expense Categories">
+          <SummaryBars data={dashboard?.expenseSources ?? []} total={summary.totalExpense} tone="rose" />
+        </DashboardPanel>
+      </div>
+
+      <DashboardPanel title="Transaction History" description="Paginated server-side ledger entries">
+        <DataTable
+          columns={tableColumns}
+          data={entries}
+          getRowKey={(row) => row.id}
+          minWidth={1180}
+          emptyMessage={isFetching ? "Loading cashflow ledger..." : "No cashflow entries match the active filters."}
+          pagination={false}
         />
-        <DataTable columns={tableColumns} rows={entries} emptyMessage={isFetching ? "Loading cashflow..." : "No cashflow entries found."} />
+        <div className="flex flex-col gap-3 border-t border-neutral-200 p-4 text-sm text-neutral-600 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            Page {pagination.page ?? page} of {pagination.totalPages ?? 1} · {formatNumber(pagination.totalItems ?? entries.length)} entries · {modeContext.queryScopeKey}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!pagination.hasPreviousPage || isFetching}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              className="rounded-lg border border-neutral-200 px-3 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={!pagination.hasNextPage || isFetching}
+              onClick={() => setPage((current) => current + 1)}
+              className="rounded-lg border border-neutral-200 px-3 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </DashboardPanel>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total Income" value={formatCurrency(summary.totalIncome)} icon={ArrowUpRight} tone="green" />
-        <StatCard title="Total Expense" value={formatCurrency(summary.totalExpense)} icon={ArrowDownRight} tone="rose" />
-        <StatCard title="Current Balance" value={formatCurrency(summary.currentBalance)} icon={WalletCards} tone="blue" />
-        <StatCard title="Cash Drawer" value={formatCurrency(cashDrawerBalance)} icon={Landmark} tone="amber" />
-      </div>
+      <DashboardPanel title="Cashflow Mode Context" description="Shared dashboards are keyed by active business mode to avoid cross-mode ledger bleed.">
+        <div className="grid gap-3 p-4 md:grid-cols-3">
+          <StatCard label="Mode" value={modeContext.activeModeShortLabel} note={modeContext.activeModeLabel} icon={Search} tone="blue" />
+          <StatCard label="Average Income / Day" value={formatCurrency(summary.totalIncome / daysInRange)} icon={ArrowUpRight} tone="green" />
+          <StatCard label="Voided Entries" value={formatNumber(summary.voidedCount)} icon={XCircle} tone="rose" />
+        </div>
+      </DashboardPanel>
     </DashboardShell>
   );
 }
