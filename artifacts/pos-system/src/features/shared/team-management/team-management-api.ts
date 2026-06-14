@@ -35,11 +35,14 @@ type ApiListEnvelope<T> = ApiEnvelope<T> & {
   };
 };
 
-function buildQuery(params?: Record<string, string | number | undefined | null>) {
+type TeamManagementQueryInput = Partial<TeamManagementListQuery & TeamManagementAuditQuery>;
+
+function buildQuery(params?: TeamManagementQueryInput) {
   const searchParams = new URLSearchParams();
 
   for (const [key, value] of Object.entries(params ?? {})) {
     if (value === undefined || value === null || value === "") continue;
+    if (typeof value !== "string" && typeof value !== "number") continue;
     searchParams.set(key, String(value));
   }
 
