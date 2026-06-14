@@ -10,6 +10,7 @@ import {
   formatRawMaterialWeight,
   getRawMaterialStorageUsagePercent,
   type RawMaterialApiContract,
+  type RawMaterialApiSource,
   type RawMaterialContractReadiness,
   type RawMaterialKandangPen,
   type RawMaterialMetric,
@@ -29,8 +30,9 @@ type RawMaterialMetricsGridProps = {
 
 type RawMaterialReadinessCardProps = {
   readiness: RawMaterialContractReadiness;
-  source: "mock";
-  schemaTouched: false;
+  source: RawMaterialApiSource;
+  schemaTouched: boolean;
+  apiStatusLabel?: string;
 };
 
 type RawMaterialApiContractCardProps = {
@@ -42,6 +44,18 @@ type RawMaterialStaticSnapshotsProps = {
   processingRuns: readonly RawMaterialProcessingRun[];
   kandangPens: readonly RawMaterialKandangPen[];
 };
+
+function getPersistenceTone(persistence: RawMaterialApiContract["persistence"]) {
+  if (persistence === "backend-backed" || persistence === "backend-backed-with-mock-fallback") {
+    return "border-emerald-200 text-emerald-700";
+  }
+
+  if (persistence === "future-db") {
+    return "border-blue-200 text-blue-700";
+  }
+
+  return "border-amber-200 text-amber-700";
+}
 
 export function RawMaterialMetricsGrid({ metrics }: RawMaterialMetricsGridProps) {
   return (
@@ -65,22 +79,27 @@ export function RawMaterialReadinessCard({
   readiness,
   source,
   schemaTouched,
+  apiStatusLabel = "Mock fallback retained.",
 }: RawMaterialReadinessCardProps) {
   return (
     <Card className="rounded-xl bg-white">
       <CardHeader>
-        <CardTitle>Mock service readiness</CardTitle>
-        <CardDescription>Generated from API contract metadata. Still zero schema mutation.</CardDescription>
+        <CardTitle>Raw Material API readiness</CardTitle>
+        <CardDescription>Generated from frontend contract metadata and current workspace data source.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 text-sm text-neutral-600">
         <div className="flex items-center justify-between rounded-lg border border-neutral-100 bg-neutral-50 p-3">
           <span>Readiness</span>
           <Badge variant="outline">{readiness.readinessLabel}</Badge>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="grid grid-cols-4 gap-2 text-center">
           <div className="rounded-lg border border-neutral-100 p-3">
             <p className="text-lg font-bold text-neutral-950">{readiness.totalContracts}</p>
             <p className="text-xs text-neutral-500">contracts</p>
+          </div>
+          <div className="rounded-lg border border-neutral-100 p-3">
+            <p className="text-lg font-bold text-neutral-950">{readiness.backendBackedContracts}</p>
+            <p className="text-xs text-neutral-500">backend</p>
           </div>
           <div className="rounded-lg border border-neutral-100 p-3">
             <p className="text-lg font-bold text-neutral-950">{readiness.mockOnlyContracts}</p>
@@ -92,7 +111,7 @@ export function RawMaterialReadinessCard({
           </div>
         </div>
         <p className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
-          Service source: {source}. Schema touched: {String(schemaTouched)}.
+          Service source: {source}. Schema touched: {String(schemaTouched)}. {apiStatusLabel}
         </p>
       </CardContent>
     </Card>
@@ -104,14 +123,14 @@ export function RawMaterialApiContractCard({ contracts }: RawMaterialApiContract
     <Card className="rounded-xl bg-white">
       <CardHeader>
         <CardTitle>API contract for this module</CardTitle>
-        <CardDescription>Frontend contract only. No handler, Prisma call, or schema mutation yet.</CardDescription>
+        <CardDescription>Frontend contract synced to current Raw Material backend routes.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {contracts.map((contract) => (
           <div key={contract.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">{contract.method}</Badge>
-              <Badge variant="outline" className="border-amber-200 text-amber-700">
+              <Badge variant="outline" className={getPersistenceTone(contract.persistence)}>
                 {contract.persistence}
               </Badge>
             </div>
