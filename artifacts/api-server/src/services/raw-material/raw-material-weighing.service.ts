@@ -4,6 +4,7 @@ import type { BusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
 import { prisma } from "../../lib/prisma.js";
+import { writeRawMaterialAuditLog } from "./raw-material.audit.js";
 import { toRawMaterialWeighingDto } from "./raw-material-weighing.dto.js";
 import type { RawMaterialWeighingActor } from "./raw-material-weighing.types.js";
 import {
@@ -186,8 +187,18 @@ export async function createRawMaterialWeighing(params: {
     },
     include: weighingInclude,
   });
+  const dto = toRawMaterialWeighingDto(weighing);
 
-  return toRawMaterialWeighingDto(weighing);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "CREATE",
+    entityType: "RawMaterialWeighing",
+    entityId: weighing.id,
+    changes: { payload, result: dto },
+  });
+
+  return dto;
 }
 
 export async function updateRawMaterialWeighing(params: {
@@ -199,7 +210,7 @@ export async function updateRawMaterialWeighing(params: {
   const { actor, businessContext, id, input } = params;
   assertCanManageRawMaterialWeighing(actor);
 
-  await loadWeighingOrThrow(businessContext, id);
+  const existing = await loadWeighingOrThrow(businessContext, id);
   const payload = parseMutationPayload(input);
 
   await assertReferenceAvailable({ businessContext, referenceNumber: payload.referenceNumber, excludeId: id });
@@ -210,8 +221,18 @@ export async function updateRawMaterialWeighing(params: {
     data: payload,
     include: weighingInclude,
   });
+  const dto = toRawMaterialWeighingDto(weighing);
 
-  return toRawMaterialWeighingDto(weighing);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "UPDATE",
+    entityType: "RawMaterialWeighing",
+    entityId: weighing.id,
+    changes: { before: toRawMaterialWeighingDto(existing), payload, result: dto },
+  });
+
+  return dto;
 }
 
 export async function deleteRawMaterialWeighing(params: {
@@ -222,8 +243,17 @@ export async function deleteRawMaterialWeighing(params: {
   const { actor, businessContext, id } = params;
   assertCanManageRawMaterialWeighing(actor);
 
-  await loadWeighingOrThrow(businessContext, id);
+  const existing = await loadWeighingOrThrow(businessContext, id);
   await prisma.rawMaterialWeighing.delete({ where: { id } });
+
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "DELETE",
+    entityType: "RawMaterialWeighing",
+    entityId: id,
+    changes: { before: toRawMaterialWeighingDto(existing), result: { id, deleted: true } },
+  });
 
   return { id, deleted: true } as const;
 }
