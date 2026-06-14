@@ -73,6 +73,22 @@ async function getRestaurantLegacyColumns(): Promise<RestaurantLegacyColumns> {
   return { hasName, hasOwnerId };
 }
 
+async function relaxLegacyRestaurantProfileColumns(columns: RestaurantLegacyColumns) {
+  if (columns.hasName) {
+    await prisma.$executeRaw`
+      ALTER TABLE "Restaurant"
+      ALTER COLUMN "name" DROP NOT NULL
+    `;
+  }
+
+  if (columns.hasOwnerId) {
+    await prisma.$executeRaw`
+      ALTER TABLE "Restaurant"
+      ALTER COLUMN "ownerId" DROP NOT NULL
+    `;
+  }
+}
+
 async function getRestaurantBusinessTargets() {
   return prisma.$queryRaw<BusinessSeedTarget[]>`
     SELECT "id", "name", "ownerId"
@@ -207,6 +223,8 @@ async function main() {
     console.log("Restaurant legacy profile columns not found. Compatibility preflight skipped.");
     return;
   }
+
+  await relaxLegacyRestaurantProfileColumns(columns);
 
   const businesses = await getRestaurantBusinessTargets();
 
