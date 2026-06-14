@@ -110,15 +110,10 @@ Frontend API client:
 artifacts/pos-system/src/lib/api/internal-monitoring-api.ts
 ```
 
-First implemented method:
+Implemented methods:
 
 ```txt
 internalMonitoringApi.getControlRoom()
-```
-
-Future methods:
-
-```txt
 internalMonitoringApi.getRouteInventory()
 internalMonitoringApi.getContractReadiness()
 internalMonitoringApi.getDataIntegrityChecks()
@@ -142,7 +137,16 @@ Implemented adapter:
 artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-data-source.ts
 ```
 
-The Control Room now tries `GET /api/internal/health/summary` first and falls back to typed mock data when the endpoint is unavailable. This keeps the dashboard useful before backend persistence exists.
+The Control Room now loads all four read-only endpoints:
+
+```txt
+GET /api/internal/health/summary
+GET /api/internal/routes/inventory
+GET /api/internal/contracts/readiness
+GET /api/internal/data-integrity/checks
+```
+
+Each section has its own fallback path. If one endpoint fails, the dashboard keeps rendering and shows the section fallback reason instead of blanking the whole control room.
 
 ## Access policy
 
@@ -227,27 +231,25 @@ Implemented:
 
 ### IM-4 - Frontend API client integration expansion
 
-Next.
+Status: Done.
 
-Expand API usage beyond Control Room to route inventory, contracts, and integrity sections.
+Implemented:
+
+```txt
+- frontend API client methods for all four GET endpoints
+- adapter loads health summary, route inventory, contract readiness, and integrity checks
+- per-section fallback reasons
+- Route Inventory panel
+- Data Integrity Checks panel
+- static guard checks expanded frontend integration
+```
 
 ### IM-5 - Platform Admin route guard
+
+Next.
 
 Add dedicated Platform Admin guard for `/dashboard/internal-monitoring`.
 
 ### IM-6 - Sidebar permission isolation
 
 Move Internal Monitoring entry away from broad `settings.manage` into `platform-admin.internal-monitoring.read`.
-
-### IM-7 - Optional persistence design
-
-Only design persistent probe storage. Do not implement Prisma models until read-only API usage proves persistence is needed.
-
-## Validation
-
-```bash
-pnpm platform-admin:check
-pnpm business-mode:check
-pnpm --filter @workspace/pos-system run typecheck:restaurant
-pnpm --filter @workspace/api-server run typecheck:restaurant
-```
