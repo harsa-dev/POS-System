@@ -22,6 +22,9 @@ shared dashboard summary
 raw-material typecheck cleanup
 stock mutation hardening
 frontend summary API sync with mock fallback
+seeded demo data
+scoped validation gate
+read-only API smoke script
 ```
 
 ## Retail-style Raw Material phases
@@ -35,7 +38,7 @@ Phase 5  - Frontend list/workflow API wiring                  Planned
 Phase 6  - Raw Material OpenAPI/client coverage               Planned
 Phase 7A - Prisma schema model mapping                        Done
 Phase 7B - Summary read delegate                              Done
-Phase 7C - Workflow read delegate                             Planned
+Phase 7C - Workflow read delegate                             Next
 Phase 7D - Intake/batch/processing preview delegate           Planned
 Phase 7E - Stock/write delegate                               Backend Done, Frontend Planned
 Phase 7F - Guarded workflow status delegate                   Backend Partial, Frontend Planned
@@ -44,7 +47,7 @@ Phase 8B - Status frontend action                             Planned
 Phase 8C - Stock adjustment reversal workflow                 Planned
 Phase 8D - Processing cancellation reversal workflow          Planned
 Phase 8E - Generated API client consolidation                 Planned
-Phase 8F - Raw Material smoke test + scoped CI gate           Planned
+Phase 8F - Raw Material smoke test + scoped CI gate           Done
 Phase 8G - Migration baseline/idempotency hardening           Planned
 Phase 8H - Audit + permission policy hardening                Mostly Done, needs smoke/policy assertion
 ```
@@ -87,12 +90,45 @@ Business.mode = RAW_MATERIAL
 Business.isActive = true
 ```
 
+## Phase 8F - Raw Material smoke test + scoped CI gate
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+scripts/raw-material-check.mjs
+scripts/raw-material-api-smoke.mjs
+package.json
+artifacts/api-server/package.json
+artifacts/api-server/tsconfig.raw-material.json
+artifacts/pos-system/package.json
+artifacts/pos-system/tsconfig.raw-material.json
+docs/workspaces/raw-material-smoke-test-scoped-ci.md
+```
+
+Commands:
+
+```bash
+pnpm raw-material:check
+pnpm raw-material:smoke
+```
+
+Optional flags:
+
+```bash
+pnpm raw-material:check -- --seed
+pnpm raw-material:check -- --no-build
+pnpm raw-material:check -- --no-smoke
+```
+
+The scoped gate intentionally excludes global non-Raw-Material typecheck errors.
+
 ## Recommended next execution order
 
 Preferred path:
 
 ```txt
-Phase 8F - Raw Material smoke test + scoped CI gate
 Phase 7C - Workflow read delegate
 Phase 5  - Frontend list/workflow API wiring
 Phase 6  - Raw Material OpenAPI/client coverage
@@ -107,19 +143,13 @@ Phase 8G - Migration baseline/idempotency hardening
 Phase 8H - Audit + permission smoke/policy assertion
 ```
 
-## Why Phase 8F should come next
+## Why Phase 7C should come next
 
-Now that seed data exists, a scoped Raw Material validation gate can verify the lane without depending on global non-Raw-Material typecheck cleanup.
+Now that the seed data and scoped validation gate exist, Raw Material can safely hydrate workflow/read screens from backend list endpoints.
 
-The Retail lane already has a scoped gate pattern.
+The summary endpoint is already API-first, but detailed workspace lists still rely heavily on mock fallback.
 
-Raw Material should get the same pattern:
-
-```txt
-raw-material:check
-raw-material:smoke
-optional raw-material DB baseline check later
-```
+Phase 7C should create read delegates first, before write actions or generated client consolidation.
 
 ## Non-goals
 
