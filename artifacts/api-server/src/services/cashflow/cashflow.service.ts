@@ -54,6 +54,17 @@ function getSignedAmount(type: CashflowEntryType, amount: number) {
   return amount;
 }
 
+function assertCashflowOperationalMode(businessContext: BusinessContext) {
+  if (businessContext.businessMode !== "custom-business") return;
+
+  throw new AppError({
+    statusCode: 409,
+    code: errorCodes.businessModeMismatch,
+    message: "Cashflow write operations are planned for service/custom business mode and are not operational yet.",
+    details: { businessMode: businessContext.businessMode },
+  });
+}
+
 function escapeCsvValue(value: unknown) {
   if (value === null || value === undefined) return "";
   const stringValue = value instanceof Date ? value.toISOString() : String(value);
@@ -212,6 +223,7 @@ export async function createManualCashflowEntry(params: {
   input: CreateCashflowEntryInput | unknown;
 }) {
   requireCashflowCreate(params.actor.role);
+  assertCashflowOperationalMode(params.businessContext);
 
   const parsed = parseCreateCashflowEntryInput(params.input);
   assertManualEntryType(parsed.type);
@@ -271,6 +283,7 @@ export async function syncOrderPaymentToCashflow(params: {
   orderId: string;
 }) {
   requireCashflowSync(params.actor.role);
+  assertCashflowOperationalMode(params.businessContext);
 
   const businessId = params.businessContext.businessId;
   const order = await prisma.order.findFirst({
@@ -367,6 +380,7 @@ export async function syncShiftCloseToCashflow(params: {
   shiftId: string;
 }) {
   requireCashflowSync(params.actor.role);
+  assertCashflowOperationalMode(params.businessContext);
 
   const businessId = params.businessContext.businessId;
   const shift = await prisma.shift.findFirst({
@@ -459,6 +473,7 @@ export async function voidCashflowEntry(params: {
   id: string;
 }) {
   requireCashflowVoid(params.actor.role);
+  assertCashflowOperationalMode(params.businessContext);
 
   const businessId = params.businessContext.businessId;
 
