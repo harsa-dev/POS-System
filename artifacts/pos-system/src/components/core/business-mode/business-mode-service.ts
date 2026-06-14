@@ -31,6 +31,7 @@ const RESTAURANT_ROUTE_PREFIXES = [
 
 const RETAIL_ROUTE_PREFIXES = ["/v3/retail/"] as const;
 const RAW_MATERIAL_ROUTE_PREFIXES = ["/v3/raw-material/"] as const;
+const SAFE_NEXT_ROUTE_PATTERN = /^\/(?!\/)(?!.*(?:^|[/?#])(?:https?:|data:|blob:))/i;
 
 export type BusinessModeWorkspaceState = Readonly<{
   currentMode: BusinessModeId;
@@ -112,6 +113,12 @@ export type BusinessModeRouteAccessCheck = Readonly<{
     | "mode-not-selectable";
 }>;
 
+export type BusinessModeSelectionRedirectRequest = Readonly<{
+  targetMode: BusinessModeId;
+  nextRoute?: string | null;
+  fallbackRoute?: string | null;
+}>;
+
 function toBusinessModeIds(modes: readonly V3BusinessMode[]): readonly BusinessModeId[] {
   return modes.filter((mode): mode is BusinessModeId =>
     businessModeRegistry.some((candidate) => candidate.id === mode),
@@ -129,6 +136,14 @@ function normalizePathname(pathname: string) {
 
 function matchesAnyPrefix(pathname: string, prefixes: readonly string[]) {
   return prefixes.some((prefix) => pathname === prefix.slice(0, -1) || pathname.startsWith(prefix));
+}
+
+function isSafeNextRoute(value: string | null | undefined) {
+  if (!value) return false;
+  if (!SAFE_NEXT_ROUTE_PATTERN.test(value)) return false;
+
+  const normalizedPathname = normalizePathname(value);
+  return normalizedPathname !== ROUTES.SELECT_MODE && normalizedPathname !== ROUTES.LOGIN && normalizedPathname !== ROUTES.REGISTER;
 }
 
 function getSharedBusinessRouteModes(pathname: string): readonly BusinessModeId[] | null {
@@ -219,6 +234,40 @@ export function getBusinessModeEntryRoute(mode?: BusinessModeId | null): string 
   const resolvedMode = mode ?? getCurrentBusinessMode();
 
   return getBusinessModeConfig(resolvedMode).route;
+}
+
+export function getBusinessModeNextRouteFromLocation(location: string) {
+  const queryString = location.includes("?") ? location.slice(location.indexOf("?") + 1) : "";
+  const nextRoute = new URLSearchParams(queryString).get("next");
+  if (!isSafeNextRoute(nextRoute)) return null;
+
+  return nextRoute;
+}
+
+export function getSelectModeRoute(nextRoute?: string | null) {
+  if (!isSafeNextRoute(nextRoute)) return ROUTES.SELECT_MODE;
+
+  return `${ROUTES.SELECT_MODE}?next=${encodeURIComponent(nextRoute)}`;
+}
+
+export function isRouteSupportedByBusinessMode(mode: BusinessModeId, route: string | null | undefined) {
+  if (!isSafeNextRoute(route)) return false;
+  if (!isBusinessModeSelectable(mode)) return false;
+
+  const routeSupport = getBusinessModeRouteSupport(route);
+  return routeSupport.supportedModes.includes(mode);
+}
+
+export function getBusinessModeSelectionRedirectRoute({
+  targetMode,
+  nextRoute = null,
+  fallbackRoute = null,
+}: BusinessModeSelectionRedirectRequest) {
+  if (isRouteSupportedByBusinessMode(targetMode, nextRoute)) {
+    return nextRoute;
+  }
+
+  return fallbackRoute ?? getBusinessModeEntryRoute(targetMode);
 }
 
 export function canEnterBusinessModeWorkspace(
@@ -453,6 +502,10 @@ export function selectBusinessModeWorkspace(
 export const businessModeService = {
   getCurrentMode: getCurrentBusinessMode,
   getEntryRoute: getBusinessModeEntryRoute,
+  getNextRoute: getBusinessModeNextRouteFromLocation,
+  getSelectModeRoute,
+  getSelectionRedirectRoute: getBusinessModeSelectionRedirectRoute,
+  isRouteSupportedByMode: isRouteSupportedByBusinessMode,
   getRouteSupport: getBusinessModeRouteSupport,
   getWorkspaceState: getBusinessModeWorkspaceState,
   ensureWorkspace: ensureBusinessModeWorkspace,
@@ -470,6 +523,10 @@ export const businessModeService = {
 } satisfies Readonly<{
   getCurrentMode: typeof getCurrentBusinessMode;
   getEntryRoute: typeof getBusinessModeEntryRoute;
+  getNextRoute: typeof getBusinessModeNextRouteFromLocation;
+  getSelectModeRoute: typeof getSelectModeRoute;
+  getSelectionRedirectRoute: typeof getBusinessModeSelectionRedirectRoute;
+  isRouteSupportedByMode: typeof isRouteSupportedByBusinessMode;
   getRouteSupport: typeof getBusinessModeRouteSupport;
   getWorkspaceState: typeof getBusinessModeWorkspaceState;
   ensureWorkspace: typeof ensureBusinessModeWorkspace;
