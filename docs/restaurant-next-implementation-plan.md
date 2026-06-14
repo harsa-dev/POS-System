@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 7B implemented
+Status: Phase 7C implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -16,8 +16,8 @@ Phase 5  - Seed restaurant/menu/table/order/payment demo data       Done
 Phase 6  - Frontend Restaurant workspace API wiring                Done
 Phase 7A - Prisma schema model mapping                             Done
 Phase 7B - Summary read delegate                                   Done
-Phase 7C - Workflow read delegate                                  Next
-Phase 7D - Order/payment/kitchen/serving preview delegate           Planned
+Phase 7C - Workflow read delegate                                  Done
+Phase 7D - Order/payment/kitchen/serving preview delegate           Next
 Phase 7E - Order/write delegate                                    Planned
 Phase 7F - Guarded workflow status delegate                        Planned
 Phase 8A - Order/kitchen/serving/table status API route             Planned
@@ -196,3 +196,18 @@ Implemented surfaces:
 - `artifacts/pos-system/src/lib/api/restaurant-api.ts` mirrors the expanded summary DTO for frontend consumers.
 
 This phase remains read-only. It does not create, update, cancel, refund, or transition orders. Those stay in later workflow phases.
+
+## Phase 7C result
+
+Restaurant now has a canonical workflow read delegate and route.
+
+Implemented surfaces:
+
+- `artifacts/api-server/src/services/restaurant/restaurant.workflow.ts` defines Restaurant workflow stages and allowed transitions.
+- `RestaurantWorkflowSummaryDto` exposes workflow stages, stage counts, queue age, operational value, transitions, next actions, and stuck orders.
+- `restaurantPrismaRepository.getWorkflowSummary` reads active orders plus completed/cancelled orders created today and maps them into payment, kitchen, serving, completed, and cancelled stages.
+- `GET /restaurant/workflow` returns the canonical workflow summary.
+- `GET /restaurant/workflow-preview` remains as a compatibility wrapper and now includes the canonical workflow summary.
+- `artifacts/pos-system/src/lib/api/restaurant-api.ts` mirrors the workflow summary DTO.
+
+This phase remains read-only. It does not perform workflow transitions yet.
