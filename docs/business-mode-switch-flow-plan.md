@@ -98,6 +98,22 @@ Raw Material routes require `raw-material`:
 
 Shared routes such as cashflow/reports/customers/invoice are allowed only inside a valid active mode context. When the mode changes, query cache is cleared so shared pages refetch under the new mode header instead of reusing stale data.
 
+## Shared dashboard mode context
+
+Shared dashboards use a mode-context contract:
+
+```txt
+surfaceId
+activeMode
+activeModeLabel
+supportedModes
+queryScopeKey
+apiModeHeader
+emptyStateMessage
+```
+
+The first rollout target is Cashflow because it is the highest-risk shared dashboard for cross-mode data bleed. Cashflow now displays the active mode scope, uses a mode-specific export filename, and reloads when the active business mode changes.
+
 ## Sidebar/module visibility
 
 Sidebar visibility is also mode-scoped. A sidebar item must pass all checks:
@@ -133,6 +149,8 @@ mode selector continuation behavior
 switcher transition usage
 query cache reset
 sidebar route-support filtering
+shared dashboard mode-context contract
+cashflow query scope key
 generalized runtime role mapping
 optional browser smoke script presence
 optional Playwright E2E harness presence
@@ -195,7 +213,8 @@ BM-4 - Select-mode next-route flow                                  Done
 BM-5 - Business-mode smoke checklist/script                         Done
 BM-6 - Optional browser switch-flow smoke                           Done
 BM-7 - Browser E2E dependency/config hardening                      Done
-BM-8 - Shared dashboard mode-context data contract                  Next
+BM-8 - Shared dashboard mode-context data contract                  Done
+BM-9 - Shared dashboard mode-context rollout                        Next
 ```
 
 ## Manual smoke
@@ -208,4 +227,5 @@ BM-8 - Shared dashboard mode-context data contract                  Next
 5. With restaurant active, open /v3/retail/cashier -> /select-mode?next=/v3/retail/cashier.
 6. Select retail -> continues to /v3/retail/cashier.
 7. Switch modes from the sidebar/topbar switcher and confirm shared dashboard data refetches under the new mode context.
+8. Open Cashflow and confirm Mode Scope + Query Scope badges follow active business mode.
 ```
