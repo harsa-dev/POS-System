@@ -75,6 +75,99 @@ export type RestaurantOrderDto = {
   updatedAt: string;
 };
 
+export type RestaurantPreviewWarningStatus = "info" | "review" | "blocked";
+
+export type RestaurantPreviewWarningDto = {
+  key: string;
+  status: RestaurantPreviewWarningStatus;
+  message: string;
+};
+
+export type RestaurantOrderPreviewItemInput = {
+  menuItemId: string;
+  quantity: number;
+};
+
+export type RestaurantOrderPreviewInput = {
+  type: "DINE_IN" | "TAKEAWAY";
+  tableId?: string | null;
+  paymentMethod?: string | null;
+  amountPaid?: number | null;
+  items: RestaurantOrderPreviewItemInput[];
+};
+
+export type RestaurantOrderPreviewItemDto = RestaurantOrderItemDto & {
+  isAvailable: boolean;
+  stockStatus: "ok" | "low" | "out" | "no_recipe";
+  recipeIngredients: RestaurantRecipeIngredientDto[];
+};
+
+export type RestaurantOrderPreviewDto = {
+  kind: "order";
+  generatedAt: string;
+  table: RestaurantTableDto | null;
+  paymentMethod: string;
+  nextStatus: string;
+  items: RestaurantOrderPreviewItemDto[];
+  totals: {
+    subtotal: number;
+    taxRate: number;
+    taxAmount: number;
+    serviceChargeRate: number;
+    serviceAmount: number;
+    total: number;
+    amountPaid: number;
+    changeAmount: number;
+  };
+  canSubmit: boolean;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "preview";
+};
+
+export type RestaurantPaymentPreviewInput = {
+  orderId: string;
+  paymentMethod?: string | null;
+  amountPaid?: number | null;
+};
+
+export type RestaurantPaymentPreviewDto = {
+  kind: "payment";
+  generatedAt: string;
+  order: RestaurantOrderDto | null;
+  paymentMethod: string | null;
+  amountDue: number;
+  amountPaid: number;
+  changeAmount: number;
+  currentStatus: string | null;
+  nextStatus: string | null;
+  canConfirm: boolean;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "preview";
+};
+
+export type RestaurantStatusActionSurface = "kitchen" | "serving";
+
+export type RestaurantStatusActionPreviewInput = {
+  orderId: string;
+  targetStatus?: string | null;
+};
+
+export type RestaurantStatusActionPreviewDto = {
+  kind: RestaurantStatusActionSurface;
+  generatedAt: string;
+  order: RestaurantOrderDto | null;
+  currentStatus: string | null;
+  targetStatus: string | null;
+  allowed: boolean;
+  transition: {
+    actionKey: string;
+    label: string;
+    roleScope: "cashier" | "kitchen" | "server" | "manager";
+  } | null;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "preview";
+};
+
 export type RestaurantWorkflowStageStatus = "empty" | "healthy" | "review" | "blocked";
 export type RestaurantWorkflowStageId = "payment" | "kitchen" | "serving" | "completed" | "cancelled";
 
@@ -236,8 +329,16 @@ export const restaurantApi = {
   listMenuItems: () => apiClient.get<ApiEnvelope<RestaurantMenuItemDto[]>>("/restaurant/menu-items"),
   listTables: () => apiClient.get<ApiEnvelope<RestaurantTableDto[]>>("/restaurant/tables"),
   listActiveOrders: () => apiClient.get<ApiEnvelope<RestaurantOrderDto[]>>("/restaurant/orders/active"),
+  previewOrder: (input: RestaurantOrderPreviewInput) =>
+    apiClient.post<ApiEnvelope<RestaurantOrderPreviewDto>>("/restaurant/orders/preview", input),
+  previewPayment: (input: RestaurantPaymentPreviewInput) =>
+    apiClient.post<ApiEnvelope<RestaurantPaymentPreviewDto>>("/restaurant/payments/preview", input),
   listKitchenQueue: () => apiClient.get<ApiEnvelope<RestaurantOrderDto[]>>("/restaurant/kitchen"),
+  previewKitchenAction: (input: RestaurantStatusActionPreviewInput) =>
+    apiClient.post<ApiEnvelope<RestaurantStatusActionPreviewDto>>("/restaurant/kitchen/preview", input),
   listServingQueue: () => apiClient.get<ApiEnvelope<RestaurantOrderDto[]>>("/restaurant/serving"),
+  previewServingAction: (input: RestaurantStatusActionPreviewInput) =>
+    apiClient.post<ApiEnvelope<RestaurantStatusActionPreviewDto>>("/restaurant/serving/preview", input),
   getWorkflow: () => apiClient.get<ApiEnvelope<RestaurantWorkflowSummaryDto>>("/restaurant/workflow"),
   getWorkflowPreview: () => apiClient.get<ApiEnvelope<RestaurantWorkflowPreviewDto>>("/restaurant/workflow-preview"),
 };
