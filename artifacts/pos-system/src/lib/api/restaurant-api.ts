@@ -75,6 +75,56 @@ export type RestaurantOrderDto = {
   updatedAt: string;
 };
 
+export type RestaurantWorkflowStageStatus = "empty" | "healthy" | "review" | "blocked";
+export type RestaurantWorkflowStageId = "payment" | "kitchen" | "serving" | "completed" | "cancelled";
+
+export type RestaurantWorkflowStageDto = {
+  id: RestaurantWorkflowStageId;
+  title: string;
+  description: string;
+  statuses: string[];
+  count: number;
+  totalValue: number;
+  oldestOrderAgeMinutes: number;
+  status: RestaurantWorkflowStageStatus;
+  orders: RestaurantOrderDto[];
+};
+
+export type RestaurantWorkflowTransitionDto = {
+  from: string;
+  to: string;
+  actionKey: string;
+  label: string;
+  roleScope: "cashier" | "kitchen" | "server" | "manager";
+};
+
+export type RestaurantWorkflowNextActionDto = {
+  key: string;
+  stageId: RestaurantWorkflowStageId;
+  label: string;
+  count: number;
+  orderIds: string[];
+  status: Exclude<RestaurantWorkflowStageStatus, "empty">;
+};
+
+export type RestaurantWorkflowSummaryDto = {
+  generatedAt: string;
+  totals: {
+    activeOrders: number;
+    paymentQueue: number;
+    kitchenQueue: number;
+    servingQueue: number;
+    completedToday: number;
+    cancelledToday: number;
+    blockedStages: number;
+    operationalValue: number;
+  };
+  stages: RestaurantWorkflowStageDto[];
+  transitions: RestaurantWorkflowTransitionDto[];
+  nextActions: RestaurantWorkflowNextActionDto[];
+  stuckOrders: RestaurantOrderDto[];
+};
+
 export type RestaurantDashboardHealthSignalDto = {
   key: string;
   status: "healthy" | "review" | "blocked";
@@ -172,6 +222,7 @@ export type RestaurantSharedDashboardDto = {
 };
 
 export type RestaurantWorkflowPreviewDto = {
+  workflow: RestaurantWorkflowSummaryDto;
   activeOrders: RestaurantOrderDto[];
   kitchenQueue: RestaurantOrderDto[];
   servingQueue: RestaurantOrderDto[];
@@ -187,5 +238,6 @@ export const restaurantApi = {
   listActiveOrders: () => apiClient.get<ApiEnvelope<RestaurantOrderDto[]>>("/restaurant/orders/active"),
   listKitchenQueue: () => apiClient.get<ApiEnvelope<RestaurantOrderDto[]>>("/restaurant/kitchen"),
   listServingQueue: () => apiClient.get<ApiEnvelope<RestaurantOrderDto[]>>("/restaurant/serving"),
+  getWorkflow: () => apiClient.get<ApiEnvelope<RestaurantWorkflowSummaryDto>>("/restaurant/workflow"),
   getWorkflowPreview: () => apiClient.get<ApiEnvelope<RestaurantWorkflowPreviewDto>>("/restaurant/workflow-preview"),
 };
