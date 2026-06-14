@@ -3,12 +3,22 @@
 import { spawnSync } from "node:child_process";
 
 const args = new Set(process.argv.slice(2));
+const withDb = args.has("--db") || process.env.RAW_MATERIAL_CHECK_WITH_DB === "true";
 const withSeed = args.has("--seed") || process.env.RAW_MATERIAL_CHECK_WITH_SEED === "true";
 const skipBuild = args.has("--no-build") || process.env.RAW_MATERIAL_CHECK_SKIP_BUILD === "true";
 const skipSmoke = args.has("--no-smoke") || process.env.RAW_MATERIAL_CHECK_SKIP_SMOKE === "true";
 const isWindows = process.platform === "win32";
 
 const steps = [
+  ...(withDb
+    ? [
+        {
+          label: "Apply Raw Material scoped database baseline",
+          command: "pnpm",
+          args: ["--filter", "@workspace/api-server", "run", "raw-material:db:apply"],
+        },
+      ]
+    : []),
   {
     label: "Generate API Prisma client",
     command: "pnpm",
@@ -82,6 +92,7 @@ function runStep(step, index) {
 }
 
 console.log("Raw Material scoped validation only. Non-Raw-Material global typecheck errors are intentionally outside this gate.");
+console.log(`Database baseline step: ${withDb ? "enabled" : "skipped"}`);
 console.log(`Seed step: ${withSeed ? "enabled" : "skipped"}`);
 console.log(`Frontend build step: ${skipBuild ? "skipped" : "enabled"}`);
 console.log(`API smoke step: ${skipSmoke ? "skipped" : "enabled"}`);
