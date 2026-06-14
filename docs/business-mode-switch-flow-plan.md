@@ -53,7 +53,26 @@ select mode or switcher
   -> commit currentBusinessMode
   -> dispatch business-mode:changed
   -> clear mode-scoped frontend query cache
-  -> redirect to mode entry route
+  -> redirect to mode entry route or safe intended route
+```
+
+## Select-mode next-route flow
+
+When a user opens a route that is not allowed for the active mode, the route guard redirects to:
+
+```txt
+/select-mode?next=<encoded-intended-route>
+```
+
+The selector only continues to `next` when the selected mode supports that route. If the selected mode is incompatible with `next`, it falls back to the selected mode entry route.
+
+Safety rules:
+
+```txt
+1. next must be a same-origin relative path
+2. next cannot be /select-mode, /login, or /register
+3. selected mode must be selectable
+4. selected mode must support the next route
 ```
 
 ## Route separation
@@ -99,21 +118,21 @@ BM-1 - Docs and role model reconciliation                          Done
 BM-2 - Centralized transition service                              Done
 BM-2B - Route separation and shared cache reset guard               Done
 BM-3 - Sidebar/module filtering hardening                          Done
-BM-4 - Select-mode next-route flow                                  Next
-BM-5 - Business-mode smoke checklist/script                         Planned
+BM-4 - Select-mode next-route flow                                  Done
+BM-5 - Business-mode smoke checklist/script                         Next
 ```
 
 ## Manual smoke
 
 ```txt
-1. Clear currentBusinessMode and open /dashboard -> /select-mode.
-2. Select restaurant -> restaurant entry route.
-3. Switch to retail -> retail entry route.
-4. Switch to raw-material -> raw-material entry route.
-5. Open a restaurant route while retail is active -> /select-mode.
-6. Open a retail route while restaurant is active -> /select-mode.
-7. Open cashflow, switch mode, then return to cashflow -> page refetches with selected mode context.
-8. Sidebar title follows active mode label.
-9. Sidebar links only show modules supported by the active mode and user role.
+1. Clear currentBusinessMode and open /dashboard -> /select-mode?next=/dashboard.
+2. Select restaurant -> continues to /dashboard if route is compatible, otherwise restaurant entry route.
+3. With retail active, open /workspace/restaurant/pos -> /select-mode?next=/workspace/restaurant/pos.
+4. Select restaurant -> continues to /workspace/restaurant/pos.
+5. With restaurant active, open /v3/retail/cashier -> /select-mode?next=/v3/retail/cashier.
+6. Select restaurant -> falls back to restaurant entry route.
+7. Select retail -> continues to /v3/retail/cashier.
+8. Open cashflow, switch mode, then return to cashflow -> page refetches with selected mode context.
+9. Sidebar title follows active mode label.
 10. custom-business remains visible but not selectable.
 ```
