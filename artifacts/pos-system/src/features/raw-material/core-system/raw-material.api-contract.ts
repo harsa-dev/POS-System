@@ -4,6 +4,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-summary",
     moduleId: "intake",
+    operationId: "rawMaterialGetSummary",
     method: "GET",
     path: "/raw-material/summary",
     purpose: "Read backend-backed raw material dashboard summary for shared workspace metrics.",
@@ -14,6 +15,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-suppliers-list",
     moduleId: "suppliers",
+    operationId: "rawMaterialListSuppliers",
     method: "GET",
     path: "/raw-material/suppliers",
     purpose: "List supplier identities, source category, lead time, and reliability score for supplier filters and intake context.",
@@ -24,6 +26,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-storage-list",
     moduleId: "storage",
+    operationId: "rawMaterialListStorageLocations",
     method: "GET",
     path: "/raw-material/storage-locations",
     purpose: "List raw material storage capacity, usage, and type metadata for storage cards and transfer preview selectors.",
@@ -34,6 +37,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-intake-list",
     moduleId: "intake",
+    operationId: "rawMaterialListIntakes",
     method: "GET",
     path: "/raw-material/intakes",
     purpose: "List supplier intake rows with supplier, quantity, quality, and target storage metadata.",
@@ -44,6 +48,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-weighing-list",
     moduleId: "weighing",
+    operationId: "rawMaterialListWeighings",
     method: "GET",
     path: "/raw-material/weighings",
     purpose: "List weighing records for gross, tare, net, station, operator, and intake linkage read surfaces.",
@@ -54,6 +59,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-batches-list",
     moduleId: "batches",
+    operationId: "rawMaterialListBatches",
     method: "GET",
     path: "/raw-material/batches",
     purpose: "List lot-controlled raw-material batches for traceability, expiry monitoring, and preview selector hydration.",
@@ -64,6 +70,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-processing-list",
     moduleId: "processing",
+    operationId: "rawMaterialListProcessingRuns",
     method: "GET",
     path: "/raw-material/processing-runs",
     purpose: "List raw-to-output transformation runs for processing snapshots and status-read surfaces.",
@@ -74,6 +81,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-kandang-list",
     moduleId: "kandang",
+    operationId: "rawMaterialListPens",
     method: "GET",
     path: "/raw-material/pens",
     purpose: "List pen capacity, flock, occupancy, feed batch, and health status for livestock support mode.",
@@ -84,6 +92,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-stock-movement-list",
     moduleId: "storage",
+    operationId: "rawMaterialListStockMovements",
     method: "GET",
     path: "/raw-material/stock-movements",
     purpose: "List stock movement ledger rows for transfer, adjustment, receiving, and processing-consumption read surfaces.",
@@ -94,6 +103,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-intake-create",
     moduleId: "intake",
+    operationId: "rawMaterialCreateIntake",
     method: "POST",
     path: "/raw-material/intakes",
     purpose: "Create an intake record with received, accepted, rejected quantity, supplier, and storage target. Backend exists; frontend write UX remains disabled until preview/write delegates exist.",
@@ -104,6 +114,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-weighing-create",
     moduleId: "weighing",
+    operationId: "rawMaterialCreateWeighing",
     method: "POST",
     path: "/raw-material/weighings",
     purpose: "Record gross, tare, net, station, operator, and intake linkage. Backend exists; frontend write UX remains disabled until preview/write delegates exist.",
@@ -114,6 +125,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-storage-transfer",
     moduleId: "storage",
+    operationId: "rawMaterialTransferStock",
     method: "POST",
     path: "/raw-material/stock-movements/transfer",
     purpose: "Transfer raw material batch stock between storage locations through guarded stock movement ledger. Backend exists; frontend write UX remains disabled until preview/write delegates exist.",
@@ -124,6 +136,7 @@ export const rawMaterialApiContracts: readonly RawMaterialApiContract[] = [
   {
     id: "rm-api-processing-run",
     moduleId: "processing",
+    operationId: "rawMaterialCreateProcessingRun",
     method: "POST",
     path: "/raw-material/processing-runs",
     purpose: "Create a raw-to-output transformation run with input batch, output, byproduct, waste, and status guards. Backend exists; frontend write UX remains disabled until preview/write delegates exist.",
