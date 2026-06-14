@@ -8,7 +8,7 @@ import {
 } from "@/app/workspace/restaurant/kitchen/use-kitchen-orders";
 import { WorkspaceShell } from "@/app/workspace/workspace-shell";
 import { ROUTES } from "@/constants/routes";
-import { getApiErrorMessage, orderApi } from "@/lib/api";
+import { getApiErrorMessage, restaurantApi } from "@/lib/api";
 
 export default function RestaurantKitchenWorkspace() {
   const kitchenOrders = useKitchenOrders();
@@ -21,7 +21,7 @@ export default function RestaurantKitchenWorkspace() {
   ) {
     if (updatingOrderIdRef.current !== null) {
       if (import.meta.env.DEV) {
-        console.debug("[kitchen-v3] duplicate status update blocked", {
+        console.debug("[restaurant-kitchen] duplicate status update blocked", {
           activeOrderId: updatingOrderIdRef.current,
           orderId,
           status,
@@ -35,15 +35,12 @@ export default function RestaurantKitchenWorkspace() {
     setUpdatingOrderId(orderId);
 
     try {
-      const result = await orderApi.updateStatusWithResult(orderId, {
-        status,
+      const response = await restaurantApi.updateOrderStatus(orderId, {
+        targetStatus: status,
       });
 
-      if (!result.ok || !result.body.success) {
-        toast.error(
-          result.body.message ||
-            `Failed to update order status (${result.status})`,
-        );
+      if (!response.success) {
+        toast.error(response.message || "Failed to update kitchen order status");
         return;
       }
 
@@ -55,7 +52,7 @@ export default function RestaurantKitchenWorkspace() {
           : "Order marked ready",
       );
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Failed to update order status"));
+      toast.error(getApiErrorMessage(error, "Failed to update kitchen order status"));
     } finally {
       updatingOrderIdRef.current = null;
       setUpdatingOrderId(null);
@@ -65,7 +62,7 @@ export default function RestaurantKitchenWorkspace() {
   return (
     <WorkspaceShell
       title="Restaurant Kitchen Workspace"
-      description="Read-only V3 Restaurant Kitchen workspace for reviewing paid and preparing orders. The active kitchen display system remains on the current F&B route."
+      description="Restaurant kitchen queue for moving paid orders into cooking and marking prepared orders as ready."
       currentRouteLabel="current Kitchen route"
       currentRoutePath={ROUTES.KDS}
     >
