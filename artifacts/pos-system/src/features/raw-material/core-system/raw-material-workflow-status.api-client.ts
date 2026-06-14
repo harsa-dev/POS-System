@@ -7,6 +7,7 @@ export type RawMaterialPenHealthStatusWrite = "STABLE" | "MONITORING" | "CRITICA
 type RawMaterialWorkflowStatusRequestBody = {
   status?: string;
   healthStatus?: RawMaterialPenHealthStatusWrite;
+  note?: string;
 };
 
 async function requestRawMaterialWorkflowStatus(path: string, body: RawMaterialWorkflowStatusRequestBody) {
@@ -39,8 +40,11 @@ export function setRawMaterialProcessingStatus(id: string, status: RawMaterialPr
   return requestRawMaterialWorkflowStatus(`/raw-material/status/processing-runs/${id}`, { status });
 }
 
-export function cancelRawMaterialProcessingRun(id: string) {
-  return requestRawMaterialWorkflowStatus(`/raw-material/status/processing-runs/${id}`, { status: "CANCELLED" });
+export function cancelRawMaterialProcessingRun(id: string, note?: string) {
+  return requestRawMaterialWorkflowStatus(`/raw-material/status/processing-runs/${id}`, {
+    status: "CANCELLED",
+    note,
+  });
 }
 
 export function setRawMaterialPenHealthStatus(id: string, healthStatus: RawMaterialPenHealthStatusWrite) {
