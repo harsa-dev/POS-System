@@ -6,7 +6,7 @@ The goal is parity across business modes without pretending every mode needs the
 
 ## Current validation baseline
 
-Service Business backend implementation is mature through the delegate cleanup and status-route lanes.
+Service Business backend implementation is mature through the delegate cleanup, status-route lanes, seeded demo data, scoped validation, idempotent DB setup, and OpenAPI/client coverage.
 
 Known completed capabilities:
 
@@ -25,6 +25,7 @@ workflow read delegate
 CRUD/billing write delegate
 guarded workflow status delegate
 explicit service status API route family
+service status frontend action migration
 service demo tenant helper
 service demo seed data
 service OpenAPI/client coverage
@@ -42,6 +43,7 @@ docs/workspaces/custom-business-service-seed-demo-data.md
 docs/workspaces/custom-business-service-openapi-client-coverage.md
 docs/workspaces/custom-business-service-preview-delegate.md
 docs/workspaces/custom-business-service-status-api-route.md
+docs/workspaces/custom-business-service-status-frontend-action.md
 docs/workspaces/custom-business-service-smoke-test-scoped-ci.md
 docs/workspaces/custom-business-service-migration-baseline-idempotency.md
 ```
@@ -51,7 +53,6 @@ Current known gap compared with Retail and Raw Material:
 ```txt
 no full Service generated-client consolidation lane yet
 no explicit Service audit + permission policy assertion lane yet
-no Service status frontend action migration yet
 no Service quote/invoice/payment reversal workflow yet
 ```
 
@@ -71,8 +72,8 @@ Phase 7D - Service quote/invoice preview delegate                 Done
 Phase 7E - Service write delegate                                 Done
 Phase 7F - Guarded workflow status delegate                       Done
 Phase 8A - Service status API route family                        Done
-Phase 8B - Service status frontend action                         Next
-Phase 8C - Quote/invoice cancellation reversal workflow           Planned
+Phase 8B - Service status frontend action                         Done
+Phase 8C - Quote/invoice cancellation reversal workflow           Next
 Phase 8D - Payment reversal workflow                              Planned
 Phase 8E - Generated API client consolidation                     Planned
 Phase 8F - Service smoke test + scoped CI gate                    Done
@@ -173,7 +174,7 @@ Already exists:
 
 ```txt
 frontend service API client
-frontend guarded status call
+frontend status route migration
 shared dashboard backend summary with fallback
 ```
 
@@ -338,10 +339,54 @@ writes ServiceWorkflowStatus audit entry on success
 keeps PATCH /custom-business/service/jobs/:id/guarded-status as compatibility route
 ```
 
-Frontend migration remains Phase 8B.
+### Phase 8B - Service status frontend action
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts
+lib/api-spec/service-business.openapi.yaml
+docs/workspaces/custom-business-service-status-frontend-action.md
+```
+
+Frontend behavior:
+
+```txt
+serviceBusinessApi.updateJobStatus now calls POST /api/custom-business/service/status/jobs/:id
+serviceBusinessApi.updateRequestStatus calls POST /api/custom-business/service/status/requests/:id
+existing UpdateServiceJobStatusInput still accepts nextStatus and the client translates it into status
+legacy PATCH /api/custom-business/service/jobs/:id/guarded-status remains available as compatibility surface
+```
+
+### Phase 8F - Service smoke test + scoped CI gate
+
+Status: implemented.
+
+Implemented commands:
+
+```bash
+pnpm service:check
+pnpm service:smoke
+```
+
+### Phase 8G - Service migration baseline/idempotency hardening
+
+Status: implemented.
+
+Implemented by the scoped DB apply hotfix:
+
+```txt
+artifacts/api-server/scripts/apply-service-business-db.mjs
+artifacts/api-server/prisma/sql/service-business-baseline-guard.sql
+artifacts/api-server/prisma/migrations/202606140007_add_service_business_core_idempotent/migration.sql
+artifacts/api-server/prisma/sql/service-business-schema-verify.sql
+```
 
 ## Next recommended phase
 
 ```txt
-Service Phase 8B - Service status frontend action
+Service Phase 8C - Quote/invoice cancellation reversal workflow
 ```
