@@ -12,7 +12,11 @@ import type {
   CreateServiceRequestInput,
   ListServiceBusinessJobsQuery,
   RecordServiceInvoicePaymentInput,
+  ServiceBusinessInvoicePaymentPreviewEstimates,
+  ServiceBusinessInvoicePreviewEstimates,
   ServiceBusinessMutationPreviewResponse,
+  ServiceBusinessPreviewResponse,
+  ServiceBusinessQuotationPreviewEstimates,
   ServiceBusinessSummaryResponse,
   ServiceBusinessTransitionPreviewResponse,
   ServiceBusinessWorkflowResponse,
@@ -75,6 +79,39 @@ export const serviceBusinessApi = {
           pathParams: { id: jobId },
           query: { nextStatus },
         }),
+      ),
+    );
+  },
+
+  previewQuotation(
+    input: CreateServiceQuotationInput,
+  ): Promise<ServiceBusinessPreviewResponse<ServiceBusinessQuotationPreviewEstimates>> {
+    return unwrapData(
+      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessPreviewResponse<ServiceBusinessQuotationPreviewEstimates>>>(
+        buildServiceBusinessApiPath("serviceBusinessPreviewQuotation"),
+        { json: input },
+      ),
+    );
+  },
+
+  previewInvoice(
+    input: CreateServiceInvoiceInput,
+  ): Promise<ServiceBusinessPreviewResponse<ServiceBusinessInvoicePreviewEstimates>> {
+    return unwrapData(
+      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessPreviewResponse<ServiceBusinessInvoicePreviewEstimates>>>(
+        buildServiceBusinessApiPath("serviceBusinessPreviewInvoice"),
+        { json: input },
+      ),
+    );
+  },
+
+  previewInvoicePayment(
+    input: RecordServiceInvoicePaymentInput,
+  ): Promise<ServiceBusinessPreviewResponse<ServiceBusinessInvoicePaymentPreviewEstimates>> {
+    return unwrapData(
+      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessPreviewResponse<ServiceBusinessInvoicePaymentPreviewEstimates>>>(
+        buildServiceBusinessApiPath("serviceBusinessPreviewInvoicePayment"),
+        { json: input },
       ),
     );
   },
