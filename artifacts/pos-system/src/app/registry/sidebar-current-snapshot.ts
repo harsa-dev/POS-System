@@ -4,7 +4,7 @@ import { ROUTES } from "../../constants/routes";
 export type CurrentSidebarSnapshotItem = Readonly<{
   label: string;
   routePath: string;
-  group: "Shared Dashboards" | "F&B Server" | "F&B Menu & Kitchen";
+  group: "Shared Dashboards" | "Restaurant Server" | "Restaurant Menu & Kitchen";
   roles: readonly V3RuntimeRole[];
   modes?: readonly string[];
   order: number;
@@ -63,57 +63,57 @@ export const currentSidebarSnapshot = [
   {
     label: "Cashier",
     routePath: ROUTES.WORKSPACE_RESTAURANT_POS,
-    group: "F&B Server",
+    group: "Restaurant Server",
     roles: ["OWNER", "MANAGER", "CASHIER"],
-    modes: ["fnb"],
+    modes: ["restaurant"],
     order: 110,
   },
   {
     label: "Orders",
     routePath: ROUTES.WORKSPACE_RESTAURANT_ORDERS,
-    group: "F&B Server",
+    group: "Restaurant Server",
     roles: ["OWNER", "MANAGER", "CASHIER"],
-    modes: ["fnb"],
+    modes: ["restaurant"],
     order: 120,
   },
   {
     label: "Serving",
     routePath: ROUTES.WORKSPACE_RESTAURANT_SERVING,
-    group: "F&B Server",
+    group: "Restaurant Server",
     roles: ["OWNER", "MANAGER", "SERVER", "CASHIER"],
-    modes: ["fnb"],
+    modes: ["restaurant"],
     order: 130,
   },
   {
     label: "Tables",
     routePath: ROUTES.WORKSPACE_RESTAURANT_TABLES,
-    group: "F&B Server",
+    group: "Restaurant Server",
     roles: ["OWNER", "MANAGER", "SERVER", "CASHIER"],
-    modes: ["fnb"],
+    modes: ["restaurant"],
     order: 140,
   },
   {
     label: "Menu",
     routePath: ROUTES.WORKSPACE_RESTAURANT_MENU,
-    group: "F&B Menu & Kitchen",
+    group: "Restaurant Menu & Kitchen",
     roles: ["OWNER", "MANAGER"],
-    modes: ["fnb"],
+    modes: ["restaurant"],
     order: 160,
   },
   {
     label: "Recipes",
     routePath: ROUTES.WORKSPACE_RESTAURANT_RECIPES,
-    group: "F&B Menu & Kitchen",
+    group: "Restaurant Menu & Kitchen",
     roles: ["OWNER", "MANAGER"],
-    modes: ["fnb"],
+    modes: ["restaurant"],
     order: 170,
   },
   {
     label: "Kitchen (KDS)",
     routePath: ROUTES.WORKSPACE_RESTAURANT_KITCHEN,
-    group: "F&B Menu & Kitchen",
+    group: "Restaurant Menu & Kitchen",
     roles: ["OWNER", "MANAGER", "KITCHEN"],
-    modes: ["fnb"],
+    modes: ["restaurant"],
     order: 180,
   },
 ] satisfies readonly CurrentSidebarSnapshotItem[];

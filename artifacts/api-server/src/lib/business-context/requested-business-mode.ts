@@ -14,13 +14,6 @@ export const apiBusinessModes = [
 
 export type ApiBusinessMode = (typeof apiBusinessModes)[number];
 
-const legacyModeAliases: Record<string, ApiBusinessMode> = {
-  fnb: "restaurant",
-  warehouse: "raw-material",
-  livestock: "raw-material",
-  service: "custom-business",
-};
-
 function isApiBusinessMode(value: string): value is ApiBusinessMode {
   return apiBusinessModes.some((mode) => mode === value);
 }
@@ -34,7 +27,7 @@ export function normalizeRequestedBusinessMode(
   if (!normalized) return null;
   if (isApiBusinessMode(normalized)) return normalized;
 
-  return legacyModeAliases[normalized] ?? null;
+  return null;
 }
 
 export function getRequestedBusinessMode(req: Request): ApiBusinessMode | null {

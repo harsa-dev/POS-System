@@ -16,7 +16,7 @@ import {
   SERVICE_STOCK_MOVEMENT_REASONS,
 } from "./inventory.constants.js";
 
-export type SharedInventoryBusinessMode = "restaurant" | "retail" | "service" | "livestock";
+export type SharedInventoryBusinessMode = "restaurant" | "retail" | "custom-business" | "raw-material";
 
 export type InventoryModePolicy = {
   mode: SharedInventoryBusinessMode;
@@ -34,7 +34,7 @@ export type InventoryModePolicy = {
 export const inventoryModePolicies: Record<SharedInventoryBusinessMode, InventoryModePolicy> = {
   restaurant: {
     mode: "restaurant",
-    label: "Restaurant / F&B",
+    label: "Restaurant",
     description: "Inventory policy for restaurant operations.",
     allowedTypes: RESTAURANT_INVENTORY_TYPES,
     allowedUnits: RESTAURANT_INVENTORY_UNITS,
@@ -56,10 +56,10 @@ export const inventoryModePolicies: Record<SharedInventoryBusinessMode, Inventor
     supportsConsumableUsage: false,
     supportsSkuStock: true,
   },
-  service: {
-    mode: "service",
-    label: "Service Business",
-    description: "Inventory policy for service stock.",
+  "custom-business": {
+    mode: "custom-business",
+    label: "Custom Business",
+    description: "Inventory policy for planned custom business stock.",
     allowedTypes: SERVICE_INVENTORY_TYPES,
     allowedUnits: SERVICE_INVENTORY_UNITS,
     allowedMovementReasons: SERVICE_STOCK_MOVEMENT_REASONS,
@@ -68,10 +68,10 @@ export const inventoryModePolicies: Record<SharedInventoryBusinessMode, Inventor
     supportsConsumableUsage: true,
     supportsSkuStock: false,
   },
-  livestock: {
-    mode: "livestock",
-    label: "Raw Material / Livestock",
-    description: "Inventory policy for raw-material and livestock stock.",
+  "raw-material": {
+    mode: "raw-material",
+    label: "Raw Material",
+    description: "Inventory policy for raw material and livestock stock.",
     allowedTypes: LIVESTOCK_INVENTORY_TYPES,
     allowedUnits: LIVESTOCK_INVENTORY_UNITS,
     allowedMovementReasons: LIVESTOCK_STOCK_MOVEMENT_REASONS,
@@ -86,15 +86,8 @@ export function normalizeInventoryBusinessMode(mode: string): SharedInventoryBus
   const normalized = mode.toLowerCase();
 
   if (normalized === "retail") return "retail";
-  if (normalized === "service" || normalized === "custom-business") return "service";
-  if (
-    normalized === "livestock" ||
-    normalized === "raw-material" ||
-    normalized === "raw_material" ||
-    normalized === "warehouse"
-  ) {
-    return "livestock";
-  }
+  if (normalized === "custom-business") return "custom-business";
+  if (normalized === "raw-material") return "raw-material";
 
   return "restaurant";
 }

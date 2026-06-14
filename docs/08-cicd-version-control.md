@@ -19,7 +19,7 @@ POS System V3 is a web-based SaaS-style POS project.
 The active mode is:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ```
 
 The project uses or may use:

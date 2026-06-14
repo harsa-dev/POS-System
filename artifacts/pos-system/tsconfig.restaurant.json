@@ -18,7 +18,6 @@
     "build",
     "dist",
     "**/*.test.ts",
-    "src/features/fnb/**",
     "src/features/retail/**",
     "src/features/raw-material/**"
   ]

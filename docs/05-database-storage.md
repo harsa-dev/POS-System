@@ -14,12 +14,12 @@ This document does not define detailed backend route logic, frontend UI behavior
 
 ## 2. Current Context
 
-POS System V3 currently uses a Restaurant / F&B-focused data model.
+POS System V3 currently uses a Restaurant-focused data model.
 
 The current active mode is:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ```
 
 The current project may still use restaurant-oriented models and fields such as:
@@ -97,7 +97,7 @@ The following database and storage decisions are locked:
 10. Important transaction records must store snapshots.
 11. Stock quantity must not change without stock movement.
 12. Payment, stock, invoice, and workflow mutations should use transactions when multiple writes are involved.
-13. Database schema must support Restaurant / F&B first.
+13. Database schema must support Restaurant first.
 14. Planned modes may have conceptual schema planning, but must not be fully implemented before needed.
 15. Files must be stored in object storage, not directly in the database.
 16. Database stores file metadata, path, URL, ownership scope, and access rules.
@@ -1178,7 +1178,7 @@ Database and storage are acceptable when:
 - [ ] Production database is not reset casually.
 - [ ] Backup plan exists before production.
 - [ ] Planned mode models are not added randomly.
-- [ ] Restaurant / F&B schema remains stable during V3 preparation.
+- [ ] Restaurant schema remains stable during V3 preparation.
 
 ---
 

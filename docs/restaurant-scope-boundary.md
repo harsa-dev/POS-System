@@ -1,8 +1,8 @@
 # Restaurant Scope Boundary
 
-Status: active scope after Retail completion
+Status: V3 canonical Restaurant scope
 
-Restaurant business mode is the only active scope for the current track. Legacy F&B is not a separate product scope anymore; it is compatibility code that must be mapped into Restaurant mode before removal.
+Restaurant business mode is the canonical V3 scope for the old food-service POS functionality. `fnb` is not a product scope and must not be used for new runtime routes, folders, imports, or mode IDs.
 
 ## In scope
 
@@ -25,11 +25,11 @@ Restaurant business mode is the only active scope for the current track. Legacy 
 
 - Retail mode changes
 - Raw Material mode changes
-- Service business mode changes
+- Custom Business mode changes
 - platform-admin cleanup
 - general shared dashboard cleanup
 - global frontend typecheck cleanup
-- deleting old F&B files before compatibility mapping is complete
+- reintroducing old FNB/F&B runtime naming
 
 ## Validation rule
 
@@ -53,13 +53,14 @@ Full project typecheck is intentionally not the Restaurant gate until non-restau
 
 ## Naming rule
 
-Use `restaurant` for new code. Use `fnb` only for legacy compatibility references.
+Use `restaurant` for code, routes, folders, imports, mode IDs, labels, and docs describing the current architecture. `fnb` is allowed only in historical migration notes or the single localStorage repair boundary.
 
 Allowed new paths:
 
 ```text
 artifacts/api-server/src/services/restaurant/**
 artifacts/api-server/src/routes/restaurant.ts
+artifacts/pos-system/src/features/restaurant/**
 artifacts/pos-system/src/app/workspace/restaurant/**
 lib/api-client-react/src/generated/api.ts
 ```
@@ -67,20 +68,11 @@ lib/api-client-react/src/generated/api.ts
 Avoid new paths:
 
 ```text
-artifacts/pos-system/src/features/fnb/**
 artifacts/pos-system/src/pages/dashboard/**
 ```
 
-Those paths may remain temporarily as compatibility shims or old route targets, but should not receive new feature work unless it is required to keep the Restaurant transition safe.
+`features/restaurant/**` is the canonical feature folder for Restaurant operational modules.
 
 ## Deletion rule
 
-Do not delete F&B legacy code until all are true:
-
-1. Restaurant workspace has equivalent user-facing feature coverage.
-2. Restaurant API/client surface exists.
-3. Restaurant smoke gate passes.
-4. No active routes import the legacy file.
-5. Compatibility bridge has been documented.
-
-Deleting first and asking TypeScript to sort it out is not a strategy. It is just chaos with a commit hash.
+Old FNB files should not remain as duplicate implementations. Useful logic must be moved into Restaurant-owned paths before old files are deleted.

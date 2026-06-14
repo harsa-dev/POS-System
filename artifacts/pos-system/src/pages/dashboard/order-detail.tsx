@@ -11,13 +11,13 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 
-import { PrintReceiptButton } from "@/features/fnb/core-system/server/orders/print-receipt-button";
-import { CloseOrderButton } from "@/features/fnb/core-system/server/orders/close-order-button";
-import { MoveTableButton } from "@/features/fnb/core-system/server/orders/move-table-button";
-import { CancelOrderButton } from "@/features/fnb/core-system/server/orders/cancel-order-button";
+import { PrintReceiptButton } from "@/features/restaurant/core-system/server/orders/print-receipt-button";
+import { CloseOrderButton } from "@/features/restaurant/core-system/server/orders/close-order-button";
+import { MoveTableButton } from "@/features/restaurant/core-system/server/orders/move-table-button";
+import { CancelOrderButton } from "@/features/restaurant/core-system/server/orders/cancel-order-button";
 import { formatCurrency, formatDateTime, formatOrderNumber } from "@/lib/utils/format";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from "@/features/orders/constans/order-status";
+import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from "@/features/orders/constants/order-status";
 
 type OrderDetailPageProps = {
   id: string;

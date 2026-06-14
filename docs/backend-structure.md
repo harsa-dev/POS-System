@@ -2,7 +2,7 @@
 
 This document is the current source of truth for the backend folder structure.
 
-The backend is still a modular monolith. The active product mode is Restaurant / F&B. The structure should stay readable without pretending the project already has mature Retail, Service, or Livestock modules.
+The backend is still a modular monolith. The active product mode is Restaurant. The structure should stay readable without pretending the project already has mature Retail, Service, or Livestock modules.
 
 ## Current Target Tree
 

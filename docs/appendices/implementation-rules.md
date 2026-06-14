@@ -33,7 +33,7 @@ POS System V3 is a SaaS-style POS and business operating system.
 Current active mode:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ```
 
 Core architecture direction:

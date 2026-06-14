@@ -122,7 +122,7 @@ export const devServiceHealthMocks: DevServiceHealth[] = [
 ];
 
 export const devTenantModeSnapshots: DevTenantModeSnapshot[] = [
-  { id: "mode-restaurant", mode: "Restaurant / F&B", tenants: 4, activeRoutes: 17, mockRoutes: 3, risk: "Healthy" },
+  { id: "mode-restaurant", mode: "Restaurant", tenants: 4, activeRoutes: 17, mockRoutes: 3, risk: "Healthy" },
   { id: "mode-retail", mode: "Retail", tenants: 1, activeRoutes: 0, mockRoutes: 9, risk: "Warning" },
   { id: "mode-raw", mode: "Raw Material", tenants: 1, activeRoutes: 7, mockRoutes: 5, risk: "Warning" },
   { id: "mode-custom", mode: "Custom Business", tenants: 1, activeRoutes: 0, mockRoutes: 8, risk: "Mock Only" },

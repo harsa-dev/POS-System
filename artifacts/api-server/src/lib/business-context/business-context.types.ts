@@ -1,6 +1,6 @@
-export type BusinessType = "restaurant" | "retail" | "service" | "livestock" | "raw-material";
+export type BusinessType = "restaurant" | "retail" | "custom-business" | "raw-material";
 
-export type BusinessMode = "restaurant" | "retail" | "service" | "livestock" | "raw-material";
+export type BusinessMode = "restaurant" | "retail" | "custom-business" | "raw-material";
 
 export type BusinessContext<TBusiness = unknown> = {
   /** Generic tenant/business scope used by every business mode. */

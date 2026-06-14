@@ -84,7 +84,7 @@ const viewerOps = p({
 });
 
 export const jobRoleLibrary: JobRoleProfile[] = [
-  // Restaurant / F&B
+  // Restaurant
   {
     id: "restaurant-general-manager",
     sector: "restaurant",
@@ -478,7 +478,7 @@ export const jobRoleLibrary: JobRoleProfile[] = [
 ];
 
 export const sectorLabels: Record<BusinessRoleSector, string> = {
-  restaurant: "Restaurant / F&B",
+  restaurant: "Restaurant",
   retail: "Retail",
   "raw-material": "Raw Material / Production",
   service: "Service Business",

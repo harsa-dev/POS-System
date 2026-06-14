@@ -60,7 +60,7 @@ function describePair(current: SidebarPreviewItem, generated: SidebarPreviewItem
 }
 
 export function createSidebarParityReport(
-  runtimeMode: string | null | undefined = "fnb",
+  runtimeMode: string | null | undefined = "restaurant",
 ): SidebarParityReport {
   const currentItems = getCurrentSidebarPreview();
   const generatedItems = getGeneratedSidebarPreviewForRuntimeMode(runtimeMode);

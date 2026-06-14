@@ -1,5 +1,6 @@
 import { businessModules } from "@/app/registry/business-modules";
 import type { V3BusinessMode } from "@/app/registry/module-types";
+import { businessModeRoutePrefixes } from "@/config/business-modes";
 import { ROUTES } from "@/constants/routes";
 
 import {
@@ -24,13 +25,6 @@ import type {
   BusinessModeId,
 } from "./business-mode.types";
 
-const RESTAURANT_ROUTE_PREFIXES = [
-  "/workspace/restaurant/",
-  "/dashboard/fnb/",
-] as const;
-
-const RETAIL_ROUTE_PREFIXES = ["/v3/retail/"] as const;
-const RAW_MATERIAL_ROUTE_PREFIXES = ["/v3/raw-material/"] as const;
 const SAFE_NEXT_ROUTE_PATTERN = /^\/(?!\/)(?!.*(?:^|[/?#])(?:https?:|data:|blob:))/i;
 
 export type BusinessModeWorkspaceState = Readonly<{
@@ -167,7 +161,7 @@ function getSharedBusinessRouteModes(pathname: string): readonly BusinessModeId[
 export function getBusinessModeRouteSupport(pathname: string): BusinessModeRouteSupport {
   const normalizedPathname = normalizePathname(pathname);
 
-  if (matchesAnyPrefix(normalizedPathname, RESTAURANT_ROUTE_PREFIXES)) {
+  if (matchesAnyPrefix(normalizedPathname, businessModeRoutePrefixes.restaurant)) {
     return {
       pathname: normalizedPathname,
       supportedModes: ["restaurant"],
@@ -177,7 +171,7 @@ export function getBusinessModeRouteSupport(pathname: string): BusinessModeRoute
     };
   }
 
-  if (matchesAnyPrefix(normalizedPathname, RETAIL_ROUTE_PREFIXES)) {
+  if (matchesAnyPrefix(normalizedPathname, businessModeRoutePrefixes.retail)) {
     return {
       pathname: normalizedPathname,
       supportedModes: ["retail"],
@@ -187,7 +181,7 @@ export function getBusinessModeRouteSupport(pathname: string): BusinessModeRoute
     };
   }
 
-  if (matchesAnyPrefix(normalizedPathname, RAW_MATERIAL_ROUTE_PREFIXES)) {
+  if (matchesAnyPrefix(normalizedPathname, businessModeRoutePrefixes["raw-material"])) {
     return {
       pathname: normalizedPathname,
       supportedModes: ["raw-material"],

@@ -3,7 +3,7 @@
 import type { FormEvent } from "react";
 import { Check, Pencil, Trash2, X } from "lucide-react";
 
-import type { Category } from "@/features/fnb/core-system/menu/components/menu-types";
+import type { Category } from "@/features/restaurant/core-system/menu/components/menu-types";
 
 import { Button } from "@/components/ui/button";
 

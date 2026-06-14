@@ -12,12 +12,12 @@ This document also prevents frontend-only security, role confusion, cross-tenant
 
 ## 2. Current Context
 
-POS System V3 currently focuses on Restaurant / F&B operations.
+POS System V3 currently focuses on Restaurant operations.
 
 The active mode is:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ```
 
 Current or MVP roles may include:
@@ -80,7 +80,7 @@ The following auth and permission decisions are locked:
 15. Business-wide roles must be separated from mode-specific roles.
 16. External actors must be separated from login-capable users.
 17. OWNER is not SUPER_ADMIN.
-18. Restaurant / F&B roles are active MVP roles.
+18. Restaurant roles are active MVP roles.
 19. Retail, Raw Material, and Service permissions may be planned but not fully implemented yet.
 20. Inactive users must not access protected routes.
 21. Auth session must expire.
@@ -267,7 +267,7 @@ await prisma.order.findFirst({
 V3 supports business modes:
 
 ```txt
-Restaurant / F&B
+Restaurant
 Retail / Supermarket
 Raw Material / Livestock / Kandang
 Service / Custom Business
@@ -277,7 +277,7 @@ Mode access determines which business modes a user may access.
 
 Rules:
 
-1. Restaurant / F&B is active.
+1. Restaurant is active.
 2. Other modes may be planned.
 3. User must have access to the selected mode.
 4. LocalStorage selected mode is not security.

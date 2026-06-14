@@ -13,6 +13,7 @@ artifacts/pos-system/src/components/core/business-mode/business-mode.types.ts
 artifacts/pos-system/src/components/core/business-mode/business-mode-registry.ts
 artifacts/pos-system/src/components/core/business-mode/business-mode-storage.ts
 artifacts/pos-system/src/components/core/business-mode/business-mode-service.ts
+artifacts/pos-system/src/config/business-modes/business-mode-contract.ts
 artifacts/pos-system/src/components/core/business-mode/business-mode-switcher.tsx
 artifacts/pos-system/src/components/core/mode-selector/mode-selector.tsx
 artifacts/pos-system/src/components/core/route-guard/business-mode.ts
@@ -49,7 +50,7 @@ custom-business
 - transition prepare/commit/switch helpers
 - workspace state helper
 - storage repair helper
-- legacy storage compatibility through the storage layer
+- storage-only migration for old `currentBusinessMode` values
 
 UI should use `businessModeService.switchMode()` instead of calling `setCurrentBusinessMode()` directly.
 
@@ -82,7 +83,7 @@ Shared business routes such as cashflow, financial reports, customers, invoice, 
 6. wrong mode route redirects to /select-mode.
 7. switching mode clears shared route cache.
 8. cashflow/report pages refetch under the selected mode context.
-9. legacy values fnb/service/warehouse still repair into new ids.
+9. old stored values repair once at the storage boundary and are immediately rewritten to canonical ids.
 ```
 
 ## Next patches

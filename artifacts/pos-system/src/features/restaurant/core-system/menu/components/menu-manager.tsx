@@ -28,22 +28,22 @@ import {
 import { formatCurrency } from "@/lib/utils/format";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { CategoryManagerModal } from "@/features/fnb/core-system/menu/components/category-manager-modal";
+import { CategoryManagerModal } from "@/features/restaurant/core-system/menu/components/category-manager-modal";
 import type {
   Category,
   MenuItem,
   Recipe,
   ViewMode,
-} from "@/features/fnb/core-system/menu/components/menu-types";
-import { MenuItemModal } from "@/features/fnb/core-system/menu/components/menu-item-modal";
-import { ITEMS_PER_PAGE, getCategoryColor } from "@/features/fnb/core-system/menu/components/menu-utils";
-import { RecipeBuilderModal } from "@/features/fnb/core-system/menu/components/recipe/recipe-builder-modal";
-import { MenuMobileList } from "@/features/fnb/core-system/menu/components/menu-mobile-list";
+} from "@/features/restaurant/core-system/menu/components/menu-types";
+import { MenuItemModal } from "@/features/restaurant/core-system/menu/components/menu-item-modal";
+import { ITEMS_PER_PAGE, getCategoryColor } from "@/features/restaurant/core-system/menu/components/menu-utils";
+import { RecipeBuilderModal } from "@/features/restaurant/core-system/menu/components/recipe/recipe-builder-modal";
+import { MenuMobileList } from "@/features/restaurant/core-system/menu/components/menu-mobile-list";
 
-import { MenuTableView } from "@/features/fnb/core-system/menu/components/menu-table-view";
+import { MenuTableView } from "@/features/restaurant/core-system/menu/components/menu-table-view";
 
-import { MenuGridView } from "@/features/fnb/core-system/menu/components/menu-grid-view";
-import { MenuToolbar } from "@/features/fnb/core-system/menu/components/menu-toolbar";
+import { MenuGridView } from "@/features/restaurant/core-system/menu/components/menu-grid-view";
+import { MenuToolbar } from "@/features/restaurant/core-system/menu/components/menu-toolbar";
 import { DataPagination } from "@/components/shared/table";
 import { useMenuManager } from "@/hooks/use-menu-manager";
 

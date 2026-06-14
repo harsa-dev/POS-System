@@ -21,7 +21,7 @@ The system is designed to support multiple business modes inside one application
 The first active and stable mode is:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ````
 
 Other planned modes are:
@@ -75,7 +75,7 @@ However, migration must be planned carefully and must not be done casually.
 The following decisions are locked:
 
 1. POS System V3 uses modular monolith architecture.
-2. Restaurant / F&B is the active mode.
+2. Restaurant is the active mode.
 3. Retail, Raw Material / Kandang, and Service are planned modes.
 4. The system must use shared core systems and mode-specific workflows.
 5. Core systems must not contain mode-specific workflow logic.
@@ -101,7 +101,7 @@ The following decisions are locked:
 
 All AI-generated changes must follow these rules:
 
-1. Do not break the existing Restaurant / F&B flow.
+1. Do not break the existing Restaurant flow.
 2. Do not implement all planned modes at once.
 3. Do not create empty fake features and call them completed.
 4. Do not move stable code only for aesthetic folder structure.

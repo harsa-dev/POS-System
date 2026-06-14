@@ -7,7 +7,7 @@ Migrate business mode routing from legacy ids to the centralized business mode c
 Legacy ids:
 
 ```txt
-fnb
+restaurant
 service
 warehouse
 ```
@@ -53,7 +53,7 @@ custom-business
 
 ```txt
 /workspace/restaurant/*       -> restaurant
-/dashboard/fnb/*              -> restaurant
+/dashboard/restaurant/*              -> restaurant
 /v3/retail/*                  -> retail
 /v3/raw-material/*            -> raw-material
 /dashboard/cashflow           -> active mode context
@@ -66,7 +66,7 @@ custom-business
 
 ```txt
 1. Clear currentBusinessMode, open /dashboard -> /select-mode.
-2. Set currentBusinessMode=fnb, open /dashboard -> restaurant entry route.
+2. Set currentBusinessMode=restaurant, open /dashboard -> restaurant entry route.
 3. Set currentBusinessMode=retail, open /dashboard -> retail entry route.
 4. Set currentBusinessMode=raw-material, open /dashboard -> raw material entry route.
 5. Open restaurant route while retail active -> /select-mode.

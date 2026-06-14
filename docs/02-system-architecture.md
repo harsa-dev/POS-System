@@ -14,12 +14,12 @@ This document does not define detailed API contracts, database schema, frontend 
 
 ## 2. Current Context
 
-POS System V3 is currently built as a web-based application focused on Restaurant / F&B operations.
+POS System V3 is currently built as a web-based application focused on Restaurant operations.
 
 The current active mode is:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ```
 
 The system is being redesigned into a modular multi-mode business platform.
@@ -27,7 +27,7 @@ The system is being redesigned into a modular multi-mode business platform.
 Planned modes:
 
 ```txt
-Restaurant / F&B
+Restaurant
 Retail / Supermarket
 Raw Material / Livestock / Kandang
 Service / Custom Business
@@ -59,7 +59,7 @@ The following architecture decisions are locked:
 2. The frontend and backend may live in one Next.js application during MVP.
 3. The database is PostgreSQL.
 4. Prisma is used as the ORM.
-5. The first active mode is Restaurant / F&B.
+5. The first active mode is Restaurant.
 6. Other modes are planned but not fully implemented in MVP.
 7. Core systems are shared across modes.
 8. Shared dashboards are reusable across modes.
@@ -90,7 +90,7 @@ The following architecture decisions are locked:
 3. Do not create separate apps per business mode.
 4. Do not create separate databases per business mode.
 5. Do not introduce infrastructure that is not required yet.
-6. Keep stable Restaurant / F&B flow working while refactoring.
+6. Keep stable Restaurant flow working while refactoring.
 7. Separate core, shared, and mode-specific responsibilities.
 8. Do not duplicate core systems per mode.
 9. Do not place business logic inside React components.
@@ -785,7 +785,7 @@ Architecture is acceptable when:
 
 - [ ] Modular monolith is preserved.
 - [ ] Core, shared, and mode-specific boundaries are clear.
-- [ ] Restaurant / F&B flow remains stable.
+- [ ] Restaurant flow remains stable.
 - [ ] Planned modes are not falsely treated as implemented.
 - [ ] Business logic is not inside UI components.
 - [ ] Route handlers are thin.

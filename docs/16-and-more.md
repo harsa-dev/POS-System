@@ -16,12 +16,12 @@ A SaaS is code plus billing, trust, support, recovery, documentation, and a long
 
 ## 2. Current Context
 
-POS System V3 is currently focused on building a strong Restaurant / F&B POS foundation.
+POS System V3 is currently focused on building a strong Restaurant POS foundation.
 
 Active mode:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ```
 
 Current priority:

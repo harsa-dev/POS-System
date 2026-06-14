@@ -1,6 +1,6 @@
 import { resolveMediaUrl } from "@/lib/api";
 
-import type { MenuItem } from "@/features/fnb/core-system/menu/components/menu-types";
+import type { MenuItem } from "@/features/restaurant/core-system/menu/components/menu-types";
 
 export const ITEMS_PER_PAGE = 12;
 

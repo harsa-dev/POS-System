@@ -69,7 +69,7 @@ Restaurant still has legacy compatibility fields such as:
 - `StockMovement.actorId`
 - `AuditLog.restaurantId`
 
-New Restaurant-scoped code must use `businessId` as the canonical tenant key. Legacy fields remain only to avoid breaking older F&B routes while migration is still in progress.
+New Restaurant-scoped code must use `businessId` as the canonical tenant key. Legacy fields remain only to avoid breaking older Restaurant routes while migration is still in progress.
 
 ## Out of scope
 

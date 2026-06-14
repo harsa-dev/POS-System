@@ -27,7 +27,7 @@ If status can change freely, the system becomes a haunted spreadsheet with butto
 
 ## 2. Current Context
 
-POS System V3 currently focuses on Restaurant / F&B mode.
+POS System V3 currently focuses on Restaurant mode.
 
 The main order flow is:
 

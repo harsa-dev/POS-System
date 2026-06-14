@@ -1,6 +1,6 @@
 # Dashboard Feature Structure
 
-This folder separates reusable business dashboards from Restaurant/F&B-only operational modules.
+This folder separates reusable business dashboards from Restaurant-only operational modules.
 
 ## Shared dashboards
 
@@ -14,17 +14,17 @@ This folder separates reusable business dashboards from Restaurant/F&B-only oper
 - `invoice-generator/` - Invoice Generator
 - `cashier-shift-reports/` - Cashier Shift Reports
 
-Shared dashboards can be mounted by Restaurant/F&B today and by Retail, Service, or Warehouse modes later.
+Shared dashboards can be mounted by Restaurant, Retail, and Raw Material today. Custom Business remains planned and guarded.
 
-## F&B core system
+## Restaurant Core System
 
-`fnb/core-system/` contains operational modules that only belong to Restaurant/F&B:
+`restaurant/core-system/` contains operational modules that only belong to Restaurant:
 
 - `menu/` - Menu Management and Recipe Management
 - `kitchen/` - Kitchen Display System
 - `server/` - Checkout, Orders, Payments, Table Management, and Serving
 
-Do not add future Retail, Service, or Warehouse modules yet. Add mode-specific folders beside `fnb/` only when those real modules are implemented.
+Do not add future Custom Business modules yet. Add mode-specific folders beside `restaurant/` only when those real modules are implemented.
 
 ## Practical rule
 

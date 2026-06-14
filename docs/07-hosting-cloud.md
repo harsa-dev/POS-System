@@ -19,7 +19,7 @@ POS System V3 is currently a web-based application.
 The current active mode is:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ```
 
 The current recommended deployment direction is:

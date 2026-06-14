@@ -16,13 +16,13 @@ if (user.role === "OWNER" || user.role === "MANAGER") {
 
 That works early, then slowly becomes spaghetti with a badge.
 
-Permission keys make access control more explicit, searchable, testable, and easier to expand when the system grows beyond Restaurant / F&B mode.
+Permission keys make access control more explicit, searchable, testable, and easier to expand when the system grows beyond Restaurant mode.
 
 ---
 
 ## 2. Current Context
 
-POS System V3 currently supports Restaurant / F&B mode.
+POS System V3 currently supports Restaurant mode.
 
 Current operational roles:
 
@@ -194,7 +194,7 @@ service
 
 #### restaurant
 
-For Restaurant / F&B mode.
+For Restaurant mode.
 
 Examples:
 

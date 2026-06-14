@@ -1,13 +1,6 @@
-export const V3_BUSINESS_MODES = [
-  "restaurant",
-  "retail",
-  "raw-material",
-  "custom-business",
-] as const;
+export { businessModeIds as V3_BUSINESS_MODES } from "@/config/business-modes";
 
-export type V3BusinessMode = (typeof V3_BUSINESS_MODES)[number];
-
-export type V3LegacyBusinessMode = "fnb" | "service" | "warehouse";
+export type { BusinessModeId as V3BusinessMode } from "@/config/business-modes";
 
 export type V3RuntimeRole =
   | "OWNER"

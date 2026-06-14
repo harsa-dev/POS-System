@@ -4,7 +4,7 @@ import { ROUTES } from "../../constants/routes";
 const restaurantMode = ["restaurant"] as const;
 
 // V3 workspaces are now the main Restaurant navigation targets.
-// Legacy /dashboard/fnb routes remain registered in App.tsx as manual fallback URLs.
+// Canonical /dashboard/restaurant routes remain registered in App.tsx as manual fallback URLs.
 
 export const restaurantModules: readonly V3ModuleMetadata[] = [
   {

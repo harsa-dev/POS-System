@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 
 import type {
   InventoryItem,
-} from "@/features/fnb/core-system/menu/components/menu-types";
+} from "@/features/restaurant/core-system/menu/components/menu-types";
 
 type RecipeFormProps = {
   inventoryItems: InventoryItem[];

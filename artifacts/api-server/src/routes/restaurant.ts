@@ -256,7 +256,7 @@ router.get("/restaurant/health", (_req, res) => {
       mode: "restaurant",
       persistence: "prisma",
       prisma: "wired-through-restaurant-repository",
-      compatibility: "legacy-fnb-routes-still-mounted",
+      compatibility: "canonical-restaurant-routes",
     },
   });
 });

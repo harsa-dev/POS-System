@@ -15,12 +15,12 @@ pnpm --filter @workspace/pos-system build
 ## Out of scope for the Retail gate
 
 ```txt
-- F&B legacy modules
+- Restaurant-only modules
 - platform-admin modules
 - shared financial-report dashboard cleanup
 - future Retail registry placeholders not wired to active Retail flows
 - raw-material mode
-- service mode
+- custom-business mode
 ```
 
 ## Current Retail gate fixes

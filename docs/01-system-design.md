@@ -12,12 +12,12 @@ This document does not define detailed folder structure, API contracts, database
 
 ## 2. Current Context
 
-POS System V3 started from a Restaurant / F&B POS system.
+POS System V3 started from a Restaurant POS system.
 
 The current active mode is:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ````
 
 The existing Restaurant flow includes:
@@ -41,7 +41,7 @@ V3 expands the direction from a restaurant-only POS into a modular business oper
 Planned business modes are:
 
 ```txt
-Restaurant / F&B
+Restaurant
 Retail / Supermarket
 Raw Material / Livestock / Kandang
 Service / Custom Business
@@ -81,7 +81,7 @@ The following system design decisions are locked:
 1. POS System V3 is a modular business operating system.
 2. The system uses modular monolith architecture.
 3. The system uses one application, one backend, and one database.
-4. Restaurant / F&B is the first active and stable mode.
+4. Restaurant is the first active and stable mode.
 5. Retail / Supermarket is a planned mode.
 6. Raw Material / Livestock / Kandang is a planned mode.
 7. Service / Custom Business is a planned mode.
@@ -204,7 +204,7 @@ The system supports four business modes.
 
 | Mode                               | Status  | Purpose                                                        |
 | ---------------------------------- | ------- | -------------------------------------------------------------- |
-| Restaurant / F&B                   | Active  | Order, cashier, payment, kitchen, serving, menu, recipe, table |
+| Restaurant                   | Active  | Order, cashier, payment, kitchen, serving, menu, recipe, table |
 | Retail / Supermarket               | Planned | SKU, barcode, shelf, checkout, stock opname, promotion         |
 | Raw Material / Livestock / Kandang | Planned | Intake, weighing, batch, kandang, processing, quality control  |
 | Service / Custom Business          | Planned | Client request, service job, assignment, progress, invoice     |
@@ -359,7 +359,7 @@ Do not:
 
 This system design is respected when:
 
-* [ ] Restaurant / F&B remains the active stable mode.
+* [ ] Restaurant remains the active stable mode.
 * [ ] Planned modes are documented but not falsely treated as done.
 * [ ] Core, shared, and mode-specific responsibilities are separated.
 * [ ] Backend owns business decisions.

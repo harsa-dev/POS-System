@@ -125,7 +125,7 @@ This phase does not:
 - Run destructive mutation smoke by default.
 - Require a live API server in CI.
 - Generate OpenAPI clients.
-- Delete legacy F&B routes.
+- Delete legacy Restaurant routes.
 
 ## Validation
 

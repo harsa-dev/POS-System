@@ -22,7 +22,7 @@ import {
 import {
   ORDER_STATUS_COLORS,
   ORDER_STATUS_LABELS,
-} from "@/features/orders/constans/order-status";
+} from "@/features/orders/constants/order-status";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DataPagination } from "@/components/shared/table";

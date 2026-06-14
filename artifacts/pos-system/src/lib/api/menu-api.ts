@@ -10,7 +10,7 @@ import type {
   InventoryItem,
   MenuItem,
   Recipe,
-} from "@/features/fnb/core-system/menu/components/menu-types";
+} from "@/features/restaurant/core-system/menu/components/menu-types";
 
 export type MenuItemPayload = {
   name: string;

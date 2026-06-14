@@ -236,8 +236,8 @@ type ShiftReportRow = {
 };
 
 const shiftReportRows: ShiftReportRow[] = [
-  { id: "sr-001", shift: "Morning Shift", scope: "Restaurant / F&B", pic: "Nadia", revenue: 12_450_000, variance: 0, status: "Completed" },
-  { id: "sr-002", shift: "Afternoon Shift", scope: "Restaurant / F&B", pic: "Raka", revenue: 18_900_000, variance: -85_000, status: "Review" },
+  { id: "sr-001", shift: "Morning Shift", scope: "Restaurant", pic: "Nadia", revenue: 12_450_000, variance: 0, status: "Completed" },
+  { id: "sr-002", shift: "Afternoon Shift", scope: "Restaurant", pic: "Raka", revenue: 18_900_000, variance: -85_000, status: "Review" },
   { id: "sr-003", shift: "Warehouse Intake", scope: "Raw Material", pic: "Dimas", revenue: 0, variance: 120_000, status: "Pending" },
 ];
 

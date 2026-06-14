@@ -32,16 +32,16 @@ export type ResolvedBusinessContext = BusinessContext<BusinessWithModeProfile>;
 const businessTypeMap: Record<PrismaBusinessType, BusinessType> = {
   RESTAURANT: "restaurant",
   RETAIL: "retail",
-  SERVICE: "service",
-  LIVESTOCK: "livestock",
+  SERVICE: "custom-business",
+  LIVESTOCK: "raw-material",
   RAW_MATERIAL: "raw-material",
 };
 
 const businessModeMap: Record<PrismaBusinessMode, BusinessMode> = {
   RESTAURANT: "restaurant",
   RETAIL: "retail",
-  SERVICE: "service",
-  LIVESTOCK: "livestock",
+  SERVICE: "custom-business",
+  LIVESTOCK: "raw-material",
   RAW_MATERIAL: "raw-material",
 };
 

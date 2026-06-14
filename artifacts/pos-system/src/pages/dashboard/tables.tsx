@@ -1,4 +1,4 @@
-import { TableManagementDashboard } from "@/features/fnb/core-system/server";
+import { TableManagementDashboard } from "@/features/restaurant/core-system/server";
 
 export default function TablesPage() {
   return <TableManagementDashboard />;

@@ -75,7 +75,7 @@ const queueStatusTone: Record<QueueItemStatus, DashboardTone> = {
 const modeSnapshots: ModeSnapshot[] = [
   {
     id: "restaurant",
-    name: "Restaurant / F&B",
+    name: "Restaurant",
     status: "Live",
     summary: "POS, kitchen, serving, table, menu, payment, and operational reports.",
     revenue: 128_450_000,
@@ -270,7 +270,7 @@ const sharedModules: SharedModule[] = [
 const operationQueue: QueueItem[] = [
   {
     id: "Q-1001",
-    sourceMode: "Restaurant / F&B",
+    sourceMode: "Restaurant",
     title: "Daily closing reconciliation",
     owner: "Finance",
     amount: 18_750_000,
@@ -279,7 +279,7 @@ const operationQueue: QueueItem[] = [
   },
   {
     id: "Q-1002",
-    sourceMode: "Restaurant / F&B",
+    sourceMode: "Restaurant",
     title: "Kitchen stock threshold alert",
     owner: "Inventory",
     amount: 3_450_000,

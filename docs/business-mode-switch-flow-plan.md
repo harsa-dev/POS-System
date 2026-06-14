@@ -81,7 +81,7 @@ Restaurant routes require `restaurant`:
 
 ```txt
 /workspace/restaurant/*
-/dashboard/fnb/*
+/dashboard/restaurant/*
 ```
 
 Retail routes require `retail`:

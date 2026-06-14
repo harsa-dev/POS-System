@@ -1,28 +1,29 @@
-# Restaurant Legacy F&B Mapping
+# Restaurant Historical Flow Mapping
 
-Status: Phase 1 audit complete
+Status: historical migration note
 
-This file maps the old F&B/restaurant code into the new Restaurant business mode scope. The goal is not to delete old code immediately. The goal is to identify what becomes canonical Restaurant code, what remains a compatibility bridge, and what can be removed later.
+This file maps the old food-service POS flow into the canonical Restaurant business mode scope. `features/restaurant` is now the canonical feature folder; `fnb` naming should not be reintroduced in runtime code.
 
 ## Current finding
 
-The project currently has both:
+The project currently has:
 
 1. New V3 Restaurant workspace code under `artifacts/pos-system/src/app/workspace/restaurant/**`.
-2. Legacy F&B feature/page code under `artifacts/pos-system/src/features/fnb/**` and `artifacts/pos-system/src/pages/dashboard/**`.
+2. Canonical Restaurant feature code under `artifacts/pos-system/src/features/restaurant/**`.
+3. Transitional dashboard page targets under `artifacts/pos-system/src/pages/dashboard/**`.
 
-The Restaurant workspace is already the canonical frontend direction, but some screens still point users back to current F&B/dashboard routes while the underlying flow is being migrated.
+The Restaurant workspace is already the canonical frontend direction, but some screens still point users back to dashboard fallback routes while the underlying flow is being migrated.
 
 ## Frontend mapping
 
-| Legacy / current area | Target Restaurant area | Phase 1 decision |
+| Current area | Target Restaurant area | Phase 1 decision |
 | --- | --- | --- |
-| `features/fnb/core-system/server/pos/**` | `app/workspace/restaurant/pos/**` | Keep legacy until POS API wiring is complete. |
-| `features/fnb/core-system/menu/**` | `app/workspace/restaurant/menu/**` | Keep legacy while menu/recipe workspace reaches parity. |
-| `features/fnb/core-system/kitchen/**` | `app/workspace/restaurant/kitchen/**` | Keep legacy route as compatibility target. |
-| `features/fnb/core-system/server/serving/**` | `app/workspace/restaurant/serving/**` | Keep until status actions are API/client scoped. |
-| `features/fnb/core-system/server/orders/**` | `app/workspace/restaurant/orders/**` | Keep until order lifecycle actions use Restaurant API surface. |
-| `features/fnb/core-system/server/tables/**` | `app/workspace/restaurant/tables/**` | Keep until table status actions are scoped. |
+| `features/restaurant/core-system/server/pos/**` | `app/workspace/restaurant/pos/**` | Keep canonical feature implementation until POS workspace API wiring is complete. |
+| `features/restaurant/core-system/menu/**` | `app/workspace/restaurant/menu/**` | Keep canonical feature implementation while menu/recipe workspace reaches parity. |
+| `features/restaurant/core-system/kitchen/**` | `app/workspace/restaurant/kitchen/**` | Keep canonical feature implementation as fallback target. |
+| `features/restaurant/core-system/server/serving/**` | `app/workspace/restaurant/serving/**` | Keep until status actions are API/client scoped. |
+| `features/restaurant/core-system/server/orders/**` | `app/workspace/restaurant/orders/**` | Keep until order lifecycle actions use Restaurant API surface. |
+| `features/restaurant/core-system/server/tables/**` | `app/workspace/restaurant/tables/**` | Keep until table status actions are scoped. |
 | `pages/dashboard/checkout.tsx` | `restaurant-pos-workspace.tsx` | Current route target / compatibility. |
 | `pages/dashboard/kds.tsx` | `restaurant-kitchen-workspace.tsx` | Current route target / compatibility. |
 | `pages/dashboard/serving.tsx` | `restaurant-serving-workspace.tsx` | Current route target / compatibility. |
@@ -102,11 +103,11 @@ POST   /api/restaurant/payments/:id/refund
 3. Add read-only dashboard/menu/table/order DTOs first.
 4. Keep old routes untouched while the Restaurant route is introduced.
 5. Add `typecheck:restaurant` configs only after service files exist.
-6. Avoid deleting `features/fnb` until Restaurant smoke gate passes.
+6. Keep `features/restaurant` as the canonical Restaurant feature folder.
 
 ## Cleanup rule
 
-A legacy F&B file can be deleted only after:
+A transitional Restaurant file can be deleted only after:
 
 - it has a Restaurant replacement,
 - it has no active imports,

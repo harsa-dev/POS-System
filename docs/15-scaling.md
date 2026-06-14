@@ -19,7 +19,7 @@ POS System V3 is currently a SaaS-style POS and business operating system.
 The active mode is:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ```
 
 The current architecture direction is:
@@ -37,7 +37,7 @@ simple deployment
 The system may later support multiple business modes:
 
 ```txt
-Restaurant / F&B
+Restaurant
 Retail / Supermarket
 Raw Material / Livestock / Kandang
 Service / Custom Business
@@ -1282,7 +1282,7 @@ Rules:
 
 Future modes may have different scaling pressure.
 
-#### Restaurant / F&B
+#### Restaurant
 
 Pressure:
 

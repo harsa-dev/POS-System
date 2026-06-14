@@ -7,12 +7,12 @@ import type {
   InventoryItem,
   MenuItem,
   Recipe,
-} from "@/features/fnb/core-system/menu/components/menu-types";
-import { RecipeForm } from "@/features/fnb/core-system/menu/components/recipe/recipe-form";
+} from "@/features/restaurant/core-system/menu/components/menu-types";
+import { RecipeForm } from "@/features/restaurant/core-system/menu/components/recipe/recipe-form";
 
-import { RecipeList } from "@/features/fnb/core-system/menu/components/recipe/recipe-list";
+import { RecipeList } from "@/features/restaurant/core-system/menu/components/recipe/recipe-list";
 
-import { RecipeEmptyState } from "@/features/fnb/core-system/menu/components/recipe/recipe-empty-state";
+import { RecipeEmptyState } from "@/features/restaurant/core-system/menu/components/recipe/recipe-empty-state";
 
 import { Modal } from "@/components/ui/modal";
 

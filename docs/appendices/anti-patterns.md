@@ -21,7 +21,7 @@ POS System V3 is a SaaS-style POS and business operating system.
 The current active mode is:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ```
 
 Core workflows:
@@ -240,7 +240,7 @@ too many unfinished modules
 Correct approach:
 
 ```txt
-make Restaurant / F&B stable first
+make Restaurant stable first
 standardize shared core
 prepare mode registry
 document future modes

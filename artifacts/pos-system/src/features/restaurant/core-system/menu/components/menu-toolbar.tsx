@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 
 import type {
   ViewMode,
-} from "@/features/fnb/core-system/menu/components/menu-types";
+} from "@/features/restaurant/core-system/menu/components/menu-types";
 
 type MenuToolbarProps = {
   search: string;

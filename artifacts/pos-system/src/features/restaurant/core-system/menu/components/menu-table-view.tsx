@@ -4,9 +4,9 @@ import { BookOpen, ImageIcon, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { formatCurrency } from "@/lib/utils/format";
-import { getMenuImageSrc } from "@/features/fnb/core-system/menu/components/menu-utils";
+import { getMenuImageSrc } from "@/features/restaurant/core-system/menu/components/menu-utils";
 
-import type { MenuItem } from "@/features/fnb/core-system/menu/components/menu-types";
+import type { MenuItem } from "@/features/restaurant/core-system/menu/components/menu-types";
 
 type MenuTableViewProps = {
   menuItems: MenuItem[];

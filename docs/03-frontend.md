@@ -17,10 +17,10 @@ POS System V3 is a web-based business application.
 The current active mode is:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ```
 
-The frontend currently needs to support Restaurant / F&B workflows such as:
+The frontend currently needs to support Restaurant workflows such as:
 
 ```txt
 Dashboard
@@ -40,7 +40,7 @@ Mode selection
 V3 is designed to support multiple business modes:
 
 ```txt
-Restaurant / F&B
+Restaurant
 Retail / Supermarket
 Raw Material / Livestock / Kandang
 Service / Custom Business
@@ -76,7 +76,7 @@ The following frontend decisions are locked:
 7. Frontend may hide or disable UI based on permission for user experience.
 8. Frontend permission checks are not security.
 9. Backend must still enforce all permissions.
-10. Restaurant / F&B is the active frontend mode.
+10. Restaurant is the active frontend mode.
 11. Planned modes may appear as planned or disabled, but must not look production-ready.
 12. Shared UI components must be reusable and consistent.
 13. Feature-specific components must stay inside their feature folder.
@@ -1001,7 +1001,7 @@ Frontend is acceptable when:
 - [ ] Planned modes are clearly marked as planned.
 - [ ] Customer-facing pages are mobile-friendly.
 - [ ] No sensitive secret is exposed to the browser.
-- [ ] Stable Restaurant / F&B pages remain working.
+- [ ] Stable Restaurant pages remain working.
 
 ---
 

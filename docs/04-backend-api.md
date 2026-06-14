@@ -17,7 +17,7 @@ POS System V3 currently uses a web-based full-stack architecture.
 The active mode is:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ```
 
 Current backend responsibilities include:
@@ -54,7 +54,7 @@ The backend must support V3 multi-mode direction without implementing all planne
 Planned modes:
 
 ```txt
-Restaurant / F&B
+Restaurant
 Retail / Supermarket
 Raw Material / Livestock / Kandang
 Service / Custom Business

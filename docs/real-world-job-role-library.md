@@ -40,7 +40,7 @@ This dummy library is inspired by public occupation classification systems and c
 
 ## Sectors covered
 
-### Restaurant / F&B
+### Restaurant
 
 Includes:
 

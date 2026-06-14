@@ -7,9 +7,9 @@ import { ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
 import { ShoppingCart, X } from "lucide-react";
 
-import { Cart } from "@/features/fnb/core-system/server/pos/cart";
-import { CheckoutModal } from "@/features/fnb/core-system/server/pos/checkout-modal";
-import { MenuGrid } from "@/features/fnb/core-system/server/pos/menu-grid";
+import { Cart } from "@/features/restaurant/core-system/server/pos/cart";
+import { CheckoutModal } from "@/features/restaurant/core-system/server/pos/checkout-modal";
+import { MenuGrid } from "@/features/restaurant/core-system/server/pos/menu-grid";
 
 type MenuItem = {
   id: string;

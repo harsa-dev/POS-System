@@ -4,7 +4,7 @@ Status: Done
 
 ## Goal
 
-Add scoped Restaurant write delegates for order creation and payment confirmation without rewriting the legacy F&B routes yet.
+Add scoped Restaurant write delegates for order creation and payment confirmation without rewriting the legacy Restaurant routes yet.
 
 ## Implemented surfaces
 

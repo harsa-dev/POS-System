@@ -49,7 +49,7 @@ service
 livestock
 ```
 
-Current production mode remains Restaurant/F&B. Other modes are framework-ready only.
+Current production mode remains Restaurant. Other modes are framework-ready only.
 
 ## Why this exists
 

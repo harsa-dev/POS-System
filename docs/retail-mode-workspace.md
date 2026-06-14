@@ -6,7 +6,7 @@ Project ini adalah POS System portfolio berbasis Next.js, TypeScript, Prisma, Po
 
 Status terakhir project:
 
-- V2 sudah punya pondasi POS restaurant/F&B: cashier, KDS, serving, orders, payments, inventory, analytics, employees, settings.
+- V2 sudah punya pondasi POS Restaurant: cashier, KDS, serving, orders, payments, inventory, analytics, employees, settings.
 - V3 mulai masuk ke architecture cleanup.
 - Sudah ada business mode selection lewat `/select-mode`.
 - Mode disimpan di `localStorage` dengan key `currentBusinessMode`.
@@ -14,10 +14,10 @@ Status terakhir project:
 - Struktur mulai dipisah menjadi:
   - `components/core`
   - `components/shared`
-  - `features/fnb/core-system/...`
+  - `features/restaurant/core-system/...`
   - `features/shared/...`
 
-Target dokumen ini: menyiapkan workspace untuk **Business Mode: Retail**, tanpa merusak F&B mode yang sudah ada.
+Target dokumen ini: menyiapkan workspace untuk **Business Mode: Retail**, tanpa merusak Restaurant mode yang sudah ada.
 
 ---
 
@@ -50,9 +50,9 @@ Retail Mode fokus pada:
 
 ---
 
-## 2. Hard Boundary: Retail vs F&B
+## 2. Hard Boundary: Retail vs Restaurant
 
-### F&B Mode punya:
+### Restaurant mode punya:
 
 - menu item
 - recipe
@@ -77,14 +77,14 @@ Retail Mode fokus pada:
 
 ### Rule penting
 
-Jangan campur logic Retail ke folder F&B.
+Jangan campur logic Retail ke folder Restaurant.
 
 Tidak boleh:
 
 ```txt
-features/fnb/core-system/retail
-features/fnb/core-system/products-retail
-features/fnb/core-system/cashier-retail
+features/restaurant/core-system/retail
+features/restaurant/core-system/products-retail
+features/restaurant/core-system/cashier-retail
 ```
 
 Harus:
@@ -197,7 +197,7 @@ Retail sidebar/dashboard menu should include:
 9. Shift Reports
 10. Settings
 
-Do not show F&B-only routes in Retail Mode:
+Do not show Restaurant-only routes in Retail Mode:
 
 - KDS
 - Serving
@@ -208,10 +208,10 @@ Do not show F&B-only routes in Retail Mode:
 
 ## 5. Business Mode Config
 
-Recommended business mode values:
+Canonical business mode values:
 
 ```ts
-export type BusinessMode = "fnb" | "retail" | "service" | "warehouse";
+export type BusinessMode = "restaurant" | "retail" | "raw-material" | "custom-business";
 ```
 
 Retail mode metadata:
@@ -221,7 +221,7 @@ export const retailModeConfig = {
   id: "retail",
   label: "Retail Store",
   description: "POS mode for physical product stores, stock-based sales, suppliers, purchases, and returns.",
-  defaultRoute: "/dashboard/retail",
+  defaultRoute: "/v3/retail/cashier",
   requiredModules: [
     "cashier",
     "products",
@@ -347,7 +347,7 @@ Find Sale Transaction
 
 ## 8. Retail Database Planning
 
-Do not blindly rename existing F&B models unless necessary. Prefer adding retail-safe models or making existing product model more generic.
+Do not blindly rename existing Restaurant models unless necessary. Prefer adding retail-safe models or making existing product model more generic.
 
 Recommended models:
 
@@ -491,15 +491,15 @@ Goal: Retail mode can be selected and routed safely.
 Tasks:
 
 - Add Retail to business mode config.
-- Add `/dashboard/retail` route.
+- Add `/v3/retail/cashier` route.
 - Add retail sidebar navigation.
-- Hide F&B-only routes when Retail Mode is active.
+- Hide Restaurant-only routes when Retail Mode is active.
 - Ensure route guard respects `currentBusinessMode`.
 
 Done when:
 
 - User can select Retail Mode.
-- User lands on `/dashboard/retail`.
+- User lands on `/v3/retail/cashier`.
 - Sidebar only shows retail modules.
 - No KDS/Serving/Table appears in Retail Mode.
 
@@ -582,8 +582,8 @@ Done when:
 
 When implementing Retail Mode, follow these rules:
 
-1. Do not break existing F&B mode.
-2. Do not move F&B files unless necessary.
+1. Do not break existing Restaurant mode.
+2. Do not move Restaurant files unless necessary.
 3. Do not create fake placeholder pages with no business logic unless the task is only navigation setup.
 4. Do not hard-code business mode checks across random components.
 5. Centralize mode config.
@@ -608,15 +608,15 @@ Use this prompt for Codex:
 ```txt
 You are working on a Next.js + TypeScript + Prisma + PostgreSQL POS System portfolio project.
 
-Current architecture already has POS System V3 cleanup with business mode selection. The app stores selected business mode in localStorage using the key `currentBusinessMode`. There is an existing F&B/restaurant mode under `features/fnb/core-system/...`. There are also shared dashboards under `features/shared/...`.
+Current architecture already has POS System V3 cleanup with business mode selection. The app stores selected business mode in localStorage using the key `currentBusinessMode`. There is an existing Restaurant mode under `features/restaurant/core-system/...`. There are also shared dashboards under `features/shared/...`.
 
 Your task is to prepare the workspace for a new Business Mode: Retail.
 
 Main goal:
-Add Retail Mode as a clean second business mode without breaking existing F&B mode.
+Add Retail Mode as a clean second business mode without breaking existing Restaurant mode.
 
 Important rules:
-- Do not mix Retail logic into `features/fnb`.
+- Do not mix Retail logic into `features/restaurant`.
 - Create Retail-specific structure under `features/retail/core-system`.
 - Keep shared UI primitives in `components/shared` if reusable.
 - Keep app shell/sidebar/topbar in `components/core`.
@@ -630,17 +630,15 @@ Tasks:
 2. Locate business mode config, route guard, dashboard shell, and sidebar/navigation files.
 3. Add `retail` as a valid business mode.
 4. Add Retail Mode card/option in `/select-mode` if the mode selector exists.
-5. Add Retail default route: `/dashboard/retail`.
-6. Create route page: `src/app/(dashboard)/dashboard/retail/page.tsx`.
+5. Add Retail default route: `/v3/retail/cashier`.
+6. Create route page for the current Vite route structure.
 7. Create route placeholders only for immediate MVP modules:
-   - `/dashboard/retail/cashier`
-   - `/dashboard/retail/products`
-   - `/dashboard/retail/inventory`
-   - `/dashboard/retail/purchases`
-   - `/dashboard/retail/suppliers`
-   - `/dashboard/retail/returns`
-   - `/dashboard/retail/reports`
-   - `/dashboard/retail/settings`
+   - `/v3/retail/cashier`
+   - `/v3/retail/catalog`
+   - `/v3/retail/receiving`
+   - `/v3/retail/stock-opname`
+   - `/v3/retail/shelf-management`
+   - `/v3/retail/promotions`
 8. Create feature folders:
    - `src/features/retail/core-system/cashier`
    - `src/features/retail/core-system/products`
@@ -650,18 +648,18 @@ Tasks:
    - `src/features/retail/core-system/returns`
    - `src/features/retail/core-system/reports`
 9. Create `src/features/retail/shared/retail-navigation.ts`.
-10. Ensure Retail Mode sidebar does not show F&B-only routes like KDS, Serving, Tables, or Menu Recipe.
-11. Ensure F&B mode still works exactly as before.
+10. Ensure Retail Mode sidebar does not show Restaurant-only routes like KDS, Serving, Tables, or Menu Recipe.
+11. Ensure Restaurant mode still works exactly as before.
 12. Add clear TODO comments only where database/API implementation is intentionally deferred.
 13. Run the project typecheck/build command used in this repo.
 14. Fix all errors properly before finishing.
 
 Expected result:
 - Retail Mode can be selected.
-- User can enter `/dashboard/retail`.
+- User can enter `/v3/retail/cashier`.
 - Retail sidebar/navigation appears.
-- F&B routes are not shown in Retail Mode.
-- No existing F&B functionality is broken.
+- Restaurant routes are not shown in Retail Mode.
+- No existing Restaurant functionality is broken.
 - Project passes typecheck/build.
 
 After finishing, report:

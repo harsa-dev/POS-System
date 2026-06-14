@@ -15,7 +15,6 @@ export {
 export type {
   V3BusinessMode,
   V3FeatureFlag,
-  V3LegacyBusinessMode,
   V3ModuleId,
   V3ModuleLayer,
   V3ModuleMetadata,

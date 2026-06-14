@@ -5,7 +5,7 @@ This project is a portfolio-grade POS System, not a simple cashier CRUD app.
 
 Current business modes:
 
-1. Restaurant / F&B mode: already implemented.
+1. Restaurant mode: already implemented.
 2. Raw Material mode: already implemented.
 3. Retail mode: already implemented.
 4. Service mode: still planned only. Do not implement service mode unless required to keep the architecture clean.
@@ -53,7 +53,7 @@ B. Build / Lint / Format
 C. Business Flow Validation
 Audit and fix flows for:
 
-* Restaurant / F&B
+* Restaurant
 * Raw Material
 * Retail
 * Business mode switcher

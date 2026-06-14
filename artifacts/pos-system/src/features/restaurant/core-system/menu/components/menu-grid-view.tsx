@@ -10,11 +10,11 @@ import {
 import { Button } from "@/components/ui/button";
 
 import { formatCurrency } from "@/lib/utils/format";
-import { getMenuImageSrc } from "@/features/fnb/core-system/menu/components/menu-utils";
+import { getMenuImageSrc } from "@/features/restaurant/core-system/menu/components/menu-utils";
 
 import type {
   MenuItem,
-} from "@/features/fnb/core-system/menu/components/menu-types";
+} from "@/features/restaurant/core-system/menu/components/menu-types";
 
 type MenuGridViewProps = {
   menuItems: MenuItem[];

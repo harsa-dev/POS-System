@@ -120,4 +120,4 @@ This phase does not:
 - Delete kitchen/serving compatibility endpoints.
 - Implement cancellation or reversal.
 - Implement payment refund/void.
-- Delete legacy F&B routes.
+- Delete legacy Restaurant routes.

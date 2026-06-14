@@ -3,12 +3,12 @@
 Status: Phase 8H implemented
 Scope owner: Restaurant business mode only
 
-Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
+Restaurant mode is the canonical name for the old food-service POS flow. `features/restaurant` is the canonical Restaurant feature folder; old dashboard page targets remain compatibility fallbacks until the Restaurant workspace/API surface is fully scoped.
 
 ## Phase tracker
 
 ```text
-Phase 1  - Restaurant scope audit + F&B legacy mapping             Done
+Phase 1  - Restaurant scope audit + historical flow mapping         Done
 Phase 2  - Restaurant persistence foundation                       Done
 Phase 3  - Backend route, guard, workflow preview                  Done
 Phase 4  - Shared dashboard backend summary                        Done
@@ -45,9 +45,8 @@ Observed frontend workspace areas:
 - Orders workspace.
 - Shared Restaurant status and feedback helpers.
 
-Observed legacy areas that must not be deleted yet:
+Observed transitional areas that must not be deleted yet:
 
-- `artifacts/pos-system/src/features/fnb/core-system/**`
 - `artifacts/pos-system/src/pages/dashboard/{checkout,kds,serving,orders,tables,menu,recipes,payments}.tsx`
 - old `@/lib/api` restaurant/order/payment/table helpers used by V3 Restaurant workspace.
 - API server order/status/payment/menu/table/inventory routes and services.

@@ -44,7 +44,7 @@ The following old surfaces remain mounted for now:
 /menu
 /tables
 /payments
-features/fnb/core-system/**
+features/restaurant/core-system/**
 pages/dashboard/{checkout,kds,serving,orders,tables,menu,recipes,payments}.tsx
 ```
 

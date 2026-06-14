@@ -1,10 +1,11 @@
 import {
   BUSINESS_MODE_CHANGED_EVENT,
   BUSINESS_MODE_STORAGE_KEY,
+  legacyStoredBusinessModeMap,
   type BusinessModeChangeEventDetail,
   type BusinessModeChangeSource,
   type BusinessModeId,
-} from "./business-mode.types";
+} from "@/config/business-modes";
 import {
   defaultBusinessModeId,
   getBusinessModeConfig,
@@ -12,14 +13,7 @@ import {
   normalizeBusinessModeId,
 } from "./business-mode-registry";
 
-const legacyBusinessModeMap = {
-  fnb: "restaurant",
-  retail: "retail",
-  service: "custom-business",
-  warehouse: "raw-material",
-} as const satisfies Record<string, BusinessModeId>;
-
-type LegacyBusinessModeId = keyof typeof legacyBusinessModeMap;
+type LegacyBusinessModeId = keyof typeof legacyStoredBusinessModeMap;
 
 type NormalizedBusinessMode = Readonly<{
   mode: BusinessModeId | null;
@@ -45,7 +39,7 @@ function getBrowserWindow(): Window | null {
 }
 
 function isLegacyBusinessModeId(value: string): value is LegacyBusinessModeId {
-  return Object.prototype.hasOwnProperty.call(legacyBusinessModeMap, value);
+  return Object.prototype.hasOwnProperty.call(legacyStoredBusinessModeMap, value);
 }
 
 function normalizeStoredBusinessMode(value: string | null): NormalizedBusinessMode {
@@ -60,7 +54,7 @@ function normalizeStoredBusinessMode(value: string | null): NormalizedBusinessMo
 
   if (value && isLegacyBusinessModeId(value)) {
     return {
-      mode: legacyBusinessModeMap[value],
+      mode: legacyStoredBusinessModeMap[value],
       wasLegacy: true,
     };
   }

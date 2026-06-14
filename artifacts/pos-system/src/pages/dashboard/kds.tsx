@@ -1,4 +1,4 @@
-import { KitchenDisplayDashboard } from "@/features/fnb/core-system/kitchen";
+import { KitchenDisplayDashboard } from "@/features/restaurant/core-system/kitchen";
 
 export default function KDSPage() {
   return (

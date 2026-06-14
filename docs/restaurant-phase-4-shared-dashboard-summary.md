@@ -63,7 +63,7 @@ The shared dashboard service summary is built from the Restaurant repository fou
 - `listKitchenQueue`
 - `listServingQueue`
 
-The Prisma repository currently reads from existing core Restaurant/F&B-era tables:
+The Prisma repository currently reads from existing core Restaurant-era tables:
 
 - `MenuItem`
 - `Category`

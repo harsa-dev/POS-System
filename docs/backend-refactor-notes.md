@@ -4,7 +4,7 @@
 
 This note tracks backend refactor work done after the Business tenant bridge phase.
 
-The active target is still Restaurant / F&B mode. The backend is being cleaned toward a modular monolith structure, not split into microservices.
+The active target is still Restaurant mode. The backend is being cleaned toward a modular monolith structure, not split into microservices.
 
 For the current backend folder structure source of truth, see:
 

@@ -4,7 +4,7 @@ import { Trash2 } from "lucide-react";
 
 import type {
   Recipe,
-} from "@/features/fnb/core-system/menu/components/menu-types";
+} from "@/features/restaurant/core-system/menu/components/menu-types";
 
 type RecipeListProps = {
   recipes: Recipe[];

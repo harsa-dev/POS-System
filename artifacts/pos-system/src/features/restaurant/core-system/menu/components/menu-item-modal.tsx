@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { resolveMediaUrl } from "@/lib/api";
 
-import type { Category } from "@/features/fnb/core-system/menu/components/menu-types";
+import type { Category } from "@/features/restaurant/core-system/menu/components/menu-types";
 
 type MenuItemModalProps = {
   open: boolean;

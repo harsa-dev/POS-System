@@ -19,7 +19,7 @@ POS System V3 is a web-based SaaS-style POS and business operating system.
 The active mode is:
 
 ```txt
-Restaurant / F&B
+Restaurant
 ```
 
 The system handles data with different freshness requirements:

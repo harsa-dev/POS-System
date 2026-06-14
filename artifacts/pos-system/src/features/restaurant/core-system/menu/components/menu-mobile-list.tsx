@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 
 import { formatCurrency } from "@/lib/utils/format";
 
-import type { MenuItem } from "@/features/fnb/core-system/menu/components/menu-types";
+import type { MenuItem } from "@/features/restaurant/core-system/menu/components/menu-types";
 
-import { getCategoryColor, getMenuImageSrc } from "@/features/fnb/core-system/menu/components/menu-utils";
+import { getCategoryColor, getMenuImageSrc } from "@/features/restaurant/core-system/menu/components/menu-utils";
 
 type MenuMobileListProps = {
   menuItems: MenuItem[];

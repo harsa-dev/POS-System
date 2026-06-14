@@ -2,7 +2,7 @@
 
 This document is the working source of truth for Retail Mode only.
 
-Retail Mode is being built while the rest of the backend still has legacy Restaurant/F&B, raw-material, inventory, audit-log, and migration-history issues. Those issues are real, but they are outside this track unless they directly block Retail Mode.
+Retail Mode is being built while the rest of the backend still has legacy Restaurant, raw-material, inventory, audit-log, and migration-history issues. Those issues are real, but they are outside this track unless they directly block Retail Mode.
 
 ## Retail Phase Tracker
 
