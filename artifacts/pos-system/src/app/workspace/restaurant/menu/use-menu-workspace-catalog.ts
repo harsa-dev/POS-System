@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { restaurantApi, type RestaurantMenuItemDto } from "@/lib/api";
+import { restaurantClient, type RestaurantMenuItemDto } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils/format";
 import {
   menuAvailabilityLabels,
@@ -152,7 +152,7 @@ export function useMenuWorkspaceCatalog(): MenuWorkspaceCatalogResult {
     setErrorMessage(null);
 
     try {
-      const response = await restaurantApi.listMenuItems();
+      const response = await restaurantClient.listMenuItems();
 
       if (!response.success) {
         throw new Error(response.message ?? "Failed to load restaurant menu");
