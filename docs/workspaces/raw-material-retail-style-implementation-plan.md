@@ -27,6 +27,8 @@ scoped validation gate
 read-only API smoke script
 workflow read delegate
 frontend list/workflow API wiring
+OpenAPI endpoint coverage
+frontend contract operationId mapping
 ```
 
 ## Retail-style Raw Material phases
@@ -37,11 +39,11 @@ Phase 2  - Backend route, guard, workflow preview             Done
 Phase 3  - Shared dashboard backend summary                   Done
 Phase 4  - Seed supplier/storage/intake/batch/kandang         Done
 Phase 5  - Frontend list/workflow API wiring                  Done
-Phase 6  - Raw Material OpenAPI/client coverage               Next
+Phase 6  - Raw Material OpenAPI/client coverage               Done
 Phase 7A - Prisma schema model mapping                        Done
 Phase 7B - Summary read delegate                              Done
 Phase 7C - Workflow read delegate                             Done
-Phase 7D - Intake/batch/processing preview delegate           Planned
+Phase 7D - Intake/batch/processing preview delegate           Next
 Phase 7E - Stock/write delegate                               Backend Done, Frontend Planned
 Phase 7F - Guarded workflow status delegate                   Backend Partial, Frontend Planned
 Phase 8A - Intake/processing/batch status API route           Planned
@@ -131,6 +133,46 @@ transfer preview selectors
 processing preview selectors
 ```
 
+## Phase 6 - Raw Material OpenAPI/client coverage
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+lib/api-spec/openapi.yaml
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.types.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
+docs/workspaces/raw-material-openapi-client-coverage.md
+```
+
+Implemented behavior:
+
+```txt
+OpenAPI spec includes the raw-material tag
+OpenAPI spec covers active Raw Material read endpoints
+OpenAPI spec covers currently known Raw Material write endpoints for contract visibility
+frontend API contract entries include operationId values
+operationId values align with OpenAPI operation IDs
+handwritten frontend client remains active until generated client consolidation
+```
+
+Covered read operations:
+
+```txt
+rawMaterialGetSummary
+rawMaterialListSuppliers
+rawMaterialListStorageLocations
+rawMaterialListIntakes
+rawMaterialListWeighings
+rawMaterialListBatches
+rawMaterialListProcessingRuns
+rawMaterialListPens
+rawMaterialListStockMovements
+```
+
+Generated client replacement remains planned under Phase 8E.
+
 ## Phase 7C - Workflow read delegate
 
 Status: implemented.
@@ -208,7 +250,6 @@ The scoped gate intentionally excludes global non-Raw-Material typecheck errors.
 Preferred path:
 
 ```txt
-Phase 6  - Raw Material OpenAPI/client coverage
 Phase 7D - Intake/batch/processing preview delegate
 Phase 7E - Stock/write delegate frontend wiring
 Phase 7F - Guarded workflow status delegate
