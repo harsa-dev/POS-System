@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -94,6 +95,7 @@ export function RawMaterialWorkflowStatusActions({ onNoticeChange }: RawMaterial
   const [quarantineBatchId, setQuarantineBatchId] = useState("");
   const [processingStatusForm, setProcessingStatusForm] = useState({ processingRunId: "", status: "RUNNING" as ProcessingStatus });
   const [cancelProcessingRunId, setCancelProcessingRunId] = useState("");
+  const [cancelProcessingNote, setCancelProcessingNote] = useState("Cancel processing and reverse consumed input stock when a production usage ledger exists.");
   const [penHealthForm, setPenHealthForm] = useState({ penId: "", healthStatus: "MONITORING" as PenHealthStatus });
 
   async function loadWorkflowReads() {
@@ -241,8 +243,8 @@ export function RawMaterialWorkflowStatusActions({ onNoticeChange }: RawMaterial
 
     void runStatusAction(
       "cancel-processing",
-      () => rawMaterialWorkflowStatusApiClient.cancelProcessingRun(selectedCancelProcessingRun.id),
-      `Processing run cancelled. ${getProcessingRunLabel(selectedCancelProcessingRun)}.`,
+      () => rawMaterialWorkflowStatusApiClient.cancelProcessingRun(selectedCancelProcessingRun.id, cancelProcessingNote.trim() || undefined),
+      `Processing run cancelled. ${getProcessingRunLabel(selectedCancelProcessingRun)}. Consumed stock is reversed when a production usage ledger exists.`,
     );
   }
 
@@ -374,7 +376,7 @@ export function RawMaterialWorkflowStatusActions({ onNoticeChange }: RawMaterial
           <form className="space-y-4 rounded-lg border border-neutral-100 p-4" onSubmit={handleCancelProcessingRun}>
             <div>
               <p className="font-semibold text-neutral-950">Cancel processing run</p>
-              <p className="mt-1 text-sm text-neutral-500">Cancels a planned or running processing run through backend guards.</p>
+              <p className="mt-1 text-sm text-neutral-500">Cancels a planned or running processing run and reverses consumed stock when a production usage ledger exists.</p>
             </div>
             <div className="space-y-2">
               <Label>Processing run</Label>
@@ -384,6 +386,15 @@ export function RawMaterialWorkflowStatusActions({ onNoticeChange }: RawMaterial
                   {workflowReads.processingRuns.map((run) => <SelectItem key={run.id} value={run.id}>{run.runNumber} · {run.outputName}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rm-cancel-processing-note">Cancellation note</Label>
+              <Input
+                id="rm-cancel-processing-note"
+                value={cancelProcessingNote}
+                onChange={(event) => setCancelProcessingNote(event.target.value)}
+                disabled={source !== "api"}
+              />
             </div>
             <Button type="submit" variant="outline" disabled={!canSubmit || !selectedCancelProcessingRun}>Cancel processing</Button>
           </form>
