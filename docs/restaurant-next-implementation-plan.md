@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 5 implemented
+Status: Phase 6 implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -13,8 +13,8 @@ Phase 2  - Restaurant persistence foundation                       Done
 Phase 3  - Backend route, guard, workflow preview                  Done
 Phase 4  - Shared dashboard backend summary                        Done
 Phase 5  - Seed restaurant/menu/table/order/payment demo data       Done
-Phase 6  - Frontend Restaurant workspace API wiring                Next
-Phase 7A - Prisma schema model mapping                             Planned
+Phase 6  - Frontend Restaurant workspace API wiring                Done
+Phase 7A - Prisma schema model mapping                             Next
 Phase 7B - Summary read delegate                                   Planned
 Phase 7C - Workflow read delegate                                  Planned
 Phase 7D - Order/payment/kitchen/serving preview delegate           Planned
@@ -145,6 +145,30 @@ The seed targets active `RESTAURANT` businesses only. It does not create hidden 
 - Cashflow income entries for paid orders.
 
 The script uses deterministic IDs and conflict-safe updates so it can be rerun without multiplying demo data.
+
+## Phase 6 result
+
+Restaurant frontend read/list workspaces now use the scoped Restaurant API client instead of legacy `/menu`, `/tables`, and `/orders` read endpoints.
+
+Implemented client file:
+
+- `artifacts/pos-system/src/lib/api/restaurant-api.ts`
+
+Updated read/list hooks:
+
+- `src/app/workspace/restaurant/pos/use-pos-menu-catalog.ts`
+- `src/app/workspace/restaurant/menu/use-menu-workspace-catalog.ts`
+- `src/app/workspace/restaurant/tables/use-tables-workspace-tables.ts`
+- `src/app/workspace/restaurant/orders/use-orders-workspace-orders.ts`
+- `src/app/workspace/restaurant/kitchen/use-kitchen-orders.ts`
+- `src/app/workspace/restaurant/serving/use-serving-orders.ts`
+
+Scoped frontend typecheck:
+
+- `artifacts/pos-system/tsconfig.restaurant.json`
+- `pnpm --filter @workspace/pos-system run typecheck:restaurant`
+
+Status mutations still use legacy order/status endpoints until Phase 7E/7F/8A/8B. This keeps compatibility while the Restaurant read surface moves to canonical scoped APIs.
 
 ## Canonical target layout
 
