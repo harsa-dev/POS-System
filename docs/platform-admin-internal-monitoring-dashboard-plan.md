@@ -20,9 +20,11 @@ artifacts/pos-system/src/features/shared/platform-monitoring/platform-monitoring
 artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-dashboard.tsx
 artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-deep-dive.tsx
 artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-control-room.tsx
+artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-data-source.ts
 artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-upgrade-board.tsx
 artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-upgrade.mock.ts
 artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-contracts.mock.ts
+artifacts/pos-system/src/lib/api/internal-monitoring-api.ts
 artifacts/pos-system/src/constants/routes.ts
 artifacts/pos-system/src/App.tsx
 ```
@@ -91,16 +93,21 @@ Rules:
 
 ## Frontend implementation target
 
-Future frontend API client:
+Frontend API client:
 
 ```txt
 artifacts/pos-system/src/lib/api/internal-monitoring-api.ts
 ```
 
-Allowed methods:
+First implemented method:
 
 ```txt
-internalMonitoringApi.getHealthSummary()
+internalMonitoringApi.getControlRoom()
+```
+
+Future methods:
+
+```txt
 internalMonitoringApi.getRouteInventory()
 internalMonitoringApi.getContractReadiness()
 internalMonitoringApi.getDataIntegrityChecks()
@@ -110,7 +117,7 @@ No frontend method may call POST, PATCH, or DELETE for `/api/internal/*` in the 
 
 ## Data source strategy
 
-Internal Monitoring should support three data states:
+Internal Monitoring supports three data states:
 
 ```txt
 mock     -> current static mock data
@@ -118,7 +125,13 @@ api      -> backend read-only API succeeds
 fallback -> API fails and UI falls back to mock data with warning copy
 ```
 
-This keeps the dashboard useful before backend persistence exists.
+Implemented adapter:
+
+```txt
+artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-data-source.ts
+```
+
+The Control Room now tries `GET /api/internal/health/summary` first and falls back to typed mock data when the endpoint is unavailable. This keeps the dashboard useful before backend persistence exists.
 
 ## Access policy
 
@@ -154,26 +167,41 @@ This must replace broad `settings.manage` for the Internal Monitoring sidebar en
 
 ### IM-1 - Dashboard spec and static guard
 
+Status: Done.
+
 Done when:
 
 ```txt
 - this plan exists
 - scripts/platform-admin-internal-monitoring-check.mjs exists
-- root command pnpm platform-admin:internal-monitoring:check exists
+- root command pnpm platform-admin:check exists
 - static check blocks accidental /api/internal/* mutations
 ```
 
 ### IM-2 - Frontend data source adapter
 
-Add mock/api/fallback adapter while preserving current UI.
+Status: Done.
+
+Implemented:
+
+```txt
+- GET-only frontend API client
+- mock/api/fallback data source adapter
+- Control Room source badge
+- Refresh Source action
+- fallback reason copy
+- static guard checks for adapter + API client
+```
 
 ### IM-3 - Backend read-only scaffold
 
+Next.
+
 Add GET-only backend route and service, mock-backed first.
 
-### IM-4 - Frontend API client integration
+### IM-4 - Frontend API client integration expansion
 
-Dashboard tries API first, then falls back to mock data.
+Expand API usage beyond Control Room to route inventory, contracts, and integrity sections.
 
 ### IM-5 - Platform Admin route guard
 
@@ -190,7 +218,7 @@ Only design persistent probe storage. Do not implement Prisma models until read-
 ## Validation
 
 ```bash
-pnpm platform-admin:internal-monitoring:check
+pnpm platform-admin:check
 pnpm business-mode:check
 pnpm --filter @workspace/pos-system run typecheck:restaurant
 ```
