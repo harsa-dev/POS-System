@@ -33,6 +33,8 @@ preview delegate
 stock write delegate
 workflow status delegate
 status API route family
+status frontend action migrated to status route family
+stock adjustment reversal workflow
 ```
 
 ## Retail-style Raw Material phases
@@ -51,9 +53,9 @@ Phase 7D - Intake/batch/processing preview delegate           Done
 Phase 7E - Stock/write delegate                               Done
 Phase 7F - Guarded workflow status delegate                   Done
 Phase 8A - Intake/processing/batch status API route           Done
-Phase 8B - Status frontend action                             Next
-Phase 8C - Stock adjustment reversal workflow                 Planned
-Phase 8D - Processing cancellation reversal workflow          Planned
+Phase 8B - Status frontend action                             Done
+Phase 8C - Stock adjustment reversal workflow                 Done
+Phase 8D - Processing cancellation reversal workflow          Next
 Phase 8E - Generated API client consolidation                 Planned
 Phase 8F - Raw Material smoke test + scoped CI gate           Done
 Phase 8G - Migration baseline/idempotency hardening           Planned
@@ -251,69 +253,82 @@ intake route currently supports status=CANCELLED only
 batch route supports quality status changes and QUARANTINED alias
 processing route supports guarded transition and CANCELLED alias
 pen route supports health status changes through existing kandang guard
-compatibility routes remain available until Phase 8B migrates frontend actions
+compatibility routes remain available after Phase 8B for backwards compatibility
 ```
 
-### Phase 8F - Raw Material smoke test + scoped CI gate
+### Phase 8B - Status frontend action
 
 Status: implemented.
 
 Implemented files:
 
 ```txt
-scripts/raw-material-check.mjs
-scripts/raw-material-api-smoke.mjs
-package.json
-artifacts/api-server/package.json
-artifacts/api-server/tsconfig.raw-material.json
-artifacts/pos-system/package.json
-artifacts/pos-system/tsconfig.raw-material.json
-docs/workspaces/raw-material-smoke-test-scoped-ci.md
+artifacts/pos-system/src/features/raw-material/core-system/raw-material-workflow-status.api-client.ts
+docs/workspaces/raw-material-status-frontend-action.md
 ```
 
-Commands:
-
-```bash
-pnpm raw-material:check
-pnpm raw-material:smoke
-```
-
-The scoped gate intentionally excludes global non-Raw-Material typecheck errors.
-
-## Recommended next execution order
-
-Preferred path:
+Frontend status actions now use:
 
 ```txt
-Phase 8B - Status frontend action
-Phase 8C - Stock adjustment reversal workflow
-Phase 8D - Processing cancellation reversal workflow
-Phase 8G - Migration baseline/idempotency hardening
-Phase 8H - Audit + permission policy hardening
+POST /raw-material/status/intakes/{id}
+POST /raw-material/status/batches/{id}
+POST /raw-material/status/processing-runs/{id}
+POST /raw-material/status/pens/{id}
 ```
 
-## Validation commands
+Compatibility routes remain available but are no longer used by the frontend workflow status client.
 
-Raw Material scoped validation:
+### Phase 8C - Stock adjustment reversal workflow
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/api-server/src/services/raw-material/raw-material-stock-movement.types.ts
+artifacts/api-server/src/services/raw-material/raw-material-stock-movement.validation.ts
+artifacts/api-server/src/services/raw-material/raw-material-stock-movement.repository.ts
+artifacts/api-server/src/services/raw-material/raw-material-stock-movement.service.ts
+artifacts/api-server/src/routes/raw-material-stock-movements.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material-stock-write.api-client.ts
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-stock-write-actions.tsx
+docs/workspaces/raw-material-stock-adjustment-reversal.md
+```
+
+New reversal endpoint:
+
+```txt
+POST /raw-material/stock-movements/{id}/reverse-adjustment
+```
+
+Behavior:
+
+```txt
+only adjustment movements can be reversed
+original movement remains untouched
+reversal creates ADJUSTMENT + CORRECTION + SYSTEM movement
+sourceId links the reversal to the original movement
+same adjustment cannot be reversed twice
+batch must still be in the original adjustment storage location
+successful reversal refreshes workflow reads
+```
+
+### Phase 8F - Raw Material smoke test + scoped CI gate
+
+Status: implemented.
+
+Implemented commands:
 
 ```bash
 pnpm raw-material:check
-```
-
-Raw Material scoped validation without frontend bundle build:
-
-```bash
+pnpm raw-material:check -- --seed
 pnpm raw-material:check -- --no-build
-```
-
-Raw Material scoped API smoke only:
-
-```bash
+pnpm raw-material:check -- --no-smoke
 pnpm raw-material:smoke
 ```
 
-Retail scoped validation remains separate:
+## Next recommended phase
 
-```bash
-pnpm retail:check
+```txt
+Raw Material Phase 8D - Processing cancellation reversal workflow
 ```
