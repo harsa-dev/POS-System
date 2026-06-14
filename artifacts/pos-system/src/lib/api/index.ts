@@ -36,6 +36,22 @@ export { tablesApi } from "@/lib/api/tables-api";
 export { settingsApi } from "@/lib/api/settings-api";
 export { paymentsApi } from "@/lib/api/payments-api";
 export {
+  restaurantApi,
+  type RestaurantCategoryDto,
+  type RestaurantDashboardSummaryDto,
+  type RestaurantMenuItemDto,
+  type RestaurantOrderDto,
+  type RestaurantOrderItemDto,
+  type RestaurantPaymentDto,
+  type RestaurantRecipeIngredientDto,
+  type RestaurantSharedDashboardDto,
+  type RestaurantSharedDashboardId,
+  type RestaurantSharedDashboardMetricDto,
+  type RestaurantSharedDashboardRowDto,
+  type RestaurantTableDto,
+  type RestaurantWorkflowPreviewDto,
+} from "@/lib/api/restaurant-api";
+export {
   invoiceApi,
   type InvoiceApiResult,
   type InvoiceBackendStatus,
