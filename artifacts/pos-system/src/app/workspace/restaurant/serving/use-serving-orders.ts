@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { restaurantApi, type RestaurantOrderDto } from "@/lib/api";
+import { restaurantClient, type RestaurantOrderDto } from "@/lib/api";
 import { formatDateTime, formatOrderNumber } from "@/lib/utils/format";
 import { servingOrderStatusLabels } from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
 
@@ -98,7 +98,7 @@ export function useServingOrders(): ServingOrdersResult {
     setErrorMessage(null);
 
     try {
-      const response = await restaurantApi.listServingQueue();
+      const response = await restaurantClient.listServingQueue();
 
       if (!response.success) {
         throw new Error(response.message ?? "Failed to load serving orders");
