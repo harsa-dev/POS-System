@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Download,
   Landmark,
+  PlusCircle,
   RefreshCw,
   Search,
   WalletCards,
@@ -38,6 +39,7 @@ import {
   type CashflowEntryType,
   type CashflowQuery,
   type CashflowReconciliationDto,
+  type CreateCashflowEntryPayload,
 } from "@/lib/api/cashflow-api";
 import { getApiErrorMessage } from "@/lib/api/api-client";
 
@@ -50,6 +52,8 @@ type CashflowViewMode = (typeof viewModes)[number];
 const accountOptions = ["All", "CASH", "BANK", "QRIS", "CARD", "TRANSFER", "OTHER"] as const;
 type AccountFilter = (typeof accountOptions)[number];
 
+const manualAccountOptions = ["CASH", "BANK", "QRIS", "CARD", "TRANSFER", "OTHER"] as const;
+
 const transactionTypes = [
   "All",
   "INCOME",
@@ -60,8 +64,31 @@ const transactionTypes = [
 ] as const;
 type TypeFilter = (typeof transactionTypes)[number];
 
+const manualEntryTypeOptions = [
+  "INCOME",
+  "EXPENSE",
+  "TRANSFER_IN",
+  "TRANSFER_OUT",
+  "ADJUSTMENT",
+] as const;
+
 const statusOptions = ["All", "POSTED", "PENDING", "VOIDED"] as const;
 type StatusFilterValue = (typeof statusOptions)[number];
+
+const manualStatusOptions = ["POSTED", "PENDING"] as const;
+type ManualEntryStatus = (typeof manualStatusOptions)[number];
+
+const manualCategoryOptions = [
+  "Sales",
+  "Supplies",
+  "Rent",
+  "Payroll",
+  "Utilities",
+  "Inventory Purchase",
+  "Refund",
+  "Adjustment",
+  "Other",
+] as const;
 
 type PaginationState = {
   page?: number;
@@ -71,6 +98,35 @@ type PaginationState = {
   hasNextPage?: boolean;
   hasPreviousPage?: boolean;
 };
+
+type ManualEntryFormState = {
+  account: CashflowAccount;
+  type: CashflowEntryType;
+  status: ManualEntryStatus;
+  category: string;
+  counterpartyName: string;
+  amount: string;
+  occurredAt: string;
+  description: string;
+};
+
+function getLocalDateTimeInputValue(date = new Date()) {
+  const timezoneOffsetMs = date.getTimezoneOffset() * 60 * 1000;
+  return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+}
+
+function createDefaultManualEntryForm(): ManualEntryFormState {
+  return {
+    account: "CASH",
+    type: "INCOME",
+    status: "POSTED",
+    category: "Sales",
+    counterpartyName: "",
+    amount: "",
+    occurredAt: getLocalDateTimeInputValue(),
+    description: "",
+  };
+}
 
 function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -315,6 +371,9 @@ export function CashflowDashboard() {
   const [isFetching, setIsFetching] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
+  const [manualEntryForm, setManualEntryForm] = useState<ManualEntryFormState>(() => createDefaultManualEntryForm());
+  const [manualEntryError, setManualEntryError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
@@ -427,6 +486,60 @@ export function CashflowDashboard() {
     }
   }
 
+  async function handleCreateManualEntry() {
+    const amount = Number(manualEntryForm.amount);
+    const category = manualEntryForm.category.trim();
+    const occurredAt = new Date(manualEntryForm.occurredAt);
+
+    setManualEntryError(null);
+    setActionMessage(null);
+
+    if (!Number.isInteger(amount) || amount <= 0) {
+      setManualEntryError("Amount must be a positive whole number.");
+      return;
+    }
+
+    if (!category) {
+      setManualEntryError("Category is required.");
+      return;
+    }
+
+    if (Number.isNaN(occurredAt.getTime())) {
+      setManualEntryError("Occurred at must be a valid date and time.");
+      return;
+    }
+
+    const payload: CreateCashflowEntryPayload = {
+      account: manualEntryForm.account,
+      type: manualEntryForm.type,
+      status: manualEntryForm.status,
+      category,
+      amount,
+      occurredAt: occurredAt.toISOString(),
+    };
+
+    const counterpartyName = manualEntryForm.counterpartyName.trim();
+    const description = manualEntryForm.description.trim();
+
+    if (counterpartyName) payload.counterpartyName = counterpartyName;
+    if (description) payload.description = description;
+
+    setIsSubmitting(true);
+
+    try {
+      await cashflowApi.createEntry(payload);
+      setManualEntryForm(createDefaultManualEntryForm());
+      setIsManualEntryOpen(false);
+      setPage(1);
+      setActionMessage("Manual cashflow entry created.");
+      await loadCashflow();
+    } catch (error) {
+      setManualEntryError(getApiErrorMessage(error, "Failed to create manual cashflow entry."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   const tableColumns: DataTableColumn<CashflowEntryDto>[] = [
     { key: "date", header: "Date", cell: (row) => formatDate(row.occurredAt) },
     { key: "account", header: "Source Account", cell: (row) => displayEnum(row.account) },
@@ -485,6 +598,16 @@ export function CashflowDashboard() {
             </span>
           </div>
           <DashboardActions>
+            <DashboardActionButton
+              icon={PlusCircle}
+              onClick={() => {
+                setManualEntryError(null);
+                setIsManualEntryOpen(true);
+              }}
+              disabled={isFetching || isSubmitting}
+            >
+              Add Entry
+            </DashboardActionButton>
             <DashboardActionButton icon={RefreshCw} onClick={() => void loadCashflow()} disabled={isFetching}>
               Refresh
             </DashboardActionButton>
@@ -498,6 +621,185 @@ export function CashflowDashboard() {
           </DashboardActions>
         </div>
       </DashboardPanel>
+
+      {isManualEntryOpen && (
+        <DashboardPanel title="Add Manual Cashflow Entry" description="Create a backend-backed manual ledger entry. Source sync remains handled separately so manual records stay explicit.">
+          <div className="grid gap-4 p-4 lg:grid-cols-2">
+            <label className="space-y-2 text-sm font-semibold text-neutral-700">
+              Type
+              <select
+                value={manualEntryForm.type}
+                onChange={(event) =>
+                  setManualEntryForm((current) => ({
+                    ...current,
+                    type: event.target.value as CashflowEntryType,
+                  }))
+                }
+                className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none transition focus:border-neutral-400"
+              >
+                {manualEntryTypeOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {displayEnum(option)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm font-semibold text-neutral-700">
+              Account
+              <select
+                value={manualEntryForm.account}
+                onChange={(event) =>
+                  setManualEntryForm((current) => ({
+                    ...current,
+                    account: event.target.value as CashflowAccount,
+                  }))
+                }
+                className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none transition focus:border-neutral-400"
+              >
+                {manualAccountOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {displayEnum(option)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm font-semibold text-neutral-700">
+              Status
+              <select
+                value={manualEntryForm.status}
+                onChange={(event) =>
+                  setManualEntryForm((current) => ({
+                    ...current,
+                    status: event.target.value as ManualEntryStatus,
+                  }))
+                }
+                className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none transition focus:border-neutral-400"
+              >
+                {manualStatusOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {displayEnum(option)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm font-semibold text-neutral-700">
+              Category
+              <select
+                value={manualEntryForm.category}
+                onChange={(event) =>
+                  setManualEntryForm((current) => ({
+                    ...current,
+                    category: event.target.value,
+                  }))
+                }
+                className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none transition focus:border-neutral-400"
+              >
+                {manualCategoryOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm font-semibold text-neutral-700">
+              Counterparty Name
+              <input
+                value={manualEntryForm.counterpartyName}
+                onChange={(event) =>
+                  setManualEntryForm((current) => ({
+                    ...current,
+                    counterpartyName: event.target.value,
+                  }))
+                }
+                placeholder="Customer, supplier, or internal note"
+                className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm text-neutral-800 outline-none transition focus:border-neutral-400"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-semibold text-neutral-700">
+              Amount
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={manualEntryForm.amount}
+                onChange={(event) =>
+                  setManualEntryForm((current) => ({
+                    ...current,
+                    amount: event.target.value,
+                  }))
+                }
+                placeholder="Whole number only"
+                className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm text-neutral-800 outline-none transition focus:border-neutral-400"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-semibold text-neutral-700 lg:col-span-2">
+              Occurred At
+              <input
+                type="datetime-local"
+                value={manualEntryForm.occurredAt}
+                onChange={(event) =>
+                  setManualEntryForm((current) => ({
+                    ...current,
+                    occurredAt: event.target.value,
+                  }))
+                }
+                className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm text-neutral-800 outline-none transition focus:border-neutral-400"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-semibold text-neutral-700 lg:col-span-2">
+              Description
+              <textarea
+                value={manualEntryForm.description}
+                onChange={(event) =>
+                  setManualEntryForm((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
+                }
+                rows={3}
+                placeholder="Optional ledger note"
+                className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm text-neutral-800 outline-none transition focus:border-neutral-400"
+              />
+            </label>
+          </div>
+
+          {manualEntryError && (
+            <div className="border-t border-rose-100 bg-rose-50 p-4 text-sm font-semibold text-rose-700">
+              {manualEntryError}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3 border-t border-neutral-200 p-4 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => {
+                setManualEntryError(null);
+                setManualEntryForm(createDefaultManualEntryForm());
+                setIsManualEntryOpen(false);
+              }}
+              className="rounded-xl border border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => void handleCreateManualEntry()}
+              className="rounded-xl bg-neutral-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? "Creating..." : "Create Entry"}
+            </button>
+          </div>
+        </DashboardPanel>
+      )}
 
       {(errorMessage || actionMessage) && (
         <div className="rounded-lg border border-neutral-200 bg-white p-4 text-sm font-medium text-neutral-700 shadow-sm">
