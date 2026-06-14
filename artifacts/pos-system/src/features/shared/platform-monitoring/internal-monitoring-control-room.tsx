@@ -1,24 +1,25 @@
 "use client";
 
-import { Activity, AlertTriangle, ClipboardList, Database, GitBranch, ServerCog } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Activity, AlertTriangle, ClipboardList, Database, GitBranch, RefreshCw, ServerCog } from "lucide-react";
 
 import { StatCard, StatusPill } from "@/features/shared/cards";
-import { DashboardPanel } from "@/features/shared/dashboard";
+import { DashboardActionButton, DashboardActions, DashboardPanel } from "@/features/shared/dashboard";
 import { DataTable, type DataTableColumn } from "@/features/shared/table";
 import type { DashboardTone } from "@/features/shared/types";
+import type {
+  InternalMonitoringApiImplementationStepDto,
+  InternalMonitoringControlRoomSignalDto,
+  InternalMonitoringDevActionItemDto,
+  InternalMonitoringSchemaDecisionRecordDto,
+  InternalMonitoringSource,
+} from "@/lib/api/internal-monitoring-api";
 
 import {
-  apiImplementationSteps,
-  controlRoomCards,
-  controlRoomSignals,
-  devActionItems,
-  getControlRoomSummary,
-  schemaDecisionRecords,
-  type ApiImplementationStep,
-  type ControlRoomSignal,
-  type DevActionItem,
-  type SchemaDecisionRecord,
-} from "./internal-monitoring-control-room.mock";
+  getInternalMonitoringMockControlRoomData,
+  loadInternalMonitoringControlRoomData,
+  type InternalMonitoringDataSourceResult,
+} from "./internal-monitoring-data-source";
 
 const toneMap: Record<string, DashboardTone> = {
   Healthy: "green",
@@ -35,13 +36,29 @@ const toneMap: Record<string, DashboardTone> = {
   Todo: "slate",
   Doing: "blue",
   Waiting: "amber",
+  api: "green",
+  mock: "blue",
+  fallback: "amber",
 };
 
 function tone(value: string): DashboardTone {
   return toneMap[value] ?? "slate";
 }
 
-const signalColumns: DataTableColumn<ControlRoomSignal>[] = [
+function sourceLabel(source: InternalMonitoringSource) {
+  if (source === "api") return "Read-only API";
+  if (source === "fallback") return "Fallback Mock";
+  return "Mock";
+}
+
+function formatGeneratedAt(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+const signalColumns: DataTableColumn<InternalMonitoringControlRoomSignalDto>[] = [
   { key: "area", header: "Area", cell: (row) => <span className="font-medium text-foreground">{row.area}</span> },
   { key: "signal", header: "Signal", cell: (row) => <span className="text-sm text-muted-foreground">{row.signal}</span> },
   { key: "source", header: "Source", cell: (row) => <code className="text-xs text-muted-foreground">{row.source}</code> },
@@ -49,7 +66,7 @@ const signalColumns: DataTableColumn<ControlRoomSignal>[] = [
   { key: "nextAction", header: "Next Action", cell: (row) => <span className="text-sm text-muted-foreground">{row.nextAction}</span> },
 ];
 
-const apiColumns: DataTableColumn<ApiImplementationStep>[] = [
+const apiColumns: DataTableColumn<InternalMonitoringApiImplementationStepDto>[] = [
   { key: "phase", header: "Phase", cell: (row) => row.phase },
   { key: "endpoint", header: "Endpoint", cell: (row) => <code className="text-xs text-muted-foreground">{row.endpoint}</code> },
   { key: "mockSource", header: "Mock Source", cell: (row) => <code className="text-xs text-muted-foreground">{row.mockSource}</code> },
@@ -58,14 +75,14 @@ const apiColumns: DataTableColumn<ApiImplementationStep>[] = [
   { key: "testPlan", header: "Test Plan", cell: (row) => <span className="text-sm text-muted-foreground">{row.testPlan}</span> },
 ];
 
-const schemaColumns: DataTableColumn<SchemaDecisionRecord>[] = [
+const schemaColumns: DataTableColumn<InternalMonitoringSchemaDecisionRecordDto>[] = [
   { key: "candidate", header: "Candidate", cell: (row) => <span className="font-medium text-foreground">{row.candidate}</span> },
   { key: "decision", header: "Decision", cell: (row) => <StatusPill tone={tone(row.decision)}>{row.decision}</StatusPill> },
   { key: "reason", header: "Reason", cell: (row) => <span className="text-sm text-muted-foreground">{row.reason}</span> },
   { key: "requiredProof", header: "Required Proof", cell: (row) => <span className="text-sm text-muted-foreground">{row.requiredProof}</span> },
 ];
 
-const actionColumns: DataTableColumn<DevActionItem>[] = [
+const actionColumns: DataTableColumn<InternalMonitoringDevActionItemDto>[] = [
   { key: "priority", header: "Priority", cell: (row) => <StatusPill tone={tone(row.priority)}>{row.priority}</StatusPill> },
   { key: "title", header: "Action", cell: (row) => <span className="font-medium text-foreground">{row.title}</span> },
   { key: "owner", header: "Owner", cell: (row) => row.owner },
@@ -74,34 +91,78 @@ const actionColumns: DataTableColumn<DevActionItem>[] = [
 ];
 
 export function InternalMonitoringControlRoom() {
-  const summary = getControlRoomSummary();
+  const [controlRoomData, setControlRoomData] = useState<InternalMonitoringDataSourceResult>(() =>
+    getInternalMonitoringMockControlRoomData(),
+  );
+  const [isLoading, setIsLoading] = useState(false);
+
+  async function refreshControlRoomData() {
+    setIsLoading(true);
+    try {
+      setControlRoomData(await loadInternalMonitoringControlRoomData());
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshControlRoomData();
+  }, []);
+
+  const summary = controlRoomData.summary;
 
   return (
     <>
-      <DashboardPanel title="Control Room Readiness" description="Layer operasional untuk ngelihat mana yang siap naik API, mana yang masih mock, dan mana yang harus dikunci dulu.">
-        <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
-          {controlRoomCards.map((card) => (
-            <StatCard key={card.id} label={card.label} value={card.value} note={card.note} icon={Activity} tone={card.tone} />
-          ))}
+      <DashboardPanel
+        title="Control Room Readiness"
+        description="Layer operasional untuk ngelihat mana yang siap naik API, mana yang masih mock, dan mana yang harus dikunci dulu."
+        action={
+          <DashboardActions>
+            <StatusPill tone={tone(controlRoomData.source)}>{sourceLabel(controlRoomData.source)}</StatusPill>
+            <DashboardActionButton icon={RefreshCw} onClick={() => void refreshControlRoomData()} disabled={isLoading}>
+              {isLoading ? "Refreshing" : "Refresh Source"}
+            </DashboardActionButton>
+          </DashboardActions>
+        }
+      >
+        <div className="space-y-4 p-4">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <span className="rounded-full bg-muted px-3 py-1">
+              Generated: {formatGeneratedAt(controlRoomData.generatedAt)}
+            </span>
+            <span className="rounded-full bg-muted px-3 py-1">
+              Endpoint: GET /api/internal/health/summary
+            </span>
+            {controlRoomData.fallbackReason ? (
+              <span className="rounded-full bg-chart-3/15 px-3 py-1 text-foreground">
+                Fallback reason: {controlRoomData.fallbackReason}
+              </span>
+            ) : null}
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {controlRoomData.cards.map((card) => (
+              <StatCard key={card.id} label={card.label} value={card.value} note={card.note} icon={Activity} tone={card.tone} />
+            ))}
+          </div>
         </div>
       </DashboardPanel>
 
       <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
         <DashboardPanel title="Runtime Signals" description="Sinyal utama dari route, mock data, API contract, dan schema guard.">
-          <DataTable columns={signalColumns} data={controlRoomSignals} getRowKey={(row) => row.id} minWidth={1180} pagination={false} />
+          <DataTable columns={signalColumns} data={controlRoomData.signals} getRowKey={(row) => row.id} minWidth={1180} pagination={false} />
         </DashboardPanel>
 
         <DashboardPanel title="Dev Action Queue" description="Action item paling penting sebelum dashboard ini naik dari mock ke endpoint asli.">
-          <DataTable columns={actionColumns} data={devActionItems} getRowKey={(row) => row.id} minWidth={1100} pagination={false} />
+          <DataTable columns={actionColumns} data={controlRoomData.devActionItems} getRowKey={(row) => row.id} minWidth={1100} pagination={false} />
         </DashboardPanel>
       </div>
 
       <DashboardPanel title="API Implementation Blueprint" description="Blueprint teknis per endpoint: dari mock source, contract status, rule implementasi, sampai test plan.">
-        <DataTable columns={apiColumns} data={apiImplementationSteps} getRowKey={(row) => row.id} minWidth={1700} pagination={false} />
+        <DataTable columns={apiColumns} data={controlRoomData.apiImplementationSteps} getRowKey={(row) => row.id} minWidth={1700} pagination={false} />
       </DashboardPanel>
 
       <DashboardPanel title="Schema Decision Records" description="Keputusan sementara untuk kandidat schema. Prisma tetap tidak disentuh sampai proof-nya cukup.">
-        <DataTable columns={schemaColumns} data={schemaDecisionRecords} getRowKey={(row) => row.id} minWidth={1350} pagination={false} />
+        <DataTable columns={schemaColumns} data={controlRoomData.schemaDecisionRecords} getRowKey={(row) => row.id} minWidth={1350} pagination={false} />
       </DashboardPanel>
 
       <DashboardPanel title="Next Promotion Checklist" description="Checklist keras sebelum fase backend. Ini bukan ritual, ini pertahanan hidup dari migration yang sembrono.">
@@ -112,7 +173,7 @@ export function InternalMonitoringControlRoom() {
             [Database, "Schema locked", `${summary.blockedSignals} blocked signal. Schema baru tetap hold.`],
             [ClipboardList, "Contracts synced", `${summary.totalSignals} signals wajib cocok dengan docs.`],
             [AlertTriangle, "Mutation guarded", "PATCH/POST internal harus nunggu audit + permission."],
-            [Activity, "Fallback ready", "UI harus tetap render pakai mock kalau API belum aktif."],
+            [Activity, "Fallback ready", `${sourceLabel(controlRoomData.source)} source keeps UI alive while backend catches up.`],
           ].map(([Icon, title, note]) => {
             const TypedIcon = Icon as typeof Activity;
             return (
