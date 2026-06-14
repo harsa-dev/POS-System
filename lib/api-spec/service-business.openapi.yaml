@@ -329,6 +329,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+  /custom-business/service/reversals/quotations/{id}/cancel:
+    post:
+      operationId: serviceBusinessCancelQuotation
+      tags: [service-business]
+      summary: Cancel Service Business quotation and reverse quotation workflow state
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessObject"
+      responses:
+        "200":
+          description: Service Business quotation cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+        "409":
+          description: Service quotation cannot be cancelled because linked invoices or terminal state block reversal
   /custom-business/service/invoices:
     post:
       operationId: serviceBusinessCreateInvoice
@@ -370,6 +395,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+  /custom-business/service/reversals/invoices/{id}/cancel:
+    post:
+      operationId: serviceBusinessCancelInvoice
+      tags: [service-business]
+      summary: Cancel unpaid Service Business invoice and reverse invoice workflow state
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessObject"
+      responses:
+        "200":
+          description: Service Business invoice cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+        "409":
+          description: Service invoice cannot be cancelled until payment reversal is handled
 components:
   schemas:
     ServiceBusinessWorkflowStatus:
