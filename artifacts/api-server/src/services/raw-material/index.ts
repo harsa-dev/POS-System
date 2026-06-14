@@ -22,6 +22,7 @@ export * from "./raw-material-pen.validation.js";
 export * from "./raw-material-ledger.dto.js";
 export * from "./raw-material-stock-movement.service.js";
 export * from "./raw-material-stock-movement.validation.js";
+export * from "./raw-material-status.service.js";
 export * from "./raw-material.permissions.js";
 export * from "./raw-material.audit.js";
 export * from "./raw-material.summary.js";
