@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 4 implemented
+Status: Phase 5 implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -12,8 +12,8 @@ Phase 1  - Restaurant scope audit + F&B legacy mapping             Done
 Phase 2  - Restaurant persistence foundation                       Done
 Phase 3  - Backend route, guard, workflow preview                  Done
 Phase 4  - Shared dashboard backend summary                        Done
-Phase 5  - Seed restaurant/menu/table/order/payment demo data       Next
-Phase 6  - Frontend Restaurant workspace API wiring                Planned
+Phase 5  - Seed restaurant/menu/table/order/payment demo data       Done
+Phase 6  - Frontend Restaurant workspace API wiring                Next
 Phase 7A - Prisma schema model mapping                             Planned
 Phase 7B - Summary read delegate                                   Planned
 Phase 7C - Workflow read delegate                                  Planned
@@ -122,6 +122,30 @@ Supported dashboard IDs match the shared dashboard bridge surface used by Retail
 
 The response is read-only and sourced from Restaurant menu, table, active order, kitchen queue, serving queue, recipe inventory, and completed-order revenue data. Heavy HR dashboards are intentionally returned as skipped/planned surfaces until Restaurant staff/payroll scope becomes active.
 
+## Phase 5 result
+
+Restaurant now has an idempotent demo seed script:
+
+- `artifacts/api-server/scripts/seed-restaurant-demo-data.ts`
+
+Package command:
+
+- `pnpm --filter @workspace/api-server run restaurant:seed`
+
+The seed targets active `RESTAURANT` businesses only. It does not create hidden businesses. Seeded data covers:
+
+- Restaurant profile/tax/service settings.
+- Categories.
+- Inventory ingredients and packaging.
+- Menu items.
+- Recipes.
+- Dining tables.
+- Orders across `PENDING_PAYMENT`, `PAID`, `PREPARING`, `READY`, `SERVED`, and `COMPLETED`.
+- Payments.
+- Cashflow income entries for paid orders.
+
+The script uses deterministic IDs and conflict-safe updates so it can be rerun without multiplying demo data.
+
 ## Canonical target layout
 
 Frontend target:
@@ -148,9 +172,6 @@ artifacts/api-server/src/services/restaurant/
   restaurant.service.ts
   restaurant.policy.ts
   restaurant.audit.ts
-  restaurant.workflow-status.repository.ts
-  restaurant.order-reversal.repository.ts
-  restaurant.payment-reversal.repository.ts
 ```
 
 Route target:
@@ -162,16 +183,7 @@ artifacts/api-server/src/routes/restaurant.ts
 Validation target:
 
 ```bash
-pnpm restaurant:check
-pnpm restaurant:smoke
 pnpm --filter @workspace/api-server run typecheck:restaurant
 pnpm --filter @workspace/pos-system run typecheck:restaurant
+pnpm restaurant:check
 ```
-
-## Safety rules
-
-- New Restaurant work must use the `restaurant` naming layer.
-- Existing `fnb` files are compatibility only.
-- Do not delete F&B legacy until Restaurant-scoped API, client, frontend, and smoke gates exist.
-- Do not use global typecheck as the Restaurant gate while non-restaurant work remains noisy.
-- Prefer scoped commands and scoped docs, matching the Retail implementation style.
