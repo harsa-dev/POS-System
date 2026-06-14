@@ -1,9 +1,14 @@
-import { Download, Upload, UserCog } from "lucide-react";
+import { AlertTriangle, Download, Upload, UserCog } from "lucide-react";
 
 import { StatusPill } from "@/features/shared/cards";
 import { DashboardPanel } from "@/features/shared/dashboard";
 
-import type { ManagedRole, TeamMember } from "../role-permission-library";
+import {
+  countGrantedPermissions,
+  countRiskyPermissions,
+  type ManagedRole,
+  type TeamMember,
+} from "../role-permission-library";
 import { getStatusTone } from "./team-management-ui";
 
 export function AssignmentImportExportPanel({
@@ -33,6 +38,16 @@ export function AssignmentImportExportPanel({
   onImportState: () => void;
   onImportTextChange: (value: string) => void;
 }) {
+  const selectedMember = members.find((member) => member.id === selectedMemberId);
+  const currentRole = selectedMember ? roles.find((role) => role.id === selectedMember.roleId) : undefined;
+  const targetRole = roles.find((role) => role.id === selectedAssignRoleId);
+  const currentGranted = currentRole ? countGrantedPermissions(currentRole.permissions) : 0;
+  const targetGranted = targetRole ? countGrantedPermissions(targetRole.permissions) : 0;
+  const currentRisk = currentRole ? countRiskyPermissions(currentRole.permissions) : 0;
+  const targetRisk = targetRole ? countRiskyPermissions(targetRole.permissions) : 0;
+  const permissionDelta = targetGranted - currentGranted;
+  const riskDelta = targetRisk - currentRisk;
+
   return (
     <DashboardPanel title="Assignment + Import / Export" description="Dummy assignment flow + local JSON portability. Belum backend, tapi contract shape sudah kelihatan.">
       <div className="grid gap-4 p-4">
@@ -58,6 +73,33 @@ export function AssignmentImportExportPanel({
               ))}
             </select>
           </label>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-muted/20 p-4">
+          <div className="mb-3 flex items-center gap-2 font-semibold text-foreground">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            Assignment impact preview
+          </div>
+          <div className="grid gap-3 text-sm md:grid-cols-2">
+            <div className="rounded-xl border border-border bg-background p-3">
+              <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Current</p>
+              <p className="mt-1 font-medium text-foreground">{currentRole?.name ?? "Unknown role"}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{currentGranted} permissions · {currentRisk} risky</p>
+            </div>
+            <div className="rounded-xl border border-border bg-background p-3">
+              <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Target</p>
+              <p className="mt-1 font-medium text-foreground">{targetRole?.name ?? "Unknown role"}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{targetGranted} permissions · {targetRisk} risky</p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <StatusPill tone={permissionDelta > 0 ? "amber" : permissionDelta < 0 ? "blue" : "slate"}>
+              {permissionDelta >= 0 ? "+" : ""}{permissionDelta} permissions
+            </StatusPill>
+            <StatusPill tone={riskDelta > 0 ? "rose" : riskDelta < 0 ? "green" : "slate"}>
+              {riskDelta >= 0 ? "+" : ""}{riskDelta} risky
+            </StatusPill>
+          </div>
         </div>
 
         <button type="button" onClick={onAssignRoleToMember} className="inline-flex w-fit items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90">
