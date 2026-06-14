@@ -15,6 +15,7 @@ artifacts/api-server/src/routes/raw-material.ts
 artifacts/api-server/src/routes/raw-material-processing.ts
 artifacts/api-server/src/routes/raw-material-pens.ts
 artifacts/api-server/src/routes/raw-material-stock-movements.ts
+artifacts/api-server/src/routes/raw-material-summary.ts
 artifacts/api-server/src/services/raw-material/
 artifacts/api-server/prisma/schema.prisma
 ```
@@ -30,6 +31,7 @@ batches
 processing runs
 kandang pens
 stock movements
+shared dashboard summary
 shared dashboard bridge
 ```
 
@@ -139,13 +141,6 @@ No Prisma schema or migration was changed in this phase.
 
 Status: implemented.
 
-Goal:
-
-```txt
-Split large service files into repository/service/presenter/validator boundaries where needed.
-Keep route behavior stable.
-```
-
 ### Phase 4A - Stock movement repository split
 
 Status: implemented.
@@ -244,37 +239,55 @@ No Prisma schema or migration was changed in this phase.
 
 ## Phase 6 - Shared dashboard backend summary
 
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/api-server/src/services/raw-material/raw-material.summary.ts
+artifacts/api-server/src/routes/raw-material-summary.ts
+artifacts/api-server/src/routes/index.ts
+docs/workspaces/raw-material-shared-dashboard-summary.md
+```
+
+Implemented endpoint:
+
+```txt
+GET /raw-material/summary
+```
+
+Summary sections:
+
+```txt
+business
+suppliers
+storage
+intakes
+weighings
+batches
+processing
+kandang
+stockMovements
+latestActivity
+```
+
+No Prisma schema, migration, stock mutation, route contract, or frontend contract was changed in this phase.
+
+## Phase 7 - Prisma delegate and typecheck cleanup
+
 Status: next.
 
 Goal:
 
 ```txt
-Expose a backend summary endpoint for Raw Material shared dashboards.
-Stop relying only on frontend mock/shared adapters where backend data exists.
-```
-
-Suggested endpoint:
-
-```txt
-GET /api/raw-material/summary
-```
-
-## Phase 7 - Prisma delegate and typecheck cleanup
-
-Status: planned.
-
-Goal:
-
-```txt
-Make Raw Material backend compile cleanly against generated Prisma types.
-Fix known type errors in raw-material route/service exports.
-Do not hide errors with any or ts-ignore.
+Confirm the Raw Material backend lane compiles cleanly against generated Prisma types.
+Keep global non-Raw-Material typecheck errors out of scope until their own cleanup lane.
 ```
 
 Known current issues from local validation:
 
 ```txt
-No active Raw Material typecheck errors after the scoped Raw Material fixes.
+No active Raw Material typecheck errors before Phase 6.
 Non-Raw Material typecheck errors may still exist and are intentionally out of scope for this lane.
 ```
 
