@@ -3,6 +3,7 @@ import type { RawMaterialIntakeStatus } from "@prisma/client";
 import type { BusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
+import { writeRawMaterialAuditLog } from "./raw-material.audit.js";
 import { toRawMaterialIntakeDto } from "./raw-material-intake.presenter.js";
 import {
   cancelRawMaterialIntakeRecord,
@@ -24,7 +25,6 @@ import {
   parseRawMaterialIntakeStatus,
   parseRawMaterialUnit,
 } from "./raw-material-intake.validation.js";
-
 
 type IntakeMutationInput = Record<string, unknown>;
 
@@ -237,8 +237,18 @@ export async function createRawMaterialIntake(params: {
   await assertStorageUsable(businessContext, payload.targetStorageLocationId);
 
   const intake = await createRawMaterialIntakeRecord(businessContext, payload);
+  const dto = toRawMaterialIntakeDto(intake);
 
-  return toRawMaterialIntakeDto(intake);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "CREATE",
+    entityType: "RawMaterialIntake",
+    entityId: intake.id,
+    changes: { payload, result: dto },
+  });
+
+  return dto;
 }
 
 export async function updateRawMaterialIntake(params: {
@@ -250,7 +260,7 @@ export async function updateRawMaterialIntake(params: {
   const { actor, businessContext, id, input } = params;
 
   assertCanManageRawMaterialIntake(actor);
-  await loadIntakeOrThrow(businessContext, id);
+  const existing = await loadIntakeOrThrow(businessContext, id);
 
   const payload = parseUpdatePayload(input);
   await assertReferenceAvailable({
@@ -262,8 +272,18 @@ export async function updateRawMaterialIntake(params: {
   await assertStorageUsable(businessContext, payload.targetStorageLocationId);
 
   const intake = await updateRawMaterialIntakeRecord(id, payload);
+  const dto = toRawMaterialIntakeDto(intake);
 
-  return toRawMaterialIntakeDto(intake);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "UPDATE",
+    entityType: "RawMaterialIntake",
+    entityId: intake.id,
+    changes: { before: toRawMaterialIntakeDto(existing), payload, result: dto },
+  });
+
+  return dto;
 }
 
 export async function cancelRawMaterialIntake(params: {
@@ -274,9 +294,19 @@ export async function cancelRawMaterialIntake(params: {
   const { actor, businessContext, id } = params;
 
   assertCanManageRawMaterialIntake(actor);
-  await loadIntakeOrThrow(businessContext, id);
+  const existing = await loadIntakeOrThrow(businessContext, id);
 
   const intake = await cancelRawMaterialIntakeRecord(id);
+  const dto = toRawMaterialIntakeDto(intake);
 
-  return toRawMaterialIntakeDto(intake);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "DELETE",
+    entityType: "RawMaterialIntake",
+    entityId: intake.id,
+    changes: { before: toRawMaterialIntakeDto(existing), result: dto },
+  });
+
+  return dto;
 }
