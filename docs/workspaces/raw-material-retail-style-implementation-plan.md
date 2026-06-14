@@ -25,6 +25,7 @@ frontend summary API sync with mock fallback
 seeded demo data
 scoped validation gate
 read-only API smoke script
+workflow read delegate
 ```
 
 ## Retail-style Raw Material phases
@@ -34,11 +35,11 @@ Phase 1  - Raw Material persistence foundation                Done
 Phase 2  - Backend route, guard, workflow preview             Done
 Phase 3  - Shared dashboard backend summary                   Done
 Phase 4  - Seed supplier/storage/intake/batch/kandang         Done
-Phase 5  - Frontend list/workflow API wiring                  Planned
+Phase 5  - Frontend list/workflow API wiring                  Next
 Phase 6  - Raw Material OpenAPI/client coverage               Planned
 Phase 7A - Prisma schema model mapping                        Done
 Phase 7B - Summary read delegate                              Done
-Phase 7C - Workflow read delegate                             Next
+Phase 7C - Workflow read delegate                             Done
 Phase 7D - Intake/batch/processing preview delegate           Planned
 Phase 7E - Stock/write delegate                               Backend Done, Frontend Planned
 Phase 7F - Guarded workflow status delegate                   Backend Partial, Frontend Planned
@@ -90,6 +91,44 @@ Business.mode = RAW_MATERIAL
 Business.isActive = true
 ```
 
+## Phase 7C - Workflow read delegate
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.types.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-client.ts
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-placeholder-workspace.tsx
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-workspace.constants.ts
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-workspace.utils.ts
+docs/workspaces/raw-material-workflow-read-delegate.md
+```
+
+Backend read endpoints consumed:
+
+```txt
+GET /raw-material/suppliers
+GET /raw-material/storage-locations
+GET /raw-material/intakes
+GET /raw-material/weighings
+GET /raw-material/batches
+GET /raw-material/processing-runs
+GET /raw-material/pens
+GET /raw-material/stock-movements
+```
+
+Behavior:
+
+```txt
+frontend workflow lists load from backend first
+mock fallback remains available
+backend DTO enum casing is mapped to existing frontend display casing
+stock movement trail now reads from backend ledger rows
+write actions remain disabled
+```
+
 ## Phase 8F - Raw Material smoke test + scoped CI gate
 
 Status: implemented.
@@ -129,7 +168,6 @@ The scoped gate intentionally excludes global non-Raw-Material typecheck errors.
 Preferred path:
 
 ```txt
-Phase 7C - Workflow read delegate
 Phase 5  - Frontend list/workflow API wiring
 Phase 6  - Raw Material OpenAPI/client coverage
 Phase 7D - Intake/batch/processing preview delegate
@@ -143,13 +181,11 @@ Phase 8G - Migration baseline/idempotency hardening
 Phase 8H - Audit + permission smoke/policy assertion
 ```
 
-## Why Phase 7C should come next
+## Why Phase 5 should come next
 
-Now that the seed data and scoped validation gate exist, Raw Material can safely hydrate workflow/read screens from backend list endpoints.
+Phase 7C created the shared workflow read delegate and hydrated the main workspace lists from backend read endpoints.
 
-The summary endpoint is already API-first, but detailed workspace lists still rely heavily on mock fallback.
-
-Phase 7C should create read delegates first, before write actions or generated client consolidation.
+Phase 5 should refine per-module frontend wiring so each module communicates its API-backed state, loading/fallback behavior, and workflow status more clearly.
 
 ## Non-goals
 
