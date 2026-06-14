@@ -35,6 +35,7 @@ workflow status delegate
 status API route family
 status frontend action migrated to status route family
 stock adjustment reversal workflow
+processing cancellation reversal workflow
 ```
 
 ## Retail-style Raw Material phases
@@ -55,8 +56,8 @@ Phase 7F - Guarded workflow status delegate                   Done
 Phase 8A - Intake/processing/batch status API route           Done
 Phase 8B - Status frontend action                             Done
 Phase 8C - Stock adjustment reversal workflow                 Done
-Phase 8D - Processing cancellation reversal workflow          Next
-Phase 8E - Generated API client consolidation                 Planned
+Phase 8D - Processing cancellation reversal workflow          Done
+Phase 8E - Generated API client consolidation                 Next
 Phase 8F - Raw Material smoke test + scoped CI gate           Done
 Phase 8G - Migration baseline/idempotency hardening           Planned
 Phase 8H - Audit + permission policy hardening                Mostly Done, needs smoke/policy assertion
@@ -313,6 +314,40 @@ batch must still be in the original adjustment storage location
 successful reversal refreshes workflow reads
 ```
 
+### Phase 8D - Processing cancellation reversal workflow
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/api-server/src/services/raw-material/raw-material-processing-cancellation-reversal.service.ts
+artifacts/api-server/src/services/raw-material/raw-material-status.service.ts
+artifacts/api-server/src/services/raw-material/index.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material-workflow-status.api-client.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-workflow-status-actions.tsx
+docs/workspaces/raw-material-processing-cancellation-reversal.md
+```
+
+Cancellation route:
+
+```txt
+POST /raw-material/status/processing-runs/{id}
+```
+
+Behavior:
+
+```txt
+status=CANCELLED still uses processing transition guards
+if no PRODUCTION_USAGE movement exists, the processing run is cancelled normally
+if a linked PRODUCTION_USAGE movement exists, stock is restored with a SYSTEM/CORRECTION movement
+sourceId links the reversal to the original production usage movement
+same consumption movement cannot be reversed twice
+batch must still be in the original processing consumption storage location
+successful cancellation refreshes workflow reads
+```
+
 ### Phase 8F - Raw Material smoke test + scoped CI gate
 
 Status: implemented.
@@ -330,5 +365,5 @@ pnpm raw-material:smoke
 ## Next recommended phase
 
 ```txt
-Raw Material Phase 8D - Processing cancellation reversal workflow
+Raw Material Phase 8E - Generated API client consolidation
 ```
