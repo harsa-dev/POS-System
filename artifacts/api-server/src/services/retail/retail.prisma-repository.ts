@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "../../lib/prisma.js";
+import { createRetailAuditPayload } from "./retail.audit.js";
 import type { RetailCreateSaleInput, RetailRepository } from "./retail.repository.js";
 import type {
   RetailInventoryRiskDto,
@@ -346,6 +347,7 @@ export const retailPrismaRepository = {
     const receiptNumber = createReceiptNumber();
     const saleId = createId();
     const paymentId = createId();
+    const cashflowEntryId = createId();
     const now = new Date();
     const method = input.preview.paymentMethod;
 
@@ -485,7 +487,7 @@ export const retailPrismaRepository = {
             "createdAt",
             "updatedAt"
           ) VALUES (
-            ${createId()},
+            ${cashflowEntryId},
             ${input.scope.businessId},
             'INCOME',
             ${normalizePaymentAccount(method)},
@@ -520,7 +522,34 @@ export const retailPrismaRepository = {
             'CREATE',
             'RetailSale',
             ${saleId},
-            CAST(${JSON.stringify({ receiptNumber, total: input.preview.payableTotal, stockMovementIds })} AS jsonb),
+            CAST(${JSON.stringify(createRetailAuditPayload({
+              event: "retail.checkout.created",
+              actor: input.actor,
+              references: {
+                saleId,
+                receiptNumber,
+                paymentId,
+                cashflowEntryId,
+              },
+              totals: {
+                subtotal: input.preview.subtotal,
+                discountTotal: input.preview.discountTotal,
+                taxIncluded: input.preview.taxIncluded,
+                payableTotal: input.preview.payableTotal,
+                grossProfit: input.preview.grossProfit,
+              },
+              stockMovementIds,
+              metadata: {
+                paymentMethod: method,
+                lineCount: input.preview.lines.length,
+                lines: input.preview.lines.map((line) => ({
+                  productId: line.productId,
+                  sku: line.sku,
+                  quantity: line.quantity,
+                  lineTotal: line.lineTotal,
+                })),
+              },
+            }))} AS jsonb),
             ${now}
           )
         `);
