@@ -3,6 +3,7 @@ import { RawMaterialProcessingStatus, Role } from "@prisma/client";
 import type { BusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
+import { writeRawMaterialAuditLog } from "./raw-material.audit.js";
 import { toRawMaterialProcessingRunDto } from "./raw-material-processing-run.presenter.js";
 import {
   cancelRawMaterialProcessingRunRecord,
@@ -153,8 +154,18 @@ export async function createRawMaterialProcessingRun(params: {
     completedAt: data.completedAt,
     notes: data.notes,
   });
+  const dto = toRawMaterialProcessingRunDto(run);
 
-  return toRawMaterialProcessingRunDto(run);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "CREATE",
+    entityType: "RawMaterialProcessingRun",
+    entityId: run.id,
+    changes: { payload: { ...data, status: nextStatus }, result: dto },
+  });
+
+  return dto;
 }
 
 export async function updateRawMaterialProcessingRun(params: {
@@ -213,8 +224,18 @@ export async function updateRawMaterialProcessingRun(params: {
     updateCompletedAt: input.completedAt !== undefined,
     updateNotes: input.notes !== undefined,
   });
+  const dto = toRawMaterialProcessingRunDto(updated);
 
-  return toRawMaterialProcessingRunDto(updated);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "UPDATE",
+    entityType: "RawMaterialProcessingRun",
+    entityId: updated.id,
+    changes: { before: toRawMaterialProcessingRunDto(existing), payload: data, result: dto },
+  });
+
+  return dto;
 }
 
 export async function cancelRawMaterialProcessingRun(params: {
@@ -232,6 +253,16 @@ export async function cancelRawMaterialProcessingRun(params: {
   });
 
   const updated = await cancelRawMaterialProcessingRunRecord(existing.id);
+  const dto = toRawMaterialProcessingRunDto(updated);
 
-  return toRawMaterialProcessingRunDto(updated);
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "DELETE",
+    entityType: "RawMaterialProcessingRun",
+    entityId: updated.id,
+    changes: { before: toRawMaterialProcessingRunDto(existing), result: dto },
+  });
+
+  return dto;
 }
