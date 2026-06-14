@@ -50,7 +50,7 @@ export function RouteGuard({
   });
 
   if (!routeAccess.canEnter) {
-    return <Redirect to={ROUTES.SELECT_MODE} />;
+    return <Redirect to={businessModeService.getSelectModeRoute(pathname)} />;
   }
 
   if (!withShell) return <>{children}</>;
