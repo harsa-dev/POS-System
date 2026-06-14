@@ -24,7 +24,7 @@
     "raw-material:seed": "tsx ./scripts/seed-raw-material-demo-data.ts",
     "service:db:apply": "node ./scripts/apply-service-business-db.mjs",
     "service:ensure-business": "tsx ./scripts/ensure-service-business-demo.ts",
-    "service:seed": "tsx ./scripts/seed-service-business-demo-data.ts",
+    "service:seed": "tsx ./scripts/seed-service-business-demo-data-idempotent.ts",
     "backfill:businesses": "node --env-file-if-exists=.env --import tsx ./scripts/backfill-business-tenant-bridge.ts",
     "backfill:inventory-business-scope": "node --env-file-if-exists=.env --import tsx ./scripts/backfill-inventory-business-scope.ts"
   },
