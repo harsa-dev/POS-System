@@ -1,9 +1,8 @@
-import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
-
 import {
-  buildServiceBusinessApiPath,
   SERVICE_BUSINESS_OPENAPI_OPERATIONS,
-} from "./service-business-api-operations";
+  serviceBusinessGeneratedApiData,
+  type ServiceBusinessGeneratedEnvelope,
+} from "./service-business.generated-api-client";
 import type {
   AddServiceCostLineInput,
   ApproveServiceQuotationInput,
@@ -31,45 +30,31 @@ import type { ServiceBusinessJob, ServiceBusinessWorkflowStatus } from "./servic
 
 export { SERVICE_BUSINESS_OPENAPI_OPERATIONS };
 
-export type ServiceBusinessEnvelope<TData> = ApiEnvelope<TData> & {
-  data: TData;
-};
-
-async function unwrapData<TData>(request: Promise<ServiceBusinessEnvelope<TData>>) {
-  const response = await request;
-  return response.data;
-}
+export type ServiceBusinessEnvelope<TData> = ServiceBusinessGeneratedEnvelope<TData>;
 
 export const serviceBusinessApi = {
   getWorkspace(): Promise<ServiceBusinessWorkspaceResponse> {
-    return unwrapData(
-      apiClient.get<ServiceBusinessEnvelope<ServiceBusinessWorkspaceResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessGetWorkspace"),
-      ),
+    return serviceBusinessGeneratedApiData<ServiceBusinessWorkspaceResponse>(
+      "serviceBusinessGetWorkspace",
     );
   },
 
   getSummary(): Promise<ServiceBusinessSummaryResponse> {
-    return unwrapData(
-      apiClient.get<ServiceBusinessEnvelope<ServiceBusinessSummaryResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessGetSummary"),
-      ),
+    return serviceBusinessGeneratedApiData<ServiceBusinessSummaryResponse>(
+      "serviceBusinessGetSummary",
     );
   },
 
   listJobs(query?: ListServiceBusinessJobsQuery): Promise<readonly ServiceBusinessJob[]> {
-    return unwrapData(
-      apiClient.get<ServiceBusinessEnvelope<readonly ServiceBusinessJob[]>>(
-        buildServiceBusinessApiPath("serviceBusinessListJobs", { query }),
-      ),
+    return serviceBusinessGeneratedApiData<readonly ServiceBusinessJob[]>(
+      "serviceBusinessListJobs",
+      { query },
     );
   },
 
   getWorkflow(): Promise<ServiceBusinessWorkflowResponse> {
-    return unwrapData(
-      apiClient.get<ServiceBusinessEnvelope<ServiceBusinessWorkflowResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessGetWorkflowStatuses"),
-      ),
+    return serviceBusinessGeneratedApiData<ServiceBusinessWorkflowResponse>(
+      "serviceBusinessGetWorkflowStatuses",
     );
   },
 
@@ -77,198 +62,168 @@ export const serviceBusinessApi = {
     jobId: string,
     nextStatus: ServiceBusinessWorkflowStatus,
   ): Promise<ServiceBusinessTransitionPreviewResponse> {
-    return unwrapData(
-      apiClient.get<ServiceBusinessEnvelope<ServiceBusinessTransitionPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessGetTransitionPreview", {
-          pathParams: { id: jobId },
-          query: { nextStatus },
-        }),
-      ),
+    return serviceBusinessGeneratedApiData<ServiceBusinessTransitionPreviewResponse>(
+      "serviceBusinessGetTransitionPreview",
+      {
+        pathParams: { id: jobId },
+        query: { nextStatus },
+      },
     );
   },
 
   previewQuotation(
     input: CreateServiceQuotationInput,
   ): Promise<ServiceBusinessPreviewResponse<ServiceBusinessQuotationPreviewEstimates>> {
-    return unwrapData(
-      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessPreviewResponse<ServiceBusinessQuotationPreviewEstimates>>>(
-        buildServiceBusinessApiPath("serviceBusinessPreviewQuotation"),
-        { json: input },
-      ),
-    );
+    return serviceBusinessGeneratedApiData<
+      ServiceBusinessPreviewResponse<ServiceBusinessQuotationPreviewEstimates>
+    >("serviceBusinessPreviewQuotation", { json: input });
   },
 
   previewInvoice(
     input: CreateServiceInvoiceInput,
   ): Promise<ServiceBusinessPreviewResponse<ServiceBusinessInvoicePreviewEstimates>> {
-    return unwrapData(
-      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessPreviewResponse<ServiceBusinessInvoicePreviewEstimates>>>(
-        buildServiceBusinessApiPath("serviceBusinessPreviewInvoice"),
-        { json: input },
-      ),
-    );
+    return serviceBusinessGeneratedApiData<
+      ServiceBusinessPreviewResponse<ServiceBusinessInvoicePreviewEstimates>
+    >("serviceBusinessPreviewInvoice", { json: input });
   },
 
   previewInvoicePayment(
     input: RecordServiceInvoicePaymentInput,
   ): Promise<ServiceBusinessPreviewResponse<ServiceBusinessInvoicePaymentPreviewEstimates>> {
-    return unwrapData(
-      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessPreviewResponse<ServiceBusinessInvoicePaymentPreviewEstimates>>>(
-        buildServiceBusinessApiPath("serviceBusinessPreviewInvoicePayment"),
-        { json: input },
-      ),
-    );
+    return serviceBusinessGeneratedApiData<
+      ServiceBusinessPreviewResponse<ServiceBusinessInvoicePaymentPreviewEstimates>
+    >("serviceBusinessPreviewInvoicePayment", { json: input });
   },
 
   createRequest(
     input: CreateServiceRequestInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return unwrapData(
-      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessCreateRequest"),
-        { json: input },
-      ),
+    return serviceBusinessGeneratedApiData<ServiceBusinessMutationPreviewResponse>(
+      "serviceBusinessCreateRequest",
+      { json: input },
     );
   },
 
   updateJobStatus(
     input: UpdateServiceJobStatusInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return unwrapData(
-      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessSetJobStatus", {
-          pathParams: { id: input.jobId },
-        }),
-        {
-          json: {
-            status: input.nextStatus,
-            note: input.note,
-          },
+    return serviceBusinessGeneratedApiData<ServiceBusinessMutationPreviewResponse>(
+      "serviceBusinessSetJobStatus",
+      {
+        pathParams: { id: input.jobId },
+        json: {
+          status: input.nextStatus,
+          note: input.note,
         },
-      ),
+      },
     );
   },
 
   updateRequestStatus(
     input: UpdateServiceRequestStatusInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return unwrapData(
-      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessSetRequestStatus", {
-          pathParams: { id: input.requestId },
-        }),
-        {
-          json: {
-            status: input.nextStatus,
-            note: input.note,
-          },
+    return serviceBusinessGeneratedApiData<ServiceBusinessMutationPreviewResponse>(
+      "serviceBusinessSetRequestStatus",
+      {
+        pathParams: { id: input.requestId },
+        json: {
+          status: input.nextStatus,
+          note: input.note,
         },
-      ),
+      },
     );
   },
 
   addCostLine(
     input: AddServiceCostLineInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return unwrapData(
-      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessAddCostLine", {
-          pathParams: { id: input.jobId },
-        }),
-        { json: input },
-      ),
+    return serviceBusinessGeneratedApiData<ServiceBusinessMutationPreviewResponse>(
+      "serviceBusinessAddCostLine",
+      {
+        pathParams: { id: input.jobId },
+        json: input,
+      },
     );
   },
 
   createQuotation(
     input: CreateServiceQuotationInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return unwrapData(
-      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessCreateQuotation"),
-        { json: input },
-      ),
+    return serviceBusinessGeneratedApiData<ServiceBusinessMutationPreviewResponse>(
+      "serviceBusinessCreateQuotation",
+      { json: input },
     );
   },
 
   approveQuotation(
     input: ApproveServiceQuotationInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return unwrapData(
-      apiClient.patch<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessApproveQuotation", {
-          pathParams: { id: input.quotationId },
-        }),
-        { json: input },
-      ),
+    return serviceBusinessGeneratedApiData<ServiceBusinessMutationPreviewResponse>(
+      "serviceBusinessApproveQuotation",
+      {
+        pathParams: { id: input.quotationId },
+        json: input,
+      },
     );
   },
 
   cancelQuotation(
     input: CancelServiceQuotationInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return unwrapData(
-      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessCancelQuotation", {
-          pathParams: { id: input.quotationId },
-        }),
-        { json: { note: input.note } },
-      ),
+    return serviceBusinessGeneratedApiData<ServiceBusinessMutationPreviewResponse>(
+      "serviceBusinessCancelQuotation",
+      {
+        pathParams: { id: input.quotationId },
+        json: { note: input.note },
+      },
     );
   },
 
   createInvoice(
     input: CreateServiceInvoiceInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return unwrapData(
-      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessCreateInvoice"),
-        { json: input },
-      ),
+    return serviceBusinessGeneratedApiData<ServiceBusinessMutationPreviewResponse>(
+      "serviceBusinessCreateInvoice",
+      { json: input },
     );
   },
 
   recordInvoicePayment(
     input: RecordServiceInvoicePaymentInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return unwrapData(
-      apiClient.patch<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessRecordInvoicePayment", {
-          pathParams: { id: input.invoiceId },
-        }),
-        { json: input },
-      ),
+    return serviceBusinessGeneratedApiData<ServiceBusinessMutationPreviewResponse>(
+      "serviceBusinessRecordInvoicePayment",
+      {
+        pathParams: { id: input.invoiceId },
+        json: input,
+      },
     );
   },
 
   reverseInvoicePayment(
     input: ReverseServiceInvoicePaymentInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return unwrapData(
-      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessReverseInvoicePayment", {
-          pathParams: { id: input.invoiceId },
-        }),
-        {
-          json: {
-            amount: input.amount,
-            note: input.note,
-          },
+    return serviceBusinessGeneratedApiData<ServiceBusinessMutationPreviewResponse>(
+      "serviceBusinessReverseInvoicePayment",
+      {
+        pathParams: { id: input.invoiceId },
+        json: {
+          amount: input.amount,
+          note: input.note,
         },
-      ),
+      },
     );
   },
 
   cancelInvoice(
     input: CancelServiceInvoiceInput,
   ): Promise<ServiceBusinessMutationPreviewResponse> {
-    return unwrapData(
-      apiClient.post<ServiceBusinessEnvelope<ServiceBusinessMutationPreviewResponse>>(
-        buildServiceBusinessApiPath("serviceBusinessCancelInvoice", {
-          pathParams: { id: input.invoiceId },
-        }),
-        { json: { note: input.note } },
-      ),
+    return serviceBusinessGeneratedApiData<ServiceBusinessMutationPreviewResponse>(
+      "serviceBusinessCancelInvoice",
+      {
+        pathParams: { id: input.invoiceId },
+        json: { note: input.note },
+      },
     );
   },
 } as const;
