@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 7E implemented
+Status: Phase 7F implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -19,8 +19,8 @@ Phase 7B - Summary read delegate                                   Done
 Phase 7C - Workflow read delegate                                  Done
 Phase 7D - Order/payment/kitchen/serving preview delegate           Done
 Phase 7E - Order/write delegate                                    Done
-Phase 7F - Guarded workflow status delegate                        Next
-Phase 8A - Order/kitchen/serving/table status API route             Planned
+Phase 7F - Guarded workflow status delegate                        Done
+Phase 8A - Order/kitchen/serving/table status API route             Next
 Phase 8B - Status frontend action                                  Planned
 Phase 8C - Order cancellation + stock/cashflow reversal workflow    Planned
 Phase 8D - Payment refund/void reversal workflow                   Planned
@@ -240,3 +240,23 @@ Implemented surfaces:
 - `artifacts/pos-system/src/lib/api/restaurant-api.ts` exposes typed `createOrder` and `confirmPayment` helpers.
 
 This phase does not update kitchen/serving workflow status, cancel orders, refund payments, or reverse stock/cashflow. Those remain in Phase 7F and Phase 8C/8D.
+
+## Phase 7F result
+
+Restaurant now has guarded scoped write delegates for kitchen and serving workflow status movement.
+
+Implemented surfaces:
+
+- `artifacts/api-server/src/services/restaurant/restaurant.status-write.ts` performs guarded transactional status updates.
+- `POST /restaurant/kitchen/status` writes kitchen transitions with `RESTAURANT_KITCHEN_ROLES`.
+- `POST /restaurant/serving/status` writes serving transitions with `RESTAURANT_SERVING_ROLES`.
+- `artifacts/pos-system/src/lib/api/restaurant-api.ts` exposes typed `updateKitchenStatus` and `updateServingStatus` helpers.
+
+Allowed write transitions in this phase:
+
+- `PAID -> PREPARING`
+- `PREPARING -> READY`
+- `READY -> SERVED`
+- `SERVED -> COMPLETED`
+
+When `SERVED -> COMPLETED` succeeds for a dine-in order, the assigned table is moved to `CLEANING`. Every status write creates a normalized `AuditLog` entry. Payment confirmation stays in `POST /restaurant/payments/confirm`; cancellation stays planned for the reversal workflow because it needs stock/cashflow handling.
