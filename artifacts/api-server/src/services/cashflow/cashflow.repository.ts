@@ -170,6 +170,26 @@ export async function listCashflowEntryRecords(
   `;
 }
 
+export async function exportCashflowEntryRecords(
+  db: CashflowDb,
+  businessId: string,
+  query: CashflowQuery,
+  exportLimit = 5000,
+) {
+  const whereSql = getWhereSql(businessId, {
+    ...query,
+    page: 1,
+    limit: exportLimit,
+  });
+
+  return db.$queryRaw<CashflowEntryRecord[]>`
+    SELECT * FROM "CashflowEntry"
+    ${whereSql}
+    ORDER BY "occurredAt" DESC, "createdAt" DESC
+    LIMIT ${exportLimit};
+  `;
+}
+
 export async function countCashflowEntryRecords(
   db: CashflowDb,
   businessId: string,
