@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 8D implemented
+Status: Phase 8E implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -24,8 +24,8 @@ Phase 8A - Order/kitchen/serving/table status API route             Done
 Phase 8B - Status frontend action                                  Done
 Phase 8C - Order cancellation + stock/cashflow reversal workflow    Done
 Phase 8D - Payment refund/void reversal workflow                   Done
-Phase 8E - Generated API client consolidation                      Next
-Phase 8F - Restaurant smoke test + scoped CI gate                   Planned
+Phase 8E - Generated API client consolidation                      Done
+Phase 8F - Restaurant smoke test + scoped CI gate                   Next
 Phase 8G - Migration baseline/idempotency hardening                Planned
 Phase 8H - Audit + permission policy hardening                     Planned
 ```
