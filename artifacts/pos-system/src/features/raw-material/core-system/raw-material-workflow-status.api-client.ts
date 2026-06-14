@@ -1,4 +1,4 @@
-import { apiClient, getApiErrorMessage, type ApiEnvelope } from "@/lib/api";
+import { apiClient, getApiErrorMessage, type ApiEnvelope } from "@/lib/api/api-client";
 
 export type RawMaterialBatchQualityStatusWrite = "ACCEPTED" | "INSPECTION" | "REJECTED";
 export type RawMaterialProcessingStatusWrite = "PLANNED" | "RUNNING" | "COMPLETED";
