@@ -15,6 +15,7 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { businessModeService } from "@/components/core/business-mode/business-mode-service";
 import { StatCard, StatusPill } from "@/features/shared/cards";
 import {
   DashboardActionButton,
@@ -23,6 +24,7 @@ import {
   DashboardPanel,
   DashboardShell,
   DashboardTabs,
+  getSharedDashboardModeContext,
 } from "@/features/shared/dashboard";
 import { exportCsv } from "@/features/shared/export";
 import { SearchFilter, SelectFilter, StatusFilter } from "@/features/shared/filters";
@@ -264,6 +266,7 @@ export function CashflowDashboard() {
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("All");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [modeContext, setModeContext] = useState(() => getSharedDashboardModeContext("cashflow"));
 
   const [dashboard, setDashboard] = useState<CashflowDashboardDto | null>(null);
   const [entries, setEntries] = useState<CashflowEntryDto[]>([]);
@@ -315,7 +318,14 @@ export function CashflowDashboard() {
     } finally {
       setIsFetching(false);
     }
-  }, [page, query]);
+  }, [modeContext.queryScopeKey, page, query]);
+
+  useEffect(() => {
+    return businessModeService.subscribe(() => {
+      setModeContext(getSharedDashboardModeContext("cashflow"));
+      setPage(1);
+    });
+  }, []);
 
   useEffect(() => {
     void loadCashflow();
@@ -483,6 +493,12 @@ export function CashflowDashboard() {
           <div className="flex flex-wrap gap-2 text-sm font-semibold text-neutral-600">
             <span className="rounded-full bg-neutral-100 px-3 py-1">Authenticated Business Scope</span>
             <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">{periodLabel}</span>
+            <span className="rounded-full bg-indigo-50 px-3 py-1 text-indigo-700">
+              Mode Scope: {modeContext.activeModeShortLabel}
+            </span>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+              Query Scope: {modeContext.queryScopeKey}
+            </span>
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
               {formatNumber(pagination.totalItems ?? entries.length)} Ledger Entries
             </span>
@@ -517,7 +533,7 @@ export function CashflowDashboard() {
                 icon={Download}
                 onClick={() =>
                   exportCsv({
-                    filename: "cashflow-ledger-entries",
+                    filename: `cashflow-ledger-entries-${modeContext.activeMode}`,
                     rows: entries,
                     columns: [
                       { key: "date", header: "Date", value: (row) => formatDateTime(row.occurredAt) },
@@ -561,7 +577,16 @@ export function CashflowDashboard() {
                   }}
                 />
                 <SelectFilter
-                  label="Transaction Type"
+                  label="View Mode"
+                  value={viewMode}
+                  options={[...viewModes]}
+                  onChange={(value) => {
+                    setViewMode(value as CashflowViewMode);
+                    setPage(1);
+                  }}
+                />
+                <StatusFilter
+                  label="Type"
                   value={typeFilter}
                   options={[...transactionTypes]}
                   onChange={(value) => {
@@ -570,6 +595,7 @@ export function CashflowDashboard() {
                   }}
                 />
                 <StatusFilter
+                  label="Status"
                   value={statusFilter}
                   options={[...statusOptions]}
                   onChange={(value) => {
@@ -578,229 +604,26 @@ export function CashflowDashboard() {
                   }}
                 />
               </DashboardFilters>
-              <DashboardTabs
-                value={viewMode}
-                options={[...viewModes]}
-                onChange={(value) => {
-                  setViewMode(value as CashflowViewMode);
-                  setPage(1);
-                }}
-              />
-            </div>
-          }
-          actions={
-            <div className="max-w-md">
               <SearchFilter
-                label="Search transactions"
                 value={search}
-                placeholder="Search source, category, or notes..."
                 onChange={(value) => {
                   setSearch(value);
                   setPage(1);
                 }}
+                placeholder="Search source, category, description..."
               />
             </div>
           }
         />
+        <DataTable columns={tableColumns} rows={entries} emptyMessage={isFetching ? "Loading cashflow..." : "No cashflow entries found."} />
       </DashboardPanel>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Total Income" value={formatCurrency(summary.totalIncome)} note="Posted cash in" icon={ArrowUpRight} tone="green" />
-        <StatCard label="Total Expense" value={formatCurrency(summary.totalExpense)} note="Posted cash out" icon={ArrowDownRight} tone="rose" />
-        <StatCard label="Cash Drawer Balance" value={formatCurrency(cashDrawerBalance)} note="Current page cash ledger" icon={WalletCards} tone="amber" />
-        <StatCard label="Pending Amount" value={formatCurrency(summary.pendingAmount)} note="Pending ledger value" icon={Search} tone="blue" />
-        <StatCard label="Current Balance" value={formatCurrency(summary.currentBalance)} note="Backend ledger balance" icon={Landmark} tone="slate" />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard title="Total Income" value={formatCurrency(summary.totalIncome)} icon={ArrowUpRight} tone="green" />
+        <StatCard title="Total Expense" value={formatCurrency(summary.totalExpense)} icon={ArrowDownRight} tone="rose" />
+        <StatCard title="Current Balance" value={formatCurrency(summary.currentBalance)} icon={WalletCards} tone="blue" />
+        <StatCard title="Cash Drawer" value={formatCurrency(cashDrawerBalance)} icon={Landmark} tone="amber" />
       </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
-        <DashboardPanel title="Monthly Cashflow Trend">
-          <TrendChart data={dashboard?.trend ?? []} />
-        </DashboardPanel>
-        <DashboardPanel title="Expense Categories">
-          <SummaryBars data={dashboard?.expenseSources ?? []} total={summary.totalExpense} tone="rose" />
-        </DashboardPanel>
-      </div>
-
-      <DashboardPanel title="Transaction History" description="Paginated server-side ledger entries">
-        <DataTable
-          columns={tableColumns}
-          data={entries}
-          getRowKey={(row) => row.id}
-          minWidth={1180}
-          emptyMessage={isFetching ? "Loading cashflow ledger..." : "No cashflow entries match the active filters."}
-        />
-        <div className="flex flex-col gap-3 border-t border-neutral-200 p-4 text-sm text-neutral-600 sm:flex-row sm:items-center sm:justify-between">
-          <span>
-            Page {pagination.page ?? page} of {pagination.totalPages ?? 1} · {formatNumber(pagination.totalItems ?? entries.length)} entries
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={!pagination.hasPreviousPage || isFetching}
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-              className="rounded-lg border border-neutral-200 px-3 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              disabled={!pagination.hasNextPage || isFetching}
-              onClick={() => setPage((current) => current + 1)}
-              className="rounded-lg border border-neutral-200 px-3 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </DashboardPanel>
-
-      {isManualEntryOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <section className="w-full max-w-3xl rounded-lg bg-white shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-neutral-200 p-5">
-              <div>
-                <h2 className="text-xl font-bold tracking-tight text-neutral-950">Create Manual Cashflow Entry</h2>
-                <p className="mt-1 text-sm text-neutral-500">Manual entries are written through backend validation and audit logs.</p>
-              </div>
-              <button type="button" onClick={() => setIsManualEntryOpen(false)} className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-semibold hover:bg-neutral-50">
-                Close
-              </button>
-            </div>
-            <form onSubmit={handleCreateManualEntry} className="grid gap-4 p-5 sm:grid-cols-2">
-              <label className="space-y-2 text-sm font-semibold text-neutral-700">
-                Account
-                <select value={entryForm.account} onChange={(event) => setEntryForm((current) => ({ ...current, account: event.target.value as CashflowAccount }))} className="w-full rounded-lg border border-neutral-200 px-3 py-2">
-                  {accountOptions.filter((option) => option !== "All").map((account) => <option key={account} value={account}>{displayEnum(account)}</option>)}
-                </select>
-              </label>
-              <label className="space-y-2 text-sm font-semibold text-neutral-700">
-                Type
-                <select value={entryForm.type} onChange={(event) => setEntryForm((current) => ({ ...current, type: event.target.value as CashflowEntryType }))} className="w-full rounded-lg border border-neutral-200 px-3 py-2">
-                  {transactionTypes.filter((option) => option !== "All").map((type) => <option key={type} value={type}>{displayEnum(type)}</option>)}
-                </select>
-              </label>
-              <label className="space-y-2 text-sm font-semibold text-neutral-700">
-                Status
-                <select value={entryForm.status} onChange={(event) => setEntryForm((current) => ({ ...current, status: event.target.value as CashflowEntryStatus }))} className="w-full rounded-lg border border-neutral-200 px-3 py-2">
-                  {statusOptions.filter((option) => option !== "All").map((status) => <option key={status} value={status}>{displayEnum(status)}</option>)}
-                </select>
-              </label>
-              <label className="space-y-2 text-sm font-semibold text-neutral-700">
-                Amount
-                <input value={entryForm.amount} onChange={(event) => setEntryForm((current) => ({ ...current, amount: event.target.value }))} type="number" min="1" step="1" className="w-full rounded-lg border border-neutral-200 px-3 py-2" />
-              </label>
-              <label className="space-y-2 text-sm font-semibold text-neutral-700">
-                Category
-                <input value={entryForm.category} onChange={(event) => setEntryForm((current) => ({ ...current, category: event.target.value }))} className="w-full rounded-lg border border-neutral-200 px-3 py-2" />
-              </label>
-              <label className="space-y-2 text-sm font-semibold text-neutral-700">
-                Occurred At
-                <input value={entryForm.occurredAt} onChange={(event) => setEntryForm((current) => ({ ...current, occurredAt: event.target.value }))} type="date" className="w-full rounded-lg border border-neutral-200 px-3 py-2" />
-              </label>
-              <label className="space-y-2 text-sm font-semibold text-neutral-700">
-                Customer / Supplier
-                <input value={entryForm.counterpartyName} onChange={(event) => setEntryForm((current) => ({ ...current, counterpartyName: event.target.value }))} className="w-full rounded-lg border border-neutral-200 px-3 py-2" />
-              </label>
-              <label className="space-y-2 text-sm font-semibold text-neutral-700 sm:col-span-2">
-                Description
-                <textarea value={entryForm.description} onChange={(event) => setEntryForm((current) => ({ ...current, description: event.target.value }))} className="min-h-24 w-full rounded-lg border border-neutral-200 px-3 py-2" />
-              </label>
-              <div className="flex justify-end gap-2 sm:col-span-2">
-                <button type="button" onClick={() => setIsManualEntryOpen(false)} className="rounded-lg border border-neutral-200 px-4 py-2 text-sm font-semibold">Cancel</button>
-                <button type="submit" disabled={isSubmitting} className="rounded-lg bg-neutral-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
-                  {isSubmitting ? "Saving..." : "Create Entry"}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
-
-      {isSyncOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <section className="w-full max-w-2xl rounded-lg bg-white shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-neutral-200 p-5">
-              <div>
-                <h2 className="text-xl font-bold tracking-tight text-neutral-950">Sync Source To Cashflow</h2>
-                <p className="mt-1 text-sm text-neutral-500">Sync uses backend idempotency keys, so the same source will not create duplicate ledger entries.</p>
-              </div>
-              <button type="button" onClick={() => setIsSyncOpen(false)} className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-semibold hover:bg-neutral-50">
-                Close
-              </button>
-            </div>
-            <div className="grid gap-4 p-5">
-              <div className="rounded-lg border border-neutral-200 p-4">
-                <label className="space-y-2 text-sm font-semibold text-neutral-700">
-                  Order ID
-                  <input value={syncForm.orderId} onChange={(event) => setSyncForm((current) => ({ ...current, orderId: event.target.value }))} placeholder="Paste paid order id" className="w-full rounded-lg border border-neutral-200 px-3 py-2" />
-                </label>
-                <button type="button" disabled={isSubmitting} onClick={() => void handleSyncOrder()} className="mt-3 rounded-lg bg-neutral-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
-                  Sync Order Payment
-                </button>
-              </div>
-              <div className="rounded-lg border border-neutral-200 p-4">
-                <label className="space-y-2 text-sm font-semibold text-neutral-700">
-                  Shift ID
-                  <input value={syncForm.shiftId} onChange={(event) => setSyncForm((current) => ({ ...current, shiftId: event.target.value }))} placeholder="Paste closed shift id" className="w-full rounded-lg border border-neutral-200 px-3 py-2" />
-                </label>
-                <button type="button" disabled={isSubmitting} onClick={() => void handleSyncShift()} className="mt-3 rounded-lg bg-neutral-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
-                  Sync Shift Close
-                </button>
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {isAnalysisOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <section className="max-h-[90vh] w-full max-w-5xl overflow-auto rounded-lg bg-white shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-neutral-200 p-5">
-              <div>
-                <h2 className="text-xl font-bold tracking-tight text-neutral-950">Cashflow Analysis</h2>
-                <p className="mt-1 text-sm text-neutral-500">Analysis Date: {periodLabel}</p>
-              </div>
-              <button type="button" onClick={() => setIsAnalysisOpen(false)} className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-semibold hover:bg-neutral-50">
-                Close
-              </button>
-            </div>
-            <div className="grid gap-4 p-5 lg:grid-cols-2">
-              <DashboardPanel title="Income Card">
-                <div className="grid gap-3 p-4 sm:grid-cols-3">
-                  <StatCard label="Total Income" value={formatCurrency(summary.totalIncome)} icon={ArrowUpRight} tone="green" />
-                  <StatCard label="Posted Entries" value={formatNumber(summary.postedCount)} icon={Search} tone="slate" />
-                  <StatCard label="Pending Amount" value={formatCurrency(summary.pendingAmount)} icon={BarChart3} tone="blue" />
-                </div>
-              </DashboardPanel>
-              <DashboardPanel title="Expense Card">
-                <div className="grid gap-3 p-4 sm:grid-cols-3">
-                  <StatCard label="Total Expense" value={formatCurrency(summary.totalExpense)} icon={ArrowDownRight} tone="rose" />
-                  <StatCard label="Voided Entries" value={formatNumber(summary.voidedCount)} icon={XCircle} tone="rose" />
-                  <StatCard label="Net Balance" value={formatCurrency(summary.currentBalance)} icon={WalletCards} tone="slate" />
-                </div>
-              </DashboardPanel>
-              <DashboardPanel title="Daily Average">
-                <div className="grid gap-3 p-4 sm:grid-cols-2">
-                  <StatCard label="Income / Day" value={formatCurrency(summary.totalIncome / daysInRange)} icon={ArrowUpRight} tone="green" />
-                  <StatCard label="Expense / Day" value={formatCurrency(summary.totalExpense / daysInRange)} icon={ArrowDownRight} tone="rose" />
-                </div>
-              </DashboardPanel>
-              <DashboardPanel title="Ledger Health">
-                <div className="grid gap-3 p-4 sm:grid-cols-2">
-                  <StatCard label="Server Entries" value={formatNumber(pagination.totalItems ?? entries.length)} icon={Landmark} tone="blue" />
-                  <StatCard label="Current Page" value={formatNumber(entries.length)} icon={Search} tone="slate" />
-                </div>
-              </DashboardPanel>
-              <DashboardPanel title="Largest Income Sources">
-                <SummaryBars data={dashboard?.incomeSources ?? []} total={summary.totalIncome} />
-              </DashboardPanel>
-              <DashboardPanel title="Largest Expense Sources">
-                <SummaryBars data={dashboard?.expenseSources ?? []} total={summary.totalExpense} tone="rose" />
-              </DashboardPanel>
-            </div>
-          </section>
-        </div>
-      )}
     </DashboardShell>
   );
 }
