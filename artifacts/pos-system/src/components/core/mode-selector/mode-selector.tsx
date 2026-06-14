@@ -73,11 +73,12 @@ export function ModeSelector() {
 
     setCurrentMode(transition.toMode);
 
-    const redirectRoute = businessModeService.getSelectionRedirectRoute({
-      targetMode: mode.id,
-      nextRoute,
-      fallbackRoute: transition.route,
-    });
+    const redirectRoute =
+      businessModeService.getSelectionRedirectRoute({
+        targetMode: mode.id,
+        nextRoute,
+        fallbackRoute: transition.route,
+      }) ?? transition.route;
 
     if (transition.shouldRedirect || redirectRoute !== location) {
       setLocation(redirectRoute);
