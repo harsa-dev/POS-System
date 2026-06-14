@@ -6,7 +6,7 @@ The goal is parity across business modes without pretending every mode needs the
 
 ## Current validation baseline
 
-Service Business backend implementation is mature through the delegate cleanup, status-route lanes, seeded demo data, scoped validation, idempotent DB setup, OpenAPI/client coverage, preview delegates, quote/invoice cancellation reversal, and payment reversal workflow.
+Service Business backend implementation is mature through the delegate cleanup, status-route lanes, seeded demo data, scoped validation, idempotent DB setup, OpenAPI/client coverage, preview delegates, quote/invoice cancellation reversal, payment reversal workflow, and generated-client-style frontend consolidation.
 
 Known completed capabilities:
 
@@ -29,6 +29,7 @@ service status frontend action migration
 service demo tenant helper
 service demo seed data
 service OpenAPI/client coverage
+service generated-client-style frontend consolidation
 service quote/invoice/payment preview delegate
 service quote/invoice cancellation reversal workflow
 service invoice payment reversal workflow
@@ -43,6 +44,7 @@ docs/workspaces/custom-business-service-backend-phases.md
 docs/workspaces/custom-business-service-prisma-delegate-cleanup.md
 docs/workspaces/custom-business-service-seed-demo-data.md
 docs/workspaces/custom-business-service-openapi-client-coverage.md
+docs/workspaces/custom-business-service-generated-client-consolidation.md
 docs/workspaces/custom-business-service-preview-delegate.md
 docs/workspaces/custom-business-service-status-api-route.md
 docs/workspaces/custom-business-service-status-frontend-action.md
@@ -55,7 +57,6 @@ docs/workspaces/custom-business-service-migration-baseline-idempotency.md
 Current known gap compared with Retail and Raw Material:
 
 ```txt
-no full Service generated-client consolidation lane yet
 no explicit Service audit + permission policy assertion lane yet
 ```
 
@@ -78,10 +79,10 @@ Phase 8A - Service status API route family                        Done
 Phase 8B - Service status frontend action                         Done
 Phase 8C - Quote/invoice cancellation reversal workflow           Done
 Phase 8D - Payment reversal workflow                              Done
-Phase 8E - Generated API client consolidation                     Next
+Phase 8E - Generated API client consolidation                     Done
 Phase 8F - Service smoke test + scoped CI gate                    Done
 Phase 8G - Service migration baseline/idempotency hardening       Done
-Phase 8H - Service audit + permission policy hardening            Planned
+Phase 8H - Service audit + permission policy hardening            Next
 ```
 
 ## Implemented phase notes
@@ -226,7 +227,7 @@ serviceBusinessCancelInvoice
 serviceBusinessReverseInvoicePayment
 ```
 
-The handwritten frontend client routes through the Service operation registry. Full generated-client consolidation remains a later Phase 8E task.
+The frontend client now has both operation registry coverage and a generated-client-style facade. Full automatic OpenAPI code generation is still not implemented.
 
 ### Phase 7A - Prisma schema model mapping
 
@@ -385,6 +386,32 @@ writes timeline item and ServiceInvoice audit entry
 
 This phase does not create gateway refunds or cashflow refund entries.
 
+### Phase 8E - Generated API client consolidation
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business.generated-api-client.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-operations.ts
+docs/workspaces/custom-business-service-generated-client-consolidation.md
+```
+
+Behavior:
+
+```txt
+centralizes Service API request dispatch behind operationId
+reuses Service operation registry as route source
+handles GET, POST, and PATCH dispatch
+handles path params and query params
+unwraps ApiEnvelope data consistently
+keeps serviceBusinessApi as the domain-facing client
+```
+
+This phase does not introduce automatic OpenAPI TypeScript generation.
+
 ### Phase 8F - Service smoke test + scoped CI gate
 
 Status: implemented.
@@ -412,5 +439,5 @@ artifacts/api-server/prisma/sql/service-business-schema-verify.sql
 ## Next recommended phase
 
 ```txt
-Service Phase 8E - Generated API client consolidation
+Service Phase 8H - Service audit + permission policy hardening
 ```
