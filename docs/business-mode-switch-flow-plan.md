@@ -111,6 +111,33 @@ Sidebar visibility is also mode-scoped. A sidebar item must pass all checks:
 
 This prevents Restaurant links from staying visible in Retail, Retail links from staying visible in Restaurant, and shared links from bypassing active mode context.
 
+## Static smoke check
+
+Business-mode switch flow has a static smoke command:
+
+```bash
+pnpm business-mode:check
+```
+
+The command verifies source contracts for:
+
+```txt
+storage key and event
+selectable mode registry
+legacy mode repair map
+centralized transition service
+route isolation support
+safe next-route flow
+route guard redirect behavior
+mode selector continuation behavior
+switcher transition usage
+query cache reset
+sidebar route-support filtering
+generalized runtime role mapping
+```
+
+It is not a browser automation test. It is a fast source-level guard that catches accidental drift in the switch-flow contract.
+
 ## Implemented in this phase
 
 ```txt
@@ -119,7 +146,8 @@ BM-2 - Centralized transition service                              Done
 BM-2B - Route separation and shared cache reset guard               Done
 BM-3 - Sidebar/module filtering hardening                          Done
 BM-4 - Select-mode next-route flow                                  Done
-BM-5 - Business-mode smoke checklist/script                         Next
+BM-5 - Business-mode smoke checklist/script                         Done
+BM-6 - Optional browser switch-flow smoke                           Next
 ```
 
 ## Manual smoke
@@ -135,4 +163,5 @@ BM-5 - Business-mode smoke checklist/script                         Next
 8. Open cashflow, switch mode, then return to cashflow -> page refetches with selected mode context.
 9. Sidebar title follows active mode label.
 10. custom-business remains visible but not selectable.
+11. Run pnpm business-mode:check before touching mode switch flow again.
 ```
