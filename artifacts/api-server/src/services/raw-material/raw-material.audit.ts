@@ -34,7 +34,7 @@ export function toRawMaterialAuditChanges(value: unknown): Prisma.InputJsonValue
 
 export async function writeRawMaterialAuditLog(
   input: RawMaterialAuditInput,
-  client: RawMaterialAuditClient = prisma,
+  client: RawMaterialAuditClient = prisma as RawMaterialAuditClient,
 ) {
   await client.auditLog.create({
     data: {
