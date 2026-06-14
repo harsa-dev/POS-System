@@ -31,6 +31,7 @@ OpenAPI endpoint coverage
 frontend contract operationId mapping
 preview delegate
 stock write delegate
+workflow status delegate
 ```
 
 ## Retail-style Raw Material phases
@@ -47,8 +48,8 @@ Phase 7B - Summary read delegate                              Done
 Phase 7C - Workflow read delegate                             Done
 Phase 7D - Intake/batch/processing preview delegate           Done
 Phase 7E - Stock/write delegate                               Done
-Phase 7F - Guarded workflow status delegate                   Backend Partial, Frontend Planned
-Phase 8A - Intake/processing/batch status API route           Planned
+Phase 7F - Guarded workflow status delegate                   Done
+Phase 8A - Intake/processing/batch status API route           Next
 Phase 8B - Status frontend action                             Planned
 Phase 8C - Stock adjustment reversal workflow                 Planned
 Phase 8D - Processing cancellation reversal workflow          Planned
@@ -58,7 +59,9 @@ Phase 8G - Migration baseline/idempotency hardening           Planned
 Phase 8H - Audit + permission policy hardening                Mostly Done, needs smoke/policy assertion
 ```
 
-## Phase 4 - Seed supplier/storage/intake/batch/kandang
+## Completed phase notes
+
+### Phase 4 - Seed supplier/storage/intake/batch/kandang
 
 Status: implemented.
 
@@ -89,26 +92,9 @@ Seeded demo data per active Raw Material business:
 3 initial receiving stock movements
 ```
 
-The seed script is idempotent and scoped to:
-
-```txt
-Business.mode = RAW_MATERIAL
-Business.isActive = true
-```
-
-## Phase 5 - Frontend list/workflow API wiring
+### Phase 5 - Frontend list/workflow API wiring
 
 Status: implemented.
-
-Implemented files:
-
-```txt
-artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-client.ts
-artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-placeholder-workspace.tsx
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-readonly-sections.tsx
-docs/workspaces/raw-material-frontend-list-workflow-api-wiring.md
-```
 
 Implemented behavior:
 
@@ -116,26 +102,10 @@ Implemented behavior:
 frontend workflow list surfaces are API-first
 mock fallback remains available
 API contract metadata covers every workflow read endpoint
-write route metadata exists but write buttons remain disabled
 backend enum casing is mapped into frontend display casing
 ```
 
-Wired read surfaces:
-
-```txt
-supplier intake queue
-batch traceability
-weighing records
-storage capacity cards
-processing run cards
-kandang snapshot cards
-supplier filter preview
-stock movement trail
-transfer preview selectors
-processing preview selectors
-```
-
-## Phase 6 - Raw Material OpenAPI/client coverage
+### Phase 6 - Raw Material OpenAPI/client coverage
 
 Status: implemented.
 
@@ -148,47 +118,11 @@ artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-cont
 docs/workspaces/raw-material-openapi-client-coverage.md
 ```
 
-Implemented behavior:
-
-```txt
-OpenAPI spec includes the raw-material tag
-OpenAPI spec covers active Raw Material read endpoints
-OpenAPI spec covers currently known Raw Material write endpoints for contract visibility
-frontend API contract entries include operationId values
-operationId values align with OpenAPI operation IDs
-handwritten frontend client remains active until generated client consolidation
-```
-
-Covered read operations:
-
-```txt
-rawMaterialGetSummary
-rawMaterialListSuppliers
-rawMaterialListStorageLocations
-rawMaterialListIntakes
-rawMaterialListWeighings
-rawMaterialListBatches
-rawMaterialListProcessingRuns
-rawMaterialListPens
-rawMaterialListStockMovements
-```
-
 Generated client replacement remains planned under Phase 8E.
 
-## Phase 7C - Workflow read delegate
+### Phase 7C - Workflow read delegate
 
 Status: implemented.
-
-Implemented files:
-
-```txt
-artifacts/pos-system/src/features/raw-material/core-system/raw-material.types.ts
-artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-client.ts
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-placeholder-workspace.tsx
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-workspace.constants.ts
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-workspace.utils.ts
-docs/workspaces/raw-material-workflow-read-delegate.md
-```
 
 Backend read endpoints consumed:
 
@@ -203,38 +137,9 @@ GET /raw-material/pens
 GET /raw-material/stock-movements
 ```
 
-Behavior:
-
-```txt
-frontend workflow lists load from backend first
-mock fallback remains available
-backend DTO enum casing is mapped to existing frontend display casing
-stock movement trail now reads from backend ledger rows
-write actions remain disabled
-```
-
-## Phase 7D - Intake/batch/processing preview delegate
+### Phase 7D - Intake/batch/processing preview delegate
 
 Status: implemented.
-
-Implemented backend files:
-
-```txt
-artifacts/api-server/src/services/raw-material/raw-material-preview.service.ts
-artifacts/api-server/src/routes/raw-material-preview.ts
-artifacts/api-server/src/routes/index.ts
-artifacts/api-server/tsconfig.raw-material.json
-```
-
-Implemented frontend files:
-
-```txt
-artifacts/pos-system/src/features/raw-material/core-system/raw-material-preview.api-client.ts
-artifacts/pos-system/src/features/raw-material/core-system/index.ts
-artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-draft-forms.tsx
-docs/workspaces/raw-material-preview-delegate.md
-```
 
 Preview endpoints:
 
@@ -244,19 +149,9 @@ POST /raw-material/previews/batch
 POST /raw-material/previews/processing-run
 ```
 
-Behavior:
+Preview endpoints are read-only and return `canProceed`, `blockingIssues`, `warnings`, and `estimates`.
 
-```txt
-preview endpoints are read-only
-preview response includes canProceed, blockingIssues, warnings, and estimates
-intake draft form calls backend preview first
-if backend preview blocks the intake draft, local draft is not created
-if preview API is unavailable, local fallback remains available
-batch and processing preview client functions are available for the next write UX delegate
-write buttons remain disabled
-```
-
-## Phase 7E - Stock/write delegate
+### Phase 7E - Stock/write delegate
 
 Status: implemented.
 
@@ -284,14 +179,46 @@ Behavior:
 ```txt
 frontend stock writes only enable after backend workflow data loads
 mock/fallback IDs are never submitted to write endpoints
-adjustment requires batch, delta quantity, reason, and note
-transfer requires batch and different target storage
-processing consume requires a processing run
 successful write refreshes workflow reads
 backend remains source of truth for stock guards, ledger rows, and audit logs
 ```
 
-## Phase 8F - Raw Material smoke test + scoped CI gate
+### Phase 7F - Guarded workflow status delegate
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/pos-system/src/features/raw-material/core-system/raw-material-workflow-status.api-client.ts
+artifacts/pos-system/src/features/raw-material/core-system/index.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-workflow-status-actions.tsx
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-draft-forms.tsx
+docs/workspaces/raw-material-workflow-status-delegate.md
+```
+
+Wired workflow status endpoints:
+
+```txt
+DELETE /raw-material/intakes/{id}
+PATCH  /raw-material/batches/{id}
+DELETE /raw-material/batches/{id}
+PATCH  /raw-material/processing-runs/{id}
+POST   /raw-material/processing-runs/{id}/cancel
+PATCH  /raw-material/pens/{id}
+```
+
+Behavior:
+
+```txt
+frontend workflow status actions only enable after backend workflow data loads
+mock/fallback IDs are never submitted to status endpoints
+successful status action refreshes workflow reads
+backend remains source of truth for intake cancellation, batch quality/quarantine, processing transition, processing cancellation, and kandang health guards
+```
+
+### Phase 8F - Raw Material smoke test + scoped CI gate
 
 Status: implemented.
 
@@ -315,14 +242,6 @@ pnpm raw-material:check
 pnpm raw-material:smoke
 ```
 
-Optional flags:
-
-```bash
-pnpm raw-material:check -- --seed
-pnpm raw-material:check -- --no-build
-pnpm raw-material:check -- --no-smoke
-```
-
 The scoped gate intentionally excludes global non-Raw-Material typecheck errors.
 
 ## Recommended next execution order
@@ -330,8 +249,7 @@ The scoped gate intentionally excludes global non-Raw-Material typecheck errors.
 Preferred path:
 
 ```txt
-Phase 7F - Guarded workflow status delegate
-Phase 8A - Status API route
+Phase 8A - Intake/processing/batch status API route
 Phase 8B - Status frontend action
 Phase 8C - Stock adjustment reversal workflow
 Phase 8D - Processing cancellation reversal workflow
