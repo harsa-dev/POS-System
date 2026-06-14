@@ -2,18 +2,17 @@
 
 ## Goal
 
-Migrate business mode routing from the old legacy mode ids to the new centralized business mode contract.
+Migrate business mode routing from legacy ids to the centralized business mode contract.
 
-Old ids:
+Legacy ids:
 
 ```txt
 fnb
-retail
 service
 warehouse
 ```
 
-New ids:
+Current ids:
 
 ```txt
 restaurant
@@ -22,53 +21,65 @@ raw-material
 custom-business
 ```
 
-The goal is not to open every planned workspace. The goal is to make route protection understand the new registry while keeping old localStorage values from breaking existing users.
+## Current mode state
 
-## What changed
+Selectable:
 
-- Route guard now reads business mode state from the centralized business mode storage helper.
-- Legacy `fnb` storage values are normalized to `restaurant`.
-- Invalid, empty, or non-selectable planned modes redirect to `/select-mode`.
-- Restaurant/F&B operational routes now require `restaurant` instead of `fnb`.
-- Raw Material Kandang route is guarded behind `raw-material`, which is currently planned and not selectable.
-- Dashboard entry route now comes from the business mode registry instead of hardcoded legacy mode checks.
+```txt
+restaurant
+retail
+raw-material
+```
 
-## Rules
+Planned / locked:
+
+```txt
+custom-business
+```
+
+## Current rules
 
 - Frontend route guard is UX protection only.
-- LocalStorage is not a security source of truth.
-- Planned modes must not become active workspaces through manual URL entry.
-- Restaurant/F&B remains the only selectable operational workspace.
-- Legacy localStorage values should be repaired, not allowed to break navigation.
+- LocalStorage is not a backend security source of truth.
+- Backend must still enforce authenticated business context.
+- Restaurant routes require `restaurant`.
+- Retail routes require `retail`.
+- Raw Material routes require `raw-material`.
+- Shared dashboard routes require a valid active business mode.
+- Switching mode clears frontend query cache so shared routes refetch with the selected mode header.
+- Legacy storage values should repair into current ids.
 
-## Anti-patterns avoided
+## Route examples
 
-- No hardcoded legacy `fnb` checks for restaurant routes.
-- No planned Retail/Raw Material/Custom Business dashboard masquerading as a finished feature.
-- No localStorage-only security claim.
-- No route access to planned Raw Material workspace from direct URL.
-- No database rename from `restaurantId` to `businessId` in this phase.
+```txt
+/workspace/restaurant/*       -> restaurant
+/dashboard/fnb/*              -> restaurant
+/v3/retail/*                  -> retail
+/v3/raw-material/*            -> raw-material
+/dashboard/cashflow           -> active mode context
+/dashboard/financial-reports  -> active mode context
+/dashboard/customers          -> active mode context
+/dashboard/invoice-generator  -> active mode context
+```
 
-## Manual test checklist
+## Manual checklist
 
-1. Clear `currentBusinessMode`, then open `/dashboard`.
-   - Expected: redirect to `/select-mode`.
-2. Set `currentBusinessMode=fnb`, then open `/dashboard`.
-   - Expected: value is repaired to `restaurant`, then restaurant workspace loads.
-3. Set `currentBusinessMode=restaurant`, then open `/dashboard`.
-   - Expected: redirect to restaurant POS workspace.
-4. Set `currentBusinessMode=retail`, then open `/dashboard`.
-   - Expected: redirect to `/select-mode` because Retail is planned.
-5. Set `currentBusinessMode=raw-material`, then open `/v3/raw-material/kandang`.
-   - Expected: redirect to `/select-mode` because Raw Material is planned.
-6. Open `/workspace/restaurant/pos` with `currentBusinessMode=restaurant`.
-   - Expected: workspace loads.
-7. Open `/workspace/restaurant/pos` with `currentBusinessMode=custom-business`.
-   - Expected: redirect to `/select-mode`.
+```txt
+1. Clear currentBusinessMode, open /dashboard -> /select-mode.
+2. Set currentBusinessMode=fnb, open /dashboard -> restaurant entry route.
+3. Set currentBusinessMode=retail, open /dashboard -> retail entry route.
+4. Set currentBusinessMode=raw-material, open /dashboard -> raw material entry route.
+5. Open restaurant route while retail active -> /select-mode.
+6. Open retail route while restaurant active -> /select-mode.
+7. Open cashflow, switch mode, return to cashflow -> refetch under selected mode.
+8. custom-business remains locked.
+```
 
 ## Deferred
 
-- Sidebar/module filtering by active business mode.
-- Backend persisted business mode access.
-- Audit log for mode changes.
-- Real mode-specific workflows for Retail, Raw Material, and Custom Business.
+```txt
+Sidebar/module filtering hardening
+Select-mode next-route support
+Backend persisted business-mode access
+Mode switch audit log
+```
