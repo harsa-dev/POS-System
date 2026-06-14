@@ -30,6 +30,7 @@ frontend list/workflow API wiring
 OpenAPI endpoint coverage
 frontend contract operationId mapping
 preview delegate
+stock write delegate
 ```
 
 ## Retail-style Raw Material phases
@@ -45,7 +46,7 @@ Phase 7A - Prisma schema model mapping                        Done
 Phase 7B - Summary read delegate                              Done
 Phase 7C - Workflow read delegate                             Done
 Phase 7D - Intake/batch/processing preview delegate           Done
-Phase 7E - Stock/write delegate                               Backend Done, Frontend Planned
+Phase 7E - Stock/write delegate                               Done
 Phase 7F - Guarded workflow status delegate                   Backend Partial, Frontend Planned
 Phase 8A - Intake/processing/batch status API route           Planned
 Phase 8B - Status frontend action                             Planned
@@ -255,6 +256,41 @@ batch and processing preview client functions are available for the next write U
 write buttons remain disabled
 ```
 
+## Phase 7E - Stock/write delegate
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/pos-system/src/features/raw-material/core-system/raw-material-stock-write.api-client.ts
+artifacts/pos-system/src/features/raw-material/core-system/index.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-stock-write-actions.tsx
+artifacts/pos-system/src/app/workspace/raw-material/raw-material-draft-forms.tsx
+docs/workspaces/raw-material-stock-write-delegate.md
+```
+
+Wired write endpoints:
+
+```txt
+POST /raw-material/stock-movements/adjust
+POST /raw-material/stock-movements/transfer
+POST /raw-material/stock-movements/consume-processing
+```
+
+Behavior:
+
+```txt
+frontend stock writes only enable after backend workflow data loads
+mock/fallback IDs are never submitted to write endpoints
+adjustment requires batch, delta quantity, reason, and note
+transfer requires batch and different target storage
+processing consume requires a processing run
+successful write refreshes workflow reads
+backend remains source of truth for stock guards, ledger rows, and audit logs
+```
+
 ## Phase 8F - Raw Material smoke test + scoped CI gate
 
 Status: implemented.
@@ -294,7 +330,6 @@ The scoped gate intentionally excludes global non-Raw-Material typecheck errors.
 Preferred path:
 
 ```txt
-Phase 7E - Stock/write delegate frontend wiring
 Phase 7F - Guarded workflow status delegate
 Phase 8A - Status API route
 Phase 8B - Status frontend action
