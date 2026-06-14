@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { restaurantApi, type RestaurantOrderDto } from "@/lib/api";
+import { restaurantClient, type RestaurantOrderDto } from "@/lib/api";
 import {
   formatCurrency,
   formatDateTime,
@@ -113,7 +113,7 @@ export function useOrdersWorkspaceOrders(): OrdersWorkspaceResult {
     setErrorMessage(null);
 
     try {
-      const response = await restaurantApi.listActiveOrders();
+      const response = await restaurantClient.listActiveOrders();
 
       if (!response.success) {
         throw new Error(response.message ?? "Failed to load restaurant orders");
