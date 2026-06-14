@@ -1,0 +1,313 @@
+openapi: 3.1.0
+info:
+  title: Service Business API
+  version: 0.1.0
+  description: Mode-scoped OpenAPI coverage for Custom Business Service operations.
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: service-business
+    description: Custom Business Service mode operations
+paths:
+  /custom-business/service/workspace:
+    get:
+      operationId: serviceBusinessGetWorkspace
+      tags: [service-business]
+      summary: Get Service Business workspace jobs and generated metadata
+      responses:
+        "200":
+          description: Service Business workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+  /custom-business/service/summary:
+    get:
+      operationId: serviceBusinessGetSummary
+      tags: [service-business]
+      summary: Get Service Business shared dashboard summary
+      responses:
+        "200":
+          description: Service Business summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+  /custom-business/service/jobs:
+    get:
+      operationId: serviceBusinessListJobs
+      tags: [service-business]
+      summary: List Service Business jobs
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ServiceBusinessWorkflowStatus"
+        - name: priority
+          in: query
+          required: false
+          schema: { type: string }
+        - name: assignedTo
+          in: query
+          required: false
+          schema: { type: string }
+        - name: serviceCategory
+          in: query
+          required: false
+          schema: { type: string }
+        - name: dueDateFrom
+          in: query
+          required: false
+          schema: { type: string }
+        - name: dueDateTo
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Service Business jobs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessArrayResponse"
+  /custom-business/service/workflow/statuses:
+    get:
+      operationId: serviceBusinessGetWorkflowStatuses
+      tags: [service-business]
+      summary: Get Service Business workflow status matrix
+      responses:
+        "200":
+          description: Service Business workflow statuses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+  /custom-business/service/jobs/{id}/transition-preview:
+    get:
+      operationId: serviceBusinessGetTransitionPreview
+      tags: [service-business]
+      summary: Preview guarded Service Business workflow transition
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: nextStatus
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/ServiceBusinessWorkflowStatus"
+      responses:
+        "200":
+          description: Service Business transition preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+        "400":
+          description: Missing or invalid nextStatus
+  /custom-business/service/requests:
+    post:
+      operationId: serviceBusinessCreateRequest
+      tags: [service-business]
+      summary: Create Service Business request and initial job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessObject"
+      responses:
+        "201":
+          description: Service request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+  /custom-business/service/jobs/{id}/guarded-status:
+    patch:
+      operationId: serviceBusinessUpdateJobStatus
+      tags: [service-business]
+      summary: Update Service Business job status through guarded workflow
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessStatusUpdateInput"
+      responses:
+        "200":
+          description: Service Business status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+        "409":
+          description: Service Business status transition rejected
+        "422":
+          description: Service Business status requirements are not met
+  /custom-business/service/jobs/{id}/cost-lines:
+    post:
+      operationId: serviceBusinessAddCostLine
+      tags: [service-business]
+      summary: Add Service Business job cost line
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessObject"
+      responses:
+        "200":
+          description: Service Business cost line added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+  /custom-business/service/quotations:
+    post:
+      operationId: serviceBusinessCreateQuotation
+      tags: [service-business]
+      summary: Create Service Business quotation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessObject"
+      responses:
+        "200":
+          description: Service Business quotation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+  /custom-business/service/quotations/{id}/approve:
+    patch:
+      operationId: serviceBusinessApproveQuotation
+      tags: [service-business]
+      summary: Approve Service Business quotation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessObject"
+      responses:
+        "200":
+          description: Service Business quotation approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+  /custom-business/service/invoices:
+    post:
+      operationId: serviceBusinessCreateInvoice
+      tags: [service-business]
+      summary: Create Service Business invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessObject"
+      responses:
+        "200":
+          description: Service Business invoice created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+  /custom-business/service/invoices/{id}/payment:
+    patch:
+      operationId: serviceBusinessRecordInvoicePayment
+      tags: [service-business]
+      summary: Record Service Business invoice payment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceBusinessObject"
+      responses:
+        "200":
+          description: Service Business invoice payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBusinessObjectResponse"
+components:
+  schemas:
+    ServiceBusinessWorkflowStatus:
+      type: string
+      enum:
+        - REQUEST_INTAKE
+        - TRIAGE
+        - QUOTATION_DRAFT
+        - QUOTATION_SENT
+        - QUOTATION_APPROVED
+        - IN_PROGRESS
+        - QUALITY_CHECK
+        - READY_FOR_DELIVERY
+        - COMPLETED
+        - CANCELLED
+    ServiceBusinessStatusUpdateInput:
+      type: object
+      properties:
+        nextStatus:
+          $ref: "#/components/schemas/ServiceBusinessWorkflowStatus"
+        status:
+          $ref: "#/components/schemas/ServiceBusinessWorkflowStatus"
+        note: { type: string }
+      required: [nextStatus]
+    ServiceBusinessObject:
+      type: object
+      additionalProperties: true
+    ServiceBusinessArray:
+      type: array
+      items:
+        $ref: "#/components/schemas/ServiceBusinessObject"
+    ServiceBusinessObjectResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/ServiceBusinessObject"
+        message: { type: string }
+      required: [success, data]
+    ServiceBusinessArrayResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          oneOf:
+            - $ref: "#/components/schemas/ServiceBusinessArray"
+            - $ref: "#/components/schemas/ServiceBusinessObject"
+        message: { type: string }
+      required: [success, data]
