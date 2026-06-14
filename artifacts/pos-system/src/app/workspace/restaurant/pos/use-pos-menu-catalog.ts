@@ -8,7 +8,7 @@ import type {
   PosCategoryItem,
   PosProductItem,
 } from "@/app/workspace/restaurant/pos/pos-workspace-types";
-import { restaurantApi, type RestaurantMenuItemDto } from "@/lib/api";
+import { restaurantClient, type RestaurantMenuItemDto } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils/format";
 
 type MenuCatalogStatus = "loading" | "ready" | "error";
@@ -122,7 +122,7 @@ export function usePosMenuCatalog(): MenuCatalogState {
       setErrorMessage(null);
 
       try {
-        const response = await restaurantApi.listMenuItems();
+        const response = await restaurantClient.listMenuItems();
         if (!isMounted) return;
 
         if (!response.success) {
