@@ -26,6 +26,7 @@ import {
   rawMaterialStockWriteApiClient,
   type RawMaterialBatch,
   type RawMaterialProcessingRun,
+  type RawMaterialStockMovement,
   type RawMaterialStorageLocation,
   type RawMaterialWorkflowReadData,
 } from "@/features/raw-material/core-system";
@@ -38,7 +39,7 @@ type RawMaterialStockWriteActionsProps = {
 
 type StockWriteSource = "loading" | "api" | "fallback";
 
-type StockWriteAction = "adjust" | "transfer" | "consume";
+type StockWriteAction = "adjust" | "reverse" | "transfer" | "consume";
 
 function createEmptyWorkflowReads(): RawMaterialWorkflowReadData {
   return {
@@ -65,6 +66,11 @@ function getProcessingRunLabel(run?: RawMaterialProcessingRun) {
   return run ? `${run.runNumber} · ${run.outputName}` : "No processing run selected";
 }
 
+function getMovementLabel(movement?: RawMaterialStockMovement) {
+  if (!movement) return "No adjustment selected";
+  return `${movement.batchLotCode ?? movement.batchId} · ${movement.reason} · ${formatRawMaterialWeight(movement.quantity)}`;
+}
+
 function getWriteSourceBadge(source: StockWriteSource) {
   if (source === "api") return "Backend workflow data";
   if (source === "loading") return "Loading workflow data";
@@ -84,6 +90,11 @@ export function RawMaterialStockWriteActions({ onNoticeChange }: RawMaterialStoc
     note: "Stock count correction from Raw Material workspace.",
   });
 
+  const [reversalForm, setReversalForm] = useState({
+    movementId: "",
+    note: "Reverse incorrect adjustment after approval.",
+  });
+
   const [transferForm, setTransferForm] = useState({
     batchId: "",
     targetStorageLocationId: "",
@@ -95,18 +106,43 @@ export function RawMaterialStockWriteActions({ onNoticeChange }: RawMaterialStoc
     note: "Guarded processing consumption from Raw Material workspace.",
   });
 
+  const reversibleAdjustmentMovements = useMemo(
+    () => workflowReads.stockMovements.filter((movement) => (
+      movement.type === "ADJUSTMENT"
+      && movement.source !== "SYSTEM"
+      && !movement.sourceId
+      && movement.quantity > 0
+      && movement.beforeQuantity !== null
+      && movement.afterQuantity !== null
+    )),
+    [workflowReads.stockMovements],
+  );
+
   async function loadWorkflowReads() {
     setSource("loading");
     setStatus("Loading backend workflow data before enabling guarded stock writes.");
 
     try {
       const data = await rawMaterialApiClient.getWorkflowReads();
+      const reversibleMovements = data.stockMovements.filter((movement) => (
+        movement.type === "ADJUSTMENT"
+        && movement.source !== "SYSTEM"
+        && !movement.sourceId
+        && movement.quantity > 0
+        && movement.beforeQuantity !== null
+        && movement.afterQuantity !== null
+      ));
+
       setWorkflowReads(data);
       setSource("api");
-      setStatus(`Backend workflow data loaded. ${data.batches.length} batches · ${data.storageLocations.length} storage locations · ${data.processingRuns.length} processing runs.`);
+      setStatus(`Backend workflow data loaded. ${data.batches.length} batches · ${data.storageLocations.length} storage locations · ${data.processingRuns.length} processing runs · ${reversibleMovements.length} reversible adjustments.`);
       setAdjustmentForm((current) => ({
         ...current,
         batchId: data.batches[0]?.id ?? current.batchId,
+      }));
+      setReversalForm((current) => ({
+        ...current,
+        movementId: reversibleMovements[0]?.id ?? current.movementId,
       }));
       setTransferForm((current) => {
         const selectedBatch = data.batches.find((batch) => batch.id === current.batchId) ?? data.batches[0];
@@ -136,6 +172,10 @@ export function RawMaterialStockWriteActions({ onNoticeChange }: RawMaterialStoc
   const selectedAdjustmentBatch = useMemo(
     () => workflowReads.batches.find((batch) => batch.id === adjustmentForm.batchId),
     [adjustmentForm.batchId, workflowReads.batches],
+  );
+  const selectedReversalMovement = useMemo(
+    () => reversibleAdjustmentMovements.find((movement) => movement.id === reversalForm.movementId),
+    [reversalForm.movementId, reversibleAdjustmentMovements],
   );
   const selectedTransferBatch = useMemo(
     () => workflowReads.batches.find((batch) => batch.id === transferForm.batchId),
@@ -170,6 +210,29 @@ export function RawMaterialStockWriteActions({ onNoticeChange }: RawMaterialStoc
         note: adjustmentForm.note.trim(),
       });
       onNoticeChange(`Stock adjustment applied. Movement ${movement.id} · ${movement.reason} · ${formatRawMaterialWeight(movement.quantity)}.`);
+      await loadWorkflowReads();
+    } catch (error) {
+      onNoticeChange(getRawMaterialStockWriteErrorMessage(error));
+    } finally {
+      setSubmittingAction(null);
+    }
+  }
+
+  async function handleReverseAdjustment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!canSubmitWrites || !reversalForm.movementId || !reversalForm.note.trim()) {
+      onNoticeChange("Adjustment reversal needs backend data, an adjustment movement, and a reversal note.");
+      return;
+    }
+
+    setSubmittingAction("reverse");
+    try {
+      const movement = await rawMaterialStockWriteApiClient.reverseAdjustment({
+        movementId: reversalForm.movementId,
+        note: reversalForm.note.trim(),
+      });
+      onNoticeChange(`Stock adjustment reversed. Reversal movement ${movement.id} · ${movement.reason} · ${formatRawMaterialWeight(movement.quantity)}.`);
       await loadWorkflowReads();
     } catch (error) {
       onNoticeChange(getRawMaterialStockWriteErrorMessage(error));
@@ -232,7 +295,7 @@ export function RawMaterialStockWriteActions({ onNoticeChange }: RawMaterialStoc
           <div>
             <CardTitle>Guarded stock write delegate</CardTitle>
             <CardDescription>
-              Executes backend-hardened stock adjustment, transfer, and processing consumption only when API workflow data is loaded.
+              Executes backend-hardened stock adjustment, adjustment reversal, transfer, and processing consumption only when API workflow data is loaded.
             </CardDescription>
           </div>
           <Badge variant="outline" className={source === "api" ? "border-emerald-200 text-emerald-700" : "border-amber-200 text-amber-700"}>
@@ -245,7 +308,7 @@ export function RawMaterialStockWriteActions({ onNoticeChange }: RawMaterialStoc
           {status}
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-3">
+        <div className="grid gap-4 xl:grid-cols-4">
           <form className="space-y-4 rounded-lg border border-neutral-100 p-4" onSubmit={handleAdjustStock}>
             <div>
               <p className="font-semibold text-neutral-950">Adjust stock</p>
@@ -283,6 +346,28 @@ export function RawMaterialStockWriteActions({ onNoticeChange }: RawMaterialStoc
             </div>
             <p className="text-xs leading-5 text-neutral-500">Selected: {getBatchLabel(selectedAdjustmentBatch)}</p>
             <Button type="submit" disabled={!canSubmitWrites}>{submittingAction === "adjust" ? "Applying..." : "Apply adjustment"}</Button>
+          </form>
+
+          <form className="space-y-4 rounded-lg border border-neutral-100 p-4" onSubmit={handleReverseAdjustment}>
+            <div>
+              <p className="font-semibold text-neutral-950">Reverse adjustment</p>
+              <p className="mt-1 text-sm text-neutral-500">Creates a system correction movement that reverses one eligible adjustment.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Adjustment movement</Label>
+              <Select value={reversalForm.movementId} onValueChange={(movementId) => setReversalForm((current) => ({ ...current, movementId }))} disabled={source !== "api" || reversibleAdjustmentMovements.length === 0}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Select movement" /></SelectTrigger>
+                <SelectContent>
+                  {reversibleAdjustmentMovements.map((movement) => <SelectItem key={movement.id} value={movement.id}>{getMovementLabel(movement)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rm-reversal-note">Reversal note</Label>
+              <Input id="rm-reversal-note" value={reversalForm.note} onChange={(event) => setReversalForm((current) => ({ ...current, note: event.target.value }))} disabled={source !== "api"} />
+            </div>
+            <p className="text-xs leading-5 text-neutral-500">Selected: {getMovementLabel(selectedReversalMovement)}</p>
+            <Button type="submit" disabled={!canSubmitWrites || reversibleAdjustmentMovements.length === 0}>{submittingAction === "reverse" ? "Reversing..." : "Reverse adjustment"}</Button>
           </form>
 
           <form className="space-y-4 rounded-lg border border-neutral-100 p-4" onSubmit={handleTransferStock}>
