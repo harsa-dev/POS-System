@@ -26,6 +26,7 @@ export * from "./raw-material-stock-movement.validation.js";
 export * from "./raw-material-status.service.js";
 export * from "./raw-material.permissions.js";
 export * from "./raw-material.audit.js";
+export * from "./raw-material.policy.js";
 export * from "./raw-material.summary.js";
 export * from "./raw-material.stock-rules.js";
 export * from "./raw-material.workflow.js";
