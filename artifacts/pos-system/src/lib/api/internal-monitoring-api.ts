@@ -64,6 +64,23 @@ export type InternalMonitoringControlRoomDto = {
   devActionItems: InternalMonitoringDevActionItemDto[];
 };
 
+export type InternalMonitoringRouteInventoryItemDto = {
+  id: string;
+  route: string;
+  owner: string;
+  guard: "auth" | "platform-admin" | "planned";
+  status: "active" | "planned" | "blocked";
+  notes: string;
+};
+
+export type InternalMonitoringDataIntegrityCheckDto = {
+  id: string;
+  check: string;
+  status: "pass" | "watch" | "blocked";
+  severity: "info" | "warning" | "critical";
+  detail: string;
+};
+
 type ApiDataEnvelope<T> = ApiEnvelope<T> & {
   data: T;
   meta?: {
@@ -77,6 +94,24 @@ export const internalMonitoringApi = {
   getControlRoom() {
     return apiClient.get<ApiDataEnvelope<InternalMonitoringControlRoomDto>>(
       "/api/internal/health/summary",
+    );
+  },
+
+  getRouteInventory() {
+    return apiClient.get<ApiDataEnvelope<InternalMonitoringRouteInventoryItemDto[]>>(
+      "/api/internal/routes/inventory",
+    );
+  },
+
+  getContractReadiness() {
+    return apiClient.get<ApiDataEnvelope<InternalMonitoringApiImplementationStepDto[]>>(
+      "/api/internal/contracts/readiness",
+    );
+  },
+
+  getDataIntegrityChecks() {
+    return apiClient.get<ApiDataEnvelope<InternalMonitoringDataIntegrityCheckDto[]>>(
+      "/api/internal/data-integrity/checks",
     );
   },
 };
