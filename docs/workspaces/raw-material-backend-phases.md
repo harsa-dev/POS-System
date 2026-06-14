@@ -275,7 +275,14 @@ No Prisma schema, migration, stock mutation, route contract, or frontend contrac
 
 ## Phase 7 - Prisma delegate and typecheck cleanup
 
-Status: next.
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/api-server/src/services/raw-material/index.ts
+docs/workspaces/raw-material-typecheck-cleanup.md
+```
 
 Goal:
 
@@ -284,16 +291,32 @@ Confirm the Raw Material backend lane compiles cleanly against generated Prisma 
 Keep global non-Raw-Material typecheck errors out of scope until their own cleanup lane.
 ```
 
-Known current issues from local validation:
+Resolved Raw Material typecheck issues:
 
 ```txt
-No active Raw Material typecheck errors before Phase 6.
-Non-Raw Material typecheck errors may still exist and are intentionally out of scope for this lane.
+raw-material-pens.ts type import mismatch
+raw-material.ts batch qualityStatus query mismatch
+raw-material.audit.ts audit client cast mismatch
 ```
+
+Export surface cleanup:
+
+```txt
+services/raw-material/index.ts now exposes permissions, audit, and summary helpers.
+```
+
+Validation note:
+
+```txt
+The user reported the Raw Material lane as safe after rerunning API server typecheck.
+Remaining global typecheck errors are non-Raw-Material and intentionally out of scope.
+```
+
+No Prisma schema, migration, route behavior, or frontend contract was changed in this phase.
 
 ## Phase 8 - Stock mutation hardening
 
-Status: planned.
+Status: next.
 
 Goal:
 
