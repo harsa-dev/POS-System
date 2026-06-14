@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "../../lib/prisma.js";
+import { createRetailAuditPayload } from "./retail.audit.js";
 import type {
   RetailActor,
   RetailBusinessScope,
@@ -305,15 +306,31 @@ export async function cancelRetailSaleWithDelegate(input: CancelRetailSaleInput)
           'UPDATE',
           'RetailSale',
           ${sale.id},
-          CAST(${JSON.stringify({
-            receiptNumber: sale.receiptNumber,
-            previousStatus: sale.status,
-            nextStatus: "cancelled",
-            refundAmount: sale.total,
-            restockedQuantity,
+          CAST(${JSON.stringify(createRetailAuditPayload({
+            event: "retail.sale.cancelled",
+            actor: input.actor,
+            references: {
+              saleId: sale.id,
+              receiptNumber: sale.receiptNumber,
+              cashflowEntryId,
+            },
+            totals: {
+              refundAmount: sale.total,
+              restockedQuantity,
+            },
             stockMovementIds,
             reason: cancellationReason,
-          })} AS jsonb),
+            metadata: {
+              previousStatus: sale.status,
+              nextStatus: "cancelled",
+              lines: sale.items.map((item) => ({
+                saleItemId: item.id,
+                productId: item.productId,
+                sku: item.skuSnapshot,
+                quantity: item.quantity,
+              })),
+            },
+          }))} AS jsonb),
           ${now}
         )
       `);
