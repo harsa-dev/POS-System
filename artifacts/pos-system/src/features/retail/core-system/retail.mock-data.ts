@@ -376,7 +376,7 @@ export const retailPromotions: readonly RetailPromotion[] = [
 export const retailWorkflowSteps: readonly RetailWorkflowStep[] = [
   {
     title: "Select retail mode",
-    description: "Mode selector can route staff into the retail workspace without touching F&B screens.",
+    description: "Mode selector can route staff into the retail workspace without touching Restaurant screens.",
     status: "ready",
   },
   {

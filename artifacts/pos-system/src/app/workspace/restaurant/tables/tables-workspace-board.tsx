@@ -328,7 +328,7 @@ export function TablesWorkspaceBoard({
         <EmptyState
           description={
             tables.length === 0
-              ? "Tables created in the current F&B route will appear here."
+              ? "Restaurant tables will appear here after they are created."
               : "Try changing the lifecycle filter or search term."
           }
           icon={tables.length === 0 ? Table2 : CheckCheck}

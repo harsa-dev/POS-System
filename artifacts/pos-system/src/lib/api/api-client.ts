@@ -1,14 +1,13 @@
+import {
+  BUSINESS_MODE_STORAGE_KEY,
+  businessModeIds,
+} from "@/config/business-modes";
+
 export const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 const ABSOLUTE_OR_EMBEDDED_URL_PATTERN = /^(https?:|data:|blob:)/i;
-const BUSINESS_MODE_STORAGE_KEY = "currentBusinessMode";
 const BUSINESS_MODE_HEADER = "X-Business-Mode";
-const API_BUSINESS_MODE_VALUES = new Set([
-  "restaurant",
-  "retail",
-  "raw-material",
-  "custom-business",
-]);
+const API_BUSINESS_MODE_VALUES = new Set<string>(businessModeIds);
 const isDev = import.meta.env.DEV;
 
 export type ApiEnvelope<T = unknown> = {

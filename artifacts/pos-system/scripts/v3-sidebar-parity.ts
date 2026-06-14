@@ -1,6 +1,6 @@
 import { createSidebarParityReport } from "../src/app/registry/index";
 
-const report = createSidebarParityReport("fnb");
+const report = createSidebarParityReport("restaurant");
 const shouldFail =
   report.summary.missingCount > 0 ||
   report.summary.extraCount > 0 ||
@@ -23,7 +23,7 @@ function printList<T>(
 
 console.log("V3 sidebar parity report");
 console.log("========================");
-console.log(`Runtime mode: fnb`);
+console.log(`Runtime mode: restaurant`);
 console.log(`Current item count: ${report.summary.currentCount}`);
 console.log(`Generated item count: ${report.summary.generatedCount}`);
 console.log(`Matched item count: ${report.summary.matchingCount}`);

@@ -43,7 +43,7 @@ const serviceBusinessSurfaceByTitle: Record<string, ServiceBusinessSharedSurface
 function isServiceBusinessPreviewModeActive(): boolean {
   const rawMode = getRawBusinessModeStorageValue();
 
-  return rawMode === "custom-business" || rawMode === "service";
+  return rawMode === "custom-business";
 }
 
 function SharedDashboardModeBadge({ context }: { context?: SharedDashboardModeContext }) {
@@ -85,7 +85,8 @@ export function DashboardShell({
     : undefined;
   const isServicePreview = isServiceBusinessPreviewModeActive();
   const shouldCallServiceBridge = serviceBusinessSurface
-    ? shouldCallServiceBusinessSharedSurface(serviceBusinessSurface)
+    ? isServicePreview &&
+      shouldCallServiceBusinessSharedSurface(serviceBusinessSurface)
     : false;
   const shouldHideChildrenForService = Boolean(
     isServicePreview &&

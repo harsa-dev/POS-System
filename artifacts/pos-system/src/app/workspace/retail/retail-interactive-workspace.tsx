@@ -1007,7 +1007,7 @@ function ShelfManagementModule() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <CardTitle>Shelf map preview</CardTitle>
-              <CardDescription>Filter shelf zones and inspect utilization. Still no warehouse transfer logic.</CardDescription>
+              <CardDescription>Filter shelf zones and inspect utilization. Stock transfer logic is still planned.</CardDescription>
             </div>
             <select value={zoneFilter} onChange={(event) => setZoneFilter(event.target.value)} className="rounded-lg border border-neutral-200 px-3 py-2 text-sm">
               <option value="all">All zones</option>

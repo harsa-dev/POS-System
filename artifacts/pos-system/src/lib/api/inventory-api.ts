@@ -66,7 +66,11 @@ export type StockMovementSource =
   | "SYSTEM";
 
 export type InventoryStockStatus = "OUT_OF_STOCK" | "LOW_STOCK" | "IN_STOCK";
-export type SharedInventoryBusinessMode = "restaurant" | "retail" | "service" | "livestock";
+export type SharedInventoryBusinessMode =
+  | "restaurant"
+  | "retail"
+  | "raw-material"
+  | "custom-business";
 
 type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 

@@ -6,7 +6,7 @@ export default function RestaurantPosWorkspace() {
   return (
     <WorkspaceShell
       title="Restaurant POS Workspace"
-      description="Skeleton route for the future V3 Restaurant POS workspace. The active cashier and checkout flow is still served by the current F&B dashboard route."
+      description="V3 Restaurant POS workspace for cashier, checkout, tables, and open-order flow."
       currentRouteLabel="current Cashier route"
       currentRoutePath={ROUTES.CHECKOUT}
     >

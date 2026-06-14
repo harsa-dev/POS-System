@@ -28,13 +28,14 @@ function assertMatches({ label, content, pattern }) {
 }
 
 const files = {
+  contract: read("artifacts/pos-system/src/config/business-modes/business-mode-contract.ts"),
   types: read("artifacts/pos-system/src/components/core/business-mode/business-mode.types.ts"),
   registry: read("artifacts/pos-system/src/components/core/business-mode/business-mode-registry.ts"),
   storage: read("artifacts/pos-system/src/components/core/business-mode/business-mode-storage.ts"),
   service: read("artifacts/pos-system/src/components/core/business-mode/business-mode-service.ts"),
   routeGuard: read("artifacts/pos-system/src/components/core/route-guard/route-guard.tsx"),
   app: read("artifacts/pos-system/src/App.tsx"),
-  selector: read("artifacts/pos-system/src/components/core/business-mode/mode-selector.tsx"),
+  selector: read("artifacts/pos-system/src/components/core/mode-selector/mode-selector.tsx"),
   switcher: read("artifacts/pos-system/src/components/core/business-mode/business-mode-switcher.tsx"),
   sidebar: read("artifacts/pos-system/src/components/core/sidebar/sidebar.tsx"),
   permissionCompat: read("artifacts/pos-system/src/app/registry/permission-compat.ts"),
@@ -60,33 +61,33 @@ const checks = [
     expected: "BUSINESS_MODE_STORAGE_KEY",
   }),
   () => assertContains({
-    label: "business mode registry",
-    content: files.registry,
-    expected: "id: \"restaurant\"",
+    label: "business mode contract",
+    content: files.contract,
+    expected: 'id: "restaurant"',
   }),
   () => assertContains({
-    label: "business mode registry",
-    content: files.registry,
-    expected: "id: \"retail\"",
+    label: "business mode contract",
+    content: files.contract,
+    expected: 'id: "retail"',
   }),
   () => assertContains({
-    label: "business mode registry",
-    content: files.registry,
-    expected: "id: \"raw-material\"",
+    label: "business mode contract",
+    content: files.contract,
+    expected: 'id: "raw-material"',
   }),
   () => assertContains({
-    label: "business mode registry",
-    content: files.registry,
-    expected: "id: \"custom-business\"",
+    label: "business mode contract",
+    content: files.contract,
+    expected: 'id: "custom-business"',
   }),
   () => assertContains({
     label: "business mode storage legacy repair",
-    content: files.storage,
+    content: files.contract,
     expected: "fnb: \"restaurant\"",
   }),
   () => assertContains({
     label: "business mode storage legacy repair",
-    content: files.storage,
+    content: files.contract,
     expected: "warehouse: \"raw-material\"",
   }),
   () => assertContains({
@@ -127,12 +128,12 @@ const checks = [
   () => assertContains({
     label: "route guard select-mode next redirect",
     content: files.routeGuard,
-    expected: "businessModeService.getSelectModeRoute(location)",
+    expected: "businessModeService.getSelectModeRoute(pathname)",
   }),
   () => assertContains({
     label: "mode selector next route",
     content: files.selector,
-    expected: "getNextRouteFromLocation(location)",
+    expected: "getNextRoute(location)",
   }),
   () => assertContains({
     label: "mode selector compatible next redirect",

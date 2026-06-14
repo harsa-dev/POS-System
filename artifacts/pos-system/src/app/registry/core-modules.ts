@@ -140,7 +140,7 @@ export const coreModules: readonly V3ModuleMetadata[] = [
     id: "payments",
     label: "Payments",
     description:
-      "Reusable payment capability metadata. Restaurant V3 does not expose a main payments nav item yet; the legacy F&B payment route remains a manual fallback.",
+      "Reusable payment capability metadata. Restaurant V3 keeps payments under the Restaurant server workspace.",
     layer: "core",
     status: "active",
     supportedModes: allModes,

@@ -72,13 +72,13 @@ export function RecipeManagementDashboard() {
   return (
     <DashboardShell
       title="Recipe Management"
-      description="F&B-only recipe structure for connecting menu items, raw materials, COGS/HPP, and kitchen production rules."
+      description="Restaurant recipe structure for connecting menu items, raw materials, COGS/HPP, and kitchen production rules."
     >
       <div className="grid gap-3 md:grid-cols-3">
         <StatCard
           label="Recipes"
           value={formatNumber(recipeRows.length)}
-          note="Menu recipes prepared for F&B mode"
+          note="Menu recipes prepared for Restaurant mode"
           icon={BookOpenCheck}
           tone="blue"
         />

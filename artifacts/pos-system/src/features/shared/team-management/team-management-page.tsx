@@ -70,7 +70,12 @@ type DraftRole = {
 type RoleFilter = "all" | "locked" | "custom" | "risk";
 
 const baseRoles: SystemRole[] = ["OWNER", "MANAGER", "ADMIN", "OPERATOR", "STAFF", "VIEWER"];
-const sectors: BusinessRoleSector[] = ["restaurant", "retail", "raw-material", "service"];
+const sectors: BusinessRoleSector[] = [
+  "restaurant",
+  "retail",
+  "raw-material",
+  "custom-business",
+];
 
 const statusTone: Record<string, DashboardTone> = {
   Active: "green",
@@ -175,7 +180,8 @@ function MiniStat({
 
 export function TeamManagementRolePermissionPage() {
   const [store, setStore] = useState<RolePermissionStoreState>(() => loadRolePermissionStore());
-  const [selectedSector, setSelectedSector] = useState<BusinessRoleSector>("service");
+  const [selectedSector, setSelectedSector] =
+    useState<BusinessRoleSector>("custom-business");
   const [selectedJobId, setSelectedJobId] = useState("service-operations-manager");
   const [selectedRoleId, setSelectedRoleId] = useState("owner-default");
   const [draft, setDraft] = useState<DraftRole>(() => jobToDraft(getJobRoleById("service-operations-manager")));
@@ -440,7 +446,7 @@ export function TeamManagementRolePermissionPage() {
     const next = resetRolePermissionStore();
     setStore(next);
     setSelectedRoleId("owner-default");
-    setSelectedSector("service");
+    setSelectedSector("custom-business");
     applyJobPreset("service-operations-manager");
     setNotice("Demo role store reset.");
   }
@@ -474,13 +480,13 @@ export function TeamManagementRolePermissionPage() {
   return (
     <DashboardShell
       title="Team Management"
-      description="Advanced role library with real-world job presets for restaurant, retail, raw material, and service businesses."
+      description="Advanced role library with real-world job presets for Restaurant, Retail, Raw Material, and planned Custom Business."
     >
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{notice}</div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <MiniStat label="System Roles" value={String(lockedRoleCount)} note="Default locked access model" icon={LockKeyhole} tone="slate" />
-        <MiniStat label="Job Presets" value={String(jobRoleLibrary.length)} note="Restaurant, retail, raw material, service" icon={BriefcaseBusiness} tone="blue" />
+        <MiniStat label="Job Presets" value={String(jobRoleLibrary.length)} note="Restaurant, retail, raw material, custom" icon={BriefcaseBusiness} tone="blue" />
         <MiniStat label="Granted Actions" value={`${draftPermissionCount}/${totalPermissions}`} note={`${draftRiskCount} elevated/destructive in draft`} icon={KeyRound} tone={draftRiskCount > 5 ? "rose" : "green"} />
         <MiniStat label="Custom Roles" value={String(customRoleCount)} note="Persisted in localStorage dummy" icon={ShieldCheck} tone="amber" />
       </div>

@@ -1,17 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { BriefcaseBusiness, Clock3, EyeOff, FileText, ReceiptText } from "lucide-react";
 
-import { serviceBusinessApi } from "@/app/workspace/custom-business/service/service-business-api";
-import type { ServiceBusinessSummaryResponse } from "@/app/workspace/custom-business/service/service-business-api-contract-types";
-import {
-  calculateCollectionRate,
-  calculateQuoteTotal,
-  formatServiceMoney,
-  getServiceStatusLabel,
-} from "@/app/workspace/custom-business/service/service-business-workspace-domain";
-import { serviceJobs } from "@/app/workspace/custom-business/service/service-business-workspace-data";
 import { StatCard, StatusPill } from "@/features/shared/cards";
 import {
   getServiceBusinessSharedSurfaceConfig,
@@ -32,58 +22,27 @@ export type ServiceBusinessSharedSnapshot = {
   sourceLabel: string;
 };
 
-function createMockServiceBusinessSnapshot(): ServiceBusinessSharedSnapshot {
-  const activeJobs = serviceJobs.filter((job) => job.status !== "CLOSED").length;
-  const estimatedRevenue = serviceJobs.reduce(
-    (total, job) => total + calculateQuoteTotal(job),
-    0,
-  );
-  const pendingCollection = serviceJobs.reduce((total, job) => {
-    const quoteTotal = calculateQuoteTotal(job);
-    return total + Math.max(quoteTotal - job.invoice.paidAmount, 0);
-  }, 0);
-  const averageCollectionRate = Math.round(
-    serviceJobs.reduce((total, job) => {
-      return total + calculateCollectionRate(job.invoice, calculateQuoteTotal(job));
-    }, 0) / Math.max(serviceJobs.length, 1),
-  );
-  const openPriorityJobs = serviceJobs.filter((job) => {
-    return job.priority === "HIGH" || job.priority === "URGENT";
-  }).length;
-  const approvedQuotes = serviceJobs.filter((job) => job.quote.status === "approved").length;
-  const issuedInvoices = serviceJobs.filter((job) => {
-    return job.invoice.status === "issued" || job.invoice.status === "partial" || job.invoice.status === "paid";
-  }).length;
-  const latestStatusLabel = getServiceStatusLabel(serviceJobs[0]?.status ?? "REQUEST_INTAKE");
+const serviceMoneyFormatter = new Intl.NumberFormat("id-ID", {
+  currency: "IDR",
+  maximumFractionDigits: 0,
+  style: "currency",
+});
 
-  return {
-    activeJobs,
-    estimatedRevenue,
-    pendingCollection,
-    averageCollectionRate,
-    openPriorityJobs,
-    approvedQuotes,
-    issuedInvoices,
-    latestStatusLabel,
-    sourceLabel: "Mock fallback",
-  };
+function formatServiceMoney(value: number) {
+  return serviceMoneyFormatter.format(value);
 }
 
-function createApiServiceBusinessSnapshot(summary: ServiceBusinessSummaryResponse): ServiceBusinessSharedSnapshot {
-  return {
-    activeJobs: summary.totals.activeJobs,
-    estimatedRevenue: summary.money.quoteTotal,
-    pendingCollection: summary.money.pendingCollection,
-    averageCollectionRate: summary.collection.averageRate,
-    openPriorityJobs: summary.totals.highPriorityJobs,
-    approvedQuotes: summary.totals.approvedQuotes,
-    issuedInvoices: summary.totals.issuedInvoices,
-    latestStatusLabel: summary.latestJob?.statusLabel ?? "No service jobs",
-    sourceLabel: "Backend summary",
-  };
-}
-
-export const serviceBusinessSharedSnapshot: ServiceBusinessSharedSnapshot = createMockServiceBusinessSnapshot();
+export const serviceBusinessSharedSnapshot: ServiceBusinessSharedSnapshot = {
+  activeJobs: 0,
+  estimatedRevenue: 0,
+  pendingCollection: 0,
+  averageCollectionRate: 0,
+  openPriorityJobs: 0,
+  approvedQuotes: 0,
+  issuedInvoices: 0,
+  latestStatusLabel: "Planned",
+  sourceLabel: "Planned preview",
+};
 
 export function ServiceBusinessSharedDashboardBridge({
   surface,
@@ -91,27 +50,7 @@ export function ServiceBusinessSharedDashboardBridge({
   surface: ServiceBusinessSharedSurface;
 }) {
   const surfaceConfig = getServiceBusinessSharedSurfaceConfig(surface);
-  const [snapshot, setSnapshot] = useState<ServiceBusinessSharedSnapshot>(serviceBusinessSharedSnapshot);
-  const isBackendSummary = snapshot.sourceLabel === "Backend summary";
-
-  useEffect(() => {
-    let isMounted = true;
-
-    serviceBusinessApi
-      .getSummary()
-      .then((summary) => {
-        if (!isMounted) return;
-        setSnapshot(createApiServiceBusinessSnapshot(summary));
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        setSnapshot(serviceBusinessSharedSnapshot);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const snapshot = serviceBusinessSharedSnapshot;
 
   return (
     <section className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-card-foreground">
@@ -124,7 +63,7 @@ export function ServiceBusinessSharedDashboardBridge({
             <StatusPill tone={surfaceConfig.tone}>
               {surfaceConfig.relevance === "primary" ? "Primary" : "Supporting"}
             </StatusPill>
-            <StatusPill tone={isBackendSummary ? "green" : "slate"}>
+            <StatusPill tone="slate">
               {snapshot.sourceLabel}
             </StatusPill>
             <StatusPill tone="slate">Custom Business locked</StatusPill>
@@ -134,8 +73,8 @@ export function ServiceBusinessSharedDashboardBridge({
           </p>
         </div>
         <p className="max-w-md text-xs leading-5 text-muted-foreground">
-          This bridge reads the backend Service Business summary endpoint when available,
-          then falls back to the local mock snapshot if the API is unavailable.
+          This bridge is intentionally read-only until Custom Business becomes
+          selectable and its service workflow is promoted from planned to active.
         </p>
       </div>
 

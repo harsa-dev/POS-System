@@ -75,7 +75,7 @@ export type IncidentRunbookItem = {
 
 export const sloBudgetItems: SloBudgetItem[] = [
   { id: "slo-auth", service: "Auth Session", sli: "Successful login/session validation", target: "99.5%", currentMock: "99.2%", burnRate: "1.4x", owner: "Core/Auth", action: "Add session error split and expired token counter.", status: "Watch" },
-  { id: "slo-orders", service: "Order Flow", sli: "Order create to paid transition", target: "99.0%", currentMock: "98.6%", burnRate: "1.8x", owner: "F&B Core", action: "Track failed transition reason before adding retry logic.", status: "Gap" },
+  { id: "slo-orders", service: "Order Flow", sli: "Order create to paid transition", target: "99.0%", currentMock: "98.6%", burnRate: "1.8x", owner: "Restaurant Core", action: "Track failed transition reason before adding retry logic.", status: "Gap" },
   { id: "slo-dashboard", service: "Shared Dashboards", sli: "Dashboard route render success", target: "99.9%", currentMock: "99.9%", burnRate: "0.2x", owner: "Shared UI", action: "Keep smoke test coverage on each new route.", status: "Ready" },
   { id: "slo-internal", service: "Internal Monitor", sli: "Monitoring data freshness", target: "95.0%", currentMock: "Mock only", burnRate: "n/a", owner: "Platform", action: "Promote read-only health endpoint first.", status: "Draft" },
 ];

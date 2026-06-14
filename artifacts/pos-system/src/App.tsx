@@ -171,7 +171,7 @@ function ModeProtectedRoute({
   });
 
   if (!routeAccess.canEnter) {
-    return <Redirect to={ROUTES.SELECT_MODE} />;
+    return <Redirect to={businessModeService.getSelectModeRoute(pathname)} />;
   }
 
   return <>{children}</>;

@@ -85,9 +85,9 @@ export default function RawMaterialKandangWorkspace() {
         </div>
 
         <div className="mt-5 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-600">
-          Raw Material mode remains planned and unavailable for operational use.
-          Restaurant / F&amp;B workflows continue to be the active production
-          experience.
+          Raw Material mode is an active V3 workspace. Kandang operations remain
+          scoped to raw-material stock, pen health, feed batch, and movement
+          workflows.
         </div>
       </div>
 

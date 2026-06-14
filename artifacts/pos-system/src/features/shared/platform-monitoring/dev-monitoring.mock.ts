@@ -66,7 +66,7 @@ export const devMonitoringMetrics: DevMonitoringMetric[] = [
     id: "metric-routes",
     label: "Protected Routes",
     value: "31 routes",
-    note: "Termasuk legacy F&B, shared dashboards, dan V3 placeholders.",
+    note: "Termasuk Restaurant, shared dashboards, dan V3 workspaces.",
     status: "Mock Only",
   },
   {

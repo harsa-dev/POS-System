@@ -111,7 +111,7 @@ export function RawMaterialReadinessCard({
           </div>
         </div>
         <p className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
-          Service source: {source}. Schema touched: {String(schemaTouched)}. {apiStatusLabel}
+          Data source: {source}. Schema touched: {String(schemaTouched)}. {apiStatusLabel}
         </p>
       </CardContent>
     </Card>

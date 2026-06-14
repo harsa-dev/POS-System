@@ -5,7 +5,11 @@ import {
   type SystemRole,
 } from "./role-permission-library";
 
-export type BusinessRoleSector = "restaurant" | "retail" | "raw-material" | "service";
+export type BusinessRoleSector =
+  | "restaurant"
+  | "retail"
+  | "raw-material"
+  | "custom-business";
 
 export type JobRoleProfile = {
   id: string;
@@ -354,10 +358,10 @@ export const jobRoleLibrary: JobRoleProfile[] = [
     recommendedPermissions: p({ production: ["view", "update"], inventory: ["view"], reports: ["view"] }),
   },
 
-  // Service business - deliberately broad
+  // Custom Business planned presets - deliberately broad service examples
   {
     id: "service-operations-manager",
-    sector: "service",
+    sector: "custom-business",
     department: "Management",
     title: "Service Operations Manager",
     aliases: ["Service Manager", "Branch Service Manager", "Operations Lead"],
@@ -369,7 +373,7 @@ export const jobRoleLibrary: JobRoleProfile[] = [
   },
   {
     id: "service-front-desk",
-    sector: "service",
+    sector: "custom-business",
     department: "Front Desk",
     title: "Receptionist / Front Desk",
     aliases: ["Reception Staff", "Booking Desk", "Admin Front Office"],
@@ -381,7 +385,7 @@ export const jobRoleLibrary: JobRoleProfile[] = [
   },
   {
     id: "service-customer-service-rep",
-    sector: "service",
+    sector: "custom-business",
     department: "Customer Support",
     title: "Customer Service Representative",
     aliases: ["Support Agent", "Client Support", "Helpdesk Staff"],
@@ -393,7 +397,7 @@ export const jobRoleLibrary: JobRoleProfile[] = [
   },
   {
     id: "service-dispatcher",
-    sector: "service",
+    sector: "custom-business",
     department: "Scheduling",
     title: "Dispatcher / Scheduler",
     aliases: ["Service Scheduler", "Field Coordinator", "Booking Coordinator"],
@@ -405,7 +409,7 @@ export const jobRoleLibrary: JobRoleProfile[] = [
   },
   {
     id: "service-field-technician",
-    sector: "service",
+    sector: "custom-business",
     department: "Field Service",
     title: "Field Service Technician",
     aliases: ["Technician", "Repair Technician", "Service Engineer"],
@@ -417,7 +421,7 @@ export const jobRoleLibrary: JobRoleProfile[] = [
   },
   {
     id: "service-cleaning-staff",
-    sector: "service",
+    sector: "custom-business",
     department: "Field Service",
     title: "Cleaning / Housekeeping Staff",
     aliases: ["Cleaner", "Housekeeper", "Janitorial Staff"],
@@ -429,7 +433,7 @@ export const jobRoleLibrary: JobRoleProfile[] = [
   },
   {
     id: "service-maintenance-worker",
-    sector: "service",
+    sector: "custom-business",
     department: "Maintenance",
     title: "General Maintenance Worker",
     aliases: ["Handyman", "Maintenance Staff", "Facilities Technician"],
@@ -441,7 +445,7 @@ export const jobRoleLibrary: JobRoleProfile[] = [
   },
   {
     id: "service-consultant",
-    sector: "service",
+    sector: "custom-business",
     department: "Professional Service",
     title: "Consultant / Specialist",
     aliases: ["Service Consultant", "Advisor", "Specialist"],
@@ -453,7 +457,7 @@ export const jobRoleLibrary: JobRoleProfile[] = [
   },
   {
     id: "service-account-manager",
-    sector: "service",
+    sector: "custom-business",
     department: "Client Success",
     title: "Account Manager",
     aliases: ["Client Success Manager", "Relationship Manager", "Customer Success"],
@@ -465,7 +469,7 @@ export const jobRoleLibrary: JobRoleProfile[] = [
   },
   {
     id: "service-billing-admin",
-    sector: "service",
+    sector: "custom-business",
     department: "Finance",
     title: "Billing / Invoice Admin",
     aliases: ["Billing Specialist", "Invoice Staff", "Payment Admin"],
@@ -481,7 +485,7 @@ export const sectorLabels: Record<BusinessRoleSector, string> = {
   restaurant: "Restaurant",
   retail: "Retail",
   "raw-material": "Raw Material / Production",
-  service: "Service Business",
+  "custom-business": "Custom Business (planned)",
 };
 
 export function getJobRoleById(id: string) {

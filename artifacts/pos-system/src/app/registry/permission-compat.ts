@@ -77,7 +77,7 @@ export const permissionRoleCompatibility = {
 } satisfies Record<V3PermissionKey, readonly V3RuntimeRole[]>;
 
 export function getRolesForPermission(permission: V3PermissionKey) {
-  return permissionRoleCompatibility[permission];
+  return permissionRoleCompatibility[permission] ?? [];
 }
 
 export function getRolesForPermissions(

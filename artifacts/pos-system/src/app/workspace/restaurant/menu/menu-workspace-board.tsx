@@ -814,7 +814,7 @@ export function MenuWorkspaceBoard({
         <EmptyState
           description={
             items.length === 0
-              ? "Menu items created in the current F&B route will appear here."
+              ? "Restaurant menu items will appear here after they are created."
               : "Try changing the search, availability filter, or category."
           }
           icon={items.length === 0 ? UtensilsCrossed : CheckCheck}

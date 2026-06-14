@@ -133,7 +133,7 @@ export const businessModeRoutePrefixes = {
   restaurant: ["/workspace/restaurant/", "/dashboard/restaurant/"],
   retail: ["/v3/retail/"],
   "raw-material": ["/v3/raw-material/"],
-  "custom-business": [],
+  "custom-business": ["/workspace/custom-business/", "/v3/custom-business/"],
 } as const satisfies Record<BusinessModeId, readonly string[]>;
 
 // Temporary storage migration boundary only. Runtime routes, APIs, and configs must use canonical IDs.

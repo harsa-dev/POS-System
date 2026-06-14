@@ -1,6 +1,5 @@
 import { Link } from "wouter";
 
-import { ServiceBusinessWorkspaceLayout } from "@/app/workspace/custom-business/service/service-business-workspace-layout";
 import { ROUTES } from "@/constants/routes";
 
 export default function CustomBusinessServiceWorkspace() {
@@ -27,11 +26,28 @@ export default function CustomBusinessServiceWorkspace() {
           >
             mode selector
           </Link>{" "}
-          to enter the active Restaurant / F&amp;B workspace.
+          to enter an active V3 workspace.
         </div>
       </div>
 
-      <ServiceBusinessWorkspaceLayout />
+      <div className="grid gap-4 md:grid-cols-3">
+        {[
+          "Request intake",
+          "Job planning",
+          "Quotation and invoice flow",
+        ].map((module) => (
+          <div
+            key={module}
+            className="rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-4"
+          >
+            <p className="text-sm font-semibold text-amber-900">{module}</p>
+            <p className="mt-2 text-xs leading-5 text-amber-800">
+              Planned only. This module is intentionally guarded until Custom
+              Business becomes an active mode.
+            </p>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

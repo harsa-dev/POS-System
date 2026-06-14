@@ -1,15 +1,15 @@
 import { ROUTES } from "@/constants/routes";
 
-export type FnbModuleId = "server" | "menu" | "recipes" | "kitchen";
+export type RestaurantModuleId = "server" | "menu" | "recipes" | "kitchen";
 
-export type FnbModule = {
-  id: FnbModuleId;
+export type RestaurantModule = {
+  id: RestaurantModuleId;
   label: string;
   route: string;
   description: string;
 };
 
-export const fnbModules: FnbModule[] = [
+export const restaurantModules: RestaurantModule[] = [
   {
     id: "server",
     label: "Server Operations",
@@ -20,7 +20,7 @@ export const fnbModules: FnbModule[] = [
     id: "menu",
     label: "Menu Management",
     route: ROUTES.MENU,
-    description: "F&B menu items, categories, pricing, and availability.",
+    description: "Restaurant menu items, categories, pricing, and availability.",
   },
   {
     id: "recipes",
