@@ -3,6 +3,7 @@ import { Role } from "@prisma/client";
 import type { BusinessContext } from "../../lib/business-context/index.js";
 import { AppError } from "../../lib/errors/app-error.js";
 import { errorCodes } from "../../lib/errors/error-codes.js";
+import { writeRawMaterialAuditLog } from "./raw-material.audit.js";
 import { toRawMaterialPenDto } from "./raw-material-pen.dto.js";
 import {
   createRawMaterialPenRecord,
@@ -114,8 +115,19 @@ export async function createRawMaterialPen(params: {
   await assertFeedBatchAllowed(businessContext, payload.feedBatchId);
 
   const id = await createRawMaterialPenRecord({ businessContext, payload });
+  const pen = await loadPenOrThrow(businessContext, id);
+  const dto = toRawMaterialPenDto(pen);
 
-  return toRawMaterialPenDto(await loadPenOrThrow(businessContext, id));
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "CREATE",
+    entityType: "RawMaterialKandangPen",
+    entityId: pen.id,
+    changes: { payload, result: dto },
+  });
+
+  return dto;
 }
 
 export async function updateRawMaterialPen(params: {
@@ -146,8 +158,19 @@ export async function updateRawMaterialPen(params: {
   await assertFeedBatchAllowed(businessContext, payload.feedBatchId);
 
   await updateRawMaterialPenRecord({ businessContext, id, payload });
+  const updated = await loadPenOrThrow(businessContext, id);
+  const dto = toRawMaterialPenDto(updated);
 
-  return toRawMaterialPenDto(await loadPenOrThrow(businessContext, id));
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "UPDATE",
+    entityType: "RawMaterialKandangPen",
+    entityId: updated.id,
+    changes: { before: toRawMaterialPenDto(existing), payload, result: dto },
+  });
+
+  return dto;
 }
 
 export async function deactivateRawMaterialPen(params: {
@@ -157,9 +180,20 @@ export async function deactivateRawMaterialPen(params: {
 }) {
   const { actor, businessContext, id } = params;
   assertCanManage(actor);
-  await loadPenOrThrow(businessContext, id);
+  const existing = await loadPenOrThrow(businessContext, id);
 
   await deactivateRawMaterialPenRecord({ businessContext, id });
+  const updated = await loadPenOrThrow(businessContext, id);
+  const dto = toRawMaterialPenDto(updated);
 
-  return toRawMaterialPenDto(await loadPenOrThrow(businessContext, id));
+  await writeRawMaterialAuditLog({
+    businessId: businessContext.businessId,
+    userId: actor.id,
+    action: "DELETE",
+    entityType: "RawMaterialKandangPen",
+    entityId: updated.id,
+    changes: { before: toRawMaterialPenDto(existing), result: dto },
+  });
+
+  return dto;
 }
