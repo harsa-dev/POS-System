@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 
 import type { BusinessContext } from "../../lib/business-context/business-context.types.js";
+import { AppError } from "../../lib/errors/app-error.js";
+import { errorCodes } from "../../lib/errors/error-codes.js";
 import { prisma } from "../../lib/prisma.js";
 import { requireCashflowSync } from "./cashflow.permissions.js";
 import type { CashflowActor } from "./cashflow.types.js";
@@ -63,6 +65,17 @@ function normalizeLimit(value: unknown) {
   return Math.min(Math.floor(parsed), MAX_SYNC_SOURCE_LIMIT);
 }
 
+function assertSyncSourceOperationalMode(businessContext: BusinessContext) {
+  if (businessContext.businessMode !== "custom-business") return;
+
+  throw new AppError({
+    statusCode: 409,
+    code: errorCodes.businessModeMismatch,
+    message: "Cashflow sync source discovery is planned for service/custom business mode and is not operational yet.",
+    details: { businessMode: businessContext.businessMode },
+  });
+}
+
 function toOrderSourceDto(row: UnsyncedOrderRow): CashflowSyncOrderSourceDto {
   return {
     id: row.id,
@@ -94,6 +107,7 @@ export async function getCashflowSyncSources(params: {
   limit?: unknown;
 }): Promise<CashflowSyncSourcesDto> {
   requireCashflowSync(params.actor.role);
+  assertSyncSourceOperationalMode(params.businessContext);
 
   const businessId = params.businessContext.businessId;
   const limit = normalizeLimit(params.limit);
