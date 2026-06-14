@@ -145,6 +145,25 @@ export type RestaurantPaymentPreviewDto = {
   source: "preview";
 };
 
+export type RestaurantStockMovementWriteDto = {
+  inventoryItemId: string;
+  inventoryItemName: string;
+  quantity: number;
+  beforeStock: number;
+  afterStock: number;
+  unit: string;
+};
+
+export type RestaurantOrderWriteResultDto = {
+  kind: "order_create" | "payment_confirm";
+  generatedAt: string;
+  order: RestaurantOrderDto;
+  stockMovements: RestaurantStockMovementWriteDto[];
+  cashflowPosted: boolean;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "write";
+};
+
 export type RestaurantStatusActionSurface = "kitchen" | "serving";
 
 export type RestaurantStatusActionPreviewInput = {
@@ -331,8 +350,12 @@ export const restaurantApi = {
   listActiveOrders: () => apiClient.get<ApiEnvelope<RestaurantOrderDto[]>>("/restaurant/orders/active"),
   previewOrder: (input: RestaurantOrderPreviewInput) =>
     apiClient.post<ApiEnvelope<RestaurantOrderPreviewDto>>("/restaurant/orders/preview", input),
+  createOrder: (input: RestaurantOrderPreviewInput) =>
+    apiClient.post<ApiEnvelope<RestaurantOrderWriteResultDto>>("/restaurant/orders", input),
   previewPayment: (input: RestaurantPaymentPreviewInput) =>
     apiClient.post<ApiEnvelope<RestaurantPaymentPreviewDto>>("/restaurant/payments/preview", input),
+  confirmPayment: (input: RestaurantPaymentPreviewInput) =>
+    apiClient.post<ApiEnvelope<RestaurantOrderWriteResultDto>>("/restaurant/payments/confirm", input),
   listKitchenQueue: () => apiClient.get<ApiEnvelope<RestaurantOrderDto[]>>("/restaurant/kitchen"),
   previewKitchenAction: (input: RestaurantStatusActionPreviewInput) =>
     apiClient.post<ApiEnvelope<RestaurantStatusActionPreviewDto>>("/restaurant/kitchen/preview", input),
