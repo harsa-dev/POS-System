@@ -39,6 +39,7 @@ processing cancellation reversal workflow
 generated API client consolidation boundary
 migration baseline/idempotency hardening
 audit + permission policy hardening
+authenticated integration smoke hardening
 ```
 
 ## Retail-style Raw Material phases
@@ -344,16 +345,40 @@ read-only and preview endpoints are marked intentionally non-audited
 raw-material:check runs raw-material:policy:check as part of the scoped gate
 ```
 
+## Post-plan hardening lanes
+
+### Lane A - Raw Material authenticated integration smoke
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+scripts/raw-material-api-smoke.mjs
+docs/workspaces/raw-material-authenticated-integration-smoke.md
+docs/workspaces/raw-material-retail-style-implementation-plan.md
+```
+
+Behavior:
+
+```txt
+authenticated smoke asserts success envelope, data presence, and response shape
+summary smoke asserts required dashboard summary keys
+list smoke asserts array data
+optional RAW_MATERIAL_SMOKE_EXPECT_SEED=true validates seeded minimum counts
+write/status/reversal endpoints remain outside read-only smoke
+```
+
 ## Current status
 
 ```txt
 Raw Material Retail-style implementation plan is complete through Phase 8H.
+Post-plan Lane A authenticated integration smoke is implemented.
 ```
 
 ## Recommended follow-up lanes
 
 ```txt
-Raw Material authenticated integration smoke
 Raw Material create intake/batch/processing write UX
 Raw Material exact OpenAPI schema expansion
 Global non-Raw-Material typecheck cleanup
