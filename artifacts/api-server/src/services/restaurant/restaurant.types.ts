@@ -184,6 +184,18 @@ export type RestaurantStatusActionPreviewDto = {
   source: "preview";
 };
 
+export type RestaurantStatusActionWriteDto = {
+  kind: RestaurantStatusActionSurface;
+  generatedAt: string;
+  order: RestaurantOrderDto;
+  previousStatus: OrderStatus;
+  currentStatus: OrderStatus;
+  transition: NonNullable<RestaurantStatusActionPreviewDto["transition"]>;
+  tableStatusUpdated: boolean;
+  warnings: RestaurantPreviewWarningDto[];
+  source: "write";
+};
+
 export type RestaurantWorkflowStageStatus = "empty" | "healthy" | "review" | "blocked";
 
 export type RestaurantWorkflowStageDto = {
