@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,13 +19,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  createRawMaterialSummaryMetrics,
   formatRawMaterialWeight,
+  getRawMaterialSummaryErrorMessage,
+  rawMaterialApiClient,
   rawMaterialApiContracts,
   rawMaterialBatches,
   rawMaterialMockService,
   rawMaterialStorageLocations,
   rawMaterialSuppliers,
   rawMaterialWorkspaceModules,
+  type RawMaterialApiSource,
+  type RawMaterialMetric,
   type RawMaterialWorkspaceModuleId,
 } from "@/features/raw-material/core-system";
 
@@ -77,6 +82,11 @@ export default function RawMaterialPlaceholderWorkspace({
   const processingEnvelope = rawMaterialMockService.listProcessingRuns();
   const kandangEnvelope = rawMaterialMockService.listKandangPens();
 
+  const [summaryMetrics, setSummaryMetrics] = useState<readonly RawMaterialMetric[] | null>(null);
+  const [summarySource, setSummarySource] = useState<RawMaterialApiSource>("mock");
+  const [summaryStatus, setSummaryStatus] = useState(
+    "Loading backend summary. Mock fallback is ready if the API refuses to participate.",
+  );
   const [intakeFilters, setIntakeFilters] = useState({
     supplierId: "all",
     qualityStatus: "all" as RawMaterialQualityFilterValue,
@@ -106,6 +116,27 @@ export default function RawMaterialPlaceholderWorkspace({
     "Drafts and previews are local only. Refreshing the page clears them.",
   );
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    rawMaterialApiClient
+      .getSummary(controller.signal)
+      .then((summary) => {
+        setSummaryMetrics(createRawMaterialSummaryMetrics(summary));
+        setSummarySource("api");
+        setSummaryStatus(`Backend summary loaded for ${summary.business.name}. Generated at ${summary.generatedAt}.`);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+
+        setSummaryMetrics(null);
+        setSummarySource("api-with-mock-fallback");
+        setSummaryStatus(getRawMaterialSummaryErrorMessage(error));
+      });
+
+    return () => controller.abort();
+  }, []);
+
   const intakesEnvelope = rawMaterialMockService.listIntakes({
     supplierId: intakeFilters.supplierId === "all" ? undefined : intakeFilters.supplierId,
     qualityStatus: normalizeRawMaterialQualityFilter(intakeFilters.qualityStatus),
@@ -120,6 +151,14 @@ export default function RawMaterialPlaceholderWorkspace({
     category: normalizeRawMaterialSupplierCategoryFilter(supplierFilters.category),
     search: supplierFilters.search || undefined,
   });
+
+  const dashboardMetrics = summaryMetrics ?? metricsEnvelope.data;
+  const dashboardSchemaTouched = summarySource !== "mock";
+  const sourceBadgeLabel = summarySource === "api"
+    ? "Backend summary"
+    : summarySource === "api-with-mock-fallback"
+      ? "API fallback"
+      : "Mock fallback";
 
   const transferBatch = rawMaterialBatches.find((batch) => batch.id === transferPreviewForm.batchId);
   const transferQuantityKg = toRawMaterialPositiveNumber(transferPreviewForm.quantityKg);
@@ -149,7 +188,7 @@ export default function RawMaterialPlaceholderWorkspace({
     event.preventDefault();
     setDraftNotice(
       transferIsValid
-        ? "Storage transfer preview generated locally. No stock movement was created. Civilization survives."
+        ? "Storage transfer preview generated locally. Use the backend stock movement transfer API when write UX is wired. Civilization survives."
         : "Transfer preview needs different source/target storage and quantity within remaining batch stock.",
     );
   }
@@ -158,7 +197,7 @@ export default function RawMaterialPlaceholderWorkspace({
     event.preventDefault();
     setDraftNotice(
       processingIsValid
-        ? "Processing yield preview generated locally. No finished goods or cost allocation created yet."
+        ? "Processing yield preview generated locally. Backend processing API exists; this UI still avoids accidental writes."
         : "Processing preview needs a valid batch, input quantity within remaining stock, and yield between 1-100%.",
     );
   }
@@ -168,9 +207,9 @@ export default function RawMaterialPlaceholderWorkspace({
       <div className="rounded-xl border border-amber-100 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="border-amber-300 text-amber-700">Raw Material mode</Badge>
-          <Badge variant="outline" className="border-neutral-300 text-neutral-600">Mock data only</Badge>
-          <Badge variant="outline" className="border-rose-300 text-rose-700">Schema untouched</Badge>
-          <Badge variant="outline" className="border-blue-300 text-blue-700">API contract ready</Badge>
+          <Badge variant="outline" className="border-emerald-300 text-emerald-700">{sourceBadgeLabel}</Badge>
+          <Badge variant="outline" className="border-neutral-300 text-neutral-600">Mock fallback retained</Badge>
+          <Badge variant="outline" className="border-blue-300 text-blue-700">API contract synced</Badge>
         </div>
 
         <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -189,7 +228,7 @@ export default function RawMaterialPlaceholderWorkspace({
         </div>
       </div>
 
-      <RawMaterialMetricsGrid metrics={metricsEnvelope.data} />
+      <RawMaterialMetricsGrid metrics={dashboardMetrics} />
 
       <RawMaterialScaleDashboard profiles={scaleProfilesEnvelope.data} features={scaleFeaturesEnvelope.data} />
 
@@ -203,7 +242,7 @@ export default function RawMaterialPlaceholderWorkspace({
         <Card className="rounded-xl bg-white">
           <CardHeader>
             <CardTitle>Preview storage transfer</CardTitle>
-            <CardDescription>Checks quantity and storage direction without creating stock movement.</CardDescription>
+            <CardDescription>Checks quantity and storage direction locally before the write button is intentionally enabled.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="grid gap-4 md:grid-cols-2" onSubmit={handlePreviewTransfer}>
@@ -248,7 +287,7 @@ export default function RawMaterialPlaceholderWorkspace({
         <Card className="rounded-xl bg-white">
           <CardHeader>
             <CardTitle>Preview processing yield</CardTitle>
-            <CardDescription>Calculates output and extra material locally before production logic exists.</CardDescription>
+            <CardDescription>Calculates output and extra material locally before write UX is enabled.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="grid gap-4 md:grid-cols-3" onSubmit={handlePreviewProcessingYield}>
@@ -287,7 +326,7 @@ export default function RawMaterialPlaceholderWorkspace({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle>Supplier intake queue</CardTitle>
-                <CardDescription>Filtered through mock service. Still no backend request.</CardDescription>
+                <CardDescription>List view keeps mock fallback while summary metrics are API-first.</CardDescription>
               </div>
               <Badge variant="outline">{intakesEnvelope.meta.total} intakes</Badge>
             </div>
@@ -337,7 +376,12 @@ export default function RawMaterialPlaceholderWorkspace({
         </Card>
 
         <div className="space-y-4">
-          <RawMaterialReadinessCard readiness={readiness} source={metricsEnvelope.meta.source} schemaTouched={metricsEnvelope.meta.schemaTouched} />
+          <RawMaterialReadinessCard
+            readiness={readiness}
+            source={summarySource}
+            schemaTouched={dashboardSchemaTouched}
+            apiStatusLabel={summaryStatus}
+          />
           <RawMaterialApiContractCard contracts={moduleContracts} />
         </div>
       </div>
@@ -406,7 +450,7 @@ export default function RawMaterialPlaceholderWorkspace({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <CardTitle>Supplier filter preview</CardTitle>
-              <CardDescription>Mock service supplier query before supplier API exists.</CardDescription>
+              <CardDescription>Mock table fallback. Backend supplier list contract is synced for API integration.</CardDescription>
             </div>
             <Badge variant="outline">{suppliersEnvelope.meta.total} suppliers</Badge>
           </div>
@@ -437,7 +481,7 @@ export default function RawMaterialPlaceholderWorkspace({
           <Card key={checkpoint} className="rounded-xl bg-white">
             <CardHeader>
               <CardTitle className="text-base">Foundation checkpoint</CardTitle>
-              <CardDescription>Before API/schema integration</CardDescription>
+              <CardDescription>Before write buttons are enabled</CardDescription>
             </CardHeader>
             <CardContent><p className="text-sm leading-6 text-neutral-600">{checkpoint}</p></CardContent>
           </Card>
