@@ -39,6 +39,14 @@ export const SERVICE_BUSINESS_OPENAPI_OPERATIONS = {
     method: "PATCH",
     path: "/custom-business/service/jobs/{id}/guarded-status",
   },
+  serviceBusinessSetJobStatus: {
+    method: "POST",
+    path: "/custom-business/service/status/jobs/{id}",
+  },
+  serviceBusinessSetRequestStatus: {
+    method: "POST",
+    path: "/custom-business/service/status/requests/{id}",
+  },
   serviceBusinessAddCostLine: {
     method: "POST",
     path: "/custom-business/service/jobs/{id}/cost-lines",
