@@ -12,9 +12,10 @@ export type V3LegacyBusinessMode = "fnb" | "service" | "warehouse";
 export type V3RuntimeRole =
   | "OWNER"
   | "MANAGER"
-  | "CASHIER"
-  | "SERVER"
-  | "KITCHEN";
+  | "ADMIN"
+  | "OPERATOR"
+  | "STAFF"
+  | "VIEWER";
 
 export type V3ModuleLayer =
   | "core"
