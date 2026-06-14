@@ -64,6 +64,23 @@ export type CashflowEntryDto = {
   updatedAt: string;
 };
 
+export type CashflowAccountBalanceDto = {
+  account: CashflowAccount;
+  income: number;
+  expense: number;
+  adjustment: number;
+  balance: number;
+  postedCount: number;
+  pendingCount: number;
+  voidedCount: number;
+};
+
+export type CashflowAccountBalancesDto = {
+  generatedAt: string;
+  totalBalance: number;
+  accounts: CashflowAccountBalanceDto[];
+};
+
 export type CashflowDashboardDto = {
   summary: {
     totalIncome: number;
@@ -176,6 +193,12 @@ export const cashflowApi = {
   getDashboard(params?: CashflowQuery) {
     return apiClient.get<ApiDataEnvelope<CashflowDashboardDto>>(
       `/api/cashflow-dashboard${buildCashflowQuery(params)}`,
+    );
+  },
+
+  getAccountBalances() {
+    return apiClient.get<ApiDataEnvelope<CashflowAccountBalancesDto>>(
+      "/api/cashflow-account-balances",
     );
   },
 
