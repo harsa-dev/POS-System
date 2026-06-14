@@ -8,9 +8,26 @@ Add idempotent demo data for Business Mode Service / Custom Business Service so 
 
 This phase is intentionally small. It seeds service workflow data only. It does not add a service check gate, scoped smoke test, DB baseline hardening, or frontend changes.
 
-## Command
+## Commands
+
+Seed an existing active Service business:
 
 ```bash
+pnpm --filter @workspace/api-server run service:seed
+```
+
+Create a safe demo Service business when no active Service business exists:
+
+```bash
+pnpm --filter @workspace/api-server run service:ensure-business
+```
+
+Full local/demo setup:
+
+```bash
+pnpm --filter @workspace/api-server run service:db:apply
+pnpm --filter @workspace/api-server run generate
+pnpm --filter @workspace/api-server run service:ensure-business
 pnpm --filter @workspace/api-server run service:seed
 ```
 
@@ -25,9 +42,27 @@ Business.isActive = true
 
 If no active Service business exists, the script exits safely and prints a clear message.
 
+`service:ensure-business` is intentionally separate from `service:seed`. It creates or updates one active demo Service business only when called explicitly.
+
+## Demo business ensure behavior
+
+`service:ensure-business`:
+
+```txt
+finds an active OWNER, ADMIN, or MANAGER user
+creates/updates Service Demo Business
+sets Business.type = SERVICE
+sets Business.mode = SERVICE
+sets Business.isActive = true
+uses the selected user as Business.ownerId
+```
+
+If there is no active OWNER/ADMIN/MANAGER user, the script stops and prints a clear message. It does not create users or passwords.
+
 ## Implemented files
 
 ```txt
+artifacts/api-server/scripts/ensure-service-business-demo.ts
 artifacts/api-server/scripts/seed-service-business-demo-data.ts
 artifacts/api-server/package.json
 ```
@@ -87,8 +122,9 @@ The seed updates existing demo rows back to the canonical demo state. That is in
 This phase does not:
 
 ```txt
-create a Service business
-run service DB migrations
+create users or passwords
+auto-create a Service business during service:seed
+run global Prisma migrations
 create root service:check
 create service smoke tests
 create OpenAPI coverage
@@ -104,6 +140,7 @@ After pulling this phase:
 ```bash
 pnpm --filter @workspace/api-server run service:db:apply
 pnpm --filter @workspace/api-server run generate
+pnpm --filter @workspace/api-server run service:ensure-business
 pnpm --filter @workspace/api-server run service:seed
 ```
 
