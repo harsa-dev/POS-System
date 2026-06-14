@@ -74,23 +74,39 @@ async function main() {
   `);
 
   await prisma.$executeRawUnsafe(`
-    UPDATE "CashflowEntry" entry
-    SET "businessId" = restaurant."businessId"
-    FROM "Restaurant" restaurant
-    WHERE entry."businessId" IS NULL
-      AND entry."restaurantId" IS NOT NULL
-      AND entry."restaurantId" = restaurant."id";
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'CashflowEntry'
+          AND column_name = 'restaurantId'
+      ) THEN
+        UPDATE "CashflowEntry" entry
+        SET "businessId" = restaurant."businessId"
+        FROM "Restaurant" restaurant
+        WHERE entry."businessId" IS NULL
+          AND entry."restaurantId" IS NOT NULL
+          AND entry."restaurantId" = restaurant."id";
+      END IF;
+    END $$;
   `);
 
   await prisma.$executeRawUnsafe(`
-    UPDATE "CashflowEntry"
-    SET "category" = COALESCE(NULLIF("title", ''), NULLIF("category", ''), 'General')
-    WHERE EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_name = 'CashflowEntry'
-        AND column_name = 'title'
-    );
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'CashflowEntry'
+          AND column_name = 'title'
+      ) THEN
+        EXECUTE '
+          UPDATE "CashflowEntry"
+          SET "category" = COALESCE(NULLIF("title", ''''), NULLIF("category", ''''), ''General'')
+        ';
+      END IF;
+    END $$;
   `);
 
   await prisma.$executeRawUnsafe(`
