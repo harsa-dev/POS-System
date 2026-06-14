@@ -27,6 +27,7 @@ guarded workflow status delegate
 service demo tenant helper
 service demo seed data
 service OpenAPI/client coverage
+service quote/invoice/payment preview delegate
 service smoke test + scoped CI gate
 service migration baseline/idempotency hardening
 ```
@@ -38,6 +39,7 @@ docs/workspaces/custom-business-service-backend-phases.md
 docs/workspaces/custom-business-service-prisma-delegate-cleanup.md
 docs/workspaces/custom-business-service-seed-demo-data.md
 docs/workspaces/custom-business-service-openapi-client-coverage.md
+docs/workspaces/custom-business-service-preview-delegate.md
 docs/workspaces/custom-business-service-smoke-test-scoped-ci.md
 docs/workspaces/custom-business-service-migration-baseline-idempotency.md
 ```
@@ -48,7 +50,6 @@ Current known gap compared with Retail and Raw Material:
 no full Service generated-client consolidation lane yet
 no explicit Service audit + permission policy assertion lane yet
 no explicit Service status API route family yet
-no Service quote/invoice/payment preview delegate yet
 no Service quote/invoice/payment reversal workflow yet
 ```
 
@@ -64,10 +65,10 @@ Phase 6  - Service OpenAPI/client coverage                        Done
 Phase 7A - Prisma schema model mapping                            Done
 Phase 7B - Summary read delegate                                  Done
 Phase 7C - Workflow read delegate                                 Done
-Phase 7D - Service quote/invoice preview delegate                 Next
+Phase 7D - Service quote/invoice preview delegate                 Done
 Phase 7E - Service write delegate                                 Done
 Phase 7F - Guarded workflow status delegate                       Done
-Phase 8A - Service status API route family                        Planned
+Phase 8A - Service status API route family                        Next
 Phase 8B - Service status frontend action                         Planned
 Phase 8C - Quote/invoice cancellation reversal workflow           Planned
 Phase 8D - Payment reversal workflow                              Planned
@@ -202,6 +203,9 @@ serviceBusinessGetSummary
 serviceBusinessListJobs
 serviceBusinessGetWorkflowStatuses
 serviceBusinessGetTransitionPreview
+serviceBusinessPreviewQuotation
+serviceBusinessPreviewInvoice
+serviceBusinessPreviewInvoicePayment
 serviceBusinessCreateRequest
 serviceBusinessUpdateJobStatus
 serviceBusinessAddCostLine
@@ -243,18 +247,39 @@ Workflow target lookup and readiness checks use delegate-backed read helpers.
 
 ### Phase 7D - Service quote/invoice preview delegate
 
-Status: next.
+Status: implemented.
 
-This should provide read-only preview endpoints for:
+Implemented endpoints:
 
 ```txt
-quotation draft preview
-invoice preview
-payment recording preview
-workflow transition preview normalization if needed
+POST /api/custom-business/service/previews/quotation
+POST /api/custom-business/service/previews/invoice
+POST /api/custom-business/service/previews/invoice-payment
 ```
 
-No mutation should happen in this phase.
+Implemented files:
+
+```txt
+artifacts/api-server/src/features/service-business/service-business-preview.service.ts
+artifacts/api-server/src/routes/service-business-preview.ts
+artifacts/api-server/src/routes/index.ts
+artifacts/api-server/tsconfig.service.json
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-operations.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api-contract-types.ts
+artifacts/pos-system/src/app/workspace/custom-business/service/service-business-api.ts
+lib/api-spec/service-business.openapi.yaml
+docs/workspaces/custom-business-service-preview-delegate.md
+```
+
+Preview behavior:
+
+```txt
+quotation preview calculates cost, margin, discount, tax, and projected total
+invoice preview calculates invoice total and warns about quote state/existing invoices
+invoice payment preview calculates remaining balance, applied amount, overflow, next invoice status, and next workflow status
+```
+
+No mutation happens in this phase.
 
 ### Phase 7E - Service write delegate
 
@@ -276,3 +301,9 @@ recordServiceInvoicePaymentRecordWithDelegate
 Status: implemented.
 
 Guarded workflow status transition writes now use generated Prisma delegates.
+
+## Next recommended phase
+
+```txt
+Service Phase 8A - Service status API route family
+```
