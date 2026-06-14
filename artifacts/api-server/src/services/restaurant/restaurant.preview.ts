@@ -35,6 +35,11 @@ function normalizeQuantity(value: unknown) {
   return Number.isInteger(value) && Number(value) > 0 ? Number(value) : 0;
 }
 
+function normalizeRate(value: number | null | undefined, fallback: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return value > 1 ? value / 100 : value;
+}
+
 function hasBlockingWarning(warnings: RestaurantPreviewWarningDto[]) {
   return warnings.some((warning) => warning.status === "blocked");
 }
@@ -78,14 +83,14 @@ async function getPreviewSettings(scope: RestaurantBusinessScope): Promise<Resta
     where: { businessId: scope.businessId },
     select: {
       taxRate: true,
-      serviceChargeRate: true,
+      serviceRate: true,
       currency: true,
     },
   });
 
   return {
-    taxRate: settings?.taxRate ?? DEFAULT_TAX_RATE,
-    serviceChargeRate: settings?.serviceChargeRate ?? DEFAULT_SERVICE_CHARGE_RATE,
+    taxRate: normalizeRate(settings?.taxRate, DEFAULT_TAX_RATE),
+    serviceChargeRate: normalizeRate(settings?.serviceRate, DEFAULT_SERVICE_CHARGE_RATE),
     currency: settings?.currency ?? DEFAULT_CURRENCY,
   };
 }
