@@ -7,6 +7,7 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "business-mode:check": "node ./scripts/business-mode-switch-check.mjs",
+    "business-mode:browser-smoke": "node ./scripts/business-mode-browser-smoke.mjs",
     "restaurant:baseline": "pnpm --filter @workspace/api-server run restaurant:baseline:check",
     "restaurant:check": "node ./scripts/restaurant-check.mjs",
     "restaurant:smoke": "node ./scripts/restaurant-api-smoke.mjs",
