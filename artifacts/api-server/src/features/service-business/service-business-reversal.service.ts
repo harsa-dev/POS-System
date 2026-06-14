@@ -28,15 +28,6 @@ type CancelServiceInvoiceInput = {
   note?: string;
 };
 
-function validationError(message: string): CancellationResult {
-  return {
-    ok: false,
-    status: 400,
-    code: errorCodes.validationError,
-    message,
-  };
-}
-
 function conflict(message: string): CancellationResult {
   return {
     ok: false,
@@ -113,7 +104,9 @@ export async function cancelServiceBusinessQuotation({
     return conflict("Service quotation is already closed and cannot be cancelled again.");
   }
 
-  const linkedInvoices = quotation.request.invoices.filter((invoice) => invoice.status !== "CANCELLED");
+  const linkedInvoices = quotation.request.invoices.filter(
+    (invoice) => invoice.status !== PrismaServiceBusinessInvoiceStatus.CANCELLED,
+  );
   if (linkedInvoices.length > 0) {
     return conflict("Cancel linked invoices before cancelling this quotation.");
   }
