@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { orderApi } from "@/lib/api";
+import { restaurantApi, type RestaurantOrderDto } from "@/lib/api";
 import { formatDateTime, formatOrderNumber } from "@/lib/utils/format";
 import { kitchenOrderStatusLabels } from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
 
@@ -36,22 +36,7 @@ type KitchenOrdersResult = {
   reload: () => Promise<void>;
 };
 
-type OrderResponse = {
-  id: string;
-  orderNumber: number;
-  status: string;
-  createdAt: string;
-  type: "DINE_IN" | "TAKEAWAY";
-  table?: { name?: string | null } | null;
-  restaurant?: { timezone?: string | null; orderPrefix?: string | null } | null;
-  items: Array<{
-    id: string;
-    quantity: number;
-    menuItem?: { name?: string | null } | null;
-  }>;
-};
-
-type KitchenOrderResponse = OrderResponse & {
+type KitchenOrderResponse = RestaurantOrderDto & {
   status: KitchenOrderStatus;
 };
 
@@ -60,23 +45,21 @@ function isKitchenStatus(status: string): status is KitchenOrderStatus {
 }
 
 function isKitchenOrderResponse(
-  order: OrderResponse,
+  order: RestaurantOrderDto,
 ): order is KitchenOrderResponse {
   return isKitchenStatus(order.status);
 }
 
 function mapOrderToKitchenOrder(order: KitchenOrderResponse): KitchenOrder {
-  const timezone = order.restaurant?.timezone ?? "Asia/Makassar";
-  const orderPrefix = order.restaurant?.orderPrefix ?? "ORD";
   const items = order.items.map((item) => ({
     id: item.id,
-    name: item.menuItem?.name ?? "Unnamed item",
+    name: item.name,
     quantity: item.quantity,
   }));
 
   return {
     id: order.id,
-    orderCode: formatOrderNumber(order.orderNumber, orderPrefix),
+    orderCode: order.code || formatOrderNumber(order.orderNumber, "ORD"),
     orderNumber: order.orderNumber,
     status: order.status,
     statusLabel: kitchenOrderStatusLabels[order.status],
@@ -85,7 +68,7 @@ function mapOrderToKitchenOrder(order: KitchenOrderResponse): KitchenOrder {
         ? `Table ${order.table?.name ?? "Unknown"}`
         : "Takeaway",
     createdAt: order.createdAt,
-    createdAtLabel: formatDateTime(order.createdAt, timezone),
+    createdAtLabel: formatDateTime(order.createdAt, "Asia/Makassar"),
     itemCount: items.reduce((total, item) => total + item.quantity, 0),
     items,
   };
@@ -93,7 +76,7 @@ function mapOrderToKitchenOrder(order: KitchenOrderResponse): KitchenOrder {
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) return error.message;
-  return "Kitchen orders are unavailable.";
+  return "Restaurant kitchen orders are unavailable.";
 }
 
 export function useKitchenOrders(): KitchenOrdersResult {
@@ -113,7 +96,7 @@ export function useKitchenOrders(): KitchenOrdersResult {
     setErrorMessage(null);
 
     try {
-      const response = await orderApi.listOrders<OrderResponse[]>();
+      const response = await restaurantApi.listKitchenQueue();
 
       if (!response.success) {
         throw new Error(response.message ?? "Failed to load kitchen orders");
