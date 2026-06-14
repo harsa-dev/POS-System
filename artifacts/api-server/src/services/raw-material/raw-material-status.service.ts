@@ -1,6 +1,8 @@
 import type { BusinessContext } from "../../lib/business-context/index.js";
 import type { RawMaterialActor } from "./raw-material-intake.types.js";
 
+import { AppError } from "../../lib/errors/app-error.js";
+import { errorCodes } from "../../lib/errors/error-codes.js";
 import { cancelRawMaterialIntake } from "./raw-material-intake.service.js";
 import {
   deactivateRawMaterialBatch,
@@ -22,44 +24,34 @@ type RawMaterialStatusPayloadParams = RawMaterialStatusParams & Readonly<{
   input?: Record<string, unknown>;
 }>;
 
-export async function setRawMaterialIntakeStatus(params: RawMaterialStatusPayloadParams) {
-  const status = typeof params.input?.status === "string"
-    ? params.input.status.toUpperCase()
-    : undefined;
-
-  if (status === "CANCELLED") {
-    return cancelRawMaterialIntake(params);
-  }
-
-  return updateRawMaterialIntakeWithStatus(params, status);
+function readStatus(input: Record<string, unknown> | undefined) {
+  return typeof input?.status === "string" ? input.status.toUpperCase() : undefined;
 }
 
-async function updateRawMaterialIntakeWithStatus(
-  params: RawMaterialStatusPayloadParams,
-  status: string | undefined,
-) {
-  if (!status) {
-    throw new Error("Raw material intake status is required.");
+export async function setRawMaterialIntakeStatus(params: RawMaterialStatusPayloadParams) {
+  const status = readStatus(params.input);
+
+  if (status !== "CANCELLED") {
+    throw new AppError({
+      statusCode: 400,
+      code: errorCodes.validationError,
+      message: "Raw material intake status route currently supports CANCELLED only.",
+      details: { status: status ?? null },
+    });
   }
 
-  return import("./raw-material-intake.service.js").then(({ updateRawMaterialIntake }) => updateRawMaterialIntake({
-    actor: params.actor,
-    businessContext: params.businessContext,
-    id: params.id,
-    input: {
-      ...(params.input ?? {}),
-      qualityStatus: status,
-    },
-  }));
+  return cancelRawMaterialIntake(params);
 }
 
 export async function setRawMaterialBatchStatus(params: RawMaterialStatusPayloadParams) {
-  const status = typeof params.input?.status === "string"
-    ? params.input.status.toUpperCase()
-    : undefined;
+  const status = readStatus(params.input);
 
   if (!status) {
-    throw new Error("Raw material batch status is required.");
+    throw new AppError({
+      statusCode: 400,
+      code: errorCodes.validationError,
+      message: "Raw material batch status is required.",
+    });
   }
 
   if (status === "QUARANTINED") {
@@ -78,12 +70,14 @@ export async function setRawMaterialBatchStatus(params: RawMaterialStatusPayload
 }
 
 export async function setRawMaterialProcessingStatus(params: RawMaterialStatusPayloadParams) {
-  const status = typeof params.input?.status === "string"
-    ? params.input.status.toUpperCase()
-    : undefined;
+  const status = readStatus(params.input);
 
   if (!status) {
-    throw new Error("Raw material processing status is required.");
+    throw new AppError({
+      statusCode: 400,
+      code: errorCodes.validationError,
+      message: "Raw material processing status is required.",
+    });
   }
 
   if (status === "CANCELLED") {
@@ -109,7 +103,11 @@ export async function setRawMaterialPenHealthStatus(params: RawMaterialStatusPay
       : undefined;
 
   if (!healthStatus) {
-    throw new Error("Raw material pen health status is required.");
+    throw new AppError({
+      statusCode: 400,
+      code: errorCodes.validationError,
+      message: "Raw material pen health status is required.",
+    });
   }
 
   return updateRawMaterialPen({
