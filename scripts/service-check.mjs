@@ -49,6 +49,11 @@ const steps = [
     args: ["--filter", "@workspace/api-server", "run", "typecheck:service"],
   },
   {
+    label: "Check Service Business audit and permission policy",
+    command: "pnpm",
+    args: ["--filter", "@workspace/api-server", "run", "service:policy:check"],
+  },
+  {
     label: "Typecheck Service Business POS frontend scope",
     command: "pnpm",
     args: ["--filter", "@workspace/pos-system", "run", "typecheck:service"],
