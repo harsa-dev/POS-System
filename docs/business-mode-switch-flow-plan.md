@@ -135,6 +135,7 @@ query cache reset
 sidebar route-support filtering
 generalized runtime role mapping
 optional browser smoke script presence
+optional Playwright E2E harness presence
 ```
 
 It is not a browser automation test. It is a fast source-level guard that catches accidental drift in the switch-flow contract.
@@ -158,6 +159,31 @@ BUSINESS_MODE_SMOKE_SKIP_AUTH=true
 
 This browser smoke checks protected route redirection, safe `next` continuation, mode storage after selection, and shared dashboard active-mode context. It requires Playwright to be installed locally when browser smoke is needed.
 
+## Optional Playwright E2E harness
+
+Business-mode switch flow also has a Playwright Test harness:
+
+```bash
+pnpm business-mode:e2e
+```
+
+Files:
+
+```txt
+playwright.business-mode.config.mjs
+tests/business-mode/business-mode-switch.spec.ts
+scripts/business-mode-e2e.mjs
+```
+
+The runner intentionally fails with an install hint when `@playwright/test` is not installed. The dependency is optional so normal source checks and Restaurant checks stay lightweight.
+
+Install only when browser E2E is needed:
+
+```bash
+pnpm add -D @playwright/test playwright
+pnpm exec playwright install chromium
+```
+
 ## Implemented in this phase
 
 ```txt
@@ -168,7 +194,8 @@ BM-3 - Sidebar/module filtering hardening                          Done
 BM-4 - Select-mode next-route flow                                  Done
 BM-5 - Business-mode smoke checklist/script                         Done
 BM-6 - Optional browser switch-flow smoke                           Done
-BM-7 - Browser E2E dependency/config hardening                      Next
+BM-7 - Browser E2E dependency/config hardening                      Done
+BM-8 - Shared dashboard mode-context data contract                  Next
 ```
 
 ## Manual smoke
@@ -179,11 +206,6 @@ BM-7 - Browser E2E dependency/config hardening                      Next
 3. With retail active, open /workspace/restaurant/pos -> /select-mode?next=/workspace/restaurant/pos.
 4. Select restaurant -> continues to /workspace/restaurant/pos.
 5. With restaurant active, open /v3/retail/cashier -> /select-mode?next=/v3/retail/cashier.
-6. Select restaurant -> falls back to restaurant entry route.
-7. Select retail -> continues to /v3/retail/cashier.
-8. Open cashflow, switch mode, then return to cashflow -> page refetches with selected mode context.
-9. Sidebar title follows active mode label.
-10. custom-business remains visible but not selectable.
-11. Run pnpm business-mode:check before touching mode switch flow again.
-12. Run pnpm business-mode:browser-smoke when the dev server and authenticated cookie are available.
+6. Select retail -> continues to /v3/retail/cashier.
+7. Switch modes from the sidebar/topbar switcher and confirm shared dashboard data refetches under the new mode context.
 ```
