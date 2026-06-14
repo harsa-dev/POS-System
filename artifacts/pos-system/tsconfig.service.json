@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/app/workspace/custom-business/custom-business-service-workspace.tsx",
+    "src/app/workspace/custom-business/service/**/*.ts",
+    "src/app/workspace/custom-business/service/**/*.tsx",
+    "src/features/shared/service-business/**/*.ts",
+    "src/features/shared/service-business/**/*.tsx",
+    "src/components/ui/badge.tsx",
+    "src/components/ui/button.tsx",
+    "src/components/ui/card.tsx",
+    "src/components/ui/input.tsx",
+    "src/components/ui/label.tsx",
+    "src/components/ui/select.tsx",
+    "src/lib/api/api-client.ts",
+    "src/lib/utils.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist",
+    "**/*.test.ts"
+  ]
+}
