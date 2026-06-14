@@ -9,6 +9,11 @@ export type RawMaterialAdjustmentWriteInput = Readonly<{
   note: string;
 }>;
 
+export type RawMaterialAdjustmentReversalWriteInput = Readonly<{
+  movementId: string;
+  note: string;
+}>;
+
 export type RawMaterialTransferWriteInput = Readonly<{
   batchId: string;
   targetStorageLocationId: string;
@@ -85,6 +90,12 @@ export function adjustRawMaterialStock(input: RawMaterialAdjustmentWriteInput) {
   });
 }
 
+export function reverseRawMaterialStockAdjustment(input: RawMaterialAdjustmentReversalWriteInput) {
+  return postRawMaterialStockWrite(`/raw-material/stock-movements/${input.movementId}/reverse-adjustment`, {
+    note: input.note,
+  });
+}
+
 export function transferRawMaterialStock(input: RawMaterialTransferWriteInput) {
   return postRawMaterialStockWrite("/raw-material/stock-movements/transfer", {
     batchId: input.batchId,
@@ -102,6 +113,7 @@ export function consumeRawMaterialForProcessing(input: RawMaterialProcessingCons
 
 export const rawMaterialStockWriteApiClient = {
   adjustStock: adjustRawMaterialStock,
+  reverseAdjustment: reverseRawMaterialStockAdjustment,
   transferStock: transferRawMaterialStock,
   consumeForProcessing: consumeRawMaterialForProcessing,
 };
