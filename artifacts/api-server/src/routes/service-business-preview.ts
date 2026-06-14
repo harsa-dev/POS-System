@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 
 import {
   previewServiceBusinessInvoice,
@@ -30,12 +30,12 @@ async function handlePreviewRoute({
   permission,
   preview,
 }: {
-  req: Parameters<PreviewHandler>[0] & { body?: unknown };
-  res: import("express").Response;
+  req: Request;
+  res: Response;
   permission: ServiceBusinessPermission;
   preview: PreviewHandler;
 }) {
-  const user = await requireServiceBusinessPermission(req as never, res, permission);
+  const user = await requireServiceBusinessPermission(req, res, permission);
   if (!user) return;
 
   const businessContext = await requireBusinessContextForUser(user);
