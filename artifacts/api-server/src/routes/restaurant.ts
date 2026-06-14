@@ -55,8 +55,15 @@ function badRequest(res: Response, message: string) {
 }
 
 function readOrderPreviewInput(req: Request, res: Response): RestaurantOrderPreviewInput | null {
-  if (!isObject(req.body)) return badRequest(res, "Restaurant order preview requires an object body.") as null;
-  if (!Array.isArray(req.body.items)) return badRequest(res, "Restaurant order preview requires an items array.") as null;
+  if (!isObject(req.body)) {
+    badRequest(res, "Restaurant order preview requires an object body.");
+    return null;
+  }
+
+  if (!Array.isArray(req.body.items)) {
+    badRequest(res, "Restaurant order preview requires an items array.");
+    return null;
+  }
 
   return {
     type: req.body.type === "TAKEAWAY" ? "TAKEAWAY" : "DINE_IN",
@@ -75,9 +82,14 @@ function readOrderPreviewInput(req: Request, res: Response): RestaurantOrderPrev
 }
 
 function readPaymentPreviewInput(req: Request, res: Response): RestaurantPaymentPreviewInput | null {
-  if (!isObject(req.body)) return badRequest(res, "Restaurant payment preview requires an object body.") as null;
+  if (!isObject(req.body)) {
+    badRequest(res, "Restaurant payment preview requires an object body.");
+    return null;
+  }
+
   if (typeof req.body.orderId !== "string" || req.body.orderId.length === 0) {
-    return badRequest(res, "Restaurant payment preview requires orderId.") as null;
+    badRequest(res, "Restaurant payment preview requires orderId.");
+    return null;
   }
 
   return {
@@ -88,9 +100,14 @@ function readPaymentPreviewInput(req: Request, res: Response): RestaurantPayment
 }
 
 function readStatusActionPreviewInput(req: Request, res: Response): RestaurantStatusActionPreviewInput | null {
-  if (!isObject(req.body)) return badRequest(res, "Restaurant status preview requires an object body.") as null;
+  if (!isObject(req.body)) {
+    badRequest(res, "Restaurant status preview requires an object body.");
+    return null;
+  }
+
   if (typeof req.body.orderId !== "string" || req.body.orderId.length === 0) {
-    return badRequest(res, "Restaurant status preview requires orderId.") as null;
+    badRequest(res, "Restaurant status preview requires orderId.");
+    return null;
   }
 
   return {
