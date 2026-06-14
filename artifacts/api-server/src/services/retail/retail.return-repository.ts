@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "../../lib/prisma.js";
+import { createRetailAuditPayload } from "./retail.audit.js";
 import type {
   RetailActor,
   RetailBusinessScope,
@@ -402,7 +403,32 @@ export async function persistRetailReturnWithDelegate(input: PersistRetailReturn
           'CREATE',
           'RetailReturn',
           ${returnId},
-          CAST(${JSON.stringify({ returnNumber, originalReceiptNumber, refundAmount, restockedQuantity, stockMovementIds })} AS jsonb),
+          CAST(${JSON.stringify(createRetailAuditPayload({
+            event: "retail.return.persisted",
+            actor: input.actor,
+            references: {
+              returnId,
+              returnNumber,
+              saleId: sale.id,
+              originalReceiptNumber,
+              cashflowEntryId,
+            },
+            totals: {
+              refundAmount,
+              restockedQuantity,
+            },
+            stockMovementIds,
+            reason: input.input.reason,
+            metadata: {
+              lines: returnItems.map((item) => ({
+                saleItemId: item.saleItemId,
+                productId: item.productId,
+                quantity: item.quantity,
+                refundAmount: item.refundAmount,
+                restockedQuantity: item.restockedQuantity,
+              })),
+            },
+          }))} AS jsonb),
           ${now}
         )
       `);
