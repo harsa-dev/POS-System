@@ -1,9 +1,10 @@
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 
 import { DashboardShell } from "@/components/core/app-shell/dashboard-shell";
 import { ROUTES } from "@/constants/routes";
 import type { BusinessModeId } from "../business-mode/business-mode.types";
-import { readBusinessModeStorage, repairBusinessModeStorage } from "../business-mode/business-mode-storage";
+import { repairBusinessModeStorage } from "../business-mode/business-mode-storage";
+import { businessModeService } from "../business-mode/business-mode-service";
 
 type RouteGuardUser = {
   name: string;
@@ -25,6 +26,8 @@ export function RouteGuard({
   requiredMode,
   withShell = true,
 }: RouteGuardProps) {
+  const [pathname] = useLocation();
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -35,17 +38,18 @@ export function RouteGuard({
 
   if (!user) return <Redirect to={ROUTES.LOGIN} />;
 
-  const businessModeState = readBusinessModeStorage();
+  const workspaceState = businessModeService.getWorkspaceState();
 
-  if (businessModeState.wasLegacy) {
+  if (workspaceState.wasLegacy) {
     repairBusinessModeStorage("route-guard");
   }
 
-  if (!businessModeState.storedValue || businessModeState.wasFallback) {
-    return <Redirect to={ROUTES.SELECT_MODE} />;
-  }
+  const routeAccess = businessModeService.canEnterRoute({
+    pathname,
+    requiredMode,
+  });
 
-  if (requiredMode && businessModeState.mode !== requiredMode) {
+  if (!routeAccess.canEnter) {
     return <Redirect to={ROUTES.SELECT_MODE} />;
   }
 
