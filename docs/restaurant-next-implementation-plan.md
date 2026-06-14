@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 8B implemented
+Status: Phase 8C implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -22,8 +22,8 @@ Phase 7E - Order/write delegate                                    Done
 Phase 7F - Guarded workflow status delegate                        Done
 Phase 8A - Order/kitchen/serving/table status API route             Done
 Phase 8B - Status frontend action                                  Done
-Phase 8C - Order cancellation + stock/cashflow reversal workflow    Next
-Phase 8D - Payment refund/void reversal workflow                   Planned
+Phase 8C - Order cancellation + stock/cashflow reversal workflow    Done
+Phase 8D - Payment refund/void reversal workflow                   Next
 Phase 8E - Generated API client consolidation                      Planned
 Phase 8F - Restaurant smoke test + scoped CI gate                   Planned
 Phase 8G - Migration baseline/idempotency hardening                Planned
@@ -295,3 +295,21 @@ Moved actions:
 - Orders: `SERVED -> COMPLETED`.
 
 The UI still keeps duplicate-submit guards, loading state, toast feedback, and queue reloads after successful status writes. Cancellation and reversal UI stay planned for Phase 8C.
+
+## Phase 8C result
+
+Restaurant now has a scoped cancellation workflow with stock and cashflow reversal handling.
+
+Implemented surfaces:
+
+- `artifacts/api-server/src/services/restaurant/restaurant.cancellation.ts` previews and writes cancellation with reversal side effects.
+- `POST /restaurant/orders/:orderId/cancellation/preview` previews whether an order can be cancelled and which reversals will run.
+- `POST /restaurant/orders/:orderId/cancel` writes cancellation through `RESTAURANT_CANCELLATION_ROLES`.
+- Cancellable statuses are `PENDING_PAYMENT`, `PAID`, `PREPARING`, `READY`, and `SERVED`.
+- If `inventoryDeducted` is true, recipe ingredient stock is restored and `StockMovement` rows are created with `IN` + `RETURN`.
+- If the order has paid value, a cashflow reversal is posted as `EXPENSE` with `sourceType: REFUND`.
+- If the order has a dine-in table, the table moves to `CLEANING`.
+- Pending payments are marked `EXPIRED`; paid payments remain `PAID` while the refund/cashflow reversal is recorded separately.
+- `artifacts/pos-system/src/lib/api/restaurant-api.ts` exposes typed `previewCancellation` and `cancelOrder` helpers.
+
+Phase 8D remains planned for dedicated payment refund/void semantics beyond order cancellation.
