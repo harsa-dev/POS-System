@@ -6,6 +6,7 @@ import type {
   TeamMember,
   TeamMemberStatus,
 } from "./role-permission-library";
+import type { BusinessRoleSector } from "./job-role-library";
 
 export const TEAM_MANAGEMENT_API_CONTRACT_VERSION = "team-management.v1.local-contract";
 
@@ -26,6 +27,16 @@ export type TeamManagementSnapshotDto = {
   contractVersion: typeof TEAM_MANAGEMENT_API_CONTRACT_VERSION;
   source: TeamManagementDataSource;
   generatedAt: string;
+  business?: {
+    id: string;
+    name: string;
+    mode: BusinessRoleSector;
+    type: string;
+  };
+  viewer?: {
+    userId: string;
+    role: SystemRole;
+  };
   roles: ManagedRole[];
   members: TeamMember[];
   logs: AccessChangeLog[];
