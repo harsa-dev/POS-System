@@ -36,6 +36,7 @@ status API route family
 status frontend action migrated to status route family
 stock adjustment reversal workflow
 processing cancellation reversal workflow
+generated API client consolidation boundary
 ```
 
 ## Retail-style Raw Material phases
@@ -57,13 +58,13 @@ Phase 8A - Intake/processing/batch status API route           Done
 Phase 8B - Status frontend action                             Done
 Phase 8C - Stock adjustment reversal workflow                 Done
 Phase 8D - Processing cancellation reversal workflow          Done
-Phase 8E - Generated API client consolidation                 Next
+Phase 8E - Generated API client consolidation                 Done
 Phase 8F - Raw Material smoke test + scoped CI gate           Done
-Phase 8G - Migration baseline/idempotency hardening           Planned
+Phase 8G - Migration baseline/idempotency hardening           Next
 Phase 8H - Audit + permission policy hardening                Mostly Done, needs smoke/policy assertion
 ```
 
-## Completed phase notes
+## Phase execution notes
 
 ### Phase 4 - Seed supplier/storage/intake/batch/kandang
 
@@ -81,19 +82,6 @@ Command:
 
 ```bash
 pnpm --filter @workspace/api-server run raw-material:seed
-```
-
-Seeded demo data per active Raw Material business:
-
-```txt
-3 suppliers
-3 storage locations
-3 intakes
-3 weighings
-3 batches
-1 planned processing run
-2 kandang pens
-3 initial receiving stock movements
 ```
 
 ### Phase 5 - Frontend list/workflow API wiring
@@ -121,8 +109,6 @@ artifacts/pos-system/src/features/raw-material/core-system/raw-material.types.ts
 artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
 docs/workspaces/raw-material-openapi-client-coverage.md
 ```
-
-Generated client replacement remains planned under Phase 8E.
 
 ### Phase 7C - Workflow read delegate
 
@@ -159,17 +145,6 @@ Preview endpoints are read-only and return `canProceed`, `blockingIssues`, `warn
 
 Status: implemented.
 
-Implemented files:
-
-```txt
-artifacts/pos-system/src/features/raw-material/core-system/raw-material-stock-write.api-client.ts
-artifacts/pos-system/src/features/raw-material/core-system/index.ts
-artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-stock-write-actions.tsx
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-draft-forms.tsx
-docs/workspaces/raw-material-stock-write-delegate.md
-```
-
 Wired write endpoints:
 
 ```txt
@@ -191,54 +166,13 @@ backend remains source of truth for stock guards, ledger rows, and audit logs
 
 Status: implemented.
 
-Implemented files:
-
-```txt
-artifacts/pos-system/src/features/raw-material/core-system/raw-material-workflow-status.api-client.ts
-artifacts/pos-system/src/features/raw-material/core-system/index.ts
-artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-workflow-status-actions.tsx
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-draft-forms.tsx
-docs/workspaces/raw-material-workflow-status-delegate.md
-```
-
-Wired workflow status endpoints:
-
-```txt
-DELETE /raw-material/intakes/{id}
-PATCH  /raw-material/batches/{id}
-DELETE /raw-material/batches/{id}
-PATCH  /raw-material/processing-runs/{id}
-POST   /raw-material/processing-runs/{id}/cancel
-PATCH  /raw-material/pens/{id}
-```
-
-Behavior:
-
-```txt
-frontend workflow status actions only enable after backend workflow data loads
-mock/fallback IDs are never submitted to status endpoints
-successful status action refreshes workflow reads
-backend remains source of truth for intake cancellation, batch quality/quarantine, processing transition, processing cancellation, and kandang health guards
-```
+Status actions now use the Phase 8A status route family after Phase 8B migration.
 
 ### Phase 8A - Intake/processing/batch status API route
 
 Status: implemented.
 
-Implemented files:
-
-```txt
-artifacts/api-server/src/services/raw-material/raw-material-status.service.ts
-artifacts/api-server/src/routes/raw-material-status.ts
-artifacts/api-server/src/routes/index.ts
-artifacts/api-server/tsconfig.raw-material.json
-artifacts/api-server/src/services/raw-material/index.ts
-artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
-docs/workspaces/raw-material-status-api-route.md
-```
-
-New backend status routes:
+Backend status route family:
 
 ```txt
 POST /raw-material/status/intakes/{id}
@@ -247,28 +181,11 @@ POST /raw-material/status/processing-runs/{id}
 POST /raw-material/status/pens/{id}
 ```
 
-Behavior:
-
-```txt
-intake route currently supports status=CANCELLED only
-batch route supports quality status changes and QUARANTINED alias
-processing route supports guarded transition and CANCELLED alias
-pen route supports health status changes through existing kandang guard
-compatibility routes remain available after Phase 8B for backwards compatibility
-```
-
 ### Phase 8B - Status frontend action
 
 Status: implemented.
 
-Implemented files:
-
-```txt
-artifacts/pos-system/src/features/raw-material/core-system/raw-material-workflow-status.api-client.ts
-docs/workspaces/raw-material-status-frontend-action.md
-```
-
-Frontend status actions now use:
+Frontend workflow status actions now use:
 
 ```txt
 POST /raw-material/status/intakes/{id}
@@ -283,20 +200,7 @@ Compatibility routes remain available but are no longer used by the frontend wor
 
 Status: implemented.
 
-Implemented files:
-
-```txt
-artifacts/api-server/src/services/raw-material/raw-material-stock-movement.types.ts
-artifacts/api-server/src/services/raw-material/raw-material-stock-movement.validation.ts
-artifacts/api-server/src/services/raw-material/raw-material-stock-movement.repository.ts
-artifacts/api-server/src/services/raw-material/raw-material-stock-movement.service.ts
-artifacts/api-server/src/routes/raw-material-stock-movements.ts
-artifacts/pos-system/src/features/raw-material/core-system/raw-material-stock-write.api-client.ts
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-stock-write-actions.tsx
-docs/workspaces/raw-material-stock-adjustment-reversal.md
-```
-
-New reversal endpoint:
+Reversal endpoint:
 
 ```txt
 POST /raw-material/stock-movements/{id}/reverse-adjustment
@@ -318,18 +222,6 @@ successful reversal refreshes workflow reads
 
 Status: implemented.
 
-Implemented files:
-
-```txt
-artifacts/api-server/src/services/raw-material/raw-material-processing-cancellation-reversal.service.ts
-artifacts/api-server/src/services/raw-material/raw-material-status.service.ts
-artifacts/api-server/src/services/raw-material/index.ts
-artifacts/pos-system/src/features/raw-material/core-system/raw-material-workflow-status.api-client.ts
-artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-contract.ts
-artifacts/pos-system/src/app/workspace/raw-material/raw-material-workflow-status-actions.tsx
-docs/workspaces/raw-material-processing-cancellation-reversal.md
-```
-
 Cancellation route:
 
 ```txt
@@ -348,6 +240,33 @@ batch must still be in the original processing consumption storage location
 successful cancellation refreshes workflow reads
 ```
 
+### Phase 8E - Generated API client consolidation
+
+Status: implemented.
+
+Implemented files:
+
+```txt
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.generated-api-client.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material.api-client.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material-preview.api-client.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material-stock-write.api-client.ts
+artifacts/pos-system/src/features/raw-material/core-system/raw-material-workflow-status.api-client.ts
+artifacts/pos-system/src/features/raw-material/core-system/index.ts
+docs/workspaces/raw-material-generated-client-consolidation.md
+```
+
+Behavior:
+
+```txt
+operationId-to-method/path registry is centralized
+path parameter interpolation is centralized
+query string handling is centralized
+ApiEnvelope unwrapping is centralized
+summary, workflow reads, preview, stock writes, reversals, and status actions route through the generated boundary
+full OpenAPI code generation remains a future improvement instead of being faked in this phase
+```
+
 ### Phase 8F - Raw Material smoke test + scoped CI gate
 
 Status: implemented.
@@ -362,8 +281,8 @@ pnpm raw-material:check -- --no-smoke
 pnpm raw-material:smoke
 ```
 
-## Next recommended phase
+## Next phase
 
 ```txt
-Raw Material Phase 8E - Generated API client consolidation
+Phase 8G - Migration baseline/idempotency hardening
 ```
