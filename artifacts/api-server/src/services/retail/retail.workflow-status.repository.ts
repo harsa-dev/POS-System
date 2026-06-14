@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "../../lib/prisma.js";
+import { createRetailAuditPayload } from "./retail.audit.js";
 import type { RetailActor, RetailBusinessScope, RetailReceivingQueueDto } from "./retail.types.js";
 
 type RetailReceivingStatus = RetailReceivingQueueDto["status"];
@@ -149,11 +150,18 @@ export async function updateRetailReceivingStatusWithDelegate(
           'UPDATE',
           'RetailReceiving',
           ${current.id},
-          CAST(${JSON.stringify({
-            referenceNumber: current.referenceNumber,
-            previousStatus: current.status,
-            status: input.status,
-          })} AS jsonb),
+          CAST(${JSON.stringify(createRetailAuditPayload({
+            event: "retail.receiving.status_updated",
+            actor: input.actor,
+            references: {
+              receivingId: current.id,
+              referenceNumber: current.referenceNumber,
+            },
+            metadata: {
+              previousStatus: current.status,
+              nextStatus: input.status,
+            },
+          }))} AS jsonb),
           ${now}
         )
       `);
