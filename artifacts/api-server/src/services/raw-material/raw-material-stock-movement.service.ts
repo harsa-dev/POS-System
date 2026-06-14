@@ -11,8 +11,11 @@ import {
   assertRawMaterialDifferentStorage,
   assertRawMaterialKgBatch,
   assertRawMaterialManualAdjustmentNote,
+  assertRawMaterialManualAdjustmentReason,
   assertRawMaterialPositiveMovementQuantity,
   assertRawMaterialQuantityRange,
+  assertRawMaterialStockMovementLedger,
+  assertRawMaterialStorageContainsQuantity,
   assertRawMaterialStorageUsage,
 } from "./raw-material.stock-rules.js";
 import {
@@ -110,16 +113,36 @@ export async function adjustRawMaterialBatchStock(params: {
   const { actor, businessContext } = params;
   assertCanManage(actor);
   const data = validateRawMaterialAdjustmentInput(params.input);
+  assertRawMaterialManualAdjustmentReason(data.reason);
   assertRawMaterialManualAdjustmentNote({ reason: data.reason, note: data.note });
   assertRawMaterialPositiveMovementQuantity(Math.abs(data.deltaQuantity), "Adjustment quantity");
 
   return prisma.$transaction(async (tx) => {
     const batch = await getBatchForMutation(tx, businessContext.businessId, data.batchId);
+    const movementQuantity = Math.abs(data.deltaQuantity);
     const nextRemaining = batch.remainingQuantity + data.deltaQuantity;
     assertRawMaterialQuantityRange({ nextRemaining, batchQuantity: batch.quantity });
 
+    if (data.deltaQuantity < 0) {
+      assertRawMaterialStorageContainsQuantity({
+        storageLocationId: batch.storageLocationId,
+        storageUsedKg: batch.storageLocation.usedKg,
+        quantity: movementQuantity,
+      });
+    }
+
     const nextUsedKg = batch.storageLocation.usedKg + data.deltaQuantity;
     assertRawMaterialStorageUsage({ nextUsedKg, capacityKg: batch.storageLocation.capacityKg });
+    assertRawMaterialStockMovementLedger({
+      type: "ADJUSTMENT",
+      reason: data.reason,
+      source: "MANUAL",
+      sourceStorageLocationId: batch.storageLocationId,
+      targetStorageLocationId: batch.storageLocationId,
+      quantity: movementQuantity,
+      beforeQuantity: batch.remainingQuantity,
+      afterQuantity: nextRemaining,
+    });
 
     await tx.rawMaterialBatch.update({
       where: { id: batch.id },
@@ -138,7 +161,7 @@ export async function adjustRawMaterialBatchStock(params: {
       type: "ADJUSTMENT",
       reason: data.reason,
       source: "MANUAL",
-      quantity: Math.abs(data.deltaQuantity),
+      quantity: movementQuantity,
       beforeQuantity: batch.remainingQuantity,
       afterQuantity: nextRemaining,
       note: data.note,
@@ -184,11 +207,36 @@ export async function transferRawMaterialBatchStorage(params: {
       targetStorageLocationId: targetStorage.id,
     });
     assertRawMaterialPositiveMovementQuantity(batch.remainingQuantity, "Transfer quantity");
+    assertRawMaterialStorageContainsQuantity({
+      storageLocationId: batch.storageLocationId,
+      storageUsedKg: batch.storageLocation.usedKg,
+      quantity: batch.remainingQuantity,
+    });
 
     const nextSourceUsedKg = batch.storageLocation.usedKg - batch.remainingQuantity;
     const nextTargetUsedKg = targetStorage.usedKg + batch.remainingQuantity;
     assertRawMaterialStorageUsage({ nextUsedKg: nextSourceUsedKg, capacityKg: batch.storageLocation.capacityKg });
     assertRawMaterialStorageUsage({ nextUsedKg: nextTargetUsedKg, capacityKg: targetStorage.capacityKg });
+    assertRawMaterialStockMovementLedger({
+      type: "TRANSFER_OUT",
+      reason: "TRANSFER_OUT",
+      source: "TRANSFER",
+      sourceStorageLocationId: batch.storageLocationId,
+      targetStorageLocationId: targetStorage.id,
+      quantity: batch.remainingQuantity,
+      beforeQuantity: batch.remainingQuantity,
+      afterQuantity: batch.remainingQuantity,
+    });
+    assertRawMaterialStockMovementLedger({
+      type: "TRANSFER_IN",
+      reason: "TRANSFER_IN",
+      source: "TRANSFER",
+      sourceStorageLocationId: batch.storageLocationId,
+      targetStorageLocationId: targetStorage.id,
+      quantity: batch.remainingQuantity,
+      beforeQuantity: batch.remainingQuantity,
+      afterQuantity: batch.remainingQuantity,
+    });
 
     await tx.rawMaterialStorageLocation.update({ where: { id: batch.storageLocationId }, data: { usedKg: nextSourceUsedKg } });
     await tx.rawMaterialStorageLocation.update({ where: { id: targetStorage.id }, data: { usedKg: nextTargetUsedKg } });
@@ -285,8 +333,24 @@ export async function consumeRawMaterialForProcessingRun(params: {
     const nextRemaining = batch.remainingQuantity - run.inputQuantity;
     const nextUsedKg = batch.storageLocation.usedKg - run.inputQuantity;
     assertRawMaterialQuantityRange({ nextRemaining, batchQuantity: batch.quantity });
+    assertRawMaterialStorageContainsQuantity({
+      storageLocationId: batch.storageLocationId,
+      storageUsedKg: batch.storageLocation.usedKg,
+      quantity: run.inputQuantity,
+    });
     assertRawMaterialStorageUsage({ nextUsedKg, capacityKg: batch.storageLocation.capacityKg });
     assertRawMaterialPositiveMovementQuantity(run.inputQuantity, "Processing consumption quantity");
+    assertRawMaterialStockMovementLedger({
+      type: "PRODUCTION_USAGE",
+      reason: "PRODUCTION_USAGE",
+      source: "PROCESSING_RUN",
+      sourceId: run.id,
+      sourceStorageLocationId: batch.storageLocationId,
+      targetStorageLocationId: null,
+      quantity: run.inputQuantity,
+      beforeQuantity: batch.remainingQuantity,
+      afterQuantity: nextRemaining,
+    });
 
     await tx.rawMaterialBatch.update({ where: { id: batch.id }, data: { remainingQuantity: nextRemaining } });
     await tx.rawMaterialStorageLocation.update({ where: { id: batch.storageLocationId }, data: { usedKg: nextUsedKg } });
