@@ -1,4 +1,4 @@
-import { apiClient, getApiErrorMessage, type ApiEnvelope } from "@/lib/api";
+import { apiClient, getApiErrorMessage, type ApiEnvelope } from "@/lib/api/api-client";
 
 export type RawMaterialPreviewKind = "intake" | "batch" | "processing-run";
 
@@ -73,7 +73,10 @@ async function postPreview<TData extends Record<string, unknown>>(
   body: Record<string, unknown>,
   signal?: AbortSignal,
 ) {
-  const payload = await apiClient.post<ApiEnvelope<RawMaterialPreviewResult<TData>>>(path, body, { signal });
+  const payload = await apiClient.post<ApiEnvelope<RawMaterialPreviewResult<TData>>>(path, {
+    json: body,
+    signal,
+  });
 
   if (!payload.success || !payload.data) {
     throw new Error(`Raw Material preview API returned an empty response for ${path}.`);
