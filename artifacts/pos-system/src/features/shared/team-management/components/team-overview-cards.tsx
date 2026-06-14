@@ -1,8 +1,12 @@
-import { BriefcaseBusiness, KeyRound, LockKeyhole, ShieldCheck } from "lucide-react";
+import { BriefcaseBusiness, KeyRound, LockKeyhole, ShieldCheck, Users } from "lucide-react";
 
 import { MiniStat } from "./team-management-ui";
 
 export function TeamOverviewCards({
+  totalMemberCount,
+  activeMemberCount,
+  pendingMemberCount,
+  suspendedMemberCount,
   lockedRoleCount,
   jobPresetCount,
   draftPermissionCount,
@@ -10,6 +14,10 @@ export function TeamOverviewCards({
   draftRiskCount,
   customRoleCount,
 }: {
+  totalMemberCount: number;
+  activeMemberCount: number;
+  pendingMemberCount: number;
+  suspendedMemberCount: number;
   lockedRoleCount: number;
   jobPresetCount: number;
   draftPermissionCount: number;
@@ -20,6 +28,13 @@ export function TeamOverviewCards({
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       <MiniStat
+        label="Members"
+        value={String(totalMemberCount)}
+        note={`${activeMemberCount} active · ${pendingMemberCount} pending · ${suspendedMemberCount} suspended`}
+        icon={Users}
+        tone={suspendedMemberCount > 0 ? "rose" : pendingMemberCount > 0 ? "amber" : "green"}
+      />
+      <MiniStat
         label="System Roles"
         value={String(lockedRoleCount)}
         note="Default locked access model"
@@ -29,7 +44,7 @@ export function TeamOverviewCards({
       <MiniStat
         label="Job Presets"
         value={String(jobPresetCount)}
-        note="Restaurant, retail, raw material, custom"
+        note={`Custom roles: ${customRoleCount}`}
         icon={BriefcaseBusiness}
         tone="blue"
       />
