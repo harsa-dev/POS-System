@@ -31,6 +31,7 @@ import {
 } from "@/features/raw-material/core-system";
 
 import { RawMaterialStockWriteActions } from "./raw-material-stock-write-actions";
+import { RawMaterialWorkflowStatusActions } from "./raw-material-workflow-status-actions";
 import type {
   RawMaterialIntakeDraft,
   RawMaterialWeighingDraft,
@@ -319,6 +320,7 @@ export function RawMaterialDraftForms({
         </Card>
       </div>
 
+      <RawMaterialWorkflowStatusActions onNoticeChange={onNoticeChange} />
       <RawMaterialStockWriteActions onNoticeChange={onNoticeChange} />
     </div>
   );
