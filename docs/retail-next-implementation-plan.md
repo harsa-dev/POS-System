@@ -14,7 +14,7 @@ Phase 8B - Receiving status frontend action wiring: implemented
 Phase 8C - Return persistence + refund reversal workflow: implemented
 Phase 8D - Sale cancellation + stock/cashflow reversal workflow: implemented
 Phase 8E - Generated API client consolidation: implemented
-Phase 8F - Retail smoke test script and scoped CI gate: planned
+Phase 8F - Retail smoke test script and scoped CI gate: implemented
 Phase 8G - Retail migration baseline / idempotency hardening: planned
 Phase 8H - Retail audit and permission policy hardening: planned
 ```
@@ -235,20 +235,51 @@ Import retailCancelSale from @workspace/api-client-react
 Confirm legacy direct helper paths still re-export the same functions
 ```
 
-## Phase 8F - Retail smoke test script and scoped CI gate: planned
+## Phase 8F - Retail smoke test script and scoped CI gate: implemented
 
-Goal:
+Implemented scope:
 
 ```txt
-Create a repeatable Retail-only validation command that catches broken API contracts before demo/testing.
+- Root retail:check command exists
+- retail:check runs only Retail-scoped validation
+- retail:check can optionally apply Retail DB migrations with --db
+- retail:check can skip frontend build with --no-build
+- Retail API smoke script exists as an optional server-level smoke check
+- Retail API smoke runs health by default
+- Authenticated Retail API smoke uses RETAIL_API_COOKIE
+- Mutation smoke checks are opt-in through explicit IDs/env vars
+- GitHub Actions workflow runs the Retail scoped gate on push and pull request to main
+- Full project typecheck remains outside this Retail gate until non-retail legacy cleanup is done
 ```
 
-Scope:
+Primary files:
 
 ```txt
-- Add script for retail:schema:sync + generate + typecheck:retail
-- Add optional API smoke script for health/products/preview/checkout/receiving status/return/cancel flows
-- Keep full backend typecheck separate until legacy non-retail files are cleaned
+scripts/retail-check.mjs
+scripts/retail-api-smoke.mjs
+package.json
+.github/workflows/retail-check.yml
+```
+
+Validation commands:
+
+```bash
+pnpm retail:check
+pnpm retail:check -- --db
+pnpm retail:check -- --no-build
+pnpm retail:smoke
+```
+
+Optional API smoke env:
+
+```txt
+RETAIL_API_BASE_URL=http://localhost:3001/api
+RETAIL_API_COOKIE=<copied logged-in cookie>
+RETAIL_SMOKE_PRODUCT_ID=<product id for preview>
+RETAIL_SMOKE_RECEIVING_ID=<receiving id for mutation smoke>
+RETAIL_SMOKE_RECEIVING_STATUS=ordered
+RETAIL_SMOKE_RECEIPT_NUMBER=<receipt number for return preview smoke>
+RETAIL_SMOKE_SALE_ID=<sale id for cancellation smoke>
 ```
 
 ## Phase 8G - Retail migration baseline / idempotency hardening: planned
