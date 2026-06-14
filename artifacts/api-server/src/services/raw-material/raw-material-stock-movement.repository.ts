@@ -181,6 +181,23 @@ export async function listRawMaterialStockMovementRows(query: RawMaterialStockMo
   `;
 }
 
+export async function findRawMaterialStockAdjustmentReversalMovement(
+  tx: RawMaterialRepositoryTx,
+  businessId: string,
+  originalMovementId: string,
+) {
+  const rows = await tx.$queryRaw<{ id: string }[]>`
+    SELECT "id" FROM "RawMaterialStockMovement"
+    WHERE "businessId" = ${businessId}
+      AND "type" = 'ADJUSTMENT'::"RawMaterialStockMovementType"
+      AND "source" = 'SYSTEM'::"RawMaterialStockMovementSource"
+      AND "sourceId" = ${originalMovementId}
+    LIMIT 1
+  `;
+
+  return rows[0] ?? null;
+}
+
 export async function findRawMaterialProcessingConsumptionMovement(
   tx: RawMaterialRepositoryTx,
   businessId: string,
