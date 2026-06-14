@@ -36,6 +36,10 @@ export const cashflowSourceTypes = [
 
 export type CashflowSourceType = (typeof cashflowSourceTypes)[number];
 
+export const cashflowExportFormats = ["csv", "json"] as const;
+
+export type CashflowExportFormat = (typeof cashflowExportFormats)[number];
+
 export type CashflowActor = {
   id: string;
   role: import("@prisma/client").Role;
@@ -134,4 +138,40 @@ export type CashflowDashboardDto = {
     count: number;
   }>;
   recentEntries: CashflowEntryDto[];
+};
+
+export type CashflowExportDto = {
+  exportedAt: string;
+  rowCount: number;
+  entries: CashflowEntryDto[];
+};
+
+export type CashflowExportResult =
+  | {
+      format: "csv";
+      filename: string;
+      contentType: string;
+      content: string;
+      exportedAt: string;
+      rowCount: number;
+    }
+  | ({ format: "json" } & CashflowExportDto);
+
+export type CashflowReconciliationIssueSeverity = "info" | "warning" | "critical";
+
+export type CashflowReconciliationIssue = {
+  severity: CashflowReconciliationIssueSeverity;
+  sourceType: CashflowSourceType;
+  sourceId: string | null;
+  message: string;
+};
+
+export type CashflowReconciliationDto = {
+  unsyncedPaidOrders: number;
+  unsyncedClosedShifts: number;
+  duplicateSourceWarnings: number;
+  pendingEntries: number;
+  voidedEntries: number;
+  lastSyncedAt: string | null;
+  issues: CashflowReconciliationIssue[];
 };
