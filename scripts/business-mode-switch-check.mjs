@@ -39,6 +39,9 @@ const files = {
   sidebar: read("artifacts/pos-system/src/components/core/sidebar/sidebar.tsx"),
   permissionCompat: read("artifacts/pos-system/src/app/registry/permission-compat.ts"),
   browserSmoke: read("scripts/business-mode-browser-smoke.mjs"),
+  e2eRunner: read("scripts/business-mode-e2e.mjs"),
+  e2eConfig: read("playwright.business-mode.config.mjs"),
+  e2eSpec: read("tests/business-mode/business-mode-switch.spec.ts"),
   docs: read("docs/business-mode-switch-flow-plan.md"),
 };
 
@@ -173,12 +176,30 @@ const checks = [
   () => assertContains({
     label: "business mode browser smoke",
     content: files.browserSmoke,
-    expected: "business-mode browser smoke passed",
+    expected: "Business-mode browser smoke passed",
+  }),
+  () => assertFileExists("scripts/business-mode-e2e.mjs"),
+  () => assertFileExists("playwright.business-mode.config.mjs"),
+  () => assertFileExists("tests/business-mode/business-mode-switch.spec.ts"),
+  () => assertContains({
+    label: "business mode e2e runner",
+    content: files.e2eRunner,
+    expected: "@playwright/test is not installed",
+  }),
+  () => assertContains({
+    label: "business mode e2e config",
+    content: files.e2eConfig,
+    expected: "BUSINESS_MODE_APP_URL",
+  }),
+  () => assertContains({
+    label: "business mode e2e spec",
+    content: files.e2eSpec,
+    expected: "business mode switch flow",
   }),
   () => assertContains({
     label: "business mode docs",
     content: files.docs,
-    expected: "BM-5 - Business-mode smoke checklist/script",
+    expected: "BM-6 - Optional browser switch-flow smoke",
   }),
 ];
 
