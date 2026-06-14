@@ -29,6 +29,17 @@ artifacts/pos-system/src/constants/routes.ts
 artifacts/pos-system/src/App.tsx
 ```
 
+## Related backend files
+
+```txt
+artifacts/api-server/src/routes/internal-monitoring.ts
+artifacts/api-server/src/routes/index.ts
+artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.types.ts
+artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.policy.ts
+artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.mock-repository.ts
+artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.service.ts
+```
+
 ## Dashboard sections
 
 The advanced Internal Monitoring dashboard should contain these sections:
@@ -49,7 +60,7 @@ The advanced Internal Monitoring dashboard should contain these sections:
 
 ## Backend read-only endpoints
 
-Allowed backend endpoints for the first backend phase:
+Implemented backend endpoints for the first backend phase:
 
 ```txt
 GET /api/internal/health/summary
@@ -69,7 +80,7 @@ PATCH /api/internal/alerts/:alertId/acknowledge
 
 ## Backend module target
 
-Future backend scaffold:
+Backend scaffold:
 
 ```txt
 artifacts/api-server/src/routes/internal-monitoring.ts
@@ -137,6 +148,12 @@ The Control Room now tries `GET /api/internal/health/summary` first and falls ba
 
 Internal Monitoring must not rely on business mode access.
 
+Temporary backend policy:
+
+```txt
+OWNER and ADMIN may inspect Internal Monitoring read-only payloads.
+```
+
 Temporary frontend policy:
 
 ```txt
@@ -195,11 +212,22 @@ Implemented:
 
 ### IM-3 - Backend read-only scaffold
 
-Next.
+Status: Done.
 
-Add GET-only backend route and service, mock-backed first.
+Implemented:
+
+```txt
+- GET-only backend route under /api/internal/*
+- mock-backed service and repository
+- read policy with platform-admin.internal-monitoring.read capability label
+- no Prisma schema changes
+- no POST/PATCH/DELETE internal routes
+- static guard checks backend route/service/policy
+```
 
 ### IM-4 - Frontend API client integration expansion
+
+Next.
 
 Expand API usage beyond Control Room to route inventory, contracts, and integrity sections.
 
@@ -221,4 +249,5 @@ Only design persistent probe storage. Do not implement Prisma models until read-
 pnpm platform-admin:check
 pnpm business-mode:check
 pnpm --filter @workspace/pos-system run typecheck:restaurant
+pnpm --filter @workspace/api-server run typecheck:restaurant
 ```
