@@ -1,6 +1,6 @@
 # Restaurant Business Mode Implementation Plan
 
-Status: Phase 7F implemented
+Status: Phase 8A implemented
 Scope owner: Restaurant business mode only
 
 Restaurant mode is the canonical name for the old F&B flow. The old `features/fnb` area is treated as legacy compatibility until the Restaurant workspace/API surface is fully scoped.
@@ -20,8 +20,8 @@ Phase 7C - Workflow read delegate                                  Done
 Phase 7D - Order/payment/kitchen/serving preview delegate           Done
 Phase 7E - Order/write delegate                                    Done
 Phase 7F - Guarded workflow status delegate                        Done
-Phase 8A - Order/kitchen/serving/table status API route             Next
-Phase 8B - Status frontend action                                  Planned
+Phase 8A - Order/kitchen/serving/table status API route             Done
+Phase 8B - Status frontend action                                  Next
 Phase 8C - Order cancellation + stock/cashflow reversal workflow    Planned
 Phase 8D - Payment refund/void reversal workflow                   Planned
 Phase 8E - Generated API client consolidation                      Planned
@@ -260,3 +260,16 @@ Allowed write transitions in this phase:
 - `SERVED -> COMPLETED`
 
 When `SERVED -> COMPLETED` succeeds for a dine-in order, the assigned table is moved to `CLEANING`. Every status write creates a normalized `AuditLog` entry. Payment confirmation stays in `POST /restaurant/payments/confirm`; cancellation stays planned for the reversal workflow because it needs stock/cashflow handling.
+
+## Phase 8A result
+
+Restaurant now has canonical order status routes that consolidate kitchen and serving workflow movement behind order-focused endpoints.
+
+Implemented surfaces:
+
+- `POST /restaurant/orders/:orderId/status/preview` previews a target status for one order.
+- `POST /restaurant/orders/:orderId/status` writes a target status for one order.
+- `targetStatus` drives the inferred surface: `PREPARING` and `READY` map to kitchen, while `SERVED` and `COMPLETED` map to serving.
+- `artifacts/pos-system/src/lib/api/restaurant-api.ts` exposes typed `previewOrderStatus` and `updateOrderStatus` helpers.
+
+The compatibility endpoints `POST /restaurant/kitchen/status` and `POST /restaurant/serving/status` remain available for old call sites. Phase 8B should move frontend action buttons to the canonical order status helpers.
