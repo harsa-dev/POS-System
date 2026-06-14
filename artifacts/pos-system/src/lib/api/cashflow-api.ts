@@ -40,8 +40,7 @@ type ApiListEnvelope<T> = ApiEnvelope<T> & {
 
 export type CashflowEntryDto = {
   id: string;
-  businessId: string | null;
-  restaurantId: string;
+  businessId: string;
   sourceType: CashflowSourceType;
   sourceId: string | null;
   idempotencyKey: string | null;
