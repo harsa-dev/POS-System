@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarClock, CheckCircle2, ClipboardList, FileInput, ListFilter, RefreshCw } from "lucide-react";
 
 import {
@@ -96,7 +96,7 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
     [items, selectedInvoiceId],
   );
 
-  async function loadFollowUps(preferredInvoiceId?: string) {
+  const loadFollowUps = useCallback(async (preferredInvoiceId?: string) => {
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -106,6 +106,7 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
         setErrorMessage(response.message ?? "Failed to load invoice follow-ups.");
         return;
       }
+
       setDashboard(response.data);
       setSelectedInvoiceId((current) => {
         if (preferredInvoiceId && response.data.items.some((item) => item.invoice.id === preferredInvoiceId)) {
@@ -119,11 +120,11 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void loadFollowUps();
-  }, [reloadSignal]);
+  }, [loadFollowUps, reloadSignal]);
 
   useEffect(() => {
     function handleOpenFollowUp(event: Event) {
@@ -138,7 +139,7 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
 
     window.addEventListener(INVOICE_GENERATOR_OPEN_FOLLOW_UP_EVENT, handleOpenFollowUp);
     return () => window.removeEventListener(INVOICE_GENERATOR_OPEN_FOLLOW_UP_EVENT, handleOpenFollowUp);
-  }, []);
+  }, [loadFollowUps]);
 
   useEffect(() => {
     function handleFilterFollowUp(event: Event) {
