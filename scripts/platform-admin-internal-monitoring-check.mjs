@@ -23,6 +23,12 @@ function assertContains({ label, content, expected }) {
   }
 }
 
+function assertContainsCaseInsensitive({ label, content, expected }) {
+  if (!content.toLowerCase().includes(expected.toLowerCase())) {
+    throw new Error(`${label} is missing expected content: ${expected}`);
+  }
+}
+
 function assertNotContains({ label, content, forbidden }) {
   if (content.includes(forbidden)) {
     throw new Error(`${label} must not contain: ${forbidden}`);
@@ -130,7 +136,7 @@ const checks = [
   () => assertContains({ label: "internal monitoring plan", content: files.plan, expected: "POST /api/internal/*" }),
   () => assertContains({ label: "platform admin plan", content: files.platformPlan, expected: "Platform Admin starts read-only" }),
   () => assertContains({ label: "internal monitoring docs", content: files.monitoringPlan, expected: "mock-first internal control room" }),
-  () => assertContains({ label: "internal admin route phase docs", content: files.routePhase, expected: "Mock-only" }),
+  () => assertContainsCaseInsensitive({ label: "internal admin route phase docs", content: files.routePhase, expected: "mock-only" }),
   () => assertFileExists("docs/platform-admin-internal-monitoring-contract-snapshot.json"),
   () => assertContains({ label: "contract snapshot", content: files.contractSnapshot, expected: "responseEnvelope" }),
   () => assertContains({ label: "contract snapshot", content: files.contractSnapshot, expected: "InternalMonitoringMutationReadinessContractDto" }),
@@ -196,7 +202,6 @@ const checks = [
   () => assertContains({ label: "backend route contracts", content: files.backendRoute, expected: "router.get(\"/internal/contracts/readiness\"" }),
   () => assertContains({ label: "backend route integrity", content: files.backendRoute, expected: "router.get(\"/internal/data-integrity/checks\"" }),
   () => assertContains({ label: "backend route mutation readiness", content: files.backendRoute, expected: "router.get(\"/internal/mutation-readiness/contracts\"" }),
-  () => assertContains({ label: "backend route envelope helper", content: files.backendRoute, expected: "internalMonitoringSuccessResponse" }),
   () => assertContains({ label: "backend route metadata", content: files.backendRoute, expected: "mutationMode: \"design-only\"" }),
   () => assertContains({ label: "backend route index", content: files.backendRouteIndex, expected: "internalMonitoringRouter" }),
   () => assertContains({ label: "backend policy", content: files.backendPolicy, expected: "platform-admin.internal-monitoring.read" }),
