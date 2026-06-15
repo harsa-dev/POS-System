@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, Mail, MapPin, Phone, Truck, UserRound, WalletCards } from "lucide-react";
+import {
+  Award,
+  CalendarClock,
+  Mail,
+  MapPin,
+  Phone,
+  Truck,
+  UserRound,
+  WalletCards,
+} from "lucide-react";
 
 import { StatCard, StatusPill } from "@/features/shared/cards";
 import { DashboardActionButton, DashboardActions, DashboardPanel } from "@/features/shared/dashboard";
@@ -43,6 +52,19 @@ function formatDateTime(value: string | null | undefined) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function getCustomerTierLabel(customer: CustomerProfileDto | CustomerDetailDto) {
+  if (!customer.loyaltyTierName) return "Unassigned";
+  return [customer.loyaltyTierIcon, customer.loyaltyTierName].filter(Boolean).join(" ");
+}
+
+function getCustomerTierTone(customer: CustomerProfileDto | CustomerDetailDto) {
+  return customer.loyaltyTierName ? "amber" : "slate";
+}
+
+function getCustomerDiscount(customer: CustomerProfileDto | CustomerDetailDto) {
+  return customer.loyaltyDiscount ? `${customer.loyaltyDiscount}%` : "No discount";
 }
 
 async function fetchContactDetail(kind: DetailKind, id: string) {
@@ -102,12 +124,13 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
     const needle = search.trim().toLowerCase();
     if (!needle) return activeRows;
 
-    return activeRows.filter((row) =>
-      [row.name, row.phone ?? "", row.email ?? "", row.address ?? ""]
+    return activeRows.filter((row) => {
+      const tierName = isCustomer(row) ? row.loyaltyTierName ?? "unassigned" : "";
+      return [row.name, row.phone ?? "", row.email ?? "", row.address ?? "", tierName]
         .join(" ")
         .toLowerCase()
-        .includes(needle),
-    );
+        .includes(needle);
+    });
   }, [activeRows, search]);
 
   const selectedListRow = useMemo(() => {
@@ -191,7 +214,7 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
             <SearchFilter
               label="Find a contact detail"
               value={search}
-              placeholder="Search name, phone, email, or address..."
+              placeholder="Search name, phone, email, address, or tier..."
               onChange={setSearch}
             />
           </div>
@@ -233,6 +256,13 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
                   <span className="mt-1 block truncate text-xs text-neutral-500">
                     {row.phone ?? row.email ?? row.address ?? "No contact detail"}
                   </span>
+                  {isCustomer(row) ? (
+                    <span className="mt-2 inline-flex">
+                      <StatusPill tone={getCustomerTierTone(row)}>
+                        {getCustomerTierLabel(row)}
+                      </StatusPill>
+                    </span>
+                  ) : null}
                 </button>
               ))}
 
@@ -271,6 +301,32 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
                   </div>
                 </div>
               </div>
+
+              {customerDetail ? (
+                <div className="grid gap-3 md:grid-cols-3">
+                  <StatCard
+                    label="Loyalty Tier"
+                    value={getCustomerTierLabel(customerDetail)}
+                    note={customerDetail.loyaltyTierName ? "Stored on customer profile" : "Run tier assignment to classify this customer"}
+                    icon={Award}
+                    tone={getCustomerTierTone(customerDetail)}
+                  />
+                  <StatCard
+                    label="Tier Discount"
+                    value={getCustomerDiscount(customerDetail)}
+                    note="Automatic discount from loyalty setting"
+                    icon={WalletCards}
+                    tone="amber"
+                  />
+                  <StatCard
+                    label="Tier Assigned"
+                    value={formatDateTime(customerDetail.tierAssignedAt)}
+                    note="Last assignment timestamp"
+                    icon={CalendarClock}
+                    tone="slate"
+                  />
+                </div>
+              ) : null}
 
               <div className="grid gap-3 md:grid-cols-3">
                 <StatCard
