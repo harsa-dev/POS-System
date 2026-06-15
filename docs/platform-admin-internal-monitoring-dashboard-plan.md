@@ -22,6 +22,7 @@ artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring
 artifacts/pos-system/src/features/shared/platform-monitoring/internal-production-readiness-board.tsx
 artifacts/pos-system/src/components/core/platform-admin/platform-admin-policy.ts
 artifacts/pos-system/src/components/core/platform-admin/platform-admin-route.tsx
+artifacts/pos-system/src/lib/api/internal-monitoring.dto.ts
 ```
 
 ## Current route
@@ -82,6 +83,26 @@ The dashboard uses a `mock/api/fallback` source model:
 4. If backend fails, keep mock fallback and show fallback reason.
 5. Never call POST/PATCH/DELETE from this dashboard in phase 1.
 ```
+
+## DTO ownership
+
+Frontend DTOs live in one API DTO module:
+
+```txt
+artifacts/pos-system/src/lib/api/internal-monitoring.dto.ts
+```
+
+`internal-monitoring-api.ts` imports and re-exports those DTOs. Feature-level data source files import DTOs from the DTO module, not from API client implementation details.
+
+Backend DTOs live in:
+
+```txt
+artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.types.ts
+```
+
+Backend mutation-readiness catalog imports its DTO from this consolidated backend type module.
+
+Frontend and backend DTOs intentionally remain package-local because this repository does not have a shared cross-package contract package yet. They must be kept shape-compatible through static checks and typecheck until a proper shared package exists.
 
 ## Access policy
 
@@ -294,6 +315,21 @@ Implemented:
 
 ### IM-12 - Internal Monitoring DTO consolidation
 
+Status: Done.
+
+Implemented:
+
+```txt
+- frontend DTOs consolidated into artifacts/pos-system/src/lib/api/internal-monitoring.dto.ts
+- frontend API client imports and re-exports DTOs from the DTO module
+- frontend data source imports DTOs from the DTO module instead of API client implementation details
+- backend mutation-readiness DTO type moved into internal-monitoring.types.ts
+- mutation-readiness catalog imports DTO type from consolidated backend types
+- static guard checks DTO ownership and package-local contract boundaries
+```
+
+### IM-13 - Internal Monitoring contract parity snapshot
+
 Next.
 
-Consolidate duplicated frontend/backend internal monitoring DTO shapes where safe, or document why shared DTOs stay separate across app/api packages.
+Add a lightweight parity snapshot/check that compares frontend DTO field expectations against backend DTO field expectations for the Internal Monitoring contract without introducing a shared package yet.
