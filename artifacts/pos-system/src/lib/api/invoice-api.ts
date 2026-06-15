@@ -34,6 +34,10 @@ export type InvoiceHistoryMeta = {
   totalPages: number;
 };
 
+export type InvoiceHistoryEnvelope<T = InvoiceRecord[]> = ApiEnvelope<T> & {
+  meta?: InvoiceHistoryMeta;
+};
+
 export type InvoiceExportDto = {
   rows: InvoiceRecord[];
   meta: {
@@ -144,7 +148,7 @@ export const invoiceApi = {
   listInvoices<T = InvoiceRecord[]>(query?: InvoiceHistoryQuery) {
     const params = buildInvoiceHistorySearchParams(query);
     const suffix = params.toString() ? `?${params.toString()}` : "";
-    return apiClient.get<ApiEnvelope<T>>(`/api/invoices${suffix}`);
+    return apiClient.get<InvoiceHistoryEnvelope<T>>(`/api/invoices${suffix}`);
   },
 
   getInvoice<T = InvoiceRecord>(id: string) {
