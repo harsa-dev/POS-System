@@ -2,21 +2,22 @@ import type { Request, Response } from "express";
 import type { Role } from "../../lib/auth.js";
 
 import { requireModeAccess, requireRole } from "../../lib/auth.js";
+import { permissionKeys, type PermissionKey } from "../permissions/permission-registry.js";
 
 export const RAW_MATERIAL_PERMISSIONS = {
-  view: "raw-material.view",
-  supplierManage: "raw-material.supplier.manage",
-  storageManage: "raw-material.storage.manage",
-  intakeCreate: "raw-material.intake.create",
-  intakeUpdate: "raw-material.intake.update",
-  weighingRecord: "raw-material.weighing.record",
-  batchManage: "raw-material.batch.manage",
-  processingManage: "raw-material.processing.manage",
-  kandangManage: "raw-material.kandang.manage",
-  stockAdjust: "raw-material.stock.adjust",
-  stockTransfer: "raw-material.stock.transfer",
-  stockConsume: "raw-material.stock.consume",
-} as const;
+  view: permissionKeys.rawMaterial.dashboard.view,
+  supplierManage: permissionKeys.rawMaterial.suppliers.manage,
+  storageManage: permissionKeys.rawMaterial.storage.manage,
+  intakeCreate: permissionKeys.rawMaterial.intakes.create,
+  intakeUpdate: permissionKeys.rawMaterial.intakes.update,
+  weighingRecord: permissionKeys.rawMaterial.weighing.create,
+  batchManage: permissionKeys.rawMaterial.batches.manage,
+  processingManage: permissionKeys.rawMaterial.processing.manage,
+  kandangManage: permissionKeys.rawMaterial.pens.manage,
+  stockAdjust: permissionKeys.rawMaterial.stockMovements.adjust,
+  stockTransfer: permissionKeys.rawMaterial.stockMovements.transfer,
+  stockConsume: permissionKeys.rawMaterial.stockMovements.consume,
+} as const satisfies Record<string, PermissionKey>;
 
 export type RawMaterialPermission =
   (typeof RAW_MATERIAL_PERMISSIONS)[keyof typeof RAW_MATERIAL_PERMISSIONS];
