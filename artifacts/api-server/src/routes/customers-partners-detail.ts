@@ -23,6 +23,11 @@ type CustomerDetailRow = {
   address: string | null;
   totalSpending: number;
   transactions: number;
+  loyaltyTierId: string | null;
+  loyaltyTierName: string | null;
+  loyaltyTierIcon: string | null;
+  loyaltyDiscount: string | null;
+  tierAssignedAt: Date | null;
   isActive: boolean;
   identityKey: string | null;
   lastSalesSyncedAt: Date | null;
@@ -86,13 +91,19 @@ async function ensureDetailSchema() {
   await prisma.$executeRawUnsafe(`ALTER TABLE "SharedCustomerProfile" ADD COLUMN IF NOT EXISTS "identityKey" TEXT NULL;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "SharedCustomerProfile" ADD COLUMN IF NOT EXISTS "lastSalesSyncedAt" TIMESTAMPTZ NULL;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "SharedCustomerProfile" ADD COLUMN IF NOT EXISTS "salesSourceCount" INTEGER NULL;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SharedCustomerProfile" ADD COLUMN IF NOT EXISTS "loyaltyTierId" TEXT NULL;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SharedCustomerProfile" ADD COLUMN IF NOT EXISTS "loyaltyTierName" TEXT NULL;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SharedCustomerProfile" ADD COLUMN IF NOT EXISTS "loyaltyTierIcon" TEXT NULL;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SharedCustomerProfile" ADD COLUMN IF NOT EXISTS "loyaltyDiscount" TEXT NULL;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SharedCustomerProfile" ADD COLUMN IF NOT EXISTS "tierAssignedAt" TIMESTAMPTZ NULL;`);
 }
 
 async function getCustomerDetail(businessId: string, id: string) {
   const rows = await prisma.$queryRaw<CustomerDetailRow[]>`
     SELECT
       "id", "businessId", "name", "phone", "email", "address",
-      "totalSpending", "transactions", "isActive", "identityKey",
+      "totalSpending", "transactions", "loyaltyTierId", "loyaltyTierName",
+      "loyaltyTierIcon", "loyaltyDiscount", "tierAssignedAt", "isActive", "identityKey",
       "lastSalesSyncedAt", "salesSourceCount", "createdAt", "updatedAt"
     FROM "SharedCustomerProfile"
     WHERE "businessId" = ${businessId}
