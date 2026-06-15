@@ -4,6 +4,22 @@ type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 
 export type ApiShiftStatus = "OPEN" | "CLOSED";
 
+export type ShiftReportsBusinessMode =
+  | "restaurant"
+  | "retail"
+  | "raw-material"
+  | "custom-business";
+
+export type CashierShiftReportsCapabilitiesDto = {
+  businessId: string;
+  businessMode: ShiftReportsBusinessMode;
+  canView: boolean;
+  canExport: boolean;
+  canSyncToCashflow: boolean;
+  isPlannedMode: boolean;
+  plannedReason: string | null;
+};
+
 export type ApiShiftOrderDto = {
   id: string;
   total: number;
@@ -14,7 +30,8 @@ export type ApiShiftOrderDto = {
 export type ApiShiftDto = {
   id: string;
   userId: string;
-  restaurantId: string;
+  businessId: string;
+  restaurantId?: string | null;
   status: ApiShiftStatus;
   openingCash: number;
   closingCash: number | null;
@@ -31,6 +48,12 @@ export type ApiShiftDto = {
 };
 
 export const shiftsApi = {
+  getCapabilities() {
+    return apiClient.get<ApiDataEnvelope<CashierShiftReportsCapabilitiesDto>>(
+      "/api/cashier-shift-reports-capabilities",
+    );
+  },
+
   listShifts() {
     return apiClient.get<ApiDataEnvelope<ApiShiftDto[]>>("/api/shifts");
   },
