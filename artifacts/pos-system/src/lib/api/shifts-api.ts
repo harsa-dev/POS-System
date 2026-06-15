@@ -142,6 +142,29 @@ export type CashierShiftSyncAttemptDto = {
   updatedAt: string;
 };
 
+export type CashierShiftSyncAttemptHistoryDto = {
+  shiftId: string;
+  summary: {
+    totalAttempts: number;
+    successCount: number;
+    failedCount: number;
+    runningCount: number;
+    latestStatus: CashierShiftSyncAttemptStatus | null;
+    latestAttemptNumber: number | null;
+    latestErrorMessage: string | null;
+    latestUpdatedAt: string | null;
+  };
+  attempts: CashierShiftSyncAttemptDto[];
+};
+
+export type CashierShiftSyncAttemptExportDto = CashierShiftSyncAttemptHistoryDto & {
+  meta: {
+    exportedAt: string;
+    rowCount: number;
+    limit: number;
+  };
+};
+
 export type CashierShiftReconciliationRowDto = {
   shiftId: string;
   cashierName: string;
@@ -227,6 +250,12 @@ function getFilenameFromDisposition(disposition: string | null) {
   return match?.[1] ?? null;
 }
 
+function buildSyncAttemptHistorySearchParams(limit?: number) {
+  const params = new URLSearchParams();
+  if (limit) params.set("limit", String(limit));
+  return params;
+}
+
 export const shiftsApi = {
   getCapabilities() {
     return apiClient.get<ApiDataEnvelope<CashierShiftReportsCapabilitiesDto>>(
@@ -251,6 +280,22 @@ export const shiftsApi = {
     const suffix = params.toString() ? `?${params.toString()}` : "";
     return apiClient.get<ApiDataEnvelope<CashierShiftReconciliationDto>>(
       `/api/cashier-shift-reports/reconciliation${suffix}`,
+    );
+  },
+
+  getSyncAttemptHistory(shiftId: string, limit = 50) {
+    const params = buildSyncAttemptHistorySearchParams(limit);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return apiClient.get<ApiDataEnvelope<CashierShiftSyncAttemptHistoryDto>>(
+      `/api/cashier-shift-reports/sync-attempts/${shiftId}${suffix}`,
+    );
+  },
+
+  exportSyncAttemptHistoryJson(shiftId: string, limit = 500) {
+    const params = buildSyncAttemptHistorySearchParams(limit);
+    params.set("format", "json");
+    return apiClient.get<ApiDataEnvelope<CashierShiftSyncAttemptExportDto>>(
+      `/api/cashier-shift-reports/sync-attempts/${shiftId}/export?${params.toString()}`,
     );
   },
 
@@ -279,6 +324,37 @@ export const shiftsApi = {
     const filename =
       getFilenameFromDisposition(response.headers.get("content-disposition")) ??
       "cashier-shift-reports.csv";
+    const rowCountHeader = response.headers.get("x-row-count");
+
+    return {
+      blob,
+      filename,
+      rowCount: rowCountHeader ? Number(rowCountHeader) : null,
+      exportedAt: response.headers.get("x-exported-at"),
+    };
+  },
+
+  async downloadSyncAttemptHistoryCsv(
+    shiftId: string,
+    limit = 500,
+  ): Promise<CashierShiftReportCsvDownload> {
+    const params = buildSyncAttemptHistorySearchParams(limit);
+    params.set("format", "csv");
+
+    const response = await apiFetch(
+      `/api/cashier-shift-reports/sync-attempts/${shiftId}/export?${params.toString()}`,
+      { credentials: "include" },
+    );
+
+    if (!response.ok) {
+      const body = await readApiEnvelope<Record<string, unknown>>(response, "cashier shift sync attempt export");
+      throw new Error(body.message ?? "Failed to export cashier shift sync attempts");
+    }
+
+    const blob = await response.blob();
+    const filename =
+      getFilenameFromDisposition(response.headers.get("content-disposition")) ??
+      `cashier-shift-sync-attempts-${shiftId.slice(0, 8)}.csv`;
     const rowCountHeader = response.headers.get("x-row-count");
 
     return {
