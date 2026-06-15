@@ -171,10 +171,12 @@ export function getInitialSalesAnalyticsFilterContext() {
 export function publishSalesAnalyticsFilterContext(context: SalesAnalyticsFilterContext) {
   if (typeof window === "undefined") return;
 
-  window.sessionStorage.setItem(
-    SALES_ANALYTICS_FILTER_STORAGE_KEY,
-    JSON.stringify(context),
-  );
+  const next = JSON.stringify(context);
+  const current = window.sessionStorage.getItem(SALES_ANALYTICS_FILTER_STORAGE_KEY);
+
+  if (current === next) return;
+
+  window.sessionStorage.setItem(SALES_ANALYTICS_FILTER_STORAGE_KEY, next);
   window.dispatchEvent(
     new CustomEvent<SalesAnalyticsFilterContext>(SALES_ANALYTICS_FILTER_SYNC_EVENT, {
       detail: context,
