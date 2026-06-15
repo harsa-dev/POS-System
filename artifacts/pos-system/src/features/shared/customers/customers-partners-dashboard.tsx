@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Download,
-  Eye,
   FileUp,
   Pencil,
   Plus,
@@ -123,6 +122,10 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function scrollToWorkspaceSection(sectionId: string) {
+  document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 export function CustomersPartnersDashboard() {
   const [viewMode, setViewMode] = useState<ViewMode>("Customers");
   const [search, setSearch] = useState("");
@@ -148,6 +151,8 @@ export function CustomersPartnersDashboard() {
   const activeRows: PartnerRow[] = viewMode === "Customers" ? customers : suppliers;
   const canCreateCurrentView = capabilities.canCreate && !capabilities.isPlannedMode;
   const canEditContact = capabilities.canUpdate && !capabilities.isPlannedMode;
+  const canUseImport = capabilities.canImport && !capabilities.isPlannedMode;
+  const canUseSalesSync = capabilities.canSyncFromSales && !capabilities.isPlannedMode;
   const currentLabel = viewMode === "Customers" ? "Customer" : "Supplier";
   const formLabel = editingRow ? getRowLabel(editingRow) : currentLabel;
   const showContactForm = showCreateForm || editingRow !== null;
@@ -331,10 +336,6 @@ export function CustomersPartnersDashboard() {
       header: "Actions",
       cell: (row) => (
         <div className="flex gap-2">
-          <button type="button" className="inline-flex h-9 items-center gap-1 rounded-lg border border-neutral-200 px-2 text-xs font-semibold hover:bg-neutral-50">
-            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-            View Detail
-          </button>
           <button
             type="button"
             disabled={!capabilities.canUpdate || isSubmitting}
@@ -414,10 +415,7 @@ export function CustomersPartnersDashboard() {
       >
         <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
           {loyaltyTiers.map((tier) => (
-            <article
-              key={tier.id}
-              className="rounded-lg border border-neutral-200 bg-neutral-50 p-4"
-            >
+            <article key={tier.id} className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div
                   className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-lg font-bold text-neutral-800 ring-1 ring-neutral-200"
@@ -429,21 +427,15 @@ export function CustomersPartnersDashboard() {
                   {tier.automaticDiscount} discount
                 </StatusPill>
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-neutral-950">
-                {tier.tierName}
-              </h3>
+              <h3 className="mt-4 text-lg font-semibold text-neutral-950">{tier.tierName}</h3>
               <dl className="mt-3 space-y-2 text-sm">
                 <div className="flex justify-between gap-3">
                   <dt className="text-neutral-500">Period</dt>
-                  <dd className="font-medium text-neutral-800">
-                    {tier.calculationPeriod}
-                  </dd>
+                  <dd className="font-medium text-neutral-800">{tier.calculationPeriod}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="text-neutral-500">Minimum</dt>
-                  <dd className="font-medium text-neutral-800">
-                    {formatCurrency(tier.minimumSpending)}
-                  </dd>
+                  <dd className="font-medium text-neutral-800">{formatCurrency(tier.minimumSpending)}</dd>
                 </div>
               </dl>
             </article>
@@ -544,11 +536,21 @@ export function CustomersPartnersDashboard() {
               >
                 Add {currentLabel}
               </DashboardActionButton>
-              <DashboardActionButton icon={FileUp} disabled title="Import backend is planned">
-                Import File
+              <DashboardActionButton
+                icon={FileUp}
+                disabled={!canUseImport}
+                title={canUseImport ? "Open CSV import workflow" : "Import requires management access"}
+                onClick={() => scrollToWorkspaceSection("customers-csv-import")}
+              >
+                Import CSV
               </DashboardActionButton>
-              <DashboardActionButton icon={UploadCloud} disabled title="Sales sync is planned">
-                Import From Sales
+              <DashboardActionButton
+                icon={UploadCloud}
+                disabled={!canUseSalesSync}
+                title={canUseSalesSync ? "Open paid invoice sales sync workflow" : "Sales sync requires management access"}
+                onClick={() => scrollToWorkspaceSection("customers-sales-sync")}
+              >
+                Sync Sales
               </DashboardActionButton>
               <DashboardActionButton
                 icon={Download}
@@ -573,7 +575,7 @@ export function CustomersPartnersDashboard() {
         {isLoading ? <div className="p-4 text-sm text-neutral-500">Loading records...</div> : null}
         {!isLoading && filteredRows.length === 0 ? (
           <div className="p-4 text-sm text-neutral-500">
-            No {viewMode.toLowerCase()} found. Add a backend record to start replacing the old hardcoded data.
+            No {viewMode.toLowerCase()} found. Add a backend record, import CSV, or sync paid invoices to grow the directory.
           </div>
         ) : null}
       </DashboardPanel>
