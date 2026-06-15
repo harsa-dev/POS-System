@@ -20,6 +20,7 @@ import {
 } from "@/features/shared/dashboard";
 import {
   INVOICE_GENERATOR_LOAD_INVOICE_EVENT,
+  INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT,
   type InvoiceGeneratorLoadInvoiceEventDetail,
 } from "./invoice-generator-events";
 
@@ -82,6 +83,10 @@ function buildQuery(filters: FilterState, page: number): InvoiceHistoryQuery {
     page,
     limit: 15,
   };
+}
+
+function refreshInvoiceSummary() {
+  window.dispatchEvent(new CustomEvent(INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT));
 }
 
 export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: InvoiceHistoryPanelProps) {
@@ -188,6 +193,7 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
       }
       setMessage(`Invoice ${invoice.invoiceNumber} marked as ${label}.`);
       await loadHistory(query);
+      refreshInvoiceSummary();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : `Failed to mark invoice as ${label}.`);
     } finally {
@@ -212,6 +218,7 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
       }
       setMessage(`Invoice ${invoice.invoiceNumber} cancelled.`);
       await loadHistory(query);
+      refreshInvoiceSummary();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to cancel invoice.");
     } finally {
