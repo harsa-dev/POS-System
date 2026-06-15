@@ -15,7 +15,7 @@ const steps = [
   },
   {
     label: "Apply Raw Material core tables, enums, and indexes",
-    file: "prisma/migrations/202606140006_add_raw_material_core_idempotent/migration.sql",
+    file: "prisma/sql/raw-material-core.sql",
   },
   {
     label: "Verify Raw Material scoped schema",
