@@ -1,5 +1,6 @@
 import { internalMonitoringApi } from "@/lib/api/internal-monitoring-api";
 import type {
+  InternalMonitoringApiEnvelopeDto,
   InternalMonitoringApiImplementationStepDto,
   InternalMonitoringControlRoomDto,
   InternalMonitoringDataIntegrityCheckDto,
@@ -145,6 +146,21 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Internal monitoring API section is unavailable.";
 }
 
+function unwrapInternalMonitoringEnvelope<TData>(
+  label: string,
+  response: InternalMonitoringApiEnvelopeDto<TData>,
+): TData {
+  if (response.success && response.data !== undefined) {
+    return response.data;
+  }
+
+  throw new Error(
+    response.success
+      ? `${label} returned a success envelope without data.`
+      : response.message,
+  );
+}
+
 export function getInternalMonitoringMockControlRoomData(
   source: InternalMonitoringSource = "mock",
   fallbackReason: string | null = null,
@@ -174,12 +190,12 @@ export async function loadInternalMonitoringControlRoomData(): Promise<InternalM
 
   async function loadSection<TData>(
     label: string,
-    loader: () => Promise<{ data: TData }>,
+    loader: () => Promise<InternalMonitoringApiEnvelopeDto<TData>>,
     fallbackData: TData,
   ) {
     try {
       const response = await loader();
-      return response.data;
+      return unwrapInternalMonitoringEnvelope(label, response);
     } catch (error) {
       source = "fallback";
       fallbackMessages.push(`${label}: ${getErrorMessage(error)}`);
