@@ -12,6 +12,8 @@ It does not implement every Platform Admin dashboard. Internal Monitoring is sen
 
 Current phase status: read-only dashboard scope is complete through real runtime probe collection, persistence migration SQL, and a read-only probe history endpoint. Scheduled writes remain blocked.
 
+Phase 1 must stay read-only from the frontend. Internal Monitoring may read probe history, but it must not expose internal write actions.
+
 ## Current frontend files
 
 ```txt
