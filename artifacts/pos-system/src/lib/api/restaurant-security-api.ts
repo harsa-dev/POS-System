@@ -1,26 +1,25 @@
 import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
 
 export type RestaurantPermissionCapability =
-  | "restaurant:read"
-  | "restaurant:dashboard:read"
-  | "restaurant:shared-dashboard:read"
-  | "restaurant:menu:read"
-  | "restaurant:menu:manage"
-  | "restaurant:table:read"
-  | "restaurant:table:manage"
-  | "restaurant:order:read"
-  | "restaurant:order:create"
-  | "restaurant:order:cancel"
-  | "restaurant:workflow:preview"
-  | "restaurant:workflow:update"
-  | "restaurant:kitchen:update"
-  | "restaurant:serving:update"
-  | "restaurant:payment:preview"
-  | "restaurant:payment:confirm"
-  | "restaurant:payment:refund"
-  | "restaurant:payment:void"
-  | "restaurant:audit:read"
-  | "restaurant:policy:read";
+  | "restaurant.dashboard.view"
+  | "restaurant.shared-dashboard.view"
+  | "restaurant.menu.view"
+  | "restaurant.menu.manage"
+  | "restaurant.tables.view"
+  | "restaurant.tables.manage"
+  | "restaurant.orders.view"
+  | "restaurant.orders.create"
+  | "restaurant.orders.cancel"
+  | "restaurant.workflow.preview"
+  | "restaurant.workflow.update"
+  | "restaurant.kitchen.update"
+  | "restaurant.serving.update"
+  | "restaurant.payments.view"
+  | "restaurant.payments.create"
+  | "restaurant.payments.refund"
+  | "restaurant.payments.void"
+  | "restaurant.audit.view"
+  | "restaurant.policy.view";
 
 export type RestaurantRole = "OWNER" | "MANAGER" | "ADMIN" | "OPERATOR" | "STAFF" | "VIEWER";
 
