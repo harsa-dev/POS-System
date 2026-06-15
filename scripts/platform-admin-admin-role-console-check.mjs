@@ -48,6 +48,17 @@ function assertNotIncludes(label, content, unexpected) {
   }
 }
 
+function getAdminConsoleSidebarBlock(content) {
+  const marker = 'label: "Admin Role Console"';
+  const start = content.indexOf(marker);
+
+  if (start < 0) {
+    throw new Error("core modules is missing Admin Role Console sidebar entry");
+  }
+
+  return content.slice(start, start + 900);
+}
+
 const loaded = Object.fromEntries(
   Object.entries(files).map(([key, filePath]) => [key, readFile(key, filePath)]),
 );
@@ -55,6 +66,7 @@ const loaded = Object.fromEntries(
 const capability = "platform-admin.admin-role-console.read";
 const routePath = "/dashboard/internal/admin-role-console";
 const apiPath = "/api/internal/admin-console/roles";
+const adminConsoleSidebarBlock = getAdminConsoleSidebarBlock(loaded.coreModules);
 
 const checks = [
   () => assertIncludes("plan", loaded.plan, routePath),
@@ -74,9 +86,9 @@ const checks = [
   () => assertIncludes("policy", loaded.policy, `"${capability}": ["OWNER", "ADMIN"]`),
   () => assertIncludes("module types", loaded.moduleTypes, capability),
   () => assertIncludes("permission compatibility", loaded.permissionCompat, `"${capability}": PLATFORM_ADMIN_ROLES`),
-  () => assertIncludes("core modules", loaded.coreModules, "Admin Role Console"),
-  () => assertIncludes("core modules", loaded.coreModules, capability),
-  () => assertNotIncludes("core modules admin role entry", loaded.coreModules, `requiredPermissions: ["settings.manage"]`),
+  () => assertIncludes("core modules", adminConsoleSidebarBlock, "Admin Role Console"),
+  () => assertIncludes("core modules", adminConsoleSidebarBlock, capability),
+  () => assertNotIncludes("core modules admin console entry", adminConsoleSidebarBlock, `settings.manage`),
   () => assertIncludes("route page", loaded.routePage, "PlatformAdminRoute"),
   () => assertIncludes("route page", loaded.routePage, capability),
   () => assertIncludes("route page", loaded.routePage, "authApi.me"),
