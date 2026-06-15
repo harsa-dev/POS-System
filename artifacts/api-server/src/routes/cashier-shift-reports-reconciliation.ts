@@ -6,6 +6,10 @@ import { createBusinessScopeWhere, requireBusinessContextForUser } from "../lib/
 import { MANAGEMENT_ROLES } from "../lib/constants.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { prisma } from "../lib/prisma.js";
+import {
+  listLatestShiftSyncAttempts,
+  type ShiftSyncAttemptLogRecord,
+} from "../lib/shift-sync-attempt-log.js";
 import { successResponse } from "../lib/responses/success-response.js";
 
 const router = Router();
@@ -13,7 +17,7 @@ const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
 const CASH_VARIANCE_REVIEW_THRESHOLD = 0.01;
 
-type ShiftSyncState = "SYNCED" | "READY_TO_SYNC" | "NEEDS_REVIEW" | "BLOCKED_OPEN";
+type ShiftSyncState = "SYNCED" | "READY_TO_SYNC" | "NEEDS_REVIEW" | "BLOCKED_OPEN" | "SYNC_FAILED";
 
 type ShiftWithRelations = Prisma.ShiftGetPayload<{
   include: {
@@ -62,8 +66,10 @@ function getSyncState(params: {
   shift: ShiftWithRelations;
   syncedShiftIds: Set<string>;
   cashDifference: number;
+  latestAttempt?: ShiftSyncAttemptLogRecord;
 }): ShiftSyncState {
   if (params.syncedShiftIds.has(params.shift.id)) return "SYNCED";
+  if (params.latestAttempt?.status === "FAILED") return "SYNC_FAILED";
   if (params.shift.status === "OPEN") return "BLOCKED_OPEN";
   if (Math.abs(params.cashDifference) > CASH_VARIANCE_REVIEW_THRESHOLD) return "NEEDS_REVIEW";
   return "READY_TO_SYNC";
@@ -72,17 +78,40 @@ function getSyncState(params: {
 function getRecommendedAction(syncState: ShiftSyncState) {
   if (syncState === "SYNCED") return "No action required";
   if (syncState === "BLOCKED_OPEN") return "Close shift before syncing";
+  if (syncState === "SYNC_FAILED") return "Inspect the latest sync error, then retry";
   if (syncState === "NEEDS_REVIEW") return "Review cash variance, then sync or investigate";
   return "Sync shift to cashflow";
 }
 
-function mapShiftForReconciliation(shift: ShiftWithRelations, syncedShiftIds: Set<string>) {
+function mapLatestAttempt(attempt?: ShiftSyncAttemptLogRecord) {
+  if (!attempt) return null;
+
+  return {
+    id: attempt.id,
+    attemptNumber: attempt.attemptNumber,
+    status: attempt.status,
+    errorCode: attempt.errorCode,
+    errorMessage: attempt.errorMessage,
+    cashflowEntryId: attempt.cashflowEntryId,
+    actorId: attempt.actorId,
+    actorRole: attempt.actorRole,
+    createdAt: attempt.createdAt.toISOString(),
+    updatedAt: attempt.updatedAt.toISOString(),
+  };
+}
+
+function mapShiftForReconciliation(
+  shift: ShiftWithRelations,
+  syncedShiftIds: Set<string>,
+  latestAttempts: Map<string, ShiftSyncAttemptLogRecord>,
+) {
   const countedOrders = shift.orders.filter(isCountedOrder);
   const cashOrders = shift.orders.filter(isCashOrder);
   const totalSales = countedOrders.reduce((sum, order) => sum + order.total, 0);
   const cashSales = cashOrders.reduce((sum, order) => sum + order.total, 0);
   const cashDifference = shift.cashDifference ?? 0;
-  const syncState = getSyncState({ shift, syncedShiftIds, cashDifference });
+  const latestAttempt = latestAttempts.get(shift.id);
+  const syncState = getSyncState({ shift, syncedShiftIds, cashDifference, latestAttempt });
 
   return {
     shiftId: shift.id,
@@ -101,6 +130,7 @@ function mapShiftForReconciliation(shift: ShiftWithRelations, syncedShiftIds: Se
     cashStatus: getCashStatus(cashDifference),
     cashflowSynced: syncState === "SYNCED",
     syncState,
+    latestSyncAttempt: mapLatestAttempt(latestAttempt),
     recommendedAction: getRecommendedAction(syncState),
   };
 }
@@ -111,6 +141,7 @@ function summarizeRows(rows: ReturnType<typeof mapShiftForReconciliation>[]) {
     syncedCount: rows.filter((row) => row.syncState === "SYNCED").length,
     readyToSyncCount: rows.filter((row) => row.syncState === "READY_TO_SYNC").length,
     needsReviewCount: rows.filter((row) => row.syncState === "NEEDS_REVIEW").length,
+    failedSyncCount: rows.filter((row) => row.syncState === "SYNC_FAILED").length,
     blockedOpenCount: rows.filter((row) => row.syncState === "BLOCKED_OPEN").length,
     unsyncedClosedCount: rows.filter(
       (row) => row.status === "CLOSED" && row.syncState !== "SYNCED",
@@ -152,19 +183,25 @@ router.get("/cashier-shift-reports/reconciliation", async (req, res) => {
     });
 
     const shiftIds = shifts.map((shift) => shift.id);
-    const syncedRows = shiftIds.length
-      ? await prisma.$queryRaw<Array<{ sourceId: string }>>`
-          SELECT "sourceId"
-          FROM "CashflowEntry"
-          WHERE "businessId" = ${businessContext.businessId}
-            AND "sourceType" = CAST('SHIFT_CLOSE' AS "CashflowSourceType")
-            AND "status" != CAST('VOIDED' AS "CashflowEntryStatus")
-            AND "sourceId" IN (${Prisma.join(shiftIds)})
-        `
-      : [];
+    const [syncedRows, latestAttempts] = await Promise.all([
+      shiftIds.length
+        ? prisma.$queryRaw<Array<{ sourceId: string }>>`
+            SELECT "sourceId"
+            FROM "CashflowEntry"
+            WHERE "businessId" = ${businessContext.businessId}
+              AND "sourceType" = CAST('SHIFT_CLOSE' AS "CashflowSourceType")
+              AND "status" != CAST('VOIDED' AS "CashflowEntryStatus")
+              AND "sourceId" IN (${Prisma.join(shiftIds)})
+          `
+        : Promise.resolve([]),
+      listLatestShiftSyncAttempts({
+        businessId: businessContext.businessId,
+        shiftIds,
+      }),
+    ]);
 
     const syncedShiftIds = new Set(syncedRows.map((row) => row.sourceId));
-    const rows = shifts.map((shift) => mapShiftForReconciliation(shift, syncedShiftIds));
+    const rows = shifts.map((shift) => mapShiftForReconciliation(shift, syncedShiftIds, latestAttempts));
 
     return successResponse(res, {
       data: {
