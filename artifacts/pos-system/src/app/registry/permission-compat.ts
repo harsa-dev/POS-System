@@ -38,6 +38,7 @@ export const permissionRoleCompatibility = {
   "permissions.manage": MANAGEMENT_ROLES,
   "settings.manage": MANAGEMENT_ROLES,
   "platform-admin.internal-monitoring.read": PLATFORM_ADMIN_ROLES,
+  "platform-admin.admin-role-console.read": PLATFORM_ADMIN_ROLES,
   "inventory.view": READ_ONLY_BUSINESS_ROLES,
   "inventory.manage": MANAGEMENT_ROLES,
   "payments.manage": MANAGEMENT_ROLES,
