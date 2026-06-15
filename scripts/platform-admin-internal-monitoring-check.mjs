@@ -76,6 +76,14 @@ function assertNoInternalMutationCalls() {
   }
 }
 
+function assertInternalMonitorSidebarPermission() {
+  const internalMonitorEntryPattern = /label:\s*"Internal Monitor"[\s\S]*?routePath:\s*ROUTES\.INTERNAL_MONITORING[\s\S]*?requiredPermissions:\s*\["platform-admin\.internal-monitoring\.read"\]/;
+
+  if (!internalMonitorEntryPattern.test(files.coreModules)) {
+    throw new Error("Internal Monitor sidebar entry must use platform-admin.internal-monitoring.read instead of broad settings.manage.");
+  }
+}
+
 const files = {
   plan: read("docs/platform-admin-internal-monitoring-dashboard-plan.md"),
   platformPlan: read("docs/platform-admin-next-implementation-plan.md"),
@@ -83,6 +91,9 @@ const files = {
   routePhase: read("docs/v3/internal-admin-consoles-route-phase.md"),
   routes: read("artifacts/pos-system/src/constants/routes.ts"),
   app: read("artifacts/pos-system/src/App.tsx"),
+  coreModules: read("artifacts/pos-system/src/app/registry/core-modules.ts"),
+  moduleTypes: read("artifacts/pos-system/src/app/registry/module-types.ts"),
+  permissionCompat: read("artifacts/pos-system/src/app/registry/permission-compat.ts"),
   platformAdminPolicy: read("artifacts/pos-system/src/components/core/platform-admin/platform-admin-policy.ts"),
   page: read("artifacts/pos-system/src/pages/dashboard/platform-monitoring.tsx"),
   content: read("artifacts/pos-system/src/features/shared/platform-monitoring/platform-monitoring-content.tsx"),
@@ -177,6 +188,22 @@ const checks = [
     content: files.platformAdminPolicy,
     expected: "ADMIN",
   }),
+  () => assertContains({
+    label: "module permission union",
+    content: files.moduleTypes,
+    expected: "platform-admin.internal-monitoring.read",
+  }),
+  () => assertContains({
+    label: "permission compatibility map",
+    content: files.permissionCompat,
+    expected: "PLATFORM_ADMIN_ROLES",
+  }),
+  () => assertContains({
+    label: "permission compatibility key",
+    content: files.permissionCompat,
+    expected: "platform-admin.internal-monitoring.read",
+  }),
+  () => assertInternalMonitorSidebarPermission(),
   () => assertContains({
     label: "platform monitoring page",
     content: files.page,
