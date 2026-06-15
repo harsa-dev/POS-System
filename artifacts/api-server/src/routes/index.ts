@@ -10,6 +10,7 @@ import inventoryCostSnapshotRepairsRouter from "./inventory-cost-snapshot-repair
 import inventoryRouter from "./inventory.js";
 import cashierShiftReportsGuardRouter from "./cashier-shift-reports-guard.js";
 import cashierShiftReportsRouter from "./cashier-shift-reports.js";
+import cashierShiftReportsReconciliationRouter from "./cashier-shift-reports-reconciliation.js";
 import cashflowRouter from "./cashflow.js";
 import financialReportsGuardRouter from "./financial-reports-guard.js";
 import financialReportsRepairAuditRouter from "./financial-reports-repair-audit.js";
@@ -57,6 +58,7 @@ router.use(inventoryCostSnapshotRepairsRouter);
 router.use(inventoryRouter);
 router.use(cashierShiftReportsGuardRouter);
 router.use(cashierShiftReportsRouter);
+router.use(cashierShiftReportsReconciliationRouter);
 router.use(cashflowRouter);
 router.use(financialReportsGuardRouter);
 router.use(financialReportsRepairAuditRouter);
