@@ -1,11 +1,13 @@
+import type { RestaurantOrderPreviewInput } from "@/lib/api";
+
 import type { PosOrderDraft } from "./pos-workspace-types";
 
 export type CreateOrderPaymentMethod = "CASH" | "QRIS" | "CARD" | "TRANSFER";
 
-export type CreateOrderPayload = {
+export type CreateOrderPayload = RestaurantOrderPreviewInput & {
   paymentMethod: CreateOrderPaymentMethod;
   amountPaid: number;
-  orderType: PosOrderDraft["orderType"];
+  type: PosOrderDraft["orderType"];
   tableId: string | null;
   items: Array<{
     menuItemId: string;
@@ -17,6 +19,7 @@ export type CreateOrderPayloadValidationIssue = {
   code:
     | "CART_EMPTY"
     | "MISSING_TABLE"
+    | "TABLE_NOT_AVAILABLE"
     | "TAKEAWAY_TABLE_ID"
     | "INVALID_ITEM_QUANTITY"
     | "INVALID_AMOUNT_PAID"
@@ -44,7 +47,7 @@ export function mapPosOrderDraftToCreateOrderPayload({
   return {
     paymentMethod,
     amountPaid,
-    orderType: draft.orderType,
+    type: draft.orderType,
     tableId: draft.orderType === "DINE_IN" ? draft.table?.id ?? null : null,
     items: draft.items.map((item) => ({
       menuItemId: item.productId,
@@ -66,14 +69,21 @@ export function buildCreateOrderPayloadPreview(
     });
   }
 
-  if (payload.orderType === "DINE_IN" && payload.tableId === null) {
+  if (payload.type === "DINE_IN" && payload.tableId === null) {
     errors.push({
       code: "MISSING_TABLE",
       message: "Dine-in payload requires a tableId.",
     });
   }
 
-  if (payload.orderType === "TAKEAWAY" && payload.tableId !== null) {
+  if (input.draft.errors.some((error) => error.code === "TABLE_NOT_AVAILABLE")) {
+    errors.push({
+      code: "TABLE_NOT_AVAILABLE",
+      message: "Dine-in payload requires an available table.",
+    });
+  }
+
+  if (payload.type === "TAKEAWAY" && payload.tableId !== null) {
     errors.push({
       code: "TAKEAWAY_TABLE_ID",
       message: "Takeaway payload must send tableId as null.",

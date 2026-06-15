@@ -20,7 +20,12 @@ import { PosWorkspaceHeader } from "./pos-workspace-header";
 import { usePosMenuCatalog } from "./use-pos-menu-catalog";
 import { usePosOpenOrders } from "./use-pos-open-orders";
 import { usePosTables } from "./use-pos-tables";
-import { getApiErrorMessage, orderApi, paymentsApi } from "@/lib/api";
+import {
+  getApiErrorMessage,
+  paymentsApi,
+  restaurantClient,
+  type RestaurantOrderWriteResultDto,
+} from "@/lib/api";
 import type {
   PosCartItem,
   PosCartTotals,
@@ -31,13 +36,6 @@ import type {
 const previewServiceRate = 5;
 const previewTaxRate = 10;
 const previewOrderNotes = "";
-
-type CreateOrderResponse = {
-  id: string;
-  total: number;
-  orderNumber?: number;
-  status?: string;
-};
 
 type PendingPaymentOrder = {
   orderId: string;
@@ -355,22 +353,23 @@ export function PosWorkspaceLayout() {
         );
       }
 
-      const result = await orderApi.createOrderWithResult<CreateOrderResponse>(
-        orderPayloadPreview.payload,
-      );
+      const response: RestaurantOrderWriteResultDto =
+        await restaurantClient
+          .createOrder(orderPayloadPreview.payload)
+          .then((result) => {
+            if (!result.success || !result.data) {
+              throw new Error(result.message ?? "Failed to create restaurant order");
+            }
+
+            return result.data;
+          });
 
       if (import.meta.env.DEV) {
-        console.debug("[pos-v3] create order response", {
-          status: result.status,
-          ok: result.ok,
-          body: result.body,
-        });
+        console.debug("[pos-v3] create order response", response);
       }
 
-      if (!result.ok || !result.body.success || !result.body.data) {
-        toast.error(
-          result.body.message || `Failed to create order (${result.status})`,
-        );
+      if (!response.order?.id) {
+        toast.error("Restaurant order response was missing the created order.");
         setPaymentStep("idle");
         return;
       }
@@ -380,9 +379,9 @@ export function PosWorkspaceLayout() {
 
       if (isNonCashPaymentMethod(paymentMethod)) {
         const pendingOrder: PendingPaymentOrder = {
-          orderId: result.body.data.id,
-          total: result.body.data.total,
-          orderNumber: result.body.data.orderNumber,
+          orderId: response.order.id,
+          total: response.order.total,
+          orderNumber: response.order.orderNumber,
           paymentMethod,
           errorMessage: null,
         };

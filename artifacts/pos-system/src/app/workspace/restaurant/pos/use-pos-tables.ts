@@ -5,7 +5,7 @@ import type {
   PosTableItem,
   PosTableSummary,
 } from "@/app/workspace/restaurant/pos/pos-workspace-types";
-import { tablesApi } from "@/lib/api";
+import { restaurantClient, type RestaurantTableDto } from "@/lib/api";
 
 type PosTablesStatus = "loading" | "ready" | "error";
 
@@ -19,14 +19,6 @@ type PosTablesState = {
   reload: () => void;
 };
 
-type DiningTable = {
-  id: string;
-  name: string;
-  capacity: number;
-  status: string;
-  isActive?: boolean;
-};
-
 const fallbackTables: PosTableItem[] = v3PosTables.map((table) => ({
   id: table.id,
   name: table.name,
@@ -34,7 +26,7 @@ const fallbackTables: PosTableItem[] = v3PosTables.map((table) => ({
   status: table.status,
 }));
 
-function mapDiningTableToPosTable(table: DiningTable): PosTableItem {
+function mapDiningTableToPosTable(table: RestaurantTableDto): PosTableItem {
   return {
     id: table.id,
     name: table.name,
@@ -94,8 +86,12 @@ export function usePosTables(): PosTablesState {
       setErrorMessage(null);
 
       try {
-        const response = await tablesApi.list<DiningTable[]>();
+        const response = await restaurantClient.listTables();
         if (!isMounted) return;
+
+        if (!response.success) {
+          throw new Error(response.message ?? "Failed to load restaurant tables");
+        }
 
         const activeTables = (response.data ?? []).filter(
           (table) => table.isActive !== false,

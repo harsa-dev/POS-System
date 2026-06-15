@@ -208,8 +208,8 @@ export class RestaurantPreviewService {
     if (table && table.status !== "AVAILABLE") {
       warnings.push({
         key: `table.${table.id}.status`,
-        status: "review",
-        message: `${table.name} is currently ${table.status}. Confirm before assigning a new order.`,
+        status: "blocked",
+        message: `${table.name} is currently ${table.status} and cannot be assigned to a new dine-in order.`,
       });
     }
 

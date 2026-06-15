@@ -29,6 +29,19 @@ export const servingOrderStatusLabels = {
   READY: "Ready",
 } as const;
 
+export const restaurantKitchenActionTargets = {
+  PAID: "PREPARING",
+  PREPARING: "READY",
+} as const;
+
+export const restaurantServingActionTargets = {
+  READY: "SERVED",
+} as const;
+
+export function canCompleteRestaurantOrder(status: RestaurantOrderStatus) {
+  return status === "SERVED";
+}
+
 export const restaurantTableStatusLabels = {
   AVAILABLE: "Available",
   OCCUPIED: "Occupied",
@@ -48,6 +61,12 @@ export const restaurantTableStatusTones = {
 } as const;
 
 export type RestaurantTableStatus = keyof typeof restaurantTableStatusLabels;
+
+export function canSelectRestaurantTableForDineIn(
+  status: RestaurantTableStatus,
+) {
+  return status === "AVAILABLE";
+}
 
 export const menuAvailabilityLabels = {
   AVAILABLE: "Available",

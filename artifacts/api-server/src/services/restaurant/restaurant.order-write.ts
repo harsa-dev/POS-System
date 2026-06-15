@@ -386,6 +386,10 @@ export class RestaurantOrderWriteService {
         throw new RestaurantWriteError("Dine-in order requires an active table in this Restaurant business.");
       }
 
+      if (table && table.status !== "AVAILABLE") {
+        throw new RestaurantWriteError(`${table.name} is currently ${table.status} and cannot be assigned to a new dine-in order.`, 409);
+      }
+
       if (orderType === "TAKEAWAY" && input.tableId) {
         throw new RestaurantWriteError("Takeaway order must not include a tableId.");
       }

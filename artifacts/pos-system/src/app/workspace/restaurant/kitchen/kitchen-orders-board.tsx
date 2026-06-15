@@ -11,7 +11,10 @@ import type {
   KitchenOrder,
   KitchenOrderTargetStatus,
 } from "./use-kitchen-orders";
-import { restaurantOrderStatusTones } from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
+import {
+  restaurantKitchenActionTargets,
+  restaurantOrderStatusTones,
+} from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
 import {
   EmptyState,
   InlineErrorNotice,
@@ -114,12 +117,11 @@ function KitchenOrderCard({
     status: KitchenOrderTargetStatus,
   ) => Promise<void>;
 }) {
-  const isCooking = order.status === "PREPARING";
-  const targetStatus: KitchenOrderTargetStatus = isCooking
-    ? "READY"
-    : "PREPARING";
+  const targetStatus = restaurantKitchenActionTargets[order.status];
+  const isCooking = targetStatus === "READY";
   const buttonLabel = isCooking ? "Mark Ready" : "Start Cooking";
   const loadingLabel = isCooking ? "Marking ready..." : "Starting cooking...";
+  const canUpdateStatus = Boolean(targetStatus);
 
   return (
     <article
@@ -174,8 +176,11 @@ function KitchenOrderCard({
               ? "bg-green-600 text-white hover:bg-green-700"
               : "bg-neutral-950 text-white hover:bg-neutral-800"
           }`}
-          disabled={isUpdating}
-          onClick={() => void onUpdateStatus(order.id, targetStatus)}
+          disabled={isUpdating || !canUpdateStatus}
+          onClick={() => {
+            if (!targetStatus) return;
+            void onUpdateStatus(order.id, targetStatus);
+          }}
           type="button"
         >
           {isUpdating ? (

@@ -50,6 +50,8 @@ const restaurantSharedDashboardIds = new Set<string>([
   "employee-contracts",
   "payroll",
 ]);
+const restaurantOrderTypes = new Set<string>(["DINE_IN", "TAKEAWAY"]);
+const restaurantPaymentMethods = new Set<string>(["CASH", "QRIS", "CARD", "TRANSFER"]);
 const RESTAURANT_STATUS_WRITE_ROLES = Array.from(new Set([
   ...RESTAURANT_KITCHEN_ROLES,
   ...RESTAURANT_SERVING_ROLES,
@@ -90,13 +92,29 @@ function readOrderPreviewInput(req: Request, res: Response): RestaurantOrderPrev
     return null;
   }
 
+  if (typeof req.body.type !== "string" || !restaurantOrderTypes.has(req.body.type)) {
+    badRequest(res, "Restaurant order preview requires type to be DINE_IN or TAKEAWAY.");
+    return null;
+  }
+
+  if (
+    req.body.paymentMethod !== undefined &&
+    (typeof req.body.paymentMethod !== "string" ||
+      !restaurantPaymentMethods.has(req.body.paymentMethod))
+  ) {
+    badRequest(res, "Restaurant order preview requires a supported payment method.");
+    return null;
+  }
+
   if (!Array.isArray(req.body.items)) {
     badRequest(res, "Restaurant order preview requires an items array.");
     return null;
   }
 
+  const orderType = req.body.type === "DINE_IN" ? "DINE_IN" : "TAKEAWAY";
+
   return {
-    type: req.body.type === "TAKEAWAY" ? "TAKEAWAY" : "DINE_IN",
+    type: orderType,
     tableId: typeof req.body.tableId === "string" ? req.body.tableId : null,
     paymentMethod: typeof req.body.paymentMethod === "string" ? req.body.paymentMethod : "CASH",
     amountPaid: typeof req.body.amountPaid === "number" ? req.body.amountPaid : null,

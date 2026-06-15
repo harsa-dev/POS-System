@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { v3PosOpenOrders } from "@/app/workspace/restaurant/pos-sample-data";
 import type { PosOpenOrderItem } from "@/app/workspace/restaurant/pos/pos-workspace-types";
-import { orderApi } from "@/lib/api";
+import { restaurantClient, type RestaurantOrderDto } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils/format";
 
 type PosOpenOrdersStatus = "loading" | "ready" | "error";
@@ -14,23 +14,6 @@ type PosOpenOrdersState = {
   isUsingFallback: boolean;
   isRefreshing: boolean;
   reload: () => void;
-};
-
-type OrderItemResponse = {
-  quantity?: number | null;
-};
-
-type OrderResponse = {
-  id: string;
-  orderNumber: number;
-  status: string;
-  total: number;
-  createdAt: string;
-  type?: string | null;
-  table?: {
-    name?: string | null;
-  } | null;
-  items?: OrderItemResponse[] | null;
 };
 
 const activeOrderStatuses = new Set([
@@ -70,19 +53,19 @@ function formatOrderStatus(status: string) {
     .join(" ");
 }
 
-function getOrderTableLabel(order: OrderResponse) {
+function getOrderTableLabel(order: RestaurantOrderDto) {
   if (order.table?.name) return order.table.name;
   return order.type === "DINE_IN" ? "Dine in" : "Takeaway";
 }
 
-function getOrderItemCount(order: OrderResponse) {
+function getOrderItemCount(order: RestaurantOrderDto) {
   return (order.items ?? []).reduce(
-    (total, item) => total + (item.quantity ?? 0),
+    (total, item) => total + item.quantity,
     0,
   );
 }
 
-function mapOrderToOpenOrder(order: OrderResponse): PosOpenOrderItem {
+function mapOrderToOpenOrder(order: RestaurantOrderDto): PosOpenOrderItem {
   return {
     id: order.id,
     code: formatOrderCode(order.orderNumber),
@@ -125,8 +108,12 @@ export function usePosOpenOrders(): PosOpenOrdersState {
       setErrorMessage(null);
 
       try {
-        const response = await orderApi.listOrders<OrderResponse[]>();
+        const response = await restaurantClient.listActiveOrders();
         if (!isMounted) return;
+
+        if (!response.success) {
+          throw new Error(response.message ?? "Failed to load restaurant open orders");
+        }
 
         const activeOrders = (response.data ?? [])
           .filter((order) => activeOrderStatuses.has(order.status))

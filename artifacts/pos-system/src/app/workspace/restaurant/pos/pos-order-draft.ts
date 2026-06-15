@@ -51,7 +51,7 @@ export function buildPosOrderDraft({
     selectedTable &&
     selectedTable.status !== "AVAILABLE"
   ) {
-    warnings.push({
+    errors.push({
       code: "TABLE_NOT_AVAILABLE",
       message: `${selectedTable.name} is currently ${selectedTable.status.toLowerCase()}.`,
     });

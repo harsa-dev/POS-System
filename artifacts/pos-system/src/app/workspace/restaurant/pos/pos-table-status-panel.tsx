@@ -5,6 +5,7 @@ import type {
   PosTableSummary,
 } from "./pos-workspace-types";
 import {
+  canSelectRestaurantTableForDineIn,
   normalizeRestaurantTableStatus,
   restaurantTableStatusLabels,
   restaurantTableStatusTones,
@@ -128,17 +129,26 @@ export function PosTableStatusPanel({
           {tables.slice(0, 6).map((table) => {
             const isSelected = selectedTableId === table.id;
             const tableStatus = normalizeRestaurantTableStatus(table.status);
+            const canSelect = canSelectRestaurantTableForDineIn(tableStatus);
 
             return (
               <button
                 aria-pressed={isSelected}
-                className={`flex w-full items-center justify-between rounded-2xl border px-3 py-3 text-left text-sm font-semibold transition hover:border-neutral-300 ${
+                className={`flex w-full items-center justify-between rounded-2xl border px-3 py-3 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                   isSelected
                     ? "border-neutral-950 bg-neutral-950 text-white"
-                    : "border-neutral-200 bg-white text-neutral-700"
+                    : canSelect
+                      ? "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300"
+                      : "border-neutral-200 bg-neutral-50 text-neutral-500"
                 }`}
+                disabled={!canSelect}
                 key={table.id}
                 onClick={() => onSelectTable(table.id)}
+                title={
+                  canSelect
+                    ? `Select ${table.name}`
+                    : `${table.name} cannot be selected while ${restaurantTableStatusLabels[tableStatus].toLowerCase()}`
+                }
                 type="button"
               >
                 <span>

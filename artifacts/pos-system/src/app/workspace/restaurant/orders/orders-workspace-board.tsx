@@ -14,7 +14,10 @@ import {
 import type {
   OrdersWorkspaceOrder,
 } from "./use-orders-workspace-orders";
-import { restaurantOrderStatusTones } from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
+import {
+  canCompleteRestaurantOrder,
+  restaurantOrderStatusTones,
+} from "@/app/workspace/restaurant/shared/restaurant-workspace-status";
 import {
   EmptyState,
   InlineErrorNotice,
@@ -156,7 +159,7 @@ function OrdersWorkspaceCard({
 }) {
   const visibleItems = order.items.slice(0, 3);
   const hiddenItemCount = Math.max(0, order.items.length - visibleItems.length);
-  const canComplete = order.status === "SERVED";
+  const canComplete = canCompleteRestaurantOrder(order.status);
 
   return (
     <article className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-300">
