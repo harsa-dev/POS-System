@@ -5,7 +5,10 @@ import {
   createSessionToken,
   hashPassword,
   requireAuth,
+  revokeSessionToken,
   sanitizeUser,
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE_MS,
   verifyPassword,
 } from "../lib/auth.js";
 import { createBusinessWithRestaurantProfile } from "../lib/business-context/create-business-with-profile.js";
@@ -15,7 +18,6 @@ import { successResponse } from "../lib/responses/success-response.js";
 import { errorResponse } from "../lib/responses/error-response.js";
 
 const router = Router();
-const sessionCookieMaxAgeMs = 60 * 60 * 24 * 7 * 1000;
 const invalidLoginMessage = "Email atau password salah.";
 
 function getSessionCookieOptions() {
@@ -68,9 +70,9 @@ router.post("/auth/login", async (req, res) => {
 
     const token = await createSessionToken(user.id);
 
-    res.cookie("session", token, {
+    res.cookie(SESSION_COOKIE_NAME, token, {
       ...getSessionCookieOptions(),
-      maxAge: sessionCookieMaxAgeMs,
+      maxAge: SESSION_MAX_AGE_MS,
     });
 
     return successResponse(res, {
@@ -82,13 +84,19 @@ router.post("/auth/login", async (req, res) => {
   }
 });
 
-router.post("/auth/logout", (_req, res) => {
-  res.clearCookie("session", getSessionCookieOptions());
+router.post("/auth/logout", async (req, res) => {
+  try {
+    await revokeSessionToken(req.cookies?.[SESSION_COOKIE_NAME]);
 
-  return successResponse(res, {
-    message: "Logout berhasil.",
-    data: null,
-  });
+    res.clearCookie(SESSION_COOKIE_NAME, getSessionCookieOptions());
+
+    return successResponse(res, {
+      message: "Logout berhasil.",
+      data: null,
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
 });
 
 router.get("/auth/me", async (req, res) => {
