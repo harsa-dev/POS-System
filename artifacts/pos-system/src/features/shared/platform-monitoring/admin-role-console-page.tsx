@@ -48,6 +48,13 @@ function tone(value: string): DashboardTone {
   return toneMap[value] ?? "slate";
 }
 
+function getSourceCopy(source: string) {
+  if (source === "api") return "Read-only backend route active.";
+  if (source === "fallback") return "Backend route unavailable; frontend fallback active.";
+  if (source === "section-fallback") return "One or more dashboard sections are using fallback data.";
+  return "Frontend mock registry is active.";
+}
+
 const metricColumns: DataTableColumn<InternalAdminMetric>[] = [
   { key: "label", header: "Metric", cell: (row) => <span className="font-medium text-foreground">{row.label}</span> },
   { key: "value", header: "Value", cell: (row) => <span className="font-semibold text-foreground">{row.value}</span> },
@@ -99,6 +106,14 @@ function AdminRoleConsoleSkeleton() {
   );
 }
 
+function EmptyState({ label }: { label: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+      No {label} records are available. The console remains read-only and the section is expected to recover through API or fallback data.
+    </div>
+  );
+}
+
 export function AdminRoleConsolePage() {
   const [data, setData] = useState<AdminRoleConsoleDataSourceResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -138,13 +153,23 @@ export function AdminRoleConsolePage() {
 
   const { consoleCard } = data;
   const backendState = data.source === "api" ? "Connected" : "Fallback active";
+  const fallbackSummary = fallbackSections.length > 0 ? `${fallbackSections.length} fallback section(s)` : "No fallback sections";
 
   return (
     <div className="space-y-6">
+      <DashboardPanel title="Read-only Operation Notice" description="Admin Role Console is visibility-only in this phase.">
+        <div className="grid gap-4 p-4 lg:grid-cols-3">
+          <StatCard label="Allowed Surface" value="GET only" note="GET /api/internal/admin-console/roles is the only backend surface for this console." icon={ShieldCheck} tone="green" />
+          <StatCard label="Data Source" value={data.source} note={getSourceCopy(data.source)} icon={Database} tone={tone(data.source)} />
+          <StatCard label="Write Boundary" value="Blocked" note="No management mutation, audit write, approval execution, or Prisma change in AR-4." icon={LockKeyhole} tone="rose" />
+        </div>
+      </DashboardPanel>
+
       <DashboardPanel title={consoleCard.title} description={consoleCard.mission}>
         <div className="border-b border-border bg-muted/20 px-4 py-3" aria-live="polite">
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <StatusPill tone={tone(data.source)}>Source: {data.source}</StatusPill>
+            <StatusPill tone={fallbackSections.length > 0 ? "amber" : "green"}>{fallbackSummary}</StatusPill>
             <span>Generated {new Date(data.generatedAt).toLocaleString()}</span>
             <span>Read-only API first, frontend fallback second. No DB, Prisma, or management mutation in this phase.</span>
           </div>
@@ -156,6 +181,15 @@ export function AdminRoleConsolePage() {
           <StatCard label="Fallback Sections" value={fallbackSections.length} note="Section-level fallback coverage." icon={RotateCcw} tone={fallbackSections.length > 0 ? "amber" : "green"} />
         </div>
       </DashboardPanel>
+
+      {data.source !== "api" || fallbackSections.length > 0 ? (
+        <DashboardPanel title="Fallback State" description="The console is still safe when API data is unavailable.">
+          <div className="space-y-3 p-4 text-sm text-muted-foreground">
+            <p>{getSourceCopy(data.source)}</p>
+            <p>Fallback data is read-only. Do not treat fallback rows as executable management actions.</p>
+          </div>
+        </DashboardPanel>
+      ) : null}
 
       <DashboardPanel title="Read-only Safety Boundary" description="Admin Role Console now has a backend read route, but still no management execution.">
         <div className="grid gap-4 p-4 lg:grid-cols-3">
@@ -170,19 +204,35 @@ export function AdminRoleConsolePage() {
       </DashboardPanel>
 
       <DashboardPanel title="Console Metrics" description="Metrics loaded from backend read-only route when available, otherwise frontend fallback.">
-        <DataTable columns={metricColumns} data={data.metrics} getRowKey={(row) => row.id} minWidth={950} pagination={false} />
+        {data.metrics.length > 0 ? (
+          <DataTable columns={metricColumns} data={data.metrics} getRowKey={(row) => row.id} minWidth={950} pagination={false} />
+        ) : (
+          <EmptyState label="metric" />
+        )}
       </DashboardPanel>
 
       <DashboardPanel title="Console Workflows" description="Workflow planning rows. Execution remains blocked.">
-        <DataTable columns={workflowColumns} data={data.workflows} getRowKey={(row) => row.id} minWidth={1700} pagination={false} />
+        {data.workflows.length > 0 ? (
+          <DataTable columns={workflowColumns} data={data.workflows} getRowKey={(row) => row.id} minWidth={1700} pagination={false} />
+        ) : (
+          <EmptyState label="workflow" />
+        )}
       </DashboardPanel>
 
       <DashboardPanel title="Read-only Rollout Preview" description="Read-only readiness map from the Admin Role Console loader.">
-        <DataTable columns={rolloutColumns} data={data.rolloutPreview} getRowKey={(row) => row.id} minWidth={1500} pagination={false} />
+        {data.rolloutPreview.length > 0 ? (
+          <DataTable columns={rolloutColumns} data={data.rolloutPreview} getRowKey={(row) => row.id} minWidth={1500} pagination={false} />
+        ) : (
+          <EmptyState label="rollout preview" />
+        )}
       </DashboardPanel>
 
       <DashboardPanel title="Schema Candidates" description="Candidate storage only. No Prisma promotion in this phase.">
-        <DataTable columns={schemaColumns} data={data.schemaCandidates} getRowKey={(row) => row.id} minWidth={1500} pagination={false} />
+        {data.schemaCandidates.length > 0 ? (
+          <DataTable columns={schemaColumns} data={data.schemaCandidates} getRowKey={(row) => row.id} minWidth={1500} pagination={false} />
+        ) : (
+          <EmptyState label="schema candidate" />
+        )}
       </DashboardPanel>
     </div>
   );
