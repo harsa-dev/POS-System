@@ -16,6 +16,7 @@ export type InventoryMovementAnomalyType =
   | "HIGH_VALUE_MOVEMENT";
 
 export type InventoryMovementAnomalySeverity = "INFO" | "WARNING" | "CRITICAL";
+export type InventoryMovementAnomalyReviewStatus = "REVIEWED" | "IGNORED" | "RESOLVED";
 
 export type InventoryMovementAnomalyQuery = {
   search?: string;
@@ -60,6 +61,31 @@ export type InventoryMovementAnomalyRowDto = {
   fallbackCostPerUnit: number;
   movementValue: number;
   createdAt: string;
+};
+
+export type InventoryMovementAnomalyReviewDto = {
+  id: string;
+  businessId: string;
+  anomalyId: string;
+  anomalyType: InventoryMovementAnomalyType;
+  movementId: string;
+  status: InventoryMovementAnomalyReviewStatus;
+  note: string;
+  reviewedById?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InventoryMovementAnomalyReviewsDto = {
+  rows: InventoryMovementAnomalyReviewDto[];
+};
+
+export type SaveInventoryMovementAnomalyReviewPayload = {
+  anomalyId: string;
+  anomalyType: InventoryMovementAnomalyType;
+  movementId: string;
+  status: InventoryMovementAnomalyReviewStatus;
+  note: string;
 };
 
 export type InventoryMovementAnomalyDto = {
@@ -142,6 +168,19 @@ export const inventoryMovementAnomalyApi = {
     const suffix = params.toString() ? `?${params.toString()}` : "";
     return apiClient.get<ApiDataEnvelope<InventoryMovementAnomalyDto>>(
       `/api/inventory-movement-anomalies${suffix}`,
+    );
+  },
+
+  listReviews() {
+    return apiClient.get<ApiDataEnvelope<InventoryMovementAnomalyReviewsDto>>(
+      "/api/inventory-movement-anomalies/reviews",
+    );
+  },
+
+  saveReview(payload: SaveInventoryMovementAnomalyReviewPayload) {
+    return apiClient.post<ApiDataEnvelope<InventoryMovementAnomalyReviewDto>>(
+      "/api/inventory-movement-anomalies/reviews",
+      payload,
     );
   },
 
