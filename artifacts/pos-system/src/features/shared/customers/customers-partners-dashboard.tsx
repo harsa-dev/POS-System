@@ -73,8 +73,27 @@ function getTierTone(tier: LoyaltyTierDto["tierName"]): DashboardTone {
   return "blue";
 }
 
+function isCustomerRow(row: PartnerRow): row is CustomerProfileDto {
+  return "totalSpending" in row;
+}
+
+function getAssignedCustomerTierTone(row: CustomerProfileDto): DashboardTone {
+  if (row.loyaltyTierName === "Bronze") return "amber";
+  if (row.loyaltyTierName === "Silver") return "slate";
+  if (row.loyaltyTierName === "Gold") return "green";
+  if (row.loyaltyTierName === "Platinum") return "blue";
+
+  return "slate";
+}
+
+function getAssignedCustomerTierLabel(row: CustomerProfileDto) {
+  if (!row.loyaltyTierName) return "Unassigned";
+
+  return `${row.loyaltyTierIcon ? `${row.loyaltyTierIcon} ` : ""}${row.loyaltyTierName}`;
+}
+
 function getTotalAmount(row: PartnerRow) {
-  return "totalSpending" in row ? row.totalSpending : row.totalPurchases;
+  return isCustomerRow(row) ? row.totalSpending : row.totalPurchases;
 }
 
 function getTransactions(row: PartnerRow) {
@@ -100,7 +119,7 @@ function getContactForm(row: PartnerRow): ContactForm {
 }
 
 function getRowLabel(row: PartnerRow) {
-  return "totalSpending" in row ? "Customer" : "Supplier";
+  return isCustomerRow(row) ? "Customer" : "Supplier";
 }
 
 function getExportKind(viewMode: ViewMode): CustomersPartnersExportKind {
@@ -161,12 +180,16 @@ export function CustomersPartnersDashboard() {
     const needle = search.trim().toLowerCase();
     if (!needle) return activeRows;
 
-    return activeRows.filter((row) =>
-      [row.name, row.phone ?? "", row.email ?? "", row.address ?? ""]
+    return activeRows.filter((row) => {
+      const tierText = isCustomerRow(row)
+        ? [row.loyaltyTierName ?? "Unassigned", row.loyaltyTierIcon ?? "", `${row.loyaltyDiscount ?? 0}%`].join(" ")
+        : "Supplier";
+
+      return [row.name, row.phone ?? "", row.email ?? "", row.address ?? "", tierText]
         .join(" ")
         .toLowerCase()
-        .includes(needle),
-    );
+        .includes(needle);
+    });
   }, [activeRows, search]);
 
   async function loadDashboard() {
@@ -247,7 +270,7 @@ export function CustomersPartnersDashboard() {
 
     try {
       if (isEditing) {
-        if ("totalSpending" in editingRow) {
+        if (isCustomerRow(editingRow)) {
           await customersPartnersApi.updateCustomer(editingRow.id, payload);
         } else {
           await customersPartnersApi.updateSupplier(editingRow.id, payload);
@@ -280,7 +303,7 @@ export function CustomersPartnersDashboard() {
     setIsSubmitting(true);
 
     try {
-      if ("totalSpending" in row) {
+      if (isCustomerRow(row)) {
         await customersPartnersApi.deleteCustomer(row.id);
       } else {
         await customersPartnersApi.deleteSupplier(row.id);
@@ -326,6 +349,24 @@ export function CustomersPartnersDashboard() {
     { key: "email", header: "Email", cell: (row) => row.email ?? "-" },
     { key: "address", header: "Address", cell: (row) => row.address ?? "-" },
     {
+      key: "tier",
+      header: viewMode === "Customers" ? "Loyalty Tier" : "Type",
+      cell: (row) => {
+        if (!isCustomerRow(row)) {
+          return <StatusPill tone="slate">Supplier</StatusPill>;
+        }
+
+        return (
+          <div className="space-y-1">
+            <StatusPill tone={getAssignedCustomerTierTone(row)}>{getAssignedCustomerTierLabel(row)}</StatusPill>
+            <div className="text-xs text-neutral-500">
+              {row.loyaltyTierName ? `${row.loyaltyDiscount ?? 0}% discount` : "Run tier assignment"}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       key: "totalAmount",
       header: viewMode === "Customers" ? "Total Spending" : "Total Purchases",
       cell: (row) => <span className="font-medium">{formatCurrency(getTotalAmount(row))}</span>,
@@ -364,7 +405,7 @@ export function CustomersPartnersDashboard() {
   return (
     <DashboardShell
       title="Customers & Partners"
-      description="Manage backend-backed customer profiles, supplier contacts, spending history, loyalty tiers, and guarded import/export workflows."
+      description="Manage backend-backed customer profiles, supplier contacts, spending history, assigned loyalty tiers, and guarded import/export workflows."
     >
       {capabilities.isPlannedMode ? (
         <DashboardPanel title="Planned Mode" description={capabilities.plannedReason ?? "This dashboard is not available for this mode yet."}>
@@ -411,7 +452,7 @@ export function CustomersPartnersDashboard() {
 
       <DashboardPanel
         title="Loyalty Tier Settings"
-        description="Backend-seeded tier icon, name, calculation period, minimum spending, and automatic discount."
+        description="Backend-seeded tier icon, name, calculation period, minimum spending, and automatic discount. Use the loyalty workflow above to edit and assign tiers."
       >
         <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
           {loyaltyTiers.map((tier) => (
@@ -517,9 +558,9 @@ export function CustomersPartnersDashboard() {
               />
               <div className="w-full xl:max-w-md">
                 <SearchFilter
-                  label="Search by name, phone, email, or address"
+                  label="Search by name, phone, email, address, or tier"
                   value={search}
-                  placeholder="Search name, phone, email, or address..."
+                  placeholder="Search name, phone, email, address, or tier..."
                   onChange={setSearch}
                 />
               </div>
@@ -570,12 +611,12 @@ export function CustomersPartnersDashboard() {
           columns={partnerColumns}
           data={filteredRows}
           getRowKey={(row) => row.id}
-          minWidth={960}
+          minWidth={1080}
         />
         {isLoading ? <div className="p-4 text-sm text-neutral-500">Loading records...</div> : null}
         {!isLoading && filteredRows.length === 0 ? (
           <div className="p-4 text-sm text-neutral-500">
-            No {viewMode.toLowerCase()} found. Add a backend record, import CSV, or sync paid invoices to grow the directory.
+            No {viewMode.toLowerCase()} found. Add a backend record, import CSV, sync paid invoices, or assign tiers to grow the directory.
           </div>
         ) : null}
       </DashboardPanel>
