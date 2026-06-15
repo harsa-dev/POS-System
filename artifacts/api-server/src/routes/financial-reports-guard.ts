@@ -10,7 +10,6 @@ import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
 
 const router = Router();
-const REPORT_VIEW_ROLES: Role[] = [...MANAGEMENT_ROLES, "VIEWER"];
 
 function isPlannedFinancialReportMode(businessMode: string) {
   return businessMode === "custom-business";
@@ -30,10 +29,9 @@ function getReportCapabilities(role: Role, businessMode: string) {
   const plannedReason = getPlannedReason(businessMode);
   const isPlannedMode = Boolean(plannedReason);
   const canManage = hasRole(role, MANAGEMENT_ROLES) && !isPlannedMode;
-  const canView = hasRole(role, REPORT_VIEW_ROLES) && !isPlannedMode;
 
   return {
-    canView,
+    canView: canManage,
     canExport: canManage,
     canReconcile: canManage,
     canInspectSources: canManage,
@@ -108,7 +106,7 @@ router.use("/financial-reports", async (req, res, next) => {
       return errorResponse(res, {
         status: 403,
         code: errorCodes.forbidden,
-        message: "Your role does not have access to financial reports.",
+        message: "Financial reports require a management role.",
       });
     }
 
