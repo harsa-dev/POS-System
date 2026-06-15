@@ -8,7 +8,6 @@ import {
   EyeOff,
   FileText,
   RefreshCw,
-  Search,
   ShieldAlert,
 } from "lucide-react";
 
@@ -25,6 +24,7 @@ import {
   type SalesPaymentIntegrityDto,
   type SalesPaymentIntegrityIssue,
   type SalesPaymentIntegrityReviewDto,
+  type SalesPaymentIntegrityReviewFilter,
   type SalesPaymentIntegrityReviewStatus,
   type SalesPaymentIntegrityRowDto,
 } from "@/lib/api/sales-payment-integrity-api";
@@ -43,6 +43,14 @@ const ISSUE_OPTIONS: Array<{ value: SalesPaymentIntegrityIssue; label: string }>
   { value: "all", label: "All payment issues" },
   { value: "orders_without_paid_payment", label: "Orders without paid payment" },
   { value: "payment_total_mismatch", label: "Payment total mismatches" },
+];
+
+const REVIEW_FILTER_OPTIONS: Array<{ value: SalesPaymentIntegrityReviewFilter; label: string }> = [
+  { value: "all", label: "All review states" },
+  { value: "unreviewed", label: "Unreviewed" },
+  { value: "REVIEWED", label: "Reviewed" },
+  { value: "IGNORED", label: "Ignored" },
+  { value: "RESOLVED", label: "Resolved" },
 ];
 
 const REVIEW_OPTIONS: Array<{ value: SalesPaymentIntegrityReviewStatus; label: string }> = [
@@ -103,7 +111,7 @@ function getReviewKey(row: Pick<SalesPaymentIntegrityRowDto, "issueType" | "orde
   return `${row.issueType}:${row.orderId}`;
 }
 
-function getReviewTone(status: SalesPaymentIntegrityReviewStatus | undefined) {
+function getReviewTone(status: SalesPaymentIntegrityReviewStatus | undefined | null) {
   if (status === "RESOLVED") return "green";
   if (status === "IGNORED") return "slate";
   if (status === "REVIEWED") return "blue";
@@ -111,7 +119,7 @@ function getReviewTone(status: SalesPaymentIntegrityReviewStatus | undefined) {
   return "rose";
 }
 
-function formatReviewStatus(status: SalesPaymentIntegrityReviewStatus | undefined) {
+function formatReviewStatus(status: SalesPaymentIntegrityReviewStatus | undefined | null) {
   if (!status) return "Unreviewed";
   return formatIssueLabel(status);
 }
@@ -121,6 +129,27 @@ function buildReviewMap(rows: SalesPaymentIntegrityReviewDto[]) {
     map[getReviewKey(review)] = review;
     return map;
   }, {});
+}
+
+function getMergedReview(
+  row: SalesPaymentIntegrityRowDto,
+  reviewsByKey: Record<string, SalesPaymentIntegrityReviewDto>,
+) {
+  const review = reviewsByKey[getReviewKey(row)];
+  if (review) return review;
+  if (!row.reviewStatus) return null;
+
+  return {
+    id: `${row.issueType}:${row.orderId}`,
+    businessId: "",
+    issueType: row.issueType,
+    orderId: row.orderId,
+    status: row.reviewStatus,
+    note: row.reviewNote ?? "",
+    reviewedById: row.reviewedById,
+    createdAt: row.reviewedAt ?? row.orderDate,
+    updatedAt: row.reviewedAt ?? row.orderDate,
+  } satisfies SalesPaymentIntegrityReviewDto;
 }
 
 function buildRowColumns(params: {
@@ -134,9 +163,7 @@ function buildRowColumns(params: {
     {
       key: "issueType",
       header: "Issue",
-      cell: (row) => (
-        <StatusPill tone="rose">{formatIssueLabel(row.issueType)}</StatusPill>
-      ),
+      cell: (row) => <StatusPill tone="rose">{formatIssueLabel(row.issueType)}</StatusPill>,
     },
     {
       key: "order",
@@ -194,17 +221,15 @@ function buildRowColumns(params: {
       header: "Review",
       cell: (row) => {
         const key = getReviewKey(row);
-        const review = params.reviewsByKey[key];
+        const review = getMergedReview(row, params.reviewsByKey);
         const draft = params.drafts[key] ?? {
           status: review?.status ?? "REVIEWED",
           note: review?.note ?? "",
         };
 
         return (
-          <div className="min-w-[260px] space-y-2">
-            <StatusPill tone={getReviewTone(review?.status)}>
-              {formatReviewStatus(review?.status)}
-            </StatusPill>
+          <div className="min-w-[280px] space-y-2">
+            <StatusPill tone={getReviewTone(review?.status)}>{formatReviewStatus(review?.status)}</StatusPill>
             {review && (
               <p className="text-xs text-muted-foreground">
                 Updated {formatDateTime(review.updatedAt)}
@@ -271,6 +296,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
     getInitialSalesAnalyticsFilterContext(),
   );
   const [issue, setIssue] = useState<SalesPaymentIntegrityIssue>("all");
+  const [reviewFilter, setReviewFilter] = useState<SalesPaymentIntegrityReviewFilter>("all");
   const [workbench, setWorkbench] = useState<SalesPaymentIntegrityDto | null>(null);
   const [reviewsByKey, setReviewsByKey] = useState<Record<string, SalesPaymentIntegrityReviewDto>>({});
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
@@ -290,6 +316,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
         salesPaymentIntegrityApi.getWorkbench({
           ...filterContext.query,
           issue,
+          reviewStatus: reviewFilter,
           limit: 150,
         }),
         salesPaymentIntegrityApi.listReviews(),
@@ -314,7 +341,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterContext.query, issue]);
+  }, [filterContext.query, issue, reviewFilter]);
 
   useEffect(() => {
     void loadWorkbench();
@@ -359,13 +386,14 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
       }),
     [reviewsByKey, reviewDrafts, savingReviewKey],
   );
+
   const missingPaymentBucket = getBucket(workbench, "orders_without_paid_payment");
   const mismatchBucket = getBucket(workbench, "payment_total_mismatch");
   const visibleReviewStats = useMemo(() => {
     const rows = workbench?.rows ?? [];
     return rows.reduce(
       (stats, row) => {
-        const review = reviewsByKey[getReviewKey(row)];
+        const review = getMergedReview(row, reviewsByKey);
         if (!review) {
           stats.unreviewed += 1;
           return stats;
@@ -399,7 +427,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
 
   async function handleSaveReview(row: SalesPaymentIntegrityRowDto) {
     const key = getReviewKey(row);
-    const existingReview = reviewsByKey[key];
+    const existingReview = getMergedReview(row, reviewsByKey);
     const draft = reviewDrafts[key] ?? {
       status: existingReview?.status ?? "REVIEWED",
       note: existingReview?.note ?? "",
@@ -440,6 +468,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
         },
       }));
       setSuccessMessage(`Saved ${formatReviewStatus(response.data.status)} review for Order #${row.orderNumber}.`);
+      void loadWorkbench();
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to save payment integrity review.",
@@ -458,6 +487,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
       const response = await salesPaymentIntegrityApi.exportCsv({
         ...filterContext.query,
         issue,
+        reviewStatus: reviewFilter,
         limit: 5000,
       });
 
@@ -486,6 +516,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
       const response = await salesPaymentIntegrityApi.exportJson({
         ...filterContext.query,
         issue,
+        reviewStatus: reviewFilter,
         limit: 5000,
       });
 
@@ -509,7 +540,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
     <div id="sales-payment-integrity-workbench" className="scroll-mt-24">
       <DashboardPanel
         title="Sales Payment Integrity Workbench"
-        description="Backend-backed action workbench for orders without PAID payment records and paid amount mismatches. It now supports review states with required notes, because audit hates vibes."
+        description="Backend-backed action workbench for orders without PAID payment records and paid amount mismatches. Review filters and exports now include audit state, because a spreadsheet without handling status is just procrastination with columns."
         actions={
           <DashboardActions>
             <DashboardActionButton icon={RefreshCw} onClick={() => void loadWorkbench()} disabled={isLoading}>
@@ -556,7 +587,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
             />
           </div>
 
-          <div className="grid gap-3 rounded-xl border border-border bg-muted/30 p-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-end">
+          <div className="grid gap-3 rounded-xl border border-border bg-muted/30 p-4 md:grid-cols-[minmax(0,1fr)_220px_220px] md:items-end">
             <div>
               <p className="text-sm font-semibold text-foreground">Synced sales filter scope</p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -565,9 +596,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
                   : filterContext.label}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">{formatFilterSummary(filterContext)}</p>
-              {actionMessage && (
-                <p className="mt-2 text-xs font-medium text-blue-600">{actionMessage}</p>
-              )}
+              {actionMessage && <p className="mt-2 text-xs font-medium text-blue-600">{actionMessage}</p>}
             </div>
 
             <label className="space-y-1 text-sm font-medium text-foreground">
@@ -578,6 +607,21 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               >
                 {ISSUE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1 text-sm font-medium text-foreground">
+              Review Filter
+              <select
+                value={reviewFilter}
+                onChange={(event) => setReviewFilter(event.target.value as SalesPaymentIntegrityReviewFilter)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {REVIEW_FILTER_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -600,7 +644,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
 
           {!isLoading && workbench && workbench.rows.length === 0 && (
             <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-              No payment integrity issues found for this filter. A rare moment where silence is useful.
+              No payment integrity issues found for this issue/review filter. A rare moment where silence is useful.
             </div>
           )}
 
@@ -609,7 +653,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
               columns={columns}
               data={workbench.rows}
               getRowKey={(row) => `${row.issueType}-${row.orderId}`}
-              minWidth={1560}
+              minWidth={1640}
               pagination={{ pageSize: 8 }}
             />
           )}
