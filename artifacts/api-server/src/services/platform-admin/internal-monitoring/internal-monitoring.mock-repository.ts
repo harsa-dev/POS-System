@@ -14,7 +14,7 @@ export function getInternalMonitoringCards(): InternalMonitoringControlRoomCardD
       id: "runtime-source",
       label: "Runtime Source",
       value: "Read-only API",
-      note: "Server-side mock repository, mutation disabled.",
+      note: "Server-side monitoring repository, mutation disabled.",
       tone: "green",
     },
     {
@@ -27,15 +27,15 @@ export function getInternalMonitoringCards(): InternalMonitoringControlRoomCardD
     {
       id: "ready-contracts",
       label: "Ready Contracts",
-      value: "5",
-      note: "Health, routes, contracts, integrity, and mutation-readiness endpoints are scaffolded.",
+      value: "6",
+      note: "Health, routes, contracts, integrity, mutation-readiness, and probe-history endpoints are scaffolded.",
       tone: "blue",
     },
     {
       id: "schema-state",
       label: "Schema State",
-      value: "Hold",
-      note: "No Prisma schema promotion in this phase.",
+      value: "Probe history",
+      note: "internal_system_probes migration SQL exists; scheduled writes remain blocked.",
       tone: "amber",
     },
   ];
@@ -60,6 +60,14 @@ export function getInternalMonitoringSignals(): InternalMonitoringControlRoomSig
       nextAction: "Replace fallback badge with API badge during manual smoke.",
     },
     {
+      id: "probe-history",
+      area: "Persistence",
+      signal: "Probe history endpoint reads internal_system_probes and tolerates schema-missing safely.",
+      source: "internal-system-probe-history.ts",
+      state: "Watch",
+      nextAction: "Apply migration and verify read-only history before planning scheduled writes.",
+    },
+    {
       id: "mutation-readiness",
       area: "Safety",
       signal: "Future mutations are represented as dry-run/readiness contracts only.",
@@ -74,14 +82,6 @@ export function getInternalMonitoringSignals(): InternalMonitoringControlRoomSig
       source: "platform-admin-internal-monitoring-check.mjs",
       state: "Blocked",
       nextAction: "Do not add POST/PATCH/DELETE internal routes in this phase.",
-    },
-    {
-      id: "schema-hold",
-      area: "Database",
-      signal: "Internal monitoring persistence is not required for the first backend scaffold.",
-      source: "platform-admin-internal-monitoring-dashboard-plan.md",
-      state: "Watch",
-      nextAction: "Collect proof before promoting InternalSystemProbe schema.",
     },
   ];
 }
@@ -133,6 +133,15 @@ export function getInternalMonitoringApiImplementationSteps(): InternalMonitorin
       implementationRule: "Return future mutation readiness metadata only. No mutation execution.",
       testPlan: "Static guard checks GET-only endpoint and blocks internal mutation wiring.",
     },
+    {
+      id: "probe-history",
+      phase: "IM-20",
+      endpoint: "GET /api/internal/probes/history",
+      mockSource: "internal-system-probe-history.ts",
+      contractStatus: "Ready",
+      implementationRule: "Return persisted probe history only. No scheduled writes and no frontend mutation.",
+      testPlan: "Contract parity checks endpoint, DTOs, migration SQL, and history panel.",
+    },
   ];
 }
 
@@ -141,9 +150,9 @@ export function getInternalMonitoringSchemaDecisionRecords(): InternalMonitoring
     {
       id: "internal-system-probe",
       candidate: "InternalSystemProbe",
-      decision: "Hold",
-      reason: "Current dashboard can run from read-only mock-backed service.",
-      requiredProof: "Need historical trend and retention requirement before Prisma model promotion.",
+      decision: "Prepare",
+      reason: "internal_system_probes migration SQL and read-only history endpoint exist, but scheduled writes are still blocked.",
+      requiredProof: "Apply migration, verify history endpoint, then plan service-only scheduled writes separately.",
     },
     {
       id: "internal-alert",
@@ -156,7 +165,7 @@ export function getInternalMonitoringSchemaDecisionRecords(): InternalMonitoring
       id: "route-snapshot",
       candidate: "InternalRouteSnapshot",
       decision: "Promote Later",
-      reason: "Route inventory can be static in the first backend scaffold.",
+      reason: "Route inventory can stay static until route drift history is needed.",
       requiredProof: "Need route drift history before persistence.",
     },
   ];
@@ -165,20 +174,20 @@ export function getInternalMonitoringSchemaDecisionRecords(): InternalMonitoring
 export function getInternalMonitoringDevActionItems(): InternalMonitoringDevActionItemDto[] {
   return [
     {
-      id: "pa-im-3",
+      id: "pa-im-20-verify-migration",
       priority: "P0",
-      title: "Mount GET-only internal monitoring backend route",
-      owner: "Platform Admin",
-      status: "Doing",
-      doneWhen: "Frontend source badge can show Read-only API instead of Fallback Mock.",
-    },
-    {
-      id: "pa-im-4",
-      priority: "P1",
-      title: "Add frontend sections for route inventory and contract readiness API payloads",
+      title: "Apply probe history migration in local database",
       owner: "Platform Admin",
       status: "Todo",
-      doneWhen: "Dashboard sections consume backend DTOs with mock fallback.",
+      doneWhen: "GET /api/internal/probes/history returns ready or intentionally empty records.",
+    },
+    {
+      id: "pa-im-20-history-smoke",
+      priority: "P1",
+      title: "Smoke InternalSystemProbe History panel",
+      owner: "Platform Admin",
+      status: "Todo",
+      doneWhen: "Dashboard renders persistence status, retention, record count, and latest rows without write controls.",
     },
     {
       id: "pa-im-10",
@@ -238,11 +247,18 @@ export function getInternalMonitoringDataIntegrityChecks(): InternalMonitoringDa
       detail: "Only GET endpoints are scaffolded under /api/internal.",
     },
     {
-      id: "no-prisma-promotion",
-      check: "No Prisma schema promotion",
+      id: "probe-history-migration",
+      check: "Probe history migration exists",
+      status: "watch",
+      severity: "warning",
+      detail: "internal_system_probes migration SQL exists; apply it before expecting persisted records.",
+    },
+    {
+      id: "probe-history-endpoint",
+      check: "Probe history endpoint is read-only",
       status: "pass",
       severity: "info",
-      detail: "Internal monitoring repository is mock-backed and does not add persistence models.",
+      detail: "GET /api/internal/probes/history reads history and handles schema-missing safely.",
     },
     {
       id: "mutation-readiness-design-only",
