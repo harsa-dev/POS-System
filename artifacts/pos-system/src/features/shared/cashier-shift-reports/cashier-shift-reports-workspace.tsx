@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CalendarClock, ShieldCheck } from "lucide-react";
 
 import {
@@ -35,7 +35,7 @@ export function CashierShiftReportsWorkspace() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function loadCapabilities() {
+  const loadCapabilities = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -58,11 +58,11 @@ export function CashierShiftReportsWorkspace() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void loadCapabilities();
-  }, []);
+  }, [loadCapabilities]);
 
   const guardMessage = getGuardMessage(capabilities);
   const canOpenDashboard = Boolean(
