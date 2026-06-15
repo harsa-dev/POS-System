@@ -149,6 +149,21 @@ export type InventoryCapabilitiesDto = {
   policy: InventoryModePolicyDto;
 };
 
+export type InventoryManagementCapabilitiesDto = {
+  businessId: string;
+  businessMode: string;
+  canView: boolean;
+  canCreateItem: boolean;
+  canUpdateItem: boolean;
+  canDeleteItem: boolean;
+  canMoveStock: boolean;
+  canImport: boolean;
+  canExport: boolean;
+  canRepairCostSnapshots: boolean;
+  isPlannedMode: boolean;
+  plannedReason?: string | null;
+};
+
 export type InventoryItemPayload = {
   name: string;
   sku?: string | null;
@@ -188,6 +203,12 @@ function buildStockMovementQuery(params?: StockMovementQuery) {
 }
 
 export const inventoryApi = {
+  getInventoryManagementCapabilities() {
+    return apiClient.get<ApiDataEnvelope<InventoryManagementCapabilitiesDto>>(
+      "/api/inventory-management-capabilities",
+    );
+  },
+
   getInventoryCapabilities() {
     return apiClient.get<ApiDataEnvelope<InventoryCapabilitiesDto>>("/api/inventory-capabilities");
   },
