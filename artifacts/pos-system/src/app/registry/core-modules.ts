@@ -56,7 +56,7 @@ export const coreModules: readonly V3ModuleMetadata[] = [
         routePath: ROUTES.INTERNAL_MONITORING,
         group: "Core Systems",
         supportedModes: allModes,
-        requiredPermissions: ["settings.manage"],
+        requiredPermissions: ["platform-admin.internal-monitoring.read"],
         featureFlags: [],
         order: 8,
       },
@@ -218,4 +218,4 @@ export const coreModules: readonly V3ModuleMetadata[] = [
     featureFlags: ["audit-trail"],
     dependencies: ["auth", "permissions"],
   },
-] satisfies readonly V3ModuleMetadata[];
+] as const;
