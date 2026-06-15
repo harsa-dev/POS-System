@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CalendarClock, History, RefreshCw } from "lucide-react";
 
 import {
@@ -44,7 +44,7 @@ export function InvoiceFollowUpHistoryTimeline({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function loadHistory() {
+  const loadHistory = useCallback(async () => {
     if (!invoiceId) {
       setRecords([]);
       return;
@@ -68,11 +68,11 @@ export function InvoiceFollowUpHistoryTimeline({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [invoiceId]);
 
   useEffect(() => {
     void loadHistory();
-  }, [invoiceId, reloadSignal]);
+  }, [loadHistory, reloadSignal]);
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-4">
