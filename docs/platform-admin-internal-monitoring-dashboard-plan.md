@@ -28,7 +28,7 @@ artifacts/pos-system/src/features/shared/platform-monitoring/internal-production
 ROUTES.INTERNAL_MONITORING = /dashboard/internal-monitoring
 ```
 
-The route is mounted in `artifacts/pos-system/src/App.tsx` and must use a dedicated Platform Admin guard.
+The route is mounted in `artifacts/pos-system/src/App.tsx` and uses a dedicated Platform Admin guard.
 
 ## Advanced dashboard sections
 
@@ -84,13 +84,13 @@ The dashboard uses a `mock/api/fallback` source model:
 
 Internal Monitoring must not rely on business mode access.
 
-Backend policy:
+Temporary backend policy:
 
 ```txt
 OWNER and ADMIN may inspect Internal Monitoring read-only payloads.
 ```
 
-Frontend policy:
+Temporary frontend policy:
 
 ```txt
 OWNER and ADMIN may view Internal Monitoring.
@@ -103,7 +103,37 @@ Capability:
 platform-admin.internal-monitoring.read
 ```
 
-This capability now controls the Internal Monitoring route guard and sidebar entry. `settings.manage` must not control Internal Monitoring visibility anymore.
+This capability controls frontend route access, sidebar visibility, and backend read access. `settings.manage` must not control Internal Monitoring visibility.
+
+## Policy parity smoke
+
+Policy parity is checked by:
+
+```bash
+pnpm platform-admin:policy-parity
+```
+
+The root command also runs parity checks:
+
+```bash
+pnpm platform-admin:check
+```
+
+The smoke compares:
+
+```txt
+frontend platform admin allowed roles
+backend internal monitoring allowed roles
+sidebar required permission
+App route guard capability
+```
+
+Expected allowlist for this phase:
+
+```txt
+OWNER
+ADMIN
+```
 
 ## Sensitive implementation rules
 
@@ -206,6 +236,28 @@ Implemented:
 
 ### IM-7 - Policy parity smoke and hardening
 
+Status: Done.
+
+Implemented:
+
+```txt
+- standalone policy parity smoke script
+- root command pnpm platform-admin:policy-parity
+- root command pnpm platform-admin:check runs parity smoke
+- parity compares frontend policy, backend policy, sidebar permission, and App route capability
+- expected allowlist remains OWNER/ADMIN
+```
+
+### IM-8 - Internal Monitoring UX hardening
+
 Next.
 
-Add a small policy parity check that compares frontend policy, sidebar permission compatibility, and backend internal monitoring policy so OWNER/ADMIN access stays aligned across route guard, sidebar, and API.
+Improve dashboard UI states for restricted/read-only/fallback data:
+
+```txt
+- clearer read-only banner
+- policy badge in dashboard header
+- backend source summary
+- empty/degraded state copy
+- manual smoke checklist for OWNER/ADMIN vs denied roles
+```
