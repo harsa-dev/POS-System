@@ -144,6 +144,31 @@ InternalMonitoringApiEnvelopeDto<T>
 
 Feature data sources must unwrap that envelope through an explicit success/data check before using section data.
 
+## Runtime status contract
+
+The Control Room must expose a clear runtime status strip, not only a raw source badge.
+
+Required runtime status labels:
+
+```txt
+Operational - API synced
+Degraded - fallback active
+Mock - local preview
+Refreshing
+```
+
+Required runtime status fields:
+
+```txt
+Runtime Mode
+Freshness
+Section Coverage
+Guardrail
+Stale source warning when generatedAt is invalid or older than the freshness threshold
+```
+
+The runtime status panel must remain read-only and must not expose any action other than source refresh.
+
 ## Contract parity snapshot
 
 Internal Monitoring has a lightweight machine-readable contract snapshot:
@@ -226,7 +251,7 @@ artifacts/pos-system/src/components/core/platform-admin/platform-admin-route.tsx
 
 Status: Done.
 
-Done when:
+Implemented:
 
 ```txt
 - this plan exists
@@ -434,6 +459,23 @@ Implemented:
 
 ### IM-15 - Internal Monitoring runtime status polish
 
+Status: Done.
+
+Implemented:
+
+```txt
+- Runtime Status panel
+- runtime status labels for API synced, fallback degraded, mock preview, and refreshing
+- Runtime Mode card
+- Freshness card with stale source warning
+- Section Coverage card
+- read-only Guardrail card
+- quick nav includes Runtime Status anchor
+- static guard checks runtime status polish
+```
+
+### IM-16 - Internal Monitoring browser smoke runtime assertions
+
 Next.
 
-Use response envelope meta in the dashboard source health panel when backend API is available.
+Extend browser smoke to assert Runtime Status, Runtime Mode, Freshness, Section Coverage, and read-only Guardrail visibility.
