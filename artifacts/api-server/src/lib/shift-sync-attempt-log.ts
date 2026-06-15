@@ -155,3 +155,22 @@ export async function listLatestShiftSyncAttempts(params: {
 
   return new Map(rows.map((row) => [row.shiftId, row]));
 }
+
+export async function listShiftSyncAttemptHistory(params: {
+  businessId: string;
+  shiftId: string;
+  limit?: number;
+}) {
+  await ensureShiftSyncAttemptTable();
+
+  const limit = Math.min(Math.max(params.limit ?? 50, 1), 500);
+
+  return prisma.$queryRaw<ShiftSyncAttemptLogRecord[]>`
+    SELECT *
+    FROM "ShiftCashflowSyncAttempt"
+    WHERE "businessId" = ${params.businessId}
+      AND "shiftId" = ${params.shiftId}
+    ORDER BY "attemptNumber" DESC
+    LIMIT ${limit}
+  `;
+}
