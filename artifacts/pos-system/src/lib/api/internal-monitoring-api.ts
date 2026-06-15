@@ -7,6 +7,7 @@ import type {
   InternalMonitoringDataIntegrityCheckDto,
   InternalMonitoringMutationReadinessContractDto,
   InternalMonitoringRouteInventoryItemDto,
+  InternalSystemProbeHistoryDto,
 } from "./internal-monitoring.dto";
 
 export type {
@@ -24,9 +25,14 @@ export type {
   InternalMonitoringMutationReadinessContractDto,
   InternalMonitoringMutationReadinessStatus,
   InternalMonitoringRouteInventoryItemDto,
+  InternalMonitoringRuntimeProbeDto,
   InternalMonitoringSchemaDecisionRecordDto,
   InternalMonitoringSource,
   InternalMonitoringTone,
+  InternalSystemProbeHistoryDto,
+  InternalSystemProbeHistoryItemDto,
+  InternalSystemProbeHistorySummaryDto,
+  InternalSystemProbeStatus,
 } from "./internal-monitoring.dto";
 
 export const internalMonitoringApi = {
@@ -57,6 +63,29 @@ export const internalMonitoringApi = {
   getMutationReadinessContracts() {
     return apiClient.get<InternalMonitoringApiEnvelopeDto<InternalMonitoringMutationReadinessContractDto[]>>(
       "/api/internal/mutation-readiness/contracts",
+    );
+  },
+
+  getProbeHistory(params: {
+    probeId?: string;
+    status?: "pass" | "watch" | "fail";
+    area?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+  } = {}) {
+    const searchParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && `${value}`.length > 0) {
+        searchParams.set(key, `${value}`);
+      }
+    });
+
+    const query = searchParams.toString();
+
+    return apiClient.get<InternalMonitoringApiEnvelopeDto<InternalSystemProbeHistoryDto>>(
+      `/api/internal/probes/history${query ? `?${query}` : ""}`,
     );
   },
 };
