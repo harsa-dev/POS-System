@@ -41,6 +41,11 @@ function parseInvoiceStatus(value: unknown) {
   throw new Error("Invalid invoice status filter.");
 }
 
+function parseBooleanFlag(value: unknown) {
+  const text = getText(value).toLowerCase();
+  return text === "true" || text === "1" || text === "yes";
+}
+
 function parseDateBoundary(value: unknown, endOfDay = false) {
   const text = getText(value);
   if (!text) return null;
@@ -54,13 +59,24 @@ function buildInvoiceHistoryQuery(query: Record<string, unknown>, businessId: st
   const page = parsePositiveInteger(query.page, 1, 10_000);
   const limit = parsePositiveInteger(query.limit, DEFAULT_LIMIT, MAX_LIMIT);
   const status = parseInvoiceStatus(query.status);
+  const overdue = parseBooleanFlag(query.overdue);
   const search = getText(query.search ?? query.q);
   const from = parseDateBoundary(query.from);
   const to = parseDateBoundary(query.to, true);
 
   const where: Prisma.InvoiceWhereInput = { businessId };
 
-  if (status) where.status = status;
+  if (overdue) {
+    if (status === InvoiceStatus.PAID || status === InvoiceStatus.CANCELLED) {
+      throw new Error("Invalid invoice status filter for overdue invoices.");
+    }
+
+    where.status = status ?? { in: [InvoiceStatus.DRAFT, InvoiceStatus.SENT] };
+    where.dueDate = { not: null, lt: new Date() };
+  } else if (status) {
+    where.status = status;
+  }
+
   if (from || to) {
     where.invoiceDate = {
       ...(from ? { gte: from } : {}),
