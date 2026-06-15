@@ -119,6 +119,61 @@ export type CashierShiftReportCsvDownload = {
   exportedAt: string | null;
 };
 
+export type CashierShiftSyncState =
+  | "SYNCED"
+  | "READY_TO_SYNC"
+  | "NEEDS_REVIEW"
+  | "BLOCKED_OPEN";
+
+export type CashierShiftReconciliationRowDto = {
+  shiftId: string;
+  cashierName: string;
+  cashierEmail: string | null;
+  status: ApiShiftStatus;
+  openedAt: string;
+  closedAt: string | null;
+  totalSales: number;
+  cashSales: number;
+  transactionCount: number;
+  cashTransactionCount: number;
+  expectedCash: number;
+  closingCash: number | null;
+  cashDifference: number;
+  cashStatus: string;
+  cashflowSynced: boolean;
+  syncState: CashierShiftSyncState;
+  recommendedAction: string;
+};
+
+export type CashierShiftReconciliationDto = {
+  generatedAt: string;
+  threshold: {
+    cashVarianceReview: number;
+  };
+  filters: {
+    from: string | null;
+    to: string | null;
+    limit: number;
+  };
+  summary: {
+    totalShifts: number;
+    syncedCount: number;
+    readyToSyncCount: number;
+    needsReviewCount: number;
+    blockedOpenCount: number;
+    unsyncedClosedCount: number;
+    totalCashVariance: number;
+    absoluteCashVariance: number;
+  };
+  rows: CashierShiftReconciliationRowDto[];
+};
+
+export type CashierShiftReconciliationQuery = {
+  from?: string | null;
+  to?: string | null;
+  limit?: number;
+};
+
 function buildCashierShiftReportSearchParams(query?: CashierShiftReportQuery) {
   const params = new URLSearchParams();
 
@@ -130,6 +185,18 @@ function buildCashierShiftReportSearchParams(query?: CashierShiftReportQuery) {
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
   if (query.syncStatus) params.set("syncStatus", query.syncStatus);
+  if (query.limit) params.set("limit", String(query.limit));
+
+  return params;
+}
+
+function buildCashierShiftReconciliationSearchParams(query?: CashierShiftReconciliationQuery) {
+  const params = new URLSearchParams();
+
+  if (!query) return params;
+
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
   if (query.limit) params.set("limit", String(query.limit));
 
   return params;
@@ -157,6 +224,14 @@ export const shiftsApi = {
     const suffix = params.toString() ? `?${params.toString()}` : "";
     return apiClient.get<ApiDataEnvelope<CashierShiftReportDto>>(
       `/api/cashier-shift-reports${suffix}`,
+    );
+  },
+
+  getReconciliation(query?: CashierShiftReconciliationQuery) {
+    const params = buildCashierShiftReconciliationSearchParams(query);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return apiClient.get<ApiDataEnvelope<CashierShiftReconciliationDto>>(
+      `/api/cashier-shift-reports/reconciliation${suffix}`,
     );
   },
 
