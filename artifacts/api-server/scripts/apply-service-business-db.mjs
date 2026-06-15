@@ -10,15 +10,15 @@ const isWindows = process.platform === "win32";
 
 const steps = [
   {
-    label: "Check Service Business base schema prerequisites",
+    label: "Check Service base schema prerequisites",
     file: "prisma/sql/service-business-baseline-guard.sql",
   },
   {
-    label: "Apply Service Business core tables, enums, and indexes",
-    file: "prisma/migrations/202606140007_add_service_business_core_idempotent/migration.sql",
+    label: "Apply Service core tables, enums, and indexes",
+    file: "prisma/sql/service-business-core.sql",
   },
   {
-    label: "Verify Service Business scoped schema",
+    label: "Verify Service scoped schema",
     file: "prisma/sql/service-business-schema-verify.sql",
   },
 ];
@@ -56,6 +56,6 @@ function runStep(step, index) {
   }
 }
 
-console.log("Service Business scoped database setup only. This intentionally avoids prisma migrate deploy.");
+console.log("Service scoped database setup only. This intentionally avoids prisma migrate deploy.");
 steps.forEach(runStep);
-console.log("\n[service:db:apply] Service Business scoped database setup passed.");
+console.log("\n[service:db:apply] Service scoped database setup passed.");
