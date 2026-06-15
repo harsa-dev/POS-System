@@ -59,7 +59,7 @@ function parseDate(value: unknown, field: string) {
   if (Number.isNaN(date.getTime())) {
     throw new AppError({
       statusCode: 400,
-      code: errorCodes.validation,
+      code: errorCodes.validationError,
       message: `${field} must be a valid date.`,
       details: { field, value },
     });
