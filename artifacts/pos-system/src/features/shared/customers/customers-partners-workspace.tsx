@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { CustomersPartnersDashboard } from "./customers-partners-dashboard";
+import { CustomersPartnersDetailPanel } from "./customers-partners-detail-panel";
 import { CustomersPartnersImportPanel } from "./customers-partners-import-panel";
 import { CustomersPartnersSalesSyncPanel } from "./customers-partners-sales-sync-panel";
 import { CustomersPartnersWorkflowShortcuts } from "./customers-partners-workflow-shortcuts";
@@ -26,6 +27,10 @@ export function CustomersPartnersWorkspace() {
           <CustomersPartnersImportPanel onImported={reloadDashboard} />
         </section>
       </div>
+
+      <section id="customers-detail" className="scroll-mt-24">
+        <CustomersPartnersDetailPanel reloadSignal={reloadKey} />
+      </section>
 
       <section id="customers-directory" className="scroll-mt-24">
         <CustomersPartnersDashboard key={reloadKey} />
