@@ -6,6 +6,7 @@ import type {
   InternalMonitoringDataIntegrityCheckDto,
   InternalMonitoringMutationReadinessContractDto,
   InternalMonitoringRouteInventoryItemDto,
+  InternalMonitoringRuntimeProbeDto,
   InternalMonitoringSource,
 } from "@/lib/api/internal-monitoring.dto";
 
@@ -27,6 +28,27 @@ export type InternalMonitoringDataSourceResult = InternalMonitoringControlRoomDt
   mutationReadinessContracts: InternalMonitoringMutationReadinessContractDto[];
   sectionFallbacks: string[];
 };
+
+const mockRuntimeProbes: InternalMonitoringRuntimeProbeDto[] = [
+  {
+    id: "api-server-runtime",
+    label: "API server runtime",
+    status: "watch",
+    latencyMs: null,
+    checkedAt: new Date().toISOString(),
+    source: "mock fallback",
+    detail: "Runtime probe collector is unavailable in mock fallback mode.",
+  },
+  {
+    id: "database-connectivity",
+    label: "Database connectivity",
+    status: "watch",
+    latencyMs: null,
+    checkedAt: new Date().toISOString(),
+    source: "mock fallback",
+    detail: "Database ping is only real when /api/internal/health/summary responds from the backend.",
+  },
+];
 
 const mockRouteInventory: InternalMonitoringRouteInventoryItemDto[] = [
   {
@@ -62,6 +84,13 @@ const mockDataIntegrityChecks: InternalMonitoringDataIntegrityCheckDto[] = [
     status: "pass",
     severity: "info",
     detail: "Only GET endpoints are scaffolded under /api/internal.",
+  },
+  {
+    id: "runtime-probe-fallback",
+    check: "Runtime probes require backend API",
+    status: "watch",
+    severity: "warning",
+    detail: "Fallback mode cannot verify database connectivity or API runtime latency.",
   },
   {
     id: "no-prisma-promotion",
@@ -169,8 +198,13 @@ export function getInternalMonitoringMockControlRoomData(
   return {
     source,
     generatedAt: new Date().toISOString(),
-    summary: getControlRoomSummary(),
+    summary: {
+      ...getControlRoomSummary(),
+      runtimeProbes: mockRuntimeProbes.length,
+      failingRuntimeProbes: mockRuntimeProbes.filter((probe) => probe.status === "fail").length,
+    },
     cards: controlRoomCards,
+    runtimeProbes: mockRuntimeProbes,
     signals: controlRoomSignals,
     apiImplementationSteps,
     schemaDecisionRecords,
