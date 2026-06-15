@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 
@@ -85,7 +84,7 @@ async function ensureSalesSyncSchema() {
     UPDATE "SharedCustomerProfile"
     SET "identityKey" =
       lower(regexp_replace(trim("name"), '\\s+', ' ', 'g')) || '|' ||
-      COALESCE(NULLIF(regexp_replace(COALESCE("phone", ''), '\\D', '', 'g'), ''), 'no-phone')
+      COALESCE(NULLIF(regexp_replace(COALESCE("phone", ''), '[^0-9]', '', 'g'), ''), 'no-phone')
     WHERE "identityKey" IS NULL
       AND "name" IS NOT NULL
   `);
@@ -96,7 +95,7 @@ async function getInvoiceCustomerAggregates(businessId: string, limit: number) {
     WITH paid_invoice_customers AS (
       SELECT
         lower(regexp_replace(trim("customerName"), '\\s+', ' ', 'g')) || '|' ||
-          COALESCE(NULLIF(regexp_replace(COALESCE("customerPhone", ''), '\\D', '', 'g'), ''), 'no-phone') AS "identityKey",
+          COALESCE(NULLIF(regexp_replace(COALESCE("customerPhone", ''), '[^0-9]', '', 'g'), ''), 'no-phone') AS "identityKey",
         trim("customerName") AS "name",
         NULLIF(trim(COALESCE("customerPhone", '')), '') AS "phone",
         NULLIF(trim(COALESCE("customerAddress", '')), '') AS "address",
