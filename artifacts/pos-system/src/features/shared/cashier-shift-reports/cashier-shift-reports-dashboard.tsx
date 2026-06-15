@@ -45,6 +45,7 @@ function buildReportQuery(filters: ShiftFilters): CashierShiftReportQuery {
     status: filters.status,
     cashier: filters.cashier,
     dateRange: filters.dateRange,
+    limit: 500,
   };
 }
 
@@ -108,28 +109,9 @@ function mapApiShiftToCashierShift(shift: ApiShiftDto, failedSyncIds: Set<string
   };
 }
 
-function isInDateRange(shift: CashierShift, dateRange: ShiftFilters["dateRange"]) {
-  if (dateRange === "Custom Range") return true;
-
-  const date = new Date(shift.date);
-  const now = new Date();
-
-  if (dateRange === "Today") {
-    return date.toDateString() === now.toDateString();
-  }
-
-  if (dateRange === "This Week") {
-    const start = new Date(now);
-    start.setDate(now.getDate() - now.getDay());
-    start.setHours(0, 0, 0, 0);
-    return date >= start;
-  }
-
-  return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-}
-
 export function CashierShiftReportsDashboard() {
   const [shifts, setShifts] = useState<CashierShift[]>([]);
+  const [knownCashiers, setKnownCashiers] = useState<string[]>([]);
   const [failedSyncIds, setFailedSyncIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<ShiftFilters>({
     status: "All",
@@ -145,51 +127,49 @@ export function CashierShiftReportsDashboard() {
   const [isExporting, setIsExporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  const reportQuery = useMemo(() => buildReportQuery(filters), [filters]);
+
   const loadShifts = useCallback(async () => {
     setIsFetching(true);
     setMessage(null);
 
     try {
-      const response = await shiftsApi.listShifts();
-      setShifts(response.data.map((shift) => mapApiShiftToCashierShift(shift, failedSyncIds)));
+      const response = await shiftsApi.listReports(reportQuery);
+      const mappedShifts = response.data.rows.map((shift) => mapApiShiftToCashierShift(shift, failedSyncIds));
+      setShifts(mappedShifts);
+      setKnownCashiers((current) =>
+        Array.from(new Set([...current, ...mappedShifts.map((shift) => shift.cashierName)])).sort(),
+      );
     } catch (error) {
-      setMessage(getApiErrorMessage(error, "Failed to load cashier shifts."));
+      setMessage(getApiErrorMessage(error, "Failed to load cashier shift reports."));
     } finally {
       setIsFetching(false);
     }
-  }, [failedSyncIds]);
+  }, [failedSyncIds, reportQuery]);
 
   useEffect(() => {
     void loadShifts();
   }, [loadShifts]);
 
+  const backendFilteredShifts = useMemo(() => {
+    if (filters.warehouse === "All") return shifts;
+    return shifts.filter((shift) => shift.warehouse === filters.warehouse);
+  }, [filters.warehouse, shifts]);
+
   const readyToSyncShifts = useMemo(
-    () => shifts.filter((shift) => shift.status === "Completed" && shift.syncStatus !== "Synced"),
-    [shifts],
+    () => backendFilteredShifts.filter((shift) => shift.status === "Completed" && shift.syncStatus !== "Synced"),
+    [backendFilteredShifts],
   );
 
   const cashierOptions = useMemo(
-    () => ["All", ...Array.from(new Set(shifts.map((shift) => shift.cashierName)))],
-    [shifts],
+    () => ["All", ...knownCashiers],
+    [knownCashiers],
   );
 
   const warehouseOptions = useMemo(
     () => ["All", ...Array.from(new Set(shifts.map((shift) => shift.warehouse)))],
     [shifts],
   );
-
-  const filteredShifts = useMemo(() => {
-    return shifts.filter((shift) => {
-      const statusMatches = filters.status === "All" || shift.status === filters.status;
-      const cashierMatches =
-        filters.cashier === "All" || shift.cashierName === filters.cashier;
-      const warehouseMatches =
-        filters.warehouse === "All" || shift.warehouse === filters.warehouse;
-      const dateMatches = isInDateRange(shift, filters.dateRange);
-
-      return statusMatches && cashierMatches && warehouseMatches && dateMatches;
-    });
-  }, [filters, shifts]);
 
   async function handleSyncToCashflow(ids?: string[]) {
     const targetIds = ids?.length ? ids : readyToSyncShifts.map((shift) => shift.id);
@@ -232,7 +212,7 @@ export function CashierShiftReportsDashboard() {
     setMessage(null);
 
     try {
-      const download = await shiftsApi.downloadReportsCsv(buildReportQuery(filters));
+      const download = await shiftsApi.downloadReportsCsv(reportQuery);
       downloadBlob(download.blob, download.filename);
       setMessage(`Exported ${download.rowCount ?? "all"} cashier shift report row(s).`);
     } catch (error) {
@@ -245,7 +225,7 @@ export function CashierShiftReportsDashboard() {
   return (
     <DashboardShell
       title="Cashier Shift Reports"
-      description="Track cashier shifts, shift performance, cash discrepancies, and sync completed shifts into Cashflow."
+      description="Track cashier shifts, shift performance, cash discrepancies, and sync completed shifts into Cashflow. Table, KPI, and export data are loaded from the backend report endpoint."
     >
       <DashboardPanel>
         <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -255,6 +235,9 @@ export function CashierShiftReportsDashboard() {
             </span>
             <span className="rounded-full bg-neutral-100 px-3 py-1">
               {filters.warehouse === "All" ? "All Business Scopes" : filters.warehouse}
+            </span>
+            <span className="rounded-full bg-neutral-100 px-3 py-1">
+              {backendFilteredShifts.length} Backend Report Row(s)
             </span>
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
               {readyToSyncShifts.length} Shifts Ready To Sync
@@ -285,7 +268,7 @@ export function CashierShiftReportsDashboard() {
         </div>
       </DashboardPanel>
 
-      <ShiftKpis shifts={filteredShifts} />
+      <ShiftKpis shifts={backendFilteredShifts} />
 
       <DashboardPanel title="Filters">
         <div className="p-4">
@@ -333,7 +316,7 @@ export function CashierShiftReportsDashboard() {
       </DashboardPanel>
 
       <ShiftList
-        shifts={filteredShifts}
+        shifts={backendFilteredShifts}
         isEditing={isEditing}
         selectedIds={selectedIds}
         onEditChange={setIsEditing}
