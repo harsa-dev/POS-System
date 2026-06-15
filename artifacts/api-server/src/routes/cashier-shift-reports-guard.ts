@@ -63,7 +63,9 @@ async function requireCashierShiftReportAccess(
     }
 
     const isShiftSync = req.path.startsWith("/cashflow/sync/shifts/");
-    const isExport = req.path === "/cashier-shift-reports/export";
+    const isExport =
+      req.path === "/cashier-shift-reports/export" ||
+      req.path.includes("/sync-attempts/") && req.path.endsWith("/export");
 
     if (isShiftSync && !capabilities.canSyncToCashflow) {
       return errorResponse(res, {
@@ -122,6 +124,8 @@ router.get("/cashier-shift-reports", requireCashierShiftReportAccess);
 router.get("/cashier-shift-reports/export", requireCashierShiftReportAccess);
 router.get("/cashier-shift-reports/reconciliation", requireCashierShiftReportAccess);
 router.get("/cashier-shift-reports/sync-attempts", requireCashierShiftReportAccess);
+router.get("/cashier-shift-reports/sync-attempts/:shiftId", requireCashierShiftReportAccess);
+router.get("/cashier-shift-reports/sync-attempts/:shiftId/export", requireCashierShiftReportAccess);
 router.get("/shifts", requireCashierShiftReportAccess);
 router.post("/cashflow/sync/shifts/:shiftId", requireCashierShiftReportAccess);
 
