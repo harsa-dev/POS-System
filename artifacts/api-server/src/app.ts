@@ -8,6 +8,7 @@ import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import uploadRouter from "./routes/upload.js";
 import customersPartnersRouter from "./routes/customers-partners.js";
+import customersPartnersImportRouter from "./routes/customers-partners-import.js";
 import customersPartnersSalesSyncRouter from "./routes/customers-partners-sales-sync.js";
 
 const UPLOADS_DIR = path.resolve("data/uploads");
@@ -88,6 +89,7 @@ app.use("/api/media", express.static(UPLOADS_DIR));
 app.use("/api/upload", uploadRouter);
 app.use("/api/uploads/menu-image", uploadRouter);
 app.use("/api", customersPartnersRouter);
+app.use("/api", customersPartnersImportRouter);
 app.use("/api", customersPartnersSalesSyncRouter);
 app.use("/api", router);
 
