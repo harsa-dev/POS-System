@@ -18,6 +18,7 @@ import { FinancialReportsDashboard } from "./financial-reports-dashboard";
 import { FinancialReportsDrilldownPanel } from "./financial-reports-drilldown-panel";
 import { FinancialReportsPeriodSyncObserver } from "./financial-reports-period-sync-observer";
 import { FinancialReportsReconciliationDrilldownPanel } from "./financial-reports-reconciliation-drilldown-panel";
+import { FinancialReportsRepairAuditPanel } from "./financial-reports-repair-audit-panel";
 import { FinancialReportsRepairFeedbackPanel } from "./financial-reports-repair-feedback-panel";
 
 function getGuardMessage(capabilities: FinancialReportsCapabilitiesDto | null) {
@@ -79,6 +80,7 @@ export function FinancialReportsWorkspace() {
         <FinancialReportsPeriodSyncObserver />
         <FinancialReportsDrilldownPanel />
         <FinancialReportsRepairFeedbackPanel />
+        <FinancialReportsRepairAuditPanel />
         <FinancialReportsReconciliationDrilldownPanel />
         <FinancialReportsDashboard />
       </div>
