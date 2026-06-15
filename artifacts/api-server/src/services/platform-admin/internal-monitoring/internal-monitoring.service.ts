@@ -5,10 +5,13 @@ import type {
   InternalMonitoringDataIntegrityCheckDto,
   InternalMonitoringRouteInventoryItemDto,
   InternalMonitoringRuntimeProbeDto,
+  InternalSystemProbeHistoryDto,
+  InternalSystemProbeStatus,
 } from "./internal-monitoring.types.js";
 import {
   getInternalMonitoringMutationReadinessContracts,
 } from "./internal-monitoring-mutation-readiness.js";
+import { getInternalSystemProbeHistory } from "./internal-system-probe-history.js";
 import {
   getInternalMonitoringApiImplementationSteps,
   getInternalMonitoringCards,
@@ -103,4 +106,15 @@ export function getInternalMonitoringIntegrityChecks(): InternalMonitoringDataIn
 
 export function getInternalMonitoringMutationReadiness() {
   return getInternalMonitoringMutationReadinessContracts();
+}
+
+export function getInternalMonitoringProbeHistory(query: {
+  probeId?: string;
+  status?: InternalSystemProbeStatus;
+  area?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+} = {}): Promise<InternalSystemProbeHistoryDto> {
+  return getInternalSystemProbeHistory(query);
 }
