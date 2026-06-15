@@ -28,6 +28,7 @@ import type {
   InternalMonitoringRouteInventoryItemDto,
   InternalMonitoringSchemaDecisionRecordDto,
   InternalMonitoringSource,
+  InternalSystemProbeHistoryItemDto,
 } from "@/lib/api/internal-monitoring-api";
 
 import {
@@ -58,12 +59,17 @@ const toneMap: Record<string, DashboardTone> = {
   "platform-admin": "green",
   pass: "green",
   watch: "amber",
+  fail: "rose",
   critical: "rose",
   info: "blue",
   warning: "amber",
   api: "green",
   mock: "blue",
   fallback: "amber",
+  ready: "green",
+  "schema-missing": "amber",
+  "database-unavailable": "rose",
+  "not-configured": "amber",
   "Dry-run Only": "blue",
   Required: "amber",
   "Design Ready": "green",
@@ -79,6 +85,7 @@ const toneMap: Record<string, DashboardTone> = {
 const sectionLinks = [
   { id: "runtime-status", label: "Runtime Status" },
   { id: "runtime-signals", label: "Runtime Signals" },
+  { id: "probe-history", label: "Probe History" },
   { id: "route-inventory", label: "Route Inventory" },
   { id: "api-contracts", label: "API Contracts" },
   { id: "data-integrity", label: "Data Integrity" },
@@ -99,10 +106,13 @@ function sourceLabel(source: InternalMonitoringSource) {
 }
 
 function formatGeneratedAt(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Invalid timestamp";
+
   return new Intl.DateTimeFormat("id-ID", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(value));
+  }).format(date);
 }
 
 function getGeneratedAtAgeMinutes(value: string) {
@@ -122,7 +132,7 @@ function getRuntimeStatus(data: InternalMonitoringDataSourceResult, isLoading: b
         ? `Generated timestamp is ${generatedAtAgeMinutes} minutes old.`
         : null;
   const fallbackCount = data.sectionFallbacks.length;
-  const totalSections = 5;
+  const totalSections = 6;
   const apiCoverage = totalSections - fallbackCount;
   const sectionCoverageLabel = `${apiCoverage}/${totalSections} sections synced`;
   const runtimeStatusLabel = isLoading
@@ -224,7 +234,7 @@ function SourceHealthSummary({
           <p className="text-sm font-semibold text-muted-foreground">Source Health</p>
           <h3 className="mt-1 text-lg font-bold tracking-tight">{statusText}</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Generated {formatGeneratedAt(data.generatedAt)} · {data.routeInventory.length} routes · {data.contractReadiness.length} contracts · {data.dataIntegrityChecks.length} integrity checks · {data.mutationReadinessContracts.length} dry-run contracts.
+            Generated {formatGeneratedAt(data.generatedAt)} · {data.routeInventory.length} routes · {data.contractReadiness.length} contracts · {data.dataIntegrityChecks.length} integrity checks · {data.mutationReadinessContracts.length} dry-run contracts · {data.probeHistory.summary.total} persisted probe records.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs font-semibold">
@@ -331,6 +341,16 @@ const integrityColumns: DataTableColumn<InternalMonitoringDataIntegrityCheckDto>
   { key: "detail", header: "Detail", cell: (row) => <span className="text-sm text-muted-foreground">{row.detail}</span> },
 ];
 
+const probeHistoryColumns: DataTableColumn<InternalSystemProbeHistoryItemDto>[] = [
+  { key: "probeId", header: "Probe", cell: (row) => <code className="text-xs text-muted-foreground">{row.probeId}</code> },
+  { key: "label", header: "Label", cell: (row) => <span className="font-medium text-foreground">{row.label}</span> },
+  { key: "area", header: "Area", cell: (row) => row.area },
+  { key: "status", header: "Status", cell: (row) => <StatusPill tone={tone(row.status)}>{row.status}</StatusPill> },
+  { key: "latencyMs", header: "Latency", cell: (row) => row.latencyMs === null ? "-" : `${row.latencyMs}ms` },
+  { key: "observedAt", header: "Observed", cell: (row) => formatGeneratedAt(row.observedAt) },
+  { key: "message", header: "Message", cell: (row) => <span className="text-sm text-muted-foreground">{row.message}</span> },
+];
+
 const mutationReadinessColumns: DataTableColumn<InternalMonitoringMutationReadinessContractDto>[] = [
   { key: "action", header: "Action", cell: (row) => <span className="font-medium text-foreground">{row.action}</span> },
   { key: "proposedEndpoint", header: "Proposed Endpoint", cell: (row) => <code className="text-xs text-muted-foreground">{row.proposedEndpoint}</code> },
@@ -357,6 +377,44 @@ const actionColumns: DataTableColumn<InternalMonitoringDevActionItemDto>[] = [
   { key: "status", header: "Status", cell: (row) => <StatusPill tone={tone(row.status)}>{row.status}</StatusPill> },
   { key: "doneWhen", header: "Done When", cell: (row) => <span className="text-sm text-muted-foreground">{row.doneWhen}</span> },
 ];
+
+function ProbeHistoryPanel({ data }: { data: InternalMonitoringDataSourceResult }) {
+  const history = data.probeHistory;
+  return (
+    <DashboardPanel
+      title="InternalSystemProbe History"
+      description="Read-only persisted probe history from internal_system_probes. Kalau status schema-missing, migration belum dijalankan. Mengejutkan: tabel kosong tidak bisa menampilkan sejarah."
+      className="scroll-mt-24"
+    >
+      <div id="probe-history" className="sr-only">Probe History</div>
+      <div className="grid gap-3 border-b border-border p-4 md:grid-cols-4">
+        <article className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Persistence Status</p>
+          <div className="mt-3">
+            <StatusPill tone={tone(history.summary.persistenceStatus)}>{history.summary.persistenceStatus}</StatusPill>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">{history.summary.detail}</p>
+        </article>
+        <article className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Retention</p>
+          <p className="mt-3 text-lg font-bold text-foreground">{history.summary.retentionDays} days</p>
+          <p className="mt-2 text-sm text-muted-foreground">History endpoint only returns recent snapshots.</p>
+        </article>
+        <article className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Records</p>
+          <p className="mt-3 text-lg font-bold text-foreground">{history.summary.total}</p>
+          <p className="mt-2 text-sm text-muted-foreground">Current limit: {history.filters.limit}</p>
+        </article>
+        <article className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Status Mix</p>
+          <p className="mt-3 text-lg font-bold text-foreground">{history.summary.pass}/{history.summary.watch}/{history.summary.fail}</p>
+          <p className="mt-2 text-sm text-muted-foreground">pass / watch / fail</p>
+        </article>
+      </div>
+      <DataTable columns={probeHistoryColumns} data={history.items} getRowKey={(row) => row.id} minWidth={1500} pagination={false} />
+    </DashboardPanel>
+  );
+}
 
 export function InternalMonitoringControlRoom() {
   const [controlRoomData, setControlRoomData] = useState<InternalMonitoringDataSourceResult>(() =>
@@ -411,7 +469,7 @@ export function InternalMonitoringControlRoom() {
               Generated: {formatGeneratedAt(controlRoomData.generatedAt)}
             </span>
             <span className="rounded-full bg-muted px-3 py-1">
-              Endpoints: 5 GET-only internal monitoring APIs
+              Endpoints: 6 GET-only internal monitoring APIs
             </span>
             <span className="rounded-full bg-muted px-3 py-1">
               {fallbackSummary}
@@ -446,16 +504,13 @@ export function InternalMonitoringControlRoom() {
           <DataTable columns={signalColumns} data={controlRoomData.signals} getRowKey={(row) => row.id} minWidth={1180} pagination={false} />
         </DashboardPanel>
 
+        <ProbeHistoryPanel data={controlRoomData} />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
         <DashboardPanel title="Route Inventory" description="Route internal yang sudah terlihat dari endpoint read-only. Guard dedicated masih fase berikutnya." className="scroll-mt-24">
           <div id="route-inventory" className="sr-only">Route Inventory</div>
           <DataTable columns={routeInventoryColumns} data={controlRoomData.routeInventory} getRowKey={(row) => row.id} minWidth={1250} pagination={false} />
-        </DashboardPanel>
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <DashboardPanel title="API Implementation Blueprint" description="Blueprint teknis per endpoint: dari mock source, contract status, rule implementasi, sampai test plan." className="scroll-mt-24">
-          <div id="api-contracts" className="sr-only">API Contracts</div>
-          <DataTable columns={apiColumns} data={controlRoomData.contractReadiness} getRowKey={(row) => row.id} minWidth={1700} pagination={false} />
         </DashboardPanel>
 
         <DashboardPanel title="Data Integrity Checks" description="Read-only checks yang memastikan dashboard internal tidak diam-diam berubah jadi mutation surface." className="scroll-mt-24">
@@ -463,6 +518,11 @@ export function InternalMonitoringControlRoom() {
           <DataTable columns={integrityColumns} data={controlRoomData.dataIntegrityChecks} getRowKey={(row) => row.id} minWidth={1200} pagination={false} />
         </DashboardPanel>
       </div>
+
+      <DashboardPanel title="API Implementation Blueprint" description="Blueprint teknis per endpoint: dari mock source, contract status, rule implementasi, sampai test plan." className="scroll-mt-24">
+        <div id="api-contracts" className="sr-only">API Contracts</div>
+        <DataTable columns={apiColumns} data={controlRoomData.contractReadiness} getRowKey={(row) => row.id} minWidth={1700} pagination={false} />
+      </DashboardPanel>
 
       <DashboardPanel
         title="Mutation Readiness & Dry-run Contracts"
@@ -494,7 +554,7 @@ export function InternalMonitoringControlRoom() {
           {[
             [GitBranch, "Route wired", `P0 actions: ${summary.p0Actions}. Route harus render dulu.`],
             [ServerCog, "API read-only", `${summary.readyContracts} contracts ready. Semua endpoint harus GET.`],
-            [Database, "Schema locked", `${summary.blockedSignals} blocked signal. Schema baru tetap hold.`],
+            [Database, "Probe history planned", `${controlRoomData.probeHistory.summary.persistenceStatus} history persistence status.`],
             [ClipboardList, "Contracts synced", `${summary.totalSignals} signals wajib cocok dengan docs.`],
             [ShieldCheck, "Integrity checked", `${controlRoomData.dataIntegrityChecks.length} checks loaded from API/fallback.`],
             [Route, "Routes inventoried", `${controlRoomData.routeInventory.length} internal routes visible.`],
