@@ -13,6 +13,63 @@ export type FinancialReportsPeriodContext = {
   basis: FinancialReportBasis;
 };
 
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+export function getFinancialReportsPeriodOptions(now = new Date()) {
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const quarterStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const yearStart = new Date(now.getFullYear(), 0, 1);
+
+  return [
+    {
+      label: "This Month",
+      from: toDateInputValue(thisMonthStart),
+      to: toDateInputValue(now),
+    },
+    {
+      label: "Last Month",
+      from: toDateInputValue(lastMonthStart),
+      to: toDateInputValue(lastMonthEnd),
+    },
+    {
+      label: "Last 3 Months",
+      from: toDateInputValue(quarterStart),
+      to: toDateInputValue(now),
+    },
+    {
+      label: "Year To Date",
+      from: toDateInputValue(yearStart),
+      to: toDateInputValue(now),
+    },
+  ];
+}
+
+export function resolveFinancialReportsPeriodContext({
+  label,
+  basis,
+}: {
+  label?: string | null;
+  basis?: FinancialReportBasis | null;
+}): FinancialReportsPeriodContext {
+  const options = getFinancialReportsPeriodOptions();
+  const selected = options.find((option) => option.label === label) ?? options[0];
+
+  return {
+    label: selected.label,
+    from: selected.from,
+    to: selected.to,
+    basis: basis ?? "hybrid",
+  };
+}
+
 export function readFinancialReportsPeriodContext() {
   if (typeof window === "undefined") return null;
 
