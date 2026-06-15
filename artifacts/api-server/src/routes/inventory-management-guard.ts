@@ -140,6 +140,8 @@ router.patch("/inventory-items/:id", requireInventoryManagementAccess);
 router.delete("/inventory-items/:id", requireInventoryManagementAccess);
 router.get("/inventory", requireInventoryManagementAccess);
 router.post("/inventory", requireInventoryManagementAccess);
+router.get("/inventory-reports", requireInventoryManagementAccess);
+router.get("/inventory-reports/export", requireInventoryManagementAccess);
 router.get("/inventory-cost-snapshot-repairs", requireInventoryManagementAccess);
 router.post("/inventory-cost-snapshot-repairs/backfill", requireInventoryManagementAccess);
 
