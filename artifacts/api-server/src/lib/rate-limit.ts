@@ -64,20 +64,22 @@ export function enforceRateLimit({ key, limit, windowMs }: RateLimitConfig) {
     return;
   }
 
-  if (existing.count >= limit) {
-    const retryAfterSeconds = Math.max(1, Math.ceil((existing.resetAt - now) / 1000));
+  existing.count += 1;
 
-    throw new AppError({
-      statusCode: 429,
-      code: errorCodes.rateLimited,
-      message: "Too many requests. Please try again later.",
-      details: {
-        retryAfterSeconds,
-      },
-    });
+  if (existing.count <= limit) {
+    return;
   }
 
-  existing.count += 1;
+  const retryAfterSeconds = Math.max(1, Math.ceil((existing.resetAt - now) / 1000));
+
+  throw new AppError({
+    statusCode: 429,
+    code: errorCodes.rateLimited,
+    message: "Too many requests. Please try again later.",
+    details: {
+      retryAfterSeconds,
+    },
+  });
 }
 
 export function pruneRateLimitBuckets(now = Date.now()) {
