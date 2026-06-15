@@ -11,6 +11,11 @@ export type SalesPaymentIntegrityIssue =
 
 export type SalesPaymentIntegrityReviewStatus = "REVIEWED" | "IGNORED" | "RESOLVED";
 
+export type SalesPaymentIntegrityReviewFilter =
+  | "all"
+  | "unreviewed"
+  | SalesPaymentIntegrityReviewStatus;
+
 export type SalesPaymentIntegrityReviewDto = {
   id: string;
   businessId: string;
@@ -51,6 +56,10 @@ export type SalesPaymentIntegrityRowDto = {
   paymentProvider: string | null;
   paidAt: string | null;
   recommendedAction: string;
+  reviewStatus: SalesPaymentIntegrityReviewStatus | null;
+  reviewNote: string | null;
+  reviewedById: string | null;
+  reviewedAt: string | null;
 };
 
 export type SalesPaymentIntegrityBucketDto = {
@@ -72,6 +81,7 @@ export type SalesPaymentIntegrityDto = {
     to: string;
   };
   issue: SalesPaymentIntegrityIssue;
+  reviewStatus: SalesPaymentIntegrityReviewFilter;
   limit: number;
   summary: SalesPaymentIntegritySummaryDto;
   rows: SalesPaymentIntegrityRowDto[];
@@ -86,6 +96,7 @@ export type SalesPaymentIntegrityExportDto = {
   rows?: SalesPaymentIntegrityRowDto[];
   meta: {
     issue: SalesPaymentIntegrityIssue;
+    reviewStatus: SalesPaymentIntegrityReviewFilter;
     rowCount: number;
     period: {
       from: string;
@@ -96,6 +107,7 @@ export type SalesPaymentIntegrityExportDto = {
 
 export type SalesPaymentIntegrityQuery = SalesAnalyticsQuery & {
   issue?: SalesPaymentIntegrityIssue;
+  reviewStatus?: SalesPaymentIntegrityReviewFilter;
   limit?: number;
 };
 
@@ -104,6 +116,7 @@ function buildPaymentIntegrityQueryString(params?: SalesPaymentIntegrityQuery & 
   const searchParams = new URLSearchParams(query.startsWith("?") ? query.slice(1) : query);
 
   if (params?.issue) searchParams.set("issue", params.issue);
+  if (params?.reviewStatus) searchParams.set("reviewStatus", params.reviewStatus);
   if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
   if (params?.format) searchParams.set("format", params.format);
 
