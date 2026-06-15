@@ -23,6 +23,7 @@ const files = {
   backendService: "artifacts/api-server/src/services/platform-admin/admin-role-console/admin-role-console.service.ts",
   backendMock: "artifacts/api-server/src/services/platform-admin/admin-role-console/admin-role-console.mock-repository.ts",
   frontendApi: "artifacts/pos-system/src/lib/api/admin-role-console-api.ts",
+  browserSmoke: "scripts/platform-admin-admin-role-browser-smoke.mjs",
   packageJson: "package.json",
 };
 
@@ -75,7 +76,10 @@ const checks = [
   () => assertIncludes("plan", loaded.plan, "AR-2 - Frontend data source adapter and section fallback"),
   () => assertIncludes("plan", loaded.plan, "AR-3 - Backend read-only scaffold and API fallback integration"),
   () => assertIncludes("plan", loaded.plan, "AR-4 - UX hardening and read-only safety copy"),
+  () => assertIncludes("plan", loaded.plan, "AR-5 - Browser smoke for platform admin access"),
   () => assertIncludes("plan", loaded.plan, "Status: Done"),
+  () => assertIncludes("plan", loaded.plan, "platform-admin-admin-role-browser-smoke.mjs"),
+  () => assertIncludes("plan", loaded.plan, "pnpm platform-admin:admin-role-browser-smoke"),
   () => assertIncludes("plan", loaded.plan, "Read-only Operation Notice"),
   () => assertIncludes("plan", loaded.plan, "Fallback State"),
   () => assertIncludes("plan", loaded.plan, "empty-state copy"),
@@ -84,7 +88,7 @@ const checks = [
   () => assertIncludes("plan", loaded.plan, "admin-role-console-api.ts"),
   () => assertIncludes("plan", loaded.plan, "no database access"),
   () => assertIncludes("plan", loaded.plan, "no Prisma schema changes"),
-  () => assertIncludes("plan", loaded.plan, "AR-5 - Browser smoke for platform admin access"),
+  () => assertIncludes("plan", loaded.plan, "AR-6 - Admin Role Console final QA checklist"),
   () => assertNotIncludes("plan", loaded.plan, "backend contract plan"),
   () => assertNotIncludes("plan", loaded.plan, "GET-only contract design"),
   () => assertIncludes("policy", loaded.policy, capability),
@@ -134,7 +138,13 @@ const checks = [
   () => assertIncludes("backend mock", loaded.backendMock, apiPath),
   () => assertIncludes("frontend api", loaded.frontendApi, "adminRoleConsoleApi"),
   () => assertIncludes("frontend api", loaded.frontendApi, apiPath),
+  () => assertIncludes("browser smoke", loaded.browserSmoke, routePath),
+  () => assertIncludes("browser smoke", loaded.browserSmoke, "Read-only Operation Notice"),
+  () => assertIncludes("browser smoke", loaded.browserSmoke, "Platform Admin Restricted"),
+  () => assertIncludes("browser smoke", loaded.browserSmoke, capability),
+  () => assertIncludes("browser smoke", loaded.browserSmoke, "no management mutation controls are visible"),
   () => assertIncludes("package", loaded.packageJson, "platform-admin:admin-role-check"),
+  () => assertIncludes("package", loaded.packageJson, "platform-admin:admin-role-browser-smoke"),
 ];
 
 try {
