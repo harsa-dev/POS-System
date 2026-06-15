@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 
 import { prisma } from "../lib/prisma.js";
 import {
@@ -14,6 +14,12 @@ import {
 import { createBusinessWithRestaurantProfile } from "../lib/business-context/create-business-with-profile.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
+import {
+  authRateLimitConfig,
+  enforceRateLimit,
+  getRequestIp,
+  hashRateLimitIdentifier,
+} from "../lib/rate-limit.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import { errorResponse } from "../lib/responses/error-response.js";
 
@@ -31,6 +37,16 @@ function getSessionCookieOptions() {
   } as const;
 }
 
+function getRateLimitedIpKey(req: Request, action: "login" | "register") {
+  const ipHash = hashRateLimitIdentifier(getRequestIp(req));
+  return `rate:auth:${action}:ip:${ipHash}`;
+}
+
+function getRateLimitedEmailKey(action: "login", email: string) {
+  const emailHash = hashRateLimitIdentifier(email);
+  return `rate:auth:${action}:email:${emailHash}`;
+}
+
 function invalidCredentialsResponse(res: Parameters<typeof errorResponse>[0]) {
   return errorResponse(res, {
     status: 401,
@@ -44,6 +60,11 @@ router.post("/auth/login", async (req, res) => {
     const { email, password } = req.body ?? {};
     const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
+    enforceRateLimit({
+      key: getRateLimitedIpKey(req, "login"),
+      ...authRateLimitConfig.loginByIp,
+    });
+
     if (!normalizedEmail || typeof password !== "string" || !password) {
       return errorResponse(res, {
         status: 400,
@@ -51,6 +72,11 @@ router.post("/auth/login", async (req, res) => {
         message: "Email dan password wajib diisi.",
       });
     }
+
+    enforceRateLimit({
+      key: getRateLimitedEmailKey("login", normalizedEmail),
+      ...authRateLimitConfig.loginByEmail,
+    });
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -116,6 +142,11 @@ router.post("/auth/register", async (req, res) => {
     const { name, email, password } = req.body ?? {};
     const normalizedName = typeof name === "string" ? name.trim() : "";
     const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+
+    enforceRateLimit({
+      key: getRateLimitedIpKey(req, "register"),
+      ...authRateLimitConfig.registerByIp,
+    });
 
     if (!normalizedName || !normalizedEmail || typeof password !== "string" || !password) {
       return errorResponse(res, {
