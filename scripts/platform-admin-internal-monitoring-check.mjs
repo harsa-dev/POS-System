@@ -83,6 +83,7 @@ const files = {
   routePhase: read("docs/v3/internal-admin-consoles-route-phase.md"),
   routes: read("artifacts/pos-system/src/constants/routes.ts"),
   app: read("artifacts/pos-system/src/App.tsx"),
+  platformAdminPolicy: read("artifacts/pos-system/src/components/core/platform-admin/platform-admin-policy.ts"),
   page: read("artifacts/pos-system/src/pages/dashboard/platform-monitoring.tsx"),
   content: read("artifacts/pos-system/src/features/shared/platform-monitoring/platform-monitoring-content.tsx"),
   dashboard: read("artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-dashboard.tsx"),
@@ -144,6 +145,37 @@ const checks = [
     label: "App route",
     content: files.app,
     expected: "ROUTES.INTERNAL_MONITORING",
+  }),
+  () => assertContains({
+    label: "App platform admin route guard",
+    content: files.app,
+    expected: "PlatformAdminRoute capability=\"platform-admin.internal-monitoring.read\"",
+  }),
+  () => assertContains({
+    label: "App platform admin forbidden state",
+    content: files.app,
+    expected: "Platform Admin Restricted",
+  }),
+  () => assertFileExists("artifacts/pos-system/src/components/core/platform-admin/platform-admin-policy.ts"),
+  () => assertContains({
+    label: "frontend platform admin policy",
+    content: files.platformAdminPolicy,
+    expected: "platform-admin.internal-monitoring.read",
+  }),
+  () => assertContains({
+    label: "frontend platform admin policy",
+    content: files.platformAdminPolicy,
+    expected: "canAccessPlatformAdminCapability",
+  }),
+  () => assertContains({
+    label: "frontend platform admin policy roles",
+    content: files.platformAdminPolicy,
+    expected: "OWNER",
+  }),
+  () => assertContains({
+    label: "frontend platform admin policy roles",
+    content: files.platformAdminPolicy,
+    expected: "ADMIN",
   }),
   () => assertContains({
     label: "platform monitoring page",
