@@ -12,7 +12,8 @@
     "backendDto": "artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.types.ts",
     "backendRoute": "artifacts/api-server/src/routes/internal-monitoring.ts",
     "backendPolicy": "artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.policy.ts",
-    "backendResponseHelper": "artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-response.ts"
+    "backendResponseHelper": "artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-response.ts",
+    "backendRuntimeProbes": "artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-runtime-probes.ts"
   },
   "responseEnvelope": {
     "successFields": ["success", "data", "meta"],
@@ -64,19 +65,27 @@
     "InternalMonitoringApiMetaDto": ["generatedAt", "source", "mock", "mode", "capability", "readOnly", "mutationMode"],
     "InternalMonitoringApiSuccessEnvelopeDto": ["success", "data", "meta"],
     "InternalMonitoringApiErrorEnvelopeDto": ["success", "message", "code", "details", "requestId"],
+    "InternalMonitoringRuntimeProbeDto": ["id", "label", "status", "latencyMs", "checkedAt", "source", "detail"],
     "InternalMonitoringControlRoomCardDto": ["id", "label", "value", "note", "tone"],
     "InternalMonitoringControlRoomSignalDto": ["id", "area", "signal", "source", "state", "nextAction"],
     "InternalMonitoringApiImplementationStepDto": ["id", "phase", "endpoint", "mockSource", "contractStatus", "implementationRule", "testPlan"],
     "InternalMonitoringSchemaDecisionRecordDto": ["id", "candidate", "decision", "reason", "requiredProof"],
     "InternalMonitoringDevActionItemDto": ["id", "priority", "title", "owner", "status", "doneWhen"],
-    "InternalMonitoringControlRoomSummaryDto": ["totalSignals", "blockedSignals", "readyContracts", "p0Actions"],
-    "InternalMonitoringControlRoomDto": ["source", "generatedAt", "summary", "cards", "signals", "apiImplementationSteps", "schemaDecisionRecords", "devActionItems"],
+    "InternalMonitoringControlRoomSummaryDto": ["totalSignals", "blockedSignals", "readyContracts", "p0Actions", "runtimeProbes", "failingRuntimeProbes"],
+    "InternalMonitoringControlRoomDto": ["source", "generatedAt", "summary", "cards", "runtimeProbes", "signals", "apiImplementationSteps", "schemaDecisionRecords", "devActionItems"],
     "InternalMonitoringRouteInventoryItemDto": ["id", "route", "owner", "guard", "status", "notes"],
     "InternalMonitoringDataIntegrityCheckDto": ["id", "check", "status", "severity", "detail"],
     "InternalMonitoringMutationReadinessContractDto": ["id", "action", "targetSurface", "proposedEndpoint", "proposedMethod", "status", "dryRunMode", "requiredCapability", "requiredAuditEvent", "requiredApproval", "rollbackPlan", "rateLimit", "blockedReason", "requiredProof"]
   },
+  "runtimeProbeIds": [
+    "api-server-runtime",
+    "runtime-environment",
+    "internal-contract-inventory",
+    "database-connectivity"
+  ],
   "dashboardSections": [
     "Source Health",
+    "Runtime Status",
     "Runtime Signals",
     "Route Inventory",
     "API Implementation Blueprint",
