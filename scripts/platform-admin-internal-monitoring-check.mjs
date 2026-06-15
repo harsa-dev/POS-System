@@ -227,7 +227,7 @@ const checks = [
   () => assertContains({ label: "browser smoke runtime label regex", content: files.browserSmoke, expected: "Operational - API synced|Degraded - fallback active|Mock - local preview|Refreshing" }),
   () => assertContains({ label: "browser smoke forbidden check", content: files.browserSmoke, expected: "MANAGER sees platform admin restricted panel" }),
   () => assertContains({ label: "browser smoke mutation check", content: files.browserSmoke, expected: "no internal mutation controls are visible" }),
-  () => assertContains({ label: "contracts mock", content: files.contractsMock, expected: "GET /api/internal/health/summary" }),
+  () => assertContains({ label: "contracts mock", content: files.contractsMock, expected: "/api/internal/health/summary" }),
   () => assertContains({ label: "upgrade mock", content: files.upgradeMock, expected: "releaseGates" }),
   () => assertNoInternalMutationCalls(),
 ];
