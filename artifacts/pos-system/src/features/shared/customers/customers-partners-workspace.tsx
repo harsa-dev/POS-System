@@ -6,6 +6,7 @@ import { CustomersPartnersDashboard } from "./customers-partners-dashboard";
 import { CustomersPartnersDetailPanel } from "./customers-partners-detail-panel";
 import { CustomersPartnersDetailTable } from "./customers-partners-detail-table";
 import { CustomersPartnersImportPanel } from "./customers-partners-import-panel";
+import { CustomersPartnersLoyaltyTiersPanel } from "./customers-partners-loyalty-tiers-panel";
 import { CustomersPartnersSalesSyncPanel } from "./customers-partners-sales-sync-panel";
 import { CustomersPartnersWorkflowShortcuts } from "./customers-partners-workflow-shortcuts";
 
@@ -28,6 +29,13 @@ export function CustomersPartnersWorkspace() {
           <CustomersPartnersImportPanel onImported={reloadDashboard} />
         </section>
       </div>
+
+      <section id="customers-loyalty-tiers" className="scroll-mt-24">
+        <CustomersPartnersLoyaltyTiersPanel
+          reloadSignal={reloadKey}
+          onUpdated={reloadDashboard}
+        />
+      </section>
 
       <section id="customers-detail-lookup" className="scroll-mt-24">
         <CustomersPartnersDetailTable reloadSignal={reloadKey} />
