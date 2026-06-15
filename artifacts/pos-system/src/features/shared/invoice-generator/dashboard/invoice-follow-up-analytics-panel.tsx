@@ -5,19 +5,31 @@ import {
   AlertTriangle,
   BarChart3,
   CheckCircle2,
+  ClipboardList,
   Clock3,
   Download,
+  FileInput,
   FileText,
+  ListFilter,
   RefreshCw,
 } from "lucide-react";
 
 import {
   invoiceFollowUpAnalyticsApi,
+  type InvoiceFollowUpAnalyticsActivityDto,
   type InvoiceFollowUpAnalyticsDto,
 } from "@/lib/api/invoice-follow-up-analytics-api";
 import { formatCurrency } from "@/features/shared/format";
 import { DashboardActionButton, DashboardActions, DashboardPanel, StatCard } from "@/features/shared/dashboard";
-import { INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT } from "./invoice-generator-events";
+import {
+  INVOICE_GENERATOR_FILTER_FOLLOW_UP_EVENT,
+  INVOICE_GENERATOR_LOAD_INVOICE_EVENT,
+  INVOICE_GENERATOR_OPEN_FOLLOW_UP_EVENT,
+  INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT,
+  type InvoiceGeneratorFilterFollowUpEventDetail,
+  type InvoiceGeneratorLoadInvoiceEventDetail,
+  type InvoiceGeneratorOpenFollowUpEventDetail,
+} from "./invoice-generator-events";
 
 const STATUS_TONES: Record<string, "slate" | "blue" | "amber" | "green" | "rose"> = {
   CONTACTED: "blue",
@@ -54,6 +66,33 @@ function downloadJson(payload: unknown, filename: string) {
     type: "application/json;charset=utf-8",
   });
   downloadBlob(blob, filename);
+}
+
+function openFollowUp(activity: InvoiceFollowUpAnalyticsActivityDto) {
+  const detail: InvoiceGeneratorOpenFollowUpEventDetail = {
+    invoiceId: activity.invoiceId,
+    invoiceNumber: activity.invoiceNumber,
+  };
+  window.dispatchEvent(new CustomEvent(INVOICE_GENERATOR_OPEN_FOLLOW_UP_EVENT, { detail }));
+  document.getElementById("invoice-follow-up-tracker")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function loadInvoice(activity: InvoiceFollowUpAnalyticsActivityDto) {
+  const detail: InvoiceGeneratorLoadInvoiceEventDetail = {
+    invoiceId: activity.invoiceId,
+    invoiceNumber: activity.invoiceNumber,
+  };
+  window.dispatchEvent(new CustomEvent(INVOICE_GENERATOR_LOAD_INVOICE_EVENT, { detail }));
+  document.getElementById("invoice-generator-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function filterFollowUpStatus(status: InvoiceFollowUpAnalyticsActivityDto["status"], label: string) {
+  const detail: InvoiceGeneratorFilterFollowUpEventDetail = {
+    status,
+    message: `Showing ${label.toLowerCase()} follow-ups from analytics drilldown.`,
+  };
+  window.dispatchEvent(new CustomEvent(INVOICE_GENERATOR_FILTER_FOLLOW_UP_EVENT, { detail }));
+  document.getElementById("invoice-follow-up-tracker")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 export function InvoiceFollowUpAnalyticsPanel() {
@@ -139,7 +178,7 @@ export function InvoiceFollowUpAnalyticsPanel() {
     <div id="invoice-follow-up-analytics">
       <DashboardPanel
         title="Follow-Up Analytics & Export"
-        description="Measure follow-up health, status distribution, and export the tracker. Because eventually somebody will ask for a spreadsheet, as if spreadsheets are a natural disaster."
+        description="Measure follow-up health, status distribution, export the tracker, and drill into the messy parts. Analytics that cannot open the workflow is just decorative anxiety."
         actions={
           <DashboardActions>
             <DashboardActionButton icon={RefreshCw} onClick={() => void loadAnalytics()} disabled={isLoading}>
@@ -199,8 +238,18 @@ export function InvoiceFollowUpAnalyticsPanel() {
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             {statusBuckets.map((bucket) => (
-              <div key={bucket.status} className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">{bucket.label}</p>
+              <button
+                key={bucket.status}
+                type="button"
+                onClick={() => filterFollowUpStatus(bucket.status, bucket.label)}
+                disabled={bucket.count === 0}
+                className="rounded-xl border border-neutral-200 bg-white p-3 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                title={bucket.count > 0 ? `Filter tracker by ${bucket.label}` : `No ${bucket.label.toLowerCase()} follow-ups`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">{bucket.label}</p>
+                  <ListFilter className="h-3.5 w-3.5 text-neutral-400" aria-hidden />
+                </div>
                 <p className="mt-2 text-2xl font-bold text-neutral-950">{bucket.count}</p>
                 <p className="mt-1 text-xs text-neutral-500">{formatCurrency(bucket.invoiceValue)} tracked value</p>
                 <div
@@ -216,14 +265,14 @@ export function InvoiceFollowUpAnalyticsPanel() {
                             : "bg-neutral-200"
                   }`}
                 />
-              </div>
+              </button>
             ))}
           </div>
 
           <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
             <div className="border-b border-neutral-100 bg-neutral-50 px-3 py-2">
               <p className="text-sm font-semibold text-neutral-900">Recent Follow-Up Activity</p>
-              <p className="text-xs text-neutral-500">Latest notes across all tracked invoices.</p>
+              <p className="text-xs text-neutral-500">Latest notes across all tracked invoices with direct workflow actions.</p>
             </div>
             <table className="min-w-full divide-y divide-neutral-100 text-sm">
               <thead className="bg-white text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
@@ -233,6 +282,7 @@ export function InvoiceFollowUpAnalyticsPanel() {
                   <th className="px-3 py-2">Note</th>
                   <th className="px-3 py-2">Next Follow-Up</th>
                   <th className="px-3 py-2 text-right">Value</th>
+                  <th className="px-3 py-2 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
@@ -251,11 +301,21 @@ export function InvoiceFollowUpAnalyticsPanel() {
                     <td className="px-3 py-2 text-right font-semibold text-neutral-900">
                       {formatCurrency(activity.grandTotal)}
                     </td>
+                    <td className="px-3 py-2">
+                      <div className="flex justify-end gap-2">
+                        <DashboardActionButton icon={ClipboardList} onClick={() => openFollowUp(activity)}>
+                          Follow Up
+                        </DashboardActionButton>
+                        <DashboardActionButton icon={FileInput} onClick={() => loadInvoice(activity)}>
+                          Load
+                        </DashboardActionButton>
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 {recentActivity.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-sm text-neutral-500">
+                    <td colSpan={6} className="px-3 py-8 text-center text-sm text-neutral-500">
                       No follow-up activity yet. Add follow-up notes from the tracker, because analytics cannot summarize silence.
                     </td>
                   </tr>
