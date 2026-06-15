@@ -10,7 +10,7 @@ This plan is scoped to one dashboard only:
 
 It does not implement every Platform Admin dashboard. Internal Monitoring is sensitive because it exposes platform health, route inventory, API readiness, schema risk, release gates, incidents, and future admin action readiness.
 
-Current phase status: read-only dashboard scope is complete through real runtime probe collection and persistence planning. Prisma persistence is planned but not promoted yet.
+Current phase status: read-only dashboard scope is complete through real runtime probe collection, persistence migration SQL, and a read-only probe history endpoint. Scheduled writes remain blocked.
 
 ## Current frontend files
 
@@ -34,6 +34,13 @@ artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-mo
 artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.mock-repository.ts
 artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-runtime-probes.ts
 artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-mutation-readiness.ts
+artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-system-probe-history.ts
+```
+
+## Current migration files
+
+```txt
+artifacts/api-server/prisma/migrations/20260615000000_add_internal_system_probes/migration.sql
 ```
 
 ## Current route
@@ -54,6 +61,7 @@ GET /api/internal/routes/inventory
 GET /api/internal/contracts/readiness
 GET /api/internal/data-integrity/checks
 GET /api/internal/mutation-readiness/contracts
+GET /api/internal/probes/history
 ```
 
 Blocked in this scope:
@@ -87,38 +95,36 @@ artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-mo
 
 Database connectivity uses a read-only `pg` probe through `DATABASE_URL` and runs `select 1 as internal_monitoring_probe`.
 
-This does not add Prisma models, background jobs, scheduled probes, or historical persistence. Runtime probes are live request-time diagnostics only.
+## Runtime probe persistence
 
-## Runtime probe persistence plan
-
-Persistence is planned in:
+Persistence plan:
 
 ```txt
 docs/platform-admin-internal-monitoring-persistence-plan.md
 ```
 
-Persistence gate command:
-
-```bash
-pnpm platform-admin:persistence-plan
-```
-
-Current persistence status:
+Persistence migration:
 
 ```txt
-InternalSystemProbe model: planned, not implemented
-Probe history endpoint: planned, not implemented
-Scheduled collector: planned, not implemented
-Retention policy: planned at 14 days
+artifacts/api-server/prisma/migrations/20260615000000_add_internal_system_probes/migration.sql
 ```
 
-The planned history endpoint is:
+History endpoint:
 
 ```txt
 GET /api/internal/probes/history
 ```
 
-No Prisma model should be added until the persistence plan gate passes and the migration review is explicitly approved.
+Persistence status values:
+
+```txt
+ready
+schema-missing
+database-unavailable
+not-configured
+```
+
+The first persistence phase is still read-only from the frontend. Scheduled probe writes are not implemented yet.
 
 ## Frontend data source contract
 
@@ -132,7 +138,7 @@ The dashboard uses a `mock/api/fallback` source model:
 5. Never call POST/PATCH/DELETE from this dashboard in this scope.
 ```
 
-Runtime probes appear in the existing cards and runtime signal table when the backend API responds. Fallback mode exposes mock probe warnings so admins can tell the probe collector is not active.
+Runtime probes appear in the existing cards and runtime signal table when the backend API responds. Probe history appears in the InternalSystemProbe History panel when the history endpoint is available.
 
 ## Contract ownership
 
@@ -232,6 +238,7 @@ IM-16 Internal Monitoring browser smoke runtime assertions    Done
 IM-17 Internal Monitoring final QA checklist                  Done
 IM-18 Real runtime probe collector                            Done
 IM-19 InternalSystemProbe persistence planning                Done
+IM-20 InternalSystemProbe schema promotion                    Done
 ```
 
 ## IM-18 implemented
@@ -260,20 +267,35 @@ IM-19 InternalSystemProbe persistence planning                Done
 - rollback notes
 - platform-admin:persistence-plan command
 - platform-admin:check includes persistence plan gate
-- no Prisma schema promotion yet
+```
+
+## IM-20 implemented
+
+```txt
+- internal_system_probes migration SQL
+- read-only GET /api/internal/probes/history endpoint
+- backend history reader with schema-missing and not-configured handling
+- frontend history DTOs and API client method
+- data source loads probe history with fallback
+- Control Room renders InternalSystemProbe History panel
+- contract snapshot includes probe history endpoint and DTOs
+- contract parity checks migration, history endpoint, and panel
+- no scheduled writer yet
+- no internal write endpoint
 ```
 
 ## Scope handoff
 
-Internal Monitoring read-only scope is now ready for validation with live request-time probes and a persistence plan.
+Internal Monitoring read-only scope is now ready for validation with live request-time probes and read-only probe history support.
 
 Next safe scope options:
 
 ```txt
 1. Run full validation against a real API server and DATABASE_URL.
-2. If runtime history is approved, promote InternalSystemProbe schema in a separate reviewed migration phase.
-3. Keep the first persistence implementation read-only from the frontend.
-4. Pick another Platform Admin dashboard one dashboard at a time.
-5. Keep next dashboard read-only first.
-6. Do not implement platform write behavior until audit, approval, rollback, rate-limit, and dry-run execution contracts are implemented.
+2. Apply the migration in a local/staging database and verify GET /api/internal/probes/history.
+3. If history writes are approved, plan a service-only scheduled probe writer in a separate phase.
+4. Keep the frontend read-only.
+5. Pick another Platform Admin dashboard one dashboard at a time.
+6. Keep next dashboard read-only first.
+7. Do not implement platform write behavior until audit, approval, rollback, rate-limit, and dry-run execution contracts are implemented.
 ```
