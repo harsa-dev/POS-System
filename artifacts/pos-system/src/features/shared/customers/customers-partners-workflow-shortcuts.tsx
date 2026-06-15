@@ -18,10 +18,10 @@ const shortcuts = [
     description: "Preview customer or supplier CSV rows before saving backend records.",
   },
   {
-    href: "#customers-detail",
+    href: "#customers-detail-lookup",
     icon: Search,
     title: "View contact detail",
-    description: "Review one customer or supplier profile, value, activity, and contact data.",
+    description: "Pick a customer or supplier row, then open a backend detail record.",
   },
   {
     href: "#customers-directory",
