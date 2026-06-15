@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import type { Role } from "../../lib/auth.js";
 
-import { requireRole } from "../../lib/auth.js";
+import { requireModeAccess, requireRole } from "../../lib/auth.js";
 
 export const RAW_MATERIAL_PERMISSIONS = {
   view: "raw-material.view",
@@ -50,5 +50,10 @@ export async function requireRawMaterialPermission(
   res: Response,
   permission: RawMaterialPermission,
 ) {
-  return requireRole(req, res, getRawMaterialPermissionRoles(permission));
+  const user = await requireRole(req, res, getRawMaterialPermissionRoles(permission));
+  if (!user) return null;
+
+  await requireModeAccess(user, "raw-material");
+
+  return user;
 }
