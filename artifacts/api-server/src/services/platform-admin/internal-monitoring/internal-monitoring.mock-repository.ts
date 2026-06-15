@@ -27,8 +27,8 @@ export function getInternalMonitoringCards(): InternalMonitoringControlRoomCardD
     {
       id: "ready-contracts",
       label: "Ready Contracts",
-      value: "4",
-      note: "Health, routes, contracts, and integrity endpoints are scaffolded.",
+      value: "5",
+      note: "Health, routes, contracts, integrity, and mutation-readiness endpoints are scaffolded.",
       tone: "blue",
     },
     {
@@ -58,6 +58,14 @@ export function getInternalMonitoringSignals(): InternalMonitoringControlRoomSig
       source: "internal-monitoring-data-source.ts",
       state: "Healthy",
       nextAction: "Replace fallback badge with API badge during manual smoke.",
+    },
+    {
+      id: "mutation-readiness",
+      area: "Safety",
+      signal: "Future mutations are represented as dry-run/readiness contracts only.",
+      source: "internal-monitoring-mutation-readiness.ts",
+      state: "Watch",
+      nextAction: "Do not implement real mutation execution before audit, approval, rollback, and rate limit proof exist.",
     },
     {
       id: "mutation-blocked",
@@ -116,6 +124,15 @@ export function getInternalMonitoringApiImplementationSteps(): InternalMonitorin
       implementationRule: "Return source-level checks. Do not repair automatically.",
       testPlan: "Static guard blocks internal mutation wiring.",
     },
+    {
+      id: "mutation-readiness",
+      phase: "IM-10",
+      endpoint: "GET /api/internal/mutation-readiness/contracts",
+      mockSource: "internal-monitoring-mutation-readiness.ts",
+      contractStatus: "Ready",
+      implementationRule: "Return future mutation readiness metadata only. No mutation execution.",
+      testPlan: "Static guard checks GET-only endpoint and blocks internal mutation wiring.",
+    },
   ];
 }
 
@@ -164,6 +181,14 @@ export function getInternalMonitoringDevActionItems(): InternalMonitoringDevActi
       doneWhen: "Dashboard sections consume backend DTOs with mock fallback.",
     },
     {
+      id: "pa-im-10",
+      priority: "P0",
+      title: "Keep future mutation actions design-only and dry-run first",
+      owner: "Platform Admin",
+      status: "Doing",
+      doneWhen: "Mutation readiness contracts list RBAC, audit, approval, rollback, rate limit, and proof requirements without executing writes.",
+    },
+    {
       id: "pa-im-guard",
       priority: "P0",
       title: "Keep internal monitoring mutation routes blocked",
@@ -180,9 +205,9 @@ export function getInternalMonitoringRouteInventory(): InternalMonitoringRouteIn
       id: "internal-monitoring",
       route: "/dashboard/internal-monitoring",
       owner: "Platform Admin",
-      guard: "auth",
+      guard: "platform-admin",
       status: "active",
-      notes: "Frontend route is mounted. Dedicated Platform Admin guard is planned next.",
+      notes: "Frontend route is mounted behind platform-admin.internal-monitoring.read. Backend endpoint uses OWNER/ADMIN policy.",
     },
     {
       id: "admin-role-console",
@@ -218,6 +243,13 @@ export function getInternalMonitoringDataIntegrityChecks(): InternalMonitoringDa
       status: "pass",
       severity: "info",
       detail: "Internal monitoring repository is mock-backed and does not add persistence models.",
+    },
+    {
+      id: "mutation-readiness-design-only",
+      check: "Mutation readiness is design-only",
+      status: "pass",
+      severity: "warning",
+      detail: "Future mutation contracts are exposed as read-only metadata and require dry-run proof before execution exists.",
     },
     {
       id: "mutation-blocker",
