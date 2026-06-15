@@ -26,10 +26,10 @@ This branch hardens the POS System auth surface incrementally.
 - Limits register by IP.
 - Uses safe `429 RATE_LIMITED` errors.
 
-### Phase 4: Permission key standardization
+### Phase 4: Multi-mode permission key standardization
 
 - Standardizes permission keys to documented dot notation.
-- Uses `restaurant.*` permissions for Restaurant mode workflows.
+- Adds permission namespaces for all V3 business modes: `restaurant.*`, `retail.*`, `raw-material.*`, and `service.*`.
 - Keeps `shared.*` permissions for shared dashboards and reporting.
 - Updates restaurant security policy DTO types to match backend permission keys.
 - Updates order status rules to use `restaurant.orders.*`, `restaurant.payments.*`, `restaurant.kitchen.*`, and `restaurant.serving.*` keys.
@@ -56,3 +56,5 @@ Then manually test:
 ## Notes
 
 The rate limiter is MVP-only and in-memory. It is acceptable for local development or a single-instance MVP. Production or serverless deployment should use a distributed limiter such as Redis or provider-level protection.
+
+Permission alone is not mode access. Mode-specific routes must still enforce the current business mode with backend scope/mode checks.
