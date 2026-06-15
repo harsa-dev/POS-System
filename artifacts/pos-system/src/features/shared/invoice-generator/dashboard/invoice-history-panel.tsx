@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Ban, ChevronLeft, ChevronRight, Download, FileInput, RefreshCw, Search } from "lucide-react";
+import { Ban, CheckCircle2, ChevronLeft, ChevronRight, Download, FileInput, RefreshCw, Search, Send } from "lucide-react";
 
 import {
   invoiceApi,
@@ -9,6 +9,7 @@ import {
   type InvoiceCapabilitiesDto,
   type InvoiceHistoryMeta,
   type InvoiceHistoryQuery,
+  type InvoiceLifecycleStatus,
   type InvoiceRecord,
 } from "@/lib/api/invoice-api";
 import { formatCurrency } from "@/features/shared/format";
@@ -34,6 +35,11 @@ type FilterState = {
   to: string;
 };
 
+type LifecycleActionState = {
+  invoiceId: string;
+  status: InvoiceLifecycleStatus;
+} | null;
+
 const DEFAULT_FILTERS: FilterState = {
   search: "",
   status: "ALL",
@@ -46,6 +52,14 @@ function getStatusTone(status: InvoiceBackendStatus) {
   if (status === "SENT") return "bg-blue-50 text-blue-700 border-blue-200";
   if (status === "CANCELLED") return "bg-rose-50 text-rose-700 border-rose-200";
   return "bg-neutral-50 text-neutral-600 border-neutral-200";
+}
+
+function canMarkSent(invoice: InvoiceRecord) {
+  return invoice.status === "DRAFT";
+}
+
+function canMarkPaid(invoice: InvoiceRecord) {
+  return invoice.status === "DRAFT" || invoice.status === "SENT";
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -79,6 +93,7 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [lifecycleAction, setLifecycleAction] = useState<LifecycleActionState>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -150,6 +165,34 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
     document.getElementById("invoice-generator-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
     setMessage(`Invoice ${invoice.invoiceNumber} sent to the editor.`);
     setErrorMessage(null);
+  }
+
+  async function handleLifecycleStatus(invoice: InvoiceRecord, status: InvoiceLifecycleStatus) {
+    if (!capabilities.canUpdate) return;
+    if (status === "SENT" && !canMarkSent(invoice)) return;
+    if (status === "PAID" && !canMarkPaid(invoice)) return;
+
+    const label = status === "SENT" ? "sent" : "paid";
+    const confirmed = window.confirm(`Mark invoice ${invoice.invoiceNumber} as ${label}?`);
+    if (!confirmed) return;
+
+    setLifecycleAction({ invoiceId: invoice.id, status });
+    setErrorMessage(null);
+    setMessage(null);
+
+    try {
+      const result = await invoiceApi.updateInvoiceStatusWithResult(invoice.id, status);
+      if (!result.ok || !result.body.success) {
+        setErrorMessage(result.body.message ?? `Failed to mark invoice as ${label}.`);
+        return;
+      }
+      setMessage(`Invoice ${invoice.invoiceNumber} marked as ${label}.`);
+      await loadHistory(query);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : `Failed to mark invoice as ${label}.`);
+    } finally {
+      setLifecycleAction(null);
+    }
   }
 
   async function handleCancel(invoice: InvoiceRecord) {
@@ -243,7 +286,7 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
         {errorMessage && <p className="text-sm font-medium text-rose-700">{errorMessage}</p>}
 
         <div className="overflow-x-auto rounded-xl border border-neutral-200">
-          <table className="w-full min-w-[1020px] text-left text-sm">
+          <table className="w-full min-w-[1180px] text-left text-sm">
             <thead className="bg-neutral-50 text-neutral-500">
               <tr>
                 <th className="px-3 py-3 font-semibold">Invoice</th>
@@ -270,55 +313,79 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
                   </td>
                 </tr>
               )}
-              {!isLoading && rows.map((invoice) => (
-                <tr key={invoice.id} className="border-t border-neutral-100 align-top">
-                  <td className="px-3 py-3">
-                    <p className="font-semibold text-neutral-950">{invoice.invoiceNumber}</p>
-                    <p className="text-xs text-neutral-500">{invoice.items.length} item(s)</p>
-                  </td>
-                  <td className="px-3 py-3 text-neutral-600">
-                    <p className="font-medium text-neutral-800">{invoice.customerName}</p>
-                    <p className="text-xs text-neutral-500">{invoice.customerPhone ?? "No phone"}</p>
-                  </td>
-                  <td className="px-3 py-3">
-                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusTone(invoice.status)}`}>
-                      {invoice.status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-neutral-600">
-                    {new Date(invoice.invoiceDate).toLocaleDateString("id-ID")}
-                  </td>
-                  <td className="px-3 py-3 text-right font-semibold text-neutral-950">
-                    {formatCurrency(invoice.grandTotal)}
-                  </td>
-                  <td className="px-3 py-3 text-neutral-500">
-                    {new Date(invoice.updatedAt).toLocaleString("id-ID")}
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleLoadToEditor(invoice)}
-                        disabled={!canLoadToEditor}
-                        title={canLoadToEditor ? "Load this invoice into the editor." : "Invoice editor access is required to load this record."}
-                        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <FileInput className="h-4 w-4" />
-                        Load
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleCancel(invoice)}
-                        disabled={!capabilities.canCancel || invoice.status === "CANCELLED" || cancelingId === invoice.id}
-                        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <Ban className="h-4 w-4" />
-                        {cancelingId === invoice.id ? "Canceling..." : "Cancel"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {!isLoading && rows.map((invoice) => {
+                const isMarkingSent = lifecycleAction?.invoiceId === invoice.id && lifecycleAction.status === "SENT";
+                const isMarkingPaid = lifecycleAction?.invoiceId === invoice.id && lifecycleAction.status === "PAID";
+                return (
+                  <tr key={invoice.id} className="border-t border-neutral-100 align-top">
+                    <td className="px-3 py-3">
+                      <p className="font-semibold text-neutral-950">{invoice.invoiceNumber}</p>
+                      <p className="text-xs text-neutral-500">{invoice.items.length} item(s)</p>
+                    </td>
+                    <td className="px-3 py-3 text-neutral-600">
+                      <p className="font-medium text-neutral-800">{invoice.customerName}</p>
+                      <p className="text-xs text-neutral-500">{invoice.customerPhone ?? "No phone"}</p>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusTone(invoice.status)}`}>
+                        {invoice.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-neutral-600">
+                      {new Date(invoice.invoiceDate).toLocaleDateString("id-ID")}
+                    </td>
+                    <td className="px-3 py-3 text-right font-semibold text-neutral-950">
+                      {formatCurrency(invoice.grandTotal)}
+                    </td>
+                    <td className="px-3 py-3 text-neutral-500">
+                      {new Date(invoice.updatedAt).toLocaleString("id-ID")}
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleLoadToEditor(invoice)}
+                          disabled={!canLoadToEditor}
+                          title={canLoadToEditor ? "Load this invoice into the editor." : "Invoice editor access is required to load this record."}
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <FileInput className="h-4 w-4" />
+                          Load
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleLifecycleStatus(invoice, "SENT")}
+                          disabled={!capabilities.canUpdate || !canMarkSent(invoice) || Boolean(lifecycleAction)}
+                          title="Mark draft invoice as sent."
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-sky-200 bg-white px-3 text-sm font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Send className="h-4 w-4" />
+                          {isMarkingSent ? "Sending..." : "Mark Sent"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleLifecycleStatus(invoice, "PAID")}
+                          disabled={!capabilities.canUpdate || !canMarkPaid(invoice) || Boolean(lifecycleAction)}
+                          title="Mark draft or sent invoice as paid."
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          {isMarkingPaid ? "Paying..." : "Mark Paid"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleCancel(invoice)}
+                          disabled={!capabilities.canCancel || invoice.status === "CANCELLED" || cancelingId === invoice.id}
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Ban className="h-4 w-4" />
+                          {cancelingId === invoice.id ? "Canceling..." : "Cancel"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
