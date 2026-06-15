@@ -1,6 +1,6 @@
 "use client";
 
-import { FileUp, Search, Sparkles, UploadCloud, UsersRound } from "lucide-react";
+import { FileUp, Search, Sparkles, UploadCloud, UserCheck, UsersRound } from "lucide-react";
 
 import { DashboardPanel } from "@/features/shared/dashboard";
 
@@ -24,6 +24,12 @@ const shortcuts = [
     description: "Adjust tier thresholds, period labels, and discount settings.",
   },
   {
+    href: "#customers-tier-assignment",
+    icon: UserCheck,
+    title: "Assign customer tiers",
+    description: "Apply tier settings to customer profiles based on backend spending totals.",
+  },
+  {
     href: "#customers-detail-lookup",
     icon: Search,
     title: "View contact detail",
@@ -41,9 +47,9 @@ export function CustomersPartnersWorkflowShortcuts() {
   return (
     <DashboardPanel
       title="Customers & Partners Workflow"
-      description="Use the workflow panels before editing the directory. Import, sales sync, loyalty tiers, and detail view are backend-backed workflows."
+      description="Use the workflow panels before editing the directory. Import, sales sync, loyalty tiers, tier assignment, and detail view are backend-backed workflows. Civilization trembles."
     >
-      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
         {shortcuts.map((item) => {
           const Icon = item.icon;
 
