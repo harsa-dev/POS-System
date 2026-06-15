@@ -23,6 +23,12 @@ function assertContains({ label, content, expected }) {
   }
 }
 
+function assertNotContains({ label, content, forbidden }) {
+  if (content.includes(forbidden)) {
+    throw new Error(`${label} must not contain: ${forbidden}`);
+  }
+}
+
 function walk(dir, files = []) {
   const absoluteDir = resolve(rootDir, dir);
 
@@ -49,24 +55,22 @@ function walk(dir, files = []) {
 }
 
 function assertNoInternalMutationCalls() {
-  const files = [
+  const filesToScan = [
     ...walk("artifacts/pos-system/src"),
     ...walk("artifacts/api-server/src"),
   ];
 
   const violations = [];
-  const frontendMutationPattern = /apiClient\s*\.\s*(post|patch|delete)\s*<[^>]*>\s*\(\s*[`'"]\/api\/internal\//g;
-  const frontendMutationPatternWithoutGeneric = /apiClient\s*\.\s*(post|patch|delete)\s*\(\s*[`'"]\/api\/internal\//g;
-  const backendMutationPattern = /(?:router|app)\s*\.\s*(post|patch|delete)\s*\(\s*[`'"](?:\/api)?\/internal\//g;
+  const patterns = [
+    /apiClient\s*\.\s*(post|patch|delete)\s*<[^>]*>\s*\(\s*[`'"]\/api\/internal\//,
+    /apiClient\s*\.\s*(post|patch|delete)\s*\(\s*[`'"]\/api\/internal\//,
+    /(?:router|app)\s*\.\s*(post|patch|delete)\s*\(\s*[`'"](?:\/api)?\/internal\//,
+  ];
 
-  for (const file of files) {
+  for (const file of filesToScan) {
     const content = read(file);
 
-    if (
-      frontendMutationPattern.test(content) ||
-      frontendMutationPatternWithoutGeneric.test(content) ||
-      backendMutationPattern.test(content)
-    ) {
+    if (patterns.some((pattern) => pattern.test(content))) {
       violations.push(file);
     }
   }
@@ -96,6 +100,7 @@ const files = {
   moduleTypes: read("artifacts/pos-system/src/app/registry/module-types.ts"),
   permissionCompat: read("artifacts/pos-system/src/app/registry/permission-compat.ts"),
   platformAdminPolicy: read("artifacts/pos-system/src/components/core/platform-admin/platform-admin-policy.ts"),
+  platformAdminRoute: read("artifacts/pos-system/src/components/core/platform-admin/platform-admin-route.tsx"),
   page: read("artifacts/pos-system/src/pages/dashboard/platform-monitoring.tsx"),
   content: read("artifacts/pos-system/src/features/shared/platform-monitoring/platform-monitoring-content.tsx"),
   dashboard: read("artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-dashboard.tsx"),
@@ -124,8 +129,13 @@ const checks = [
   () => assertContains({ label: "route constants", content: files.routes, expected: "INTERNAL_MONITORING" }),
   () => assertContains({ label: "route constants", content: files.routes, expected: "/dashboard/internal-monitoring" }),
   () => assertContains({ label: "App route", content: files.app, expected: "ROUTES.INTERNAL_MONITORING" }),
-  () => assertContains({ label: "App platform admin route guard", content: files.app, expected: "PlatformAdminRoute capability=\"platform-admin.internal-monitoring.read\"" }),
-  () => assertContains({ label: "App platform admin forbidden state", content: files.app, expected: "Platform Admin Restricted" }),
+  () => assertContains({ label: "App platform admin route guard", content: files.app, expected: "PlatformAdminProtectedRoute capability=\"platform-admin.internal-monitoring.read\"" }),
+  () => assertContains({ label: "App imports extracted platform admin route", content: files.app, expected: "@/components/core/platform-admin/platform-admin-route" }),
+  () => assertNotContains({ label: "App extracted platform admin forbidden panel", content: files.app, forbidden: "function PlatformAdminForbiddenPanel" }),
+  () => assertFileExists("artifacts/pos-system/src/components/core/platform-admin/platform-admin-route.tsx"),
+  () => assertContains({ label: "extracted platform admin route", content: files.platformAdminRoute, expected: "PlatformAdminRoute" }),
+  () => assertContains({ label: "extracted platform admin forbidden state", content: files.platformAdminRoute, expected: "Platform Admin Restricted" }),
+  () => assertContains({ label: "extracted platform admin route capability check", content: files.platformAdminRoute, expected: "canAccessPlatformAdminCapability" }),
   () => assertFileExists("artifacts/pos-system/src/components/core/platform-admin/platform-admin-policy.ts"),
   () => assertContains({ label: "frontend platform admin policy", content: files.platformAdminPolicy, expected: "platform-admin.internal-monitoring.read" }),
   () => assertContains({ label: "frontend platform admin policy", content: files.platformAdminPolicy, expected: "canAccessPlatformAdminCapability" }),
