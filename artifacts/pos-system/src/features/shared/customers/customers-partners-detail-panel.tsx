@@ -9,30 +9,48 @@ import { SearchFilter } from "@/features/shared/filters";
 import { formatCurrency, formatNumber } from "@/features/shared/format";
 import {
   customersPartnersApi,
+  type CustomerDetailDto,
   type CustomerProfileDto,
   type SupplierProfileDto,
 } from "@/lib/api/customers-partners-api";
 
+export const CUSTOMERS_PARTNERS_VIEW_DETAIL_EVENT = "customers-partners:view-detail";
+
 type DetailKind = "customers" | "suppliers";
 type DetailRow = CustomerProfileDto | SupplierProfileDto;
+type DetailContact = CustomerDetailDto | SupplierProfileDto;
+
+type CustomersPartnersViewDetailEvent = CustomEvent<{
+  kind: DetailKind;
+  id: string;
+}>;
 
 type CustomersPartnersDetailPanelProps = {
   reloadSignal?: number;
 };
 
-function isCustomer(row: DetailRow): row is CustomerProfileDto {
+function isCustomer(row: DetailRow | DetailContact): row is CustomerProfileDto | CustomerDetailDto {
   return "totalSpending" in row;
 }
 
-function getTotalValue(row: DetailRow) {
+function getTotalValue(row: DetailRow | DetailContact) {
   return isCustomer(row) ? row.totalSpending : row.totalPurchases;
 }
 
-function formatDateTime(value: string) {
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "Not available";
   return new Intl.DateTimeFormat("en", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+async function fetchContactDetail(kind: DetailKind, id: string) {
+  const response = kind === "customers"
+    ? await customersPartnersApi.getCustomerDetail(id)
+    : await customersPartnersApi.getSupplierDetail(id);
+
+  return response.data.contact;
 }
 
 export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPartnersDetailPanelProps) {
@@ -41,11 +59,13 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
   const [customers, setCustomers] = useState<CustomerProfileDto[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierProfileDto[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [selectedDetail, setSelectedDetail] = useState<DetailContact | null>(null);
+  const [isLoadingList, setIsLoadingList] = useState(true);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function loadDetails() {
-    setIsLoading(true);
+    setIsLoadingList(true);
     setError(null);
 
     try {
@@ -55,7 +75,7 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load contact details.");
     } finally {
-      setIsLoading(false);
+      setIsLoadingList(false);
     }
   }
 
@@ -63,6 +83,19 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
     void loadDetails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reloadSignal]);
+
+  useEffect(() => {
+    function handleViewDetail(event: Event) {
+      const detail = (event as CustomersPartnersViewDetailEvent).detail;
+      if (!detail?.id || !detail.kind) return;
+      setKind(detail.kind);
+      setSelectedId(detail.id);
+      document.getElementById("customers-detail")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    window.addEventListener(CUSTOMERS_PARTNERS_VIEW_DETAIL_EVENT, handleViewDetail);
+    return () => window.removeEventListener(CUSTOMERS_PARTNERS_VIEW_DETAIL_EVENT, handleViewDetail);
+  }, []);
 
   const activeRows: DetailRow[] = kind === "customers" ? customers : suppliers;
   const filteredRows = useMemo(() => {
@@ -77,23 +110,55 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
     );
   }, [activeRows, search]);
 
-  const selectedRow = useMemo(() => {
-    if (selectedId) return filteredRows.find((row) => row.id === selectedId) ?? filteredRows[0] ?? null;
+  const selectedListRow = useMemo(() => {
+    if (selectedId) return filteredRows.find((row) => row.id === selectedId) ?? null;
     return filteredRows[0] ?? null;
   }, [filteredRows, selectedId]);
 
   useEffect(() => {
-    if (selectedRow?.id && selectedRow.id !== selectedId) setSelectedId(selectedRow.id);
-    if (!selectedRow && selectedId) setSelectedId(null);
-  }, [selectedId, selectedRow]);
+    if (!selectedListRow && selectedId) {
+      setSelectedId(null);
+      setSelectedDetail(null);
+      return;
+    }
 
+    if (!selectedId && selectedListRow?.id) setSelectedId(selectedListRow.id);
+  }, [selectedId, selectedListRow]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+
+    let isMounted = true;
+    setIsLoadingDetail(true);
+    setError(null);
+
+    fetchContactDetail(kind, selectedId)
+      .then((contact) => {
+        if (isMounted) setSelectedDetail(contact);
+      })
+      .catch((detailError) => {
+        if (!isMounted) return;
+        setSelectedDetail(null);
+        setError(detailError instanceof Error ? detailError.message : "Failed to load contact detail.");
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingDetail(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [kind, selectedId, reloadSignal]);
+
+  const selectedRow = selectedDetail ?? selectedListRow;
   const KindIcon = kind === "customers" ? UserRound : Truck;
   const valueLabel = kind === "customers" ? "Lifetime Spending" : "Lifetime Purchases";
+  const customerDetail = selectedDetail && isCustomer(selectedDetail) ? selectedDetail : null;
 
   return (
     <DashboardPanel
       title="Contact Detail"
-      description="Inspect one backend contact record without leaving the Customers & Partners workflow."
+      description="Inspect one backend contact record without leaving the Customers & Partners workflow. Row-level View actions open this panel."
     >
       <div className="space-y-4 p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -104,6 +169,7 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
               onClick={() => {
                 setKind("customers");
                 setSelectedId(null);
+                setSelectedDetail(null);
               }}
             >
               Customers
@@ -114,6 +180,7 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
               onClick={() => {
                 setKind("suppliers");
                 setSelectedId(null);
+                setSelectedDetail(null);
               }}
             >
               Suppliers
@@ -144,7 +211,7 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
                   {kind === "customers" ? "Customer Records" : "Supplier Records"}
                 </p>
                 <p className="text-xs text-neutral-500">
-                  {isLoading ? "Loading..." : `${formatNumber(filteredRows.length)} visible`}
+                  {isLoadingList ? "Loading..." : `${formatNumber(filteredRows.length)} visible`}
                 </p>
               </div>
               <StatusPill tone="slate">Backend</StatusPill>
@@ -157,7 +224,7 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
                   type="button"
                   onClick={() => setSelectedId(row.id)}
                   className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
-                    selectedRow?.id === row.id
+                    selectedId === row.id
                       ? "border-neutral-900 bg-white shadow-sm"
                       : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50"
                   }`}
@@ -169,7 +236,7 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
                 </button>
               ))}
 
-              {!isLoading && filteredRows.length === 0 ? (
+              {!isLoadingList && filteredRows.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-neutral-200 bg-white p-4 text-sm text-neutral-500">
                   No matching {kind} found.
                 </div>
@@ -191,6 +258,7 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
                         <StatusPill tone={selectedRow.isActive ? "green" : "rose"}>
                           {selectedRow.isActive ? "Active" : "Inactive"}
                         </StatusPill>
+                        {isLoadingDetail ? <StatusPill tone="slate">Loading detail</StatusPill> : null}
                       </div>
                       <p className="mt-1 text-sm text-neutral-500">Backend ID: {selectedRow.id}</p>
                     </div>
@@ -228,6 +296,32 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
                 />
               </div>
 
+              {customerDetail ? (
+                <div className="grid gap-3 md:grid-cols-3">
+                  <StatCard
+                    label="Sales Sources"
+                    value={formatNumber(customerDetail.salesSourceCount ?? 0)}
+                    note="Paid invoice records synced"
+                    icon={WalletCards}
+                    tone="green"
+                  />
+                  <StatCard
+                    label="Last Sales Sync"
+                    value={formatDateTime(customerDetail.lastSalesSyncedAt)}
+                    note="Customer profile enrichment"
+                    icon={CalendarClock}
+                    tone="blue"
+                  />
+                  <StatCard
+                    label="Identity Key"
+                    value={customerDetail.identityKey ?? "Manual"}
+                    note="Sales sync match key"
+                    icon={UserRound}
+                    tone="slate"
+                  />
+                </div>
+              ) : null}
+
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-xl border border-neutral-200 bg-white p-4">
                   <Phone className="h-5 w-5 text-neutral-500" aria-hidden="true" />
@@ -250,7 +344,7 @@ export function CustomersPartnersDetailPanel({ reloadSignal = 0 }: CustomersPart
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-sm text-neutral-500">
-              {isLoading ? "Loading contact details..." : "Select a record to inspect details."}
+              {isLoadingList ? "Loading contact details..." : "Select a record to inspect details."}
             </div>
           )}
         </div>
