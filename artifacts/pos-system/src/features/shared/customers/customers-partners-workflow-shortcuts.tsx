@@ -1,6 +1,6 @@
 "use client";
 
-import { FileUp, UploadCloud, UsersRound } from "lucide-react";
+import { FileUp, Search, UploadCloud, UsersRound } from "lucide-react";
 
 import { DashboardPanel } from "@/features/shared/dashboard";
 
@@ -15,7 +15,13 @@ const shortcuts = [
     href: "#customers-csv-import",
     icon: FileUp,
     title: "Import CSV contacts",
-    description: "Preview customer or supplier CSV rows before committing them to backend records.",
+    description: "Preview customer or supplier CSV rows before saving backend records.",
+  },
+  {
+    href: "#customers-detail",
+    icon: Search,
+    title: "View contact detail",
+    description: "Review one customer or supplier profile, value, activity, and contact data.",
   },
   {
     href: "#customers-directory",
@@ -29,9 +35,9 @@ export function CustomersPartnersWorkflowShortcuts() {
   return (
     <DashboardPanel
       title="Customers & Partners Workflow"
-      description="Use the workflow panels before editing the directory. Import and sales sync are backend-backed workflows now."
+      description="Use the workflow panels before editing the directory. Import, sales sync, and detail view are backend-backed workflows."
     >
-      <div className="grid gap-3 p-4 md:grid-cols-3">
+      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
         {shortcuts.map((item) => {
           const Icon = item.icon;
 
