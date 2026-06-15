@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock3, FileText, RefreshCw, Send, WalletCards, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, FileText, RefreshCw, Send, TimerReset, WalletCards, XCircle } from "lucide-react";
 
 import { invoiceApi, type InvoiceBackendStatus, type InvoiceSummaryDto } from "@/lib/api/invoice-api";
 import { formatCurrency } from "@/features/shared/format";
@@ -30,12 +30,23 @@ function buildBucketMap(summary: InvoiceSummaryDto | null): SummaryBucketMap {
   }, { ...EMPTY_BUCKETS });
 }
 
+function formatDate(value: string | null | undefined) {
+  if (!value) return "No date";
+  return new Date(value).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelProps) {
   const [summary, setSummary] = useState<InvoiceSummaryDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const buckets = useMemo(() => buildBucketMap(summary), [summary]);
+  const agingBuckets = summary?.aging.buckets ?? [];
+  const overdueSamples = summary?.aging.samples ?? [];
 
   async function loadSummary() {
     setIsLoading(true);
@@ -69,11 +80,12 @@ export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelPro
   }, []);
 
   const lastUpdated = summary?.lastUpdatedAt ? new Date(summary.lastUpdatedAt).toLocaleString("id-ID") : "No invoices yet";
+  const agingAsOf = summary?.aging.asOf ? new Date(summary.aging.asOf).toLocaleString("id-ID") : "Not calculated";
 
   return (
     <DashboardPanel
       title="Invoice Lifecycle Summary"
-      description="Backend-backed status totals for the current business. Use this before drowning yourself in table rows."
+      description="Backend-backed status totals, receivables, and overdue aging for the current business. Finally, unpaid invoices can no longer hide politely."
       actions={
         <DashboardActions>
           <DashboardActionButton icon={RefreshCw} onClick={() => void loadSummary()} disabled={isLoading}>
@@ -97,7 +109,7 @@ export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelPro
             icon={WalletCards}
             label="Receivable"
             value={formatCurrency(summary?.totals.receivable ?? 0)}
-            description="Draft + sent invoices"
+            description={`${formatCurrency(summary?.totals.currentReceivable ?? 0)} current, ${formatCurrency(summary?.totals.overdueValue ?? 0)} overdue`}
             tone="amber"
           />
           <StatCard
@@ -108,10 +120,10 @@ export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelPro
             tone="green"
           />
           <StatCard
-            icon={XCircle}
-            label="Cancelled Value"
-            value={formatCurrency(summary?.totals.cancelledValue ?? 0)}
-            description={`${buckets.CANCELLED.count} cancelled invoice(s)`}
+            icon={AlertTriangle}
+            label="Overdue Receivable"
+            value={formatCurrency(summary?.aging.overdueValue ?? 0)}
+            description={`${summary?.aging.overdueCount ?? 0} overdue invoice(s)`}
             tone="rose"
           />
         </div>
@@ -126,6 +138,9 @@ export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelPro
               <Clock3 className="h-5 w-5 text-neutral-500" />
             </div>
             <p className="mt-3 text-sm font-semibold text-neutral-700">{formatCurrency(buckets.DRAFT.total)}</p>
+            <p className="mt-1 text-xs text-neutral-500">
+              {summary?.aging.draftOverdueCount ?? 0} overdue, {formatCurrency(summary?.aging.draftOverdueValue ?? 0)}
+            </p>
           </div>
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
             <div className="flex items-center justify-between gap-3">
@@ -136,6 +151,9 @@ export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelPro
               <Send className="h-5 w-5 text-blue-600" />
             </div>
             <p className="mt-3 text-sm font-semibold text-blue-700">{formatCurrency(buckets.SENT.total)}</p>
+            <p className="mt-1 text-xs text-blue-600">
+              {summary?.aging.sentOverdueCount ?? 0} overdue, {formatCurrency(summary?.aging.sentOverdueValue ?? 0)}
+            </p>
           </div>
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex items-center justify-between gap-3">
@@ -153,10 +171,63 @@ export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelPro
                 <p className="text-xs font-semibold uppercase tracking-wide text-rose-600">Cancelled</p>
                 <p className="mt-1 text-2xl font-bold text-rose-900">{buckets.CANCELLED.count}</p>
               </div>
-              <AlertTriangle className="h-5 w-5 text-rose-600" />
+              <XCircle className="h-5 w-5 text-rose-600" />
             </div>
             <p className="mt-3 text-sm font-semibold text-rose-700">{formatCurrency(buckets.CANCELLED.total)}</p>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-amber-950">Receivable Aging</p>
+              <p className="text-xs text-amber-700">
+                Overdue open invoices as of {agingAsOf}. Oldest overdue: {summary?.aging.oldestOverdueDays ?? 0} day(s).
+              </p>
+            </div>
+            <TimerReset className="h-5 w-5 text-amber-700" />
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {agingBuckets.map((bucket) => (
+              <div key={bucket.id} className="rounded-lg border border-amber-200 bg-white/80 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">{bucket.label}</p>
+                <p className="mt-1 text-xl font-bold text-amber-950">{bucket.count}</p>
+                <p className="text-sm font-semibold text-amber-800">{formatCurrency(bucket.total)}</p>
+              </div>
+            ))}
+          </div>
+
+          {overdueSamples.length > 0 ? (
+            <div className="mt-4 overflow-hidden rounded-lg border border-amber-200 bg-white">
+              <table className="min-w-full divide-y divide-amber-100 text-sm">
+                <thead className="bg-amber-100/70 text-left text-xs font-semibold uppercase tracking-wide text-amber-800">
+                  <tr>
+                    <th className="px-3 py-2">Invoice</th>
+                    <th className="px-3 py-2">Customer</th>
+                    <th className="px-3 py-2">Due Date</th>
+                    <th className="px-3 py-2">Overdue</th>
+                    <th className="px-3 py-2 text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-amber-100">
+                  {overdueSamples.map((invoice) => (
+                    <tr key={invoice.id}>
+                      <td className="px-3 py-2 font-semibold text-neutral-900">{invoice.invoiceNumber}</td>
+                      <td className="px-3 py-2 text-neutral-700">{invoice.customerName}</td>
+                      <td className="px-3 py-2 text-neutral-700">{formatDate(invoice.dueDate)}</td>
+                      <td className="px-3 py-2 text-rose-700">{invoice.daysOverdue} day(s)</td>
+                      <td className="px-3 py-2 text-right font-semibold text-neutral-900">{formatCurrency(invoice.grandTotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">
+              No overdue open invoices in the current summary scope.
+            </p>
+          )}
         </div>
 
         <p className="text-xs text-neutral-500">Last invoice activity: {lastUpdated}</p>
