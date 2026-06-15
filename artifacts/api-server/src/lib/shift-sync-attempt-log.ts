@@ -96,8 +96,13 @@ export async function createShiftSyncAttempt(params: {
     )
     RETURNING *
   `;
+  const attempt = rows[0];
 
-  return rows[0];
+  if (!attempt) {
+    throw new Error("Failed to create shift cashflow sync attempt log.");
+  }
+
+  return attempt;
 }
 
 export async function markShiftSyncAttemptSuccess(params: {
