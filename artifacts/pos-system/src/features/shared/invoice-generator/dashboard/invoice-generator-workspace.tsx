@@ -69,7 +69,7 @@ export function InvoiceGeneratorWorkspace() {
   if (capabilities && canViewHistory) {
     return (
       <div className="space-y-6">
-        <InvoiceHistoryPanel capabilities={capabilities} />
+        <InvoiceHistoryPanel capabilities={capabilities} canLoadToEditor={canUseEditor} />
         {canUseEditor ? (
           <InvoiceGeneratorDashboard />
         ) : (
