@@ -85,6 +85,7 @@ function assertInternalMonitorSidebarPermission() {
 }
 
 const files = {
+  packageJson: read("package.json"),
   plan: read("docs/platform-admin-internal-monitoring-dashboard-plan.md"),
   platformPlan: read("docs/platform-admin-next-implementation-plan.md"),
   monitoringPlan: read("docs/v3/internal-monitoring-dashboard-plan.md"),
@@ -106,6 +107,7 @@ const files = {
   backendPolicy: read("artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.policy.ts"),
   backendService: read("artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.service.ts"),
   backendRepository: read("artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.mock-repository.ts"),
+  browserSmoke: read("scripts/platform-admin-internal-monitoring-browser-smoke.mjs"),
   contractsMock: read("artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-contracts.mock.ts"),
   upgradeMock: read("artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-upgrade.mock.ts"),
 };
@@ -366,6 +368,32 @@ const checks = [
     label: "internal monitoring backend repository",
     content: files.backendRepository,
     expected: "getInternalMonitoringDataIntegrityChecks",
+  }),
+  () => assertFileExists("scripts/platform-admin-internal-monitoring-browser-smoke.mjs"),
+  () => assertContains({
+    label: "platform admin browser smoke package command",
+    content: files.packageJson,
+    expected: "platform-admin:browser-smoke",
+  }),
+  () => assertContains({
+    label: "platform admin browser smoke mock auth",
+    content: files.browserSmoke,
+    expected: "PLATFORM_ADMIN_SMOKE_USE_MOCK_AUTH",
+  }),
+  () => assertContains({
+    label: "platform admin browser smoke read-only banner check",
+    content: files.browserSmoke,
+    expected: "read-only safety banner renders",
+  }),
+  () => assertContains({
+    label: "platform admin browser smoke forbidden check",
+    content: files.browserSmoke,
+    expected: "MANAGER sees platform admin restricted panel",
+  }),
+  () => assertContains({
+    label: "platform admin browser smoke mutation check",
+    content: files.browserSmoke,
+    expected: "no internal mutation controls are visible",
   }),
   () => assertContains({
     label: "internal monitoring contracts mock",
