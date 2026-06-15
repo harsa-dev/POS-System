@@ -16,6 +16,7 @@ import {
 
 import { FinancialReportsDashboard } from "./financial-reports-dashboard";
 import { FinancialReportsDrilldownPanel } from "./financial-reports-drilldown-panel";
+import { FinancialReportsReconciliationDrilldownPanel } from "./financial-reports-reconciliation-drilldown-panel";
 
 function getGuardMessage(capabilities: FinancialReportsCapabilitiesDto | null) {
   if (!capabilities) return "Loading financial report permissions...";
@@ -74,6 +75,7 @@ export function FinancialReportsWorkspace() {
     return (
       <div className="space-y-5">
         <FinancialReportsDrilldownPanel />
+        <FinancialReportsReconciliationDrilldownPanel />
         <FinancialReportsDashboard />
       </div>
     );
