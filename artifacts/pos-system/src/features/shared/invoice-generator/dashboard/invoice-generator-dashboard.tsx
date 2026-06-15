@@ -28,6 +28,10 @@ import { calculateInvoiceTotals } from "../services/invoice-calculations";
 import { downloadInvoicePdf } from "../services/invoice-pdf";
 import { validateInvoiceDraft } from "../services/invoice-validation";
 import type { InvoiceDraft } from "@/features/shared/types";
+import {
+  INVOICE_GENERATOR_LOAD_INVOICE_EVENT,
+  type InvoiceGeneratorLoadInvoiceEventDetail,
+} from "./invoice-generator-events";
 
 type SaveSource = "local" | "backend";
 
@@ -145,7 +149,7 @@ export function InvoiceGeneratorDashboard() {
       setInvoice(mapInvoiceRecordToDraft(response.data));
       setLastSavedAt(response.data.updatedAt);
       setSaveSource("backend");
-      setSaveMessage("Saved invoice loaded.");
+      setSaveMessage(`Loaded invoice ${response.data.invoiceNumber} from backend history.`);
     } catch (error) {
       setHistoryError(
         error instanceof Error ? error.message : "Failed to load invoice",
@@ -154,6 +158,20 @@ export function InvoiceGeneratorDashboard() {
       setLoadingInvoiceId(null);
     }
   }
+
+  useEffect(() => {
+    function handleHistoryLoad(event: Event) {
+      const customEvent = event as CustomEvent<InvoiceGeneratorLoadInvoiceEventDetail>;
+      const invoiceId = customEvent.detail?.invoiceId;
+      if (!invoiceId) return;
+      void handleLoadInvoice(invoiceId);
+    }
+
+    window.addEventListener(INVOICE_GENERATOR_LOAD_INVOICE_EVENT, handleHistoryLoad);
+    return () => {
+      window.removeEventListener(INVOICE_GENERATOR_LOAD_INVOICE_EVENT, handleHistoryLoad);
+    };
+  }, []);
 
   return (
     <DashboardShell
@@ -269,7 +287,7 @@ export function InvoiceGeneratorDashboard() {
         </DashboardPanel>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.85fr)]">
+      <div id="invoice-generator-editor" className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.85fr)]">
         <DashboardPanel title="Invoice Editor">
           <div className="p-4">
             {validationIssues.length > 0 && (
