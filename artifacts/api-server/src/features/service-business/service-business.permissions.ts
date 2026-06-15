@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import type { Role } from "../../lib/auth.js";
 
-import { requireRole } from "../../lib/auth.js";
+import { requireModeAccess, requireRole } from "../../lib/auth.js";
 
 export const SERVICE_BUSINESS_PERMISSIONS = {
   view: "custom-business.service.view",
@@ -42,5 +42,10 @@ export async function requireServiceBusinessPermission(
   res: Response,
   permission: ServiceBusinessPermission,
 ) {
-  return requireRole(req, res, getServiceBusinessPermissionRoles(permission));
+  const user = await requireRole(req, res, getServiceBusinessPermissionRoles(permission));
+  if (!user) return null;
+
+  await requireModeAccess(user, "custom-business");
+
+  return user;
 }
