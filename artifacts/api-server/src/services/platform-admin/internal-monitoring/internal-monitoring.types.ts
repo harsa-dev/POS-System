@@ -143,3 +143,43 @@ export type InternalMonitoringMutationReadinessContractDto = {
   blockedReason: string;
   requiredProof: string[];
 };
+
+export type InternalSystemProbeStatus = "pass" | "watch" | "fail";
+
+export type InternalSystemProbeHistoryItemDto = {
+  id: string;
+  probeId: string;
+  label: string;
+  area: string;
+  status: InternalSystemProbeStatus;
+  latencyMs: number | null;
+  message: string;
+  observedAt: string;
+  source: string;
+  metadataJson: unknown | null;
+  createdAt: string;
+};
+
+export type InternalSystemProbeHistorySummaryDto = {
+  total: number;
+  pass: number;
+  watch: number;
+  fail: number;
+  retentionDays: number;
+  persistenceStatus: "ready" | "schema-missing" | "database-unavailable" | "not-configured";
+  detail: string;
+};
+
+export type InternalSystemProbeHistoryDto = {
+  generatedAt: string;
+  items: InternalSystemProbeHistoryItemDto[];
+  summary: InternalSystemProbeHistorySummaryDto;
+  filters: {
+    probeId?: string;
+    status?: InternalSystemProbeStatus;
+    area?: string;
+    from?: string;
+    to?: string;
+    limit: number;
+  };
+};
