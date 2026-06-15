@@ -20,6 +20,10 @@ import {
   type CashierShiftSyncState,
 } from "@/lib/api/shifts-api";
 
+type CashierShiftSyncReconciliationPanelProps = {
+  onSynced?: () => void | Promise<void>;
+};
+
 function formatDateTime(value: string | null) {
   if (!value) return "-";
 
@@ -47,7 +51,9 @@ function isSyncEligible(row: CashierShiftReconciliationRowDto) {
   return row.syncState === "READY_TO_SYNC" || row.syncState === "NEEDS_REVIEW";
 }
 
-export function CashierShiftSyncReconciliationPanel() {
+export function CashierShiftSyncReconciliationPanel({
+  onSynced,
+}: CashierShiftSyncReconciliationPanelProps) {
   const [reconciliation, setReconciliation] = useState<CashierShiftReconciliationDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [syncingShiftId, setSyncingShiftId] = useState<string | null>(null);
@@ -93,6 +99,7 @@ export function CashierShiftSyncReconciliationPanel() {
       await cashflowApi.syncShift(row.shiftId);
       setMessage(`Shift ${row.shiftId.slice(0, 8)} synced to cashflow.`);
       await loadReconciliation();
+      await onSynced?.();
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error, "Failed to sync shift to cashflow."));
     } finally {
@@ -216,8 +223,6 @@ export function CashierShiftSyncReconciliationPanel() {
                         >
                           {syncingShiftId === row.shiftId ? "Syncing..." : "Sync"}
                         </DashboardActionButton>
-                      ) : row.syncState === "NEEDS_REVIEW" ? (
-                        <StatusPill tone="amber">Review</StatusPill>
                       ) : row.syncState === "BLOCKED_OPEN" ? (
                         <StatusPill tone="slate">Close First</StatusPill>
                       ) : (
