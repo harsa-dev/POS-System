@@ -63,12 +63,21 @@ async function requireCashierShiftReportAccess(
     }
 
     const isShiftSync = req.path.startsWith("/cashflow/sync/shifts/");
+    const isExport = req.path === "/cashier-shift-reports/export";
 
     if (isShiftSync && !capabilities.canSyncToCashflow) {
       return errorResponse(res, {
         status: 403,
         code: errorCodes.forbidden,
         message: "Cashier shift cashflow sync requires a management role.",
+      });
+    }
+
+    if (isExport && !capabilities.canExport) {
+      return errorResponse(res, {
+        status: 403,
+        code: errorCodes.forbidden,
+        message: "Cashier shift report export requires a management role.",
       });
     }
 
@@ -109,6 +118,8 @@ router.get("/cashier-shift-reports-capabilities", async (req, res) => {
   }
 });
 
+router.get("/cashier-shift-reports", requireCashierShiftReportAccess);
+router.get("/cashier-shift-reports/export", requireCashierShiftReportAccess);
 router.get("/shifts", requireCashierShiftReportAccess);
 router.post("/cashflow/sync/shifts/:shiftId", requireCashierShiftReportAccess);
 
