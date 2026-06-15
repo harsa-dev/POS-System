@@ -1,18 +1,16 @@
-# Platform Admin - Internal Monitoring Dashboard Plan
+# Platform Admin Internal Monitoring Dashboard Plan
 
 ## Scope
 
-This plan scopes only the Internal Monitoring dashboard:
+This plan is scoped to one dashboard only:
 
 ```txt
 /dashboard/internal-monitoring
 ```
 
-It does not implement the other Platform Admin dashboards yet.
+It does not implement every Platform Admin dashboard. Internal Monitoring is sensitive because it exposes platform health, route inventory, API readiness, schema risk, release gates, incidents, and future admin action readiness. Phase 1 must stay read-only.
 
-Internal Monitoring is sensitive because it exposes platform health, route inventory, API readiness, schema risk, release gates, incidents, and future admin action readiness. Phase 1 must stay read-only.
-
-## Related frontend files
+## Current frontend files
 
 ```txt
 artifacts/pos-system/src/pages/dashboard/platform-monitoring.tsx
@@ -20,29 +18,19 @@ artifacts/pos-system/src/features/shared/platform-monitoring/platform-monitoring
 artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-dashboard.tsx
 artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-deep-dive.tsx
 artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-control-room.tsx
-artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-data-source.ts
 artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-upgrade-board.tsx
-artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-upgrade.mock.ts
-artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-contracts.mock.ts
-artifacts/pos-system/src/lib/api/internal-monitoring-api.ts
-artifacts/pos-system/src/constants/routes.ts
-artifacts/pos-system/src/App.tsx
+artifacts/pos-system/src/features/shared/platform-monitoring/internal-production-readiness-board.tsx
 ```
 
-## Related backend files
+## Current route
 
 ```txt
-artifacts/api-server/src/routes/internal-monitoring.ts
-artifacts/api-server/src/routes/index.ts
-artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.types.ts
-artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.policy.ts
-artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.mock-repository.ts
-artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.service.ts
+ROUTES.INTERNAL_MONITORING = /dashboard/internal-monitoring
 ```
 
-## Dashboard sections
+The route is mounted in `artifacts/pos-system/src/App.tsx` and must use a dedicated Platform Admin guard.
 
-The advanced Internal Monitoring dashboard should contain these sections:
+## Advanced dashboard sections
 
 ```txt
 1. Executive System Summary
@@ -58,9 +46,9 @@ The advanced Internal Monitoring dashboard should contain these sections:
 11. Observability Targets
 ```
 
-## Backend read-only endpoints
+## Backend read-only endpoint plan
 
-Implemented backend endpoints for the first backend phase:
+Allowed in first backend scaffold:
 
 ```txt
 GET /api/internal/health/summary
@@ -69,7 +57,7 @@ GET /api/internal/contracts/readiness
 GET /api/internal/data-integrity/checks
 ```
 
-Blocked until later:
+Blocked until later phases:
 
 ```txt
 POST /api/internal/*
@@ -78,75 +66,19 @@ DELETE /api/internal/*
 PATCH /api/internal/alerts/:alertId/acknowledge
 ```
 
-## Backend module target
+Alert acknowledgement must stay blocked until dedicated RBAC, audit logging, approval policy, rollback notes, and rate limits are implemented.
 
-Backend scaffold:
+## Frontend data source plan
 
-```txt
-artifacts/api-server/src/routes/internal-monitoring.ts
-artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.types.ts
-artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.policy.ts
-artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.mock-repository.ts
-artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.service.ts
-```
-
-Rules:
+The dashboard uses a `mock/api/fallback` source model:
 
 ```txt
-1. GET only.
-2. Auth required.
-3. Platform Admin capability guard required.
-4. No Prisma mutation.
-5. No Prisma schema promotion in phase 1.
-6. Mock-backed repository is allowed.
-7. Response envelope must be consistent.
+1. Render existing typed mock data immediately.
+2. Try read-only backend API.
+3. If backend succeeds, show Read-only API source badge.
+4. If backend fails, keep mock fallback and show fallback reason.
+5. Never call POST/PATCH/DELETE from this dashboard in phase 1.
 ```
-
-## Frontend implementation target
-
-Frontend API client:
-
-```txt
-artifacts/pos-system/src/lib/api/internal-monitoring-api.ts
-```
-
-Implemented methods:
-
-```txt
-internalMonitoringApi.getControlRoom()
-internalMonitoringApi.getRouteInventory()
-internalMonitoringApi.getContractReadiness()
-internalMonitoringApi.getDataIntegrityChecks()
-```
-
-No frontend method may call POST, PATCH, or DELETE for `/api/internal/*` in the first implementation phase.
-
-## Data source strategy
-
-Internal Monitoring supports three data states:
-
-```txt
-mock     -> current static mock data
-api      -> backend read-only API succeeds
-fallback -> API fails and UI falls back to mock data with warning copy
-```
-
-Implemented adapter:
-
-```txt
-artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-data-source.ts
-```
-
-The Control Room now loads all four read-only endpoints:
-
-```txt
-GET /api/internal/health/summary
-GET /api/internal/routes/inventory
-GET /api/internal/contracts/readiness
-GET /api/internal/data-integrity/checks
-```
-
-Each section has its own fallback path. If one endpoint fails, the dashboard keeps rendering and shows the section fallback reason instead of blanking the whole control room.
 
 ## Access policy
 
@@ -165,7 +97,7 @@ OWNER and ADMIN may view Internal Monitoring.
 MANAGER, OPERATOR, STAFF, and VIEWER should not get future platform admin action access.
 ```
 
-Future capability:
+Capability:
 
 ```txt
 platform-admin.internal-monitoring.read
@@ -246,10 +178,20 @@ Implemented:
 
 ### IM-5 - Platform Admin route guard
 
-Next.
+Status: Done.
 
-Add dedicated Platform Admin guard for `/dashboard/internal-monitoring`.
+Implemented:
+
+```txt
+- frontend platform admin capability policy
+- OWNER/ADMIN allowlist for platform-admin.internal-monitoring.read
+- PlatformAdminRoute wrapper around ROUTES.INTERNAL_MONITORING
+- forbidden panel for non-platform-admin roles
+- static guard checks for frontend policy + route wrapper
+```
 
 ### IM-6 - Sidebar permission isolation
+
+Next.
 
 Move Internal Monitoring entry away from broad `settings.manage` into `platform-admin.internal-monitoring.read`.
