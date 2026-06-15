@@ -39,6 +39,26 @@ export type InvoiceHistoryEnvelope<T = InvoiceRecord[]> = ApiEnvelope<T> & {
   meta?: InvoiceHistoryMeta;
 };
 
+export type InvoiceSummaryBucketDto = {
+  status: InvoiceBackendStatus;
+  count: number;
+  total: number;
+};
+
+export type InvoiceSummaryDto = {
+  buckets: InvoiceSummaryBucketDto[];
+  totals: {
+    totalCount: number;
+    totalValue: number;
+    receivable: number;
+    paidRevenue: number;
+    cancelledValue: number;
+    draftValue: number;
+    sentValue: number;
+  };
+  lastUpdatedAt: string | null;
+};
+
 export type InvoiceExportDto = {
   rows: InvoiceRecord[];
   meta: {
@@ -137,13 +157,19 @@ function buildInvoiceHistorySearchParams(query: InvoiceHistoryQuery = {}) {
 
 function getFilenameFromDisposition(disposition: string | null) {
   if (!disposition) return null;
-  const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+  const match = disposition.match(/filename="?([^";]+)"?/i);
   return match?.[1] ?? null;
 }
 
 export const invoiceApi = {
   getCapabilities<T = InvoiceCapabilitiesDto>() {
     return apiClient.get<ApiEnvelope<T>>("/api/invoice-capabilities");
+  },
+
+  getSummary<T = InvoiceSummaryDto>(query?: InvoiceHistoryQuery) {
+    const params = buildInvoiceHistorySearchParams(query);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return apiClient.get<ApiEnvelope<T>>(`/api/invoices-summary${suffix}`);
   },
 
   listInvoices<T = InvoiceRecord[]>(query?: InvoiceHistoryQuery) {
