@@ -105,6 +105,26 @@ platform-admin.internal-monitoring.read
 
 This must replace broad `settings.manage` for the Internal Monitoring sidebar entry in a later phase.
 
+## Optional browser smoke
+
+Internal Monitoring has an optional browser smoke command:
+
+```bash
+pnpm platform-admin:browser-smoke
+```
+
+Environment:
+
+```txt
+PLATFORM_ADMIN_APP_URL=http://localhost:5173
+PLATFORM_ADMIN_SMOKE_COOKIE=<browser cookie for real authenticated checks>
+PLATFORM_ADMIN_SMOKE_HEADLESS=false
+PLATFORM_ADMIN_SMOKE_SKIP_AUTH=true
+PLATFORM_ADMIN_SMOKE_USE_MOCK_AUTH=true
+```
+
+Default smoke uses mocked `/api/auth/me` responses to simulate ADMIN allow and MANAGER deny without needing real accounts. Set `PLATFORM_ADMIN_SMOKE_USE_MOCK_AUTH=false` and provide a cookie when validating against real auth.
+
 ## Sensitive implementation rules
 
 ```txt
@@ -236,15 +256,22 @@ Implemented:
 
 ### IM-9 - Internal Monitoring browser smoke
 
-Next.
+Status: Done.
 
-Add optional browser smoke coverage for `/dashboard/internal-monitoring`:
+Implemented:
 
 ```txt
-- OWNER/ADMIN can open dashboard
-- MANAGER/OPERATOR/STAFF/VIEWER get Platform Admin Restricted
-- source health summary renders
-- read-only banner renders
-- quick section links exist
-- no mutation controls are visible
+- optional Playwright browser smoke script
+- root command pnpm platform-admin:browser-smoke
+- mock-auth ADMIN allow smoke
+- mock-auth MANAGER forbidden smoke
+- read-only banner, source health, quick nav, route inventory, and data integrity visibility checks
+- no internal mutation controls visible check
+- static guard checks browser smoke contract
 ```
+
+### IM-10 - Mutation readiness design and dry-run contract
+
+Next.
+
+Design future alert acknowledgement as dry-run only. Do not implement PATCH yet.
