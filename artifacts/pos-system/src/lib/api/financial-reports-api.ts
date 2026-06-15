@@ -4,6 +4,17 @@ export const financialReportBases = ["cashflow", "orders", "hybrid"] as const;
 
 export type FinancialReportBasis = (typeof financialReportBases)[number];
 
+export type FinancialReportsCapabilitiesDto = {
+  businessId: string;
+  businessMode: string;
+  canView: boolean;
+  canExport: boolean;
+  canReconcile: boolean;
+  canInspectSources: boolean;
+  isPlannedMode: boolean;
+  plannedReason: string | null;
+};
+
 export type FinancialReportPeriodDto = {
   from: string;
   to: string;
@@ -148,6 +159,12 @@ export function buildFinancialReportQueryString(
 }
 
 export const financialReportsApi = {
+  getCapabilities() {
+    return apiClient.get<ApiDataEnvelope<FinancialReportsCapabilitiesDto>>(
+      "/api/financial-reports-capabilities",
+    );
+  },
+
   getReport(params?: FinancialReportQuery) {
     return apiClient.get<ApiDataEnvelope<FinancialReportDto>>(
       `/api/financial-reports${buildFinancialReportQueryString(params)}`,
