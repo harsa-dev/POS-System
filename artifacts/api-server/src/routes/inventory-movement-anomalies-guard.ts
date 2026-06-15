@@ -48,5 +48,7 @@ async function requireInventoryMovementAnomalyAccess(
 
 router.get("/inventory-movement-anomalies", requireInventoryMovementAnomalyAccess);
 router.get("/inventory-movement-anomalies/export", requireInventoryMovementAnomalyAccess);
+router.get("/inventory-movement-anomalies/reviews", requireInventoryMovementAnomalyAccess);
+router.post("/inventory-movement-anomalies/reviews", requireInventoryMovementAnomalyAccess);
 
 export default router;
