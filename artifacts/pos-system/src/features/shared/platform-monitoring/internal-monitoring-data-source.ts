@@ -1,12 +1,12 @@
-import {
-  internalMonitoringApi,
-  type InternalMonitoringApiImplementationStepDto,
-  type InternalMonitoringControlRoomDto,
-  type InternalMonitoringDataIntegrityCheckDto,
-  type InternalMonitoringMutationReadinessContractDto,
-  type InternalMonitoringRouteInventoryItemDto,
-  type InternalMonitoringSource,
-} from "@/lib/api/internal-monitoring-api";
+import { internalMonitoringApi } from "@/lib/api/internal-monitoring-api";
+import type {
+  InternalMonitoringApiImplementationStepDto,
+  InternalMonitoringControlRoomDto,
+  InternalMonitoringDataIntegrityCheckDto,
+  InternalMonitoringMutationReadinessContractDto,
+  InternalMonitoringRouteInventoryItemDto,
+  InternalMonitoringSource,
+} from "@/lib/api/internal-monitoring.dto";
 
 import {
   apiImplementationSteps,
