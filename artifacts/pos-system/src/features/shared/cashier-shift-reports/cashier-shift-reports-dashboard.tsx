@@ -8,6 +8,7 @@ import { DateRangeFilter, SelectFilter, StatusFilter } from "@/features/shared/f
 import { ShiftKpis } from "./components/shift-analysis/shift-kpis";
 import { ShiftList } from "./components/shift-list/shift-list";
 import { ShiftDetailDrawer } from "./components/shift-detail-drawer";
+import { CashierShiftSyncReconciliationPanel } from "./cashier-shift-sync-reconciliation-panel";
 import type { CashierShift, ShiftFilters } from "@/features/shared/types";
 import { cashflowApi } from "@/lib/api/cashflow-api";
 import { getApiErrorMessage } from "@/lib/api/api-client";
@@ -267,6 +268,8 @@ export function CashierShiftReportsDashboard() {
           </DashboardActions>
         </div>
       </DashboardPanel>
+
+      <CashierShiftSyncReconciliationPanel />
 
       <ShiftKpis shifts={backendFilteredShifts} />
 
