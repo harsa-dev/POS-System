@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  CheckCircle2,
   Download,
+  EyeOff,
   FileText,
   RefreshCw,
   Search,
@@ -22,6 +24,8 @@ import {
   salesPaymentIntegrityApi,
   type SalesPaymentIntegrityDto,
   type SalesPaymentIntegrityIssue,
+  type SalesPaymentIntegrityReviewDto,
+  type SalesPaymentIntegrityReviewStatus,
   type SalesPaymentIntegrityRowDto,
 } from "@/lib/api/sales-payment-integrity-api";
 
@@ -40,6 +44,17 @@ const ISSUE_OPTIONS: Array<{ value: SalesPaymentIntegrityIssue; label: string }>
   { value: "orders_without_paid_payment", label: "Orders without paid payment" },
   { value: "payment_total_mismatch", label: "Payment total mismatches" },
 ];
+
+const REVIEW_OPTIONS: Array<{ value: SalesPaymentIntegrityReviewStatus; label: string }> = [
+  { value: "REVIEWED", label: "Reviewed" },
+  { value: "IGNORED", label: "Ignored" },
+  { value: "RESOLVED", label: "Resolved" },
+];
+
+type ReviewDraft = {
+  status: SalesPaymentIntegrityReviewStatus;
+  note: string;
+};
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "-";
@@ -84,7 +99,37 @@ function getBucket(data: SalesPaymentIntegrityDto | null, issue: Exclude<SalesPa
   return data?.summary.buckets.find((bucket) => bucket.issueType === issue) ?? null;
 }
 
-function buildRowColumns(): DataTableColumn<SalesPaymentIntegrityRowDto>[] {
+function getReviewKey(row: Pick<SalesPaymentIntegrityRowDto, "issueType" | "orderId">) {
+  return `${row.issueType}:${row.orderId}`;
+}
+
+function getReviewTone(status: SalesPaymentIntegrityReviewStatus | undefined) {
+  if (status === "RESOLVED") return "green";
+  if (status === "IGNORED") return "slate";
+  if (status === "REVIEWED") return "blue";
+
+  return "rose";
+}
+
+function formatReviewStatus(status: SalesPaymentIntegrityReviewStatus | undefined) {
+  if (!status) return "Unreviewed";
+  return formatIssueLabel(status);
+}
+
+function buildReviewMap(rows: SalesPaymentIntegrityReviewDto[]) {
+  return rows.reduce<Record<string, SalesPaymentIntegrityReviewDto>>((map, review) => {
+    map[getReviewKey(review)] = review;
+    return map;
+  }, {});
+}
+
+function buildRowColumns(params: {
+  reviewsByKey: Record<string, SalesPaymentIntegrityReviewDto>;
+  drafts: Record<string, ReviewDraft>;
+  savingKey: string | null;
+  onDraftChange: (key: string, draft: Partial<ReviewDraft>) => void;
+  onSaveReview: (row: SalesPaymentIntegrityRowDto) => void;
+}): DataTableColumn<SalesPaymentIntegrityRowDto>[] {
   return [
     {
       key: "issueType",
@@ -145,6 +190,60 @@ function buildRowColumns(): DataTableColumn<SalesPaymentIntegrityRowDto>[] {
       ),
     },
     {
+      key: "reviewStatus",
+      header: "Review",
+      cell: (row) => {
+        const key = getReviewKey(row);
+        const review = params.reviewsByKey[key];
+        const draft = params.drafts[key] ?? {
+          status: review?.status ?? "REVIEWED",
+          note: review?.note ?? "",
+        };
+
+        return (
+          <div className="min-w-[260px] space-y-2">
+            <StatusPill tone={getReviewTone(review?.status)}>
+              {formatReviewStatus(review?.status)}
+            </StatusPill>
+            {review && (
+              <p className="text-xs text-muted-foreground">
+                Updated {formatDateTime(review.updatedAt)}
+              </p>
+            )}
+            <select
+              value={draft.status}
+              onChange={(event) =>
+                params.onDraftChange(key, {
+                  status: event.target.value as SalesPaymentIntegrityReviewStatus,
+                })
+              }
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
+            >
+              {REVIEW_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <textarea
+              value={draft.note}
+              onChange={(event) => params.onDraftChange(key, { note: event.target.value })}
+              placeholder="Required review note..."
+              rows={2}
+              className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
+            />
+            <DashboardActionButton
+              icon={draft.status === "RESOLVED" ? CheckCircle2 : draft.status === "IGNORED" ? EyeOff : ShieldAlert}
+              onClick={() => params.onSaveReview(row)}
+              disabled={params.savingKey === key}
+            >
+              {params.savingKey === key ? "Saving..." : "Save Review"}
+            </DashboardActionButton>
+          </div>
+        );
+      },
+    },
+    {
       key: "recommendedAction",
       header: "Recommended Action",
       cell: (row) => row.recommendedAction,
@@ -173,6 +272,9 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
   );
   const [issue, setIssue] = useState<SalesPaymentIntegrityIssue>("all");
   const [workbench, setWorkbench] = useState<SalesPaymentIntegrityDto | null>(null);
+  const [reviewsByKey, setReviewsByKey] = useState<Record<string, SalesPaymentIntegrityReviewDto>>({});
+  const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
+  const [savingReviewKey, setSavingReviewKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState<"csv" | "json" | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -184,18 +286,27 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
     setErrorMessage(null);
 
     try {
-      const response = await salesPaymentIntegrityApi.getWorkbench({
-        ...filterContext.query,
-        issue,
-        limit: 150,
-      });
+      const [workbenchResponse, reviewsResponse] = await Promise.all([
+        salesPaymentIntegrityApi.getWorkbench({
+          ...filterContext.query,
+          issue,
+          limit: 150,
+        }),
+        salesPaymentIntegrityApi.listReviews(),
+      ]);
 
-      if (!response.success || !response.data) {
-        setErrorMessage(response.message ?? "Failed to load payment integrity workbench.");
+      if (!workbenchResponse.success || !workbenchResponse.data) {
+        setErrorMessage(workbenchResponse.message ?? "Failed to load payment integrity workbench.");
         return;
       }
 
-      setWorkbench(response.data);
+      if (!reviewsResponse.success || !reviewsResponse.data) {
+        setErrorMessage(reviewsResponse.message ?? "Failed to load payment integrity reviews.");
+        return;
+      }
+
+      setWorkbench(workbenchResponse.data);
+      setReviewsByKey(buildReviewMap(reviewsResponse.data.rows));
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to load payment integrity workbench.",
@@ -237,9 +348,106 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
     return () => window.removeEventListener(SALES_PAYMENT_INTEGRITY_OPEN_EVENT, handleOpen);
   }, []);
 
-  const columns = useMemo(() => buildRowColumns(), []);
+  const columns = useMemo(
+    () =>
+      buildRowColumns({
+        reviewsByKey,
+        drafts: reviewDrafts,
+        savingKey: savingReviewKey,
+        onDraftChange: handleDraftChange,
+        onSaveReview: (row) => void handleSaveReview(row),
+      }),
+    [reviewsByKey, reviewDrafts, savingReviewKey],
+  );
   const missingPaymentBucket = getBucket(workbench, "orders_without_paid_payment");
   const mismatchBucket = getBucket(workbench, "payment_total_mismatch");
+  const visibleReviewStats = useMemo(() => {
+    const rows = workbench?.rows ?? [];
+    return rows.reduce(
+      (stats, row) => {
+        const review = reviewsByKey[getReviewKey(row)];
+        if (!review) {
+          stats.unreviewed += 1;
+          return stats;
+        }
+        if (review.status === "REVIEWED") stats.reviewed += 1;
+        if (review.status === "IGNORED") stats.ignored += 1;
+        if (review.status === "RESOLVED") stats.resolved += 1;
+        return stats;
+      },
+      { reviewed: 0, ignored: 0, resolved: 0, unreviewed: 0 },
+    );
+  }, [reviewsByKey, workbench?.rows]);
+
+  function handleDraftChange(key: string, draft: Partial<ReviewDraft>) {
+    setReviewDrafts((current) => {
+      const existingReview = reviewsByKey[key];
+      const existing = current[key] ?? {
+        status: existingReview?.status ?? "REVIEWED",
+        note: existingReview?.note ?? "",
+      };
+
+      return {
+        ...current,
+        [key]: {
+          ...existing,
+          ...draft,
+        },
+      };
+    });
+  }
+
+  async function handleSaveReview(row: SalesPaymentIntegrityRowDto) {
+    const key = getReviewKey(row);
+    const existingReview = reviewsByKey[key];
+    const draft = reviewDrafts[key] ?? {
+      status: existingReview?.status ?? "REVIEWED",
+      note: existingReview?.note ?? "",
+    };
+    const note = draft.note.trim();
+
+    if (!note) {
+      setErrorMessage("Review note is required before saving payment integrity status.");
+      return;
+    }
+
+    setSavingReviewKey(key);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await salesPaymentIntegrityApi.saveReview({
+        issueType: row.issueType,
+        orderId: row.orderId,
+        status: draft.status,
+        note,
+      });
+
+      if (!response.success || !response.data) {
+        setErrorMessage(response.message ?? "Failed to save payment integrity review.");
+        return;
+      }
+
+      setReviewsByKey((current) => ({
+        ...current,
+        [key]: response.data,
+      }));
+      setReviewDrafts((current) => ({
+        ...current,
+        [key]: {
+          status: response.data.status,
+          note: response.data.note,
+        },
+      }));
+      setSuccessMessage(`Saved ${formatReviewStatus(response.data.status)} review for Order #${row.orderNumber}.`);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to save payment integrity review.",
+      );
+    } finally {
+      setSavingReviewKey(null);
+    }
+  }
 
   async function handleExportCsv() {
     setIsExporting("csv");
@@ -301,7 +509,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
     <div id="sales-payment-integrity-workbench" className="scroll-mt-24">
       <DashboardPanel
         title="Sales Payment Integrity Workbench"
-        description="Backend-backed action workbench for orders without PAID payment records and paid amount mismatches. It does not auto-repair money. Astonishing restraint, but audit will thank us."
+        description="Backend-backed action workbench for orders without PAID payment records and paid amount mismatches. It now supports review states with required notes, because audit hates vibes."
         actions={
           <DashboardActions>
             <DashboardActionButton icon={RefreshCw} onClick={() => void loadWorkbench()} disabled={isLoading}>
@@ -333,18 +541,18 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
               tone="amber"
             />
             <StatCard
-              label="Missing PAID Payment"
-              value={formatNumber(missingPaymentBucket?.count ?? 0)}
-              note={formatCurrency(missingPaymentBucket?.totalValue ?? 0)}
-              icon={Search}
-              tone="rose"
+              label="Reviewed / Resolved"
+              value={`${formatNumber(visibleReviewStats.reviewed)} / ${formatNumber(visibleReviewStats.resolved)}`}
+              note={`${formatNumber(visibleReviewStats.unreviewed)} unreviewed visible row(s)`}
+              icon={CheckCircle2}
+              tone="green"
             />
             <StatCard
-              label="Amount Mismatch"
-              value={formatNumber(mismatchBucket?.count ?? 0)}
-              note={formatCurrency(mismatchBucket?.totalValue ?? 0)}
-              icon={AlertTriangle}
-              tone="amber"
+              label="Ignored"
+              value={formatNumber(visibleReviewStats.ignored)}
+              note="Visible issue rows marked ignored"
+              icon={EyeOff}
+              tone="slate"
             />
           </div>
 
@@ -401,7 +609,7 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
               columns={columns}
               data={workbench.rows}
               getRowKey={(row) => `${row.issueType}-${row.orderId}`}
-              minWidth={1280}
+              minWidth={1560}
               pagination={{ pageSize: 8 }}
             />
           )}
