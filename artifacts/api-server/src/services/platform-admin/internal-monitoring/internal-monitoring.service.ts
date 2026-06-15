@@ -4,6 +4,9 @@ import type {
   InternalMonitoringRouteInventoryItemDto,
 } from "./internal-monitoring.types.js";
 import {
+  getInternalMonitoringMutationReadinessContracts,
+} from "./internal-monitoring-mutation-readiness.js";
+import {
   getInternalMonitoringApiImplementationSteps,
   getInternalMonitoringCards,
   getInternalMonitoringDataIntegrityChecks,
@@ -49,4 +52,8 @@ export function getInternalMonitoringContractReadiness() {
 
 export function getInternalMonitoringIntegrityChecks(): InternalMonitoringDataIntegrityCheckDto[] {
   return getInternalMonitoringDataIntegrityChecks();
+}
+
+export function getInternalMonitoringMutationReadiness() {
+  return getInternalMonitoringMutationReadinessContracts();
 }
