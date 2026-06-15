@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development pnpm run build && pnpm run start",
     "generate": "prisma generate",
+    "prisma:migrate:status": "prisma migrate status",
     "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:db:push:dev": "prisma db push --accept-data-loss",
+    "dev:db:repair": "pnpm run prisma:db:push:dev && pnpm run generate && pnpm run restaurant:seed",
     "build": "pnpm run generate && node ./build.mjs",
     "start": "node --env-file-if-exists=.env --enable-source-maps ./dist/index.mjs",
     "typecheck": "pnpm run generate && tsc -p tsconfig.json --noEmit",
