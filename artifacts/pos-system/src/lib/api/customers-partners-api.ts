@@ -67,6 +67,19 @@ export type LoyaltyTierDto = {
   sortOrder: number;
 };
 
+export type LoyaltyTiersDto = {
+  tiers: LoyaltyTierDto[];
+  canUpdate: boolean;
+};
+
+export type UpdateLoyaltyTierPayload = {
+  icon: string;
+  calculationPeriod: string;
+  minimumSpending: number;
+  automaticDiscount: string;
+  sortOrder: number;
+};
+
 export type CustomersPartnersDashboardDto = {
   capabilities: CustomersPartnersCapabilitiesDto;
   summary: {
@@ -224,6 +237,19 @@ export const customersPartnersApi = {
   getSupplierDetail(id: string) {
     return apiClient.get<ApiDataEnvelope<CustomersPartnersContactDetailDto>>(
       `/api/customers-partners/suppliers/${encodeURIComponent(id)}`,
+    );
+  },
+
+  getLoyaltyTiers() {
+    return apiClient.get<ApiDataEnvelope<LoyaltyTiersDto>>(
+      "/api/customers-partners/loyalty-tiers",
+    );
+  },
+
+  updateLoyaltyTier(id: string, payload: UpdateLoyaltyTierPayload) {
+    return apiClient.patch<ApiDataEnvelope<LoyaltyTierDto>>(
+      `/api/customers-partners/loyalty-tiers/${encodeURIComponent(id)}`,
+      { json: payload },
     );
   },
 
