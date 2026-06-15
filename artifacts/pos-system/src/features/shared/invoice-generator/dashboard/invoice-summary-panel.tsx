@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock3, FileInput, FileText, ListFilter, RefreshCw, Send, TimerReset, WalletCards, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, FileInput, FileText, ListFilter, MessageSquareText, RefreshCw, Send, TimerReset, WalletCards, XCircle } from "lucide-react";
 
 import { invoiceApi, type InvoiceBackendStatus, type InvoiceOverdueSampleDto, type InvoiceSummaryDto } from "@/lib/api/invoice-api";
 import { formatCurrency } from "@/features/shared/format";
@@ -9,9 +9,11 @@ import { DashboardActionButton, DashboardActions, DashboardPanel, StatCard } fro
 import {
   INVOICE_GENERATOR_FILTER_HISTORY_EVENT,
   INVOICE_GENERATOR_LOAD_INVOICE_EVENT,
+  INVOICE_GENERATOR_OPEN_FOLLOW_UP_EVENT,
   INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT,
   type InvoiceGeneratorFilterHistoryEventDetail,
   type InvoiceGeneratorLoadInvoiceEventDetail,
+  type InvoiceGeneratorOpenFollowUpEventDetail,
 } from "./invoice-generator-events";
 
 type InvoiceSummaryPanelProps = {
@@ -62,6 +64,15 @@ function loadSampleToEditor(invoice: InvoiceOverdueSampleDto) {
   };
   window.dispatchEvent(new CustomEvent(INVOICE_GENERATOR_LOAD_INVOICE_EVENT, { detail }));
   document.getElementById("invoice-generator-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function openSampleFollowUp(invoice: InvoiceOverdueSampleDto) {
+  const detail: InvoiceGeneratorOpenFollowUpEventDetail = {
+    invoiceId: invoice.id,
+    invoiceNumber: invoice.invoiceNumber,
+  };
+  window.dispatchEvent(new CustomEvent(INVOICE_GENERATOR_OPEN_FOLLOW_UP_EVENT, { detail }));
+  document.getElementById("invoice-follow-up-tracker")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelProps) {
@@ -257,6 +268,14 @@ export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelPro
                           >
                             <ListFilter className="h-3.5 w-3.5" />
                             History
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openSampleFollowUp(invoice)}
+                            className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                          >
+                            <MessageSquareText className="h-3.5 w-3.5" />
+                            Follow Up
                           </button>
                           <button
                             type="button"
