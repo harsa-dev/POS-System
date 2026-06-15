@@ -69,7 +69,7 @@ export async function createShiftSyncAttempt(params: {
     WHERE "businessId" = ${params.businessId}
       AND "shiftId" = ${params.shiftId}
   `;
-  const attemptNumber = Number(countRows[0]?.count ?? 0n) + 1;
+  const attemptNumber = Number(countRows[0]?.count ?? 0) + 1;
   const id = randomUUID();
 
   const rows = await prisma.$queryRaw<ShiftSyncAttemptLogRecord[]>`
