@@ -15,6 +15,7 @@ import {
 } from "@/lib/api/financial-reports-api";
 
 import { FinancialReportsDashboard } from "./financial-reports-dashboard";
+import { FinancialReportsDrilldownPanel } from "./financial-reports-drilldown-panel";
 
 function getGuardMessage(capabilities: FinancialReportsCapabilitiesDto | null) {
   if (!capabilities) return "Loading financial report permissions...";
@@ -70,7 +71,12 @@ export function FinancialReportsWorkspace() {
   );
 
   if (capabilities && canOpenDashboard) {
-    return <FinancialReportsDashboard />;
+    return (
+      <div className="space-y-5">
+        <FinancialReportsDrilldownPanel />
+        <FinancialReportsDashboard />
+      </div>
+    );
   }
 
   return (
