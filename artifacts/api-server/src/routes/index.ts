@@ -10,6 +10,7 @@ import inventoryCostSnapshotRepairsRouter from "./inventory-cost-snapshot-repair
 import inventoryRouter from "./inventory.js";
 import cashflowRouter from "./cashflow.js";
 import financialReportsGuardRouter from "./financial-reports-guard.js";
+import financialReportsRepairAuditRouter from "./financial-reports-repair-audit.js";
 import reportsRouter from "./financial-reports.js";
 import salesAnalyticsRouter from "./sales-analytics.js";
 import shiftsRouter from "./shifts.js";
@@ -54,6 +55,7 @@ router.use(inventoryCostSnapshotRepairsRouter);
 router.use(inventoryRouter);
 router.use(cashflowRouter);
 router.use(financialReportsGuardRouter);
+router.use(financialReportsRepairAuditRouter);
 router.use(reportsRouter);
 router.use(salesAnalyticsRouter);
 router.use(shiftsRouter);
