@@ -81,6 +81,23 @@ export type InternalMonitoringDataIntegrityCheckDto = {
   detail: string;
 };
 
+export type InternalMonitoringMutationReadinessContractDto = {
+  id: string;
+  action: string;
+  targetSurface: string;
+  proposedEndpoint: string;
+  proposedMethod: "POST" | "PATCH" | "DELETE";
+  status: "Blocked" | "Design Ready" | "Dry-run Only";
+  dryRunMode: "Required" | "Not Ready";
+  requiredCapability: string;
+  requiredAuditEvent: string;
+  requiredApproval: string;
+  rollbackPlan: string;
+  rateLimit: string;
+  blockedReason: string;
+  requiredProof: string[];
+};
+
 type ApiDataEnvelope<T> = ApiEnvelope<T> & {
   data: T;
   meta?: {
@@ -112,6 +129,12 @@ export const internalMonitoringApi = {
   getDataIntegrityChecks() {
     return apiClient.get<ApiDataEnvelope<InternalMonitoringDataIntegrityCheckDto[]>>(
       "/api/internal/data-integrity/checks",
+    );
+  },
+
+  getMutationReadinessContracts() {
+    return apiClient.get<ApiDataEnvelope<InternalMonitoringMutationReadinessContractDto[]>>(
+      "/api/internal/mutation-readiness/contracts",
     );
   },
 };
