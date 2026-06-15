@@ -6,6 +6,7 @@ import { requireBusinessContextForUser } from "../lib/business-context/index.js"
 import { ALL_ROLES } from "../lib/constants.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
+import { prisma } from "../lib/prisma.js";
 import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
 
