@@ -18,12 +18,52 @@ import {
   openCashflowDrilldown,
   openInvoiceGeneratorDrilldown,
 } from "./financial-reports-drilldown-bridge";
+import {
+  readFinancialReportsPeriodContext,
+  resolveFinancialReportsPeriodContext,
+} from "./financial-reports-period-sync";
+
+function getActivePeriodContext() {
+  return (
+    readFinancialReportsPeriodContext() ??
+    resolveFinancialReportsPeriodContext({})
+  );
+}
 
 export function FinancialReportsDrilldownPanel() {
+  const openReceivables = (overdue: boolean) => {
+    const period = getActivePeriodContext();
+
+    openInvoiceGeneratorDrilldown({
+      status: "ALL",
+      overdue,
+      from: period.from,
+      to: period.to,
+      message: overdue
+        ? `Showing overdue receivables from Financial Reports (${period.label}).`
+        : `Opened invoice receivables from Financial Reports (${period.label}).`,
+    });
+  };
+
+  const openCashLedger = (type: "INCOME" | "EXPENSE") => {
+    const period = getActivePeriodContext();
+
+    openCashflowDrilldown({
+      type,
+      status: "POSTED",
+      from: period.from,
+      to: period.to,
+      message:
+        type === "INCOME"
+          ? `Showing posted cash-in ledger rows from Financial Reports (${period.label}).`
+          : `Showing posted cash-out ledger rows from Financial Reports (${period.label}).`,
+    });
+  };
+
   return (
     <DashboardPanel
       title="Financial Drilldowns"
-      description="Jump from financial report summaries into the operational dashboards that own the source records."
+      description="Jump from financial report summaries into the operational dashboards that own the source records. Drilldowns follow the active report period."
     >
       <div className="grid gap-4 p-4 xl:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-4 text-card-foreground">
@@ -37,25 +77,13 @@ export function FinancialReportsDrilldownPanel() {
           <DashboardActions className="mt-4 flex-wrap">
             <DashboardActionButton
               icon={FileSearch}
-              onClick={() =>
-                openInvoiceGeneratorDrilldown({
-                  status: "ALL",
-                  overdue: false,
-                  message: "Opened invoice receivables from Financial Reports.",
-                })
-              }
+              onClick={() => openReceivables(false)}
             >
               Open Receivables
             </DashboardActionButton>
             <DashboardActionButton
               icon={FileSearch}
-              onClick={() =>
-                openInvoiceGeneratorDrilldown({
-                  status: "ALL",
-                  overdue: true,
-                  message: "Showing overdue receivables from Financial Reports.",
-                })
-              }
+              onClick={() => openReceivables(true)}
             >
               Show Overdue
             </DashboardActionButton>
@@ -73,13 +101,7 @@ export function FinancialReportsDrilldownPanel() {
           <DashboardActions className="mt-4 flex-wrap">
             <DashboardActionButton
               icon={WalletCards}
-              onClick={() =>
-                openCashflowDrilldown({
-                  type: "INCOME",
-                  status: "POSTED",
-                  message: "Showing posted cash-in ledger rows from Financial Reports.",
-                })
-              }
+              onClick={() => openCashLedger("INCOME")}
             >
               Open Cash In
             </DashboardActionButton>
@@ -97,13 +119,7 @@ export function FinancialReportsDrilldownPanel() {
           <DashboardActions className="mt-4 flex-wrap">
             <DashboardActionButton
               icon={WalletCards}
-              onClick={() =>
-                openCashflowDrilldown({
-                  type: "EXPENSE",
-                  status: "POSTED",
-                  message: "Showing posted cash-out ledger rows from Financial Reports.",
-                })
-              }
+              onClick={() => openCashLedger("EXPENSE")}
             >
               Open Cash Out
             </DashboardActionButton>
