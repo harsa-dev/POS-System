@@ -1,122 +1,161 @@
-POS System V3 Phase 5A: Restaurant Mode Deep Hardening, Flow Completion, Shared Dashboard Wiring, Prisma/API Alignment, and Structure Cleanup
-Context
+# POS System V3 Phase 5B: Restaurant Core POS Flow Hardening, Order/Table/Payment/Kitchen/Serving Audit, and File Structure Cleanup
 
-Phase 1, Phase 2, Phase 3, Phase 4A, and Phase 4B have already been implemented locally.
+## Context
+
+Phase 1, Phase 2, Phase 3, Phase 4A, Phase 4B, and Phase 5A have already been implemented locally.
 
 Current business modes:
 
-restaurant: active
-retail: active
-raw-material: active
-custom-business: planned / guarded only
+* `restaurant`: active
+* `retail`: active
+* `raw-material`: active
+* `custom-business`: planned / guarded only
 
-Raw Material Phase 4A and 4B were scoped separately:
+Known Phase 5A result:
 
-Phase 4A cleaned Raw Material naming, route wiring, shared dashboard restrictions, and planned/unsupported states.
-Phase 4B wired Raw Material shared dashboards to prefer the real GET /raw-material/summary backend API where applicable.
-Procurement cashflow, supplier invoice hold, financial reports, HPP/COGS remain planned/unsupported for Raw Material because the schema does not exist yet.
-Phase 4C will later focus only on Raw Material file splitting and file cleanup.
+* Restaurant shared dashboard bridge was added.
+* `dashboard-shell.tsx` now composes Restaurant and Raw Material dashboard bridges.
+* POS fallback data was renamed from `pos-placeholder-data.ts` to `pos-sample-data.ts`.
+* Visible “placeholder” wording was cleaned in Restaurant POS/menu/tables UI.
+* No backend/API or Prisma changes were made in Phase 5A.
+* Restaurant scoped TypeScript passed.
+* Backend TypeScript passed.
+* Vite production build passed with existing sourcemap warnings.
+* `business-mode-switch-check.mjs` passed.
+* pnpm commands remain blocked by local `EPERM lstat C:\Users\LENOVO`.
+* Browser QA was not run.
 
-This Phase 5A task is scoped to Restaurant mode only, plus shared infrastructure only when Restaurant needs it.
+This Phase 5B task is scoped to **Restaurant core operational flow only**, plus shared infrastructure only when Restaurant core flow requires it.
 
 Do not work broadly on Retail or Raw Material.
-Do not modify Raw Material persistence decisions from Phase 4B.
-Do not implement full Custom Business / Service.
+Do not change Raw Material Phase 4A/4B behavior.
+Do not implement Custom Business / Service.
 Do not push, branch, commit, or open PR.
 Work locally only.
 
-Main Goal
+---
 
-Make Restaurant mode feel like a real, clean, guarded, maintainable, and testable business mode.
+## Main Goal
 
-This includes:
+Harden Restaurant as a real POS operational mode.
 
-Restaurant frontend flow hardening.
-Restaurant backend/API polish.
-Restaurant Prisma/database alignment if needed.
-Restaurant shared dashboard wiring.
-Restaurant route guard and access guard tightening.
-Restaurant feature limiting.
-Restaurant folder/file structure cleanup.
-Restaurant naming cleanup.
-Restaurant duplicate/hardcoded code cleanup.
-Restaurant fat file split.
-Restaurant edge case handling.
-Restaurant docs update.
-Restaurant verification.
+This phase must focus on:
 
-This phase is incomplete if Restaurant still has stale V2/FNB assumptions, large mixed-responsibility files, broken order/table/payment/menu flows, or shared dashboards that show wrong context.
+1. Restaurant POS / cashier flow.
+2. Restaurant order creation and order status transitions.
+3. Restaurant table state and table-order sync.
+4. Restaurant payment flow.
+5. Restaurant kitchen / KDS flow.
+6. Restaurant serving flow.
+7. Restaurant menu/category flow.
+8. Restaurant shift cashier flow if present.
+9. Restaurant backend/API contracts.
+10. Restaurant Prisma alignment only if needed.
+11. Restaurant guards, permissions, and route safety.
+12. Restaurant file structure and fat file splitting.
+13. Restaurant duplicate/hardcode cleanup.
+14. Restaurant UI polish for core operational screens.
+15. Restaurant docs and verification.
 
-Scope Boundary
+This phase is incomplete if it only changes naming, copy, docs, or shared dashboard wiring.
+
+---
+
+## Scope Boundary
 
 Focus only on:
 
+```txt id="rs5v8j"
+artifacts/pos-system/src/app/workspace/restaurant
 artifacts/pos-system/src/features/restaurant
-artifacts/pos-system/src/app routes related to restaurant
-artifacts/pos-system/src/config related to restaurant mode/modules/routes
-artifacts/pos-system/src/lib helpers used by restaurant
-artifacts/pos-system/src/components used by restaurant
-artifacts/pos-system/src/features/shared only when Restaurant dashboard wiring needs it
-artifacts/api-server routes/services/controllers related to restaurant
-Prisma schema only if Restaurant requires real backend alignment
-docs related to Restaurant and V3 business modes
+artifacts/pos-system/src/features/orders only if Restaurant order flow uses it
+artifacts/pos-system/src/features/payments only if Restaurant payment flow uses it
+artifacts/pos-system/src/features/tables only if Restaurant table flow uses it
+artifacts/pos-system/src/features/shared only if Restaurant core flow requires shared helpers/components
+artifacts/pos-system/src/config related to Restaurant routes/modules/status/permissions
+artifacts/pos-system/src/lib/api/helpers used by Restaurant core flow
+artifacts/api-server Restaurant/order/payment/table/menu/kitchen/serving/shift routes and services
+Prisma schema only if Restaurant core flow requires alignment
+docs related to Restaurant and V3 phases
 scripts/checks related to Restaurant
+```
 
-Do not modify unrelated Retail/Raw Material logic unless:
+Do not modify Retail/Raw Material unless:
 
-Restaurant imports shared code that has a bug.
-Shared dashboard wiring needs a reusable mode-aware helper.
-Business mode contract needs a Restaurant correction.
-Route guard logic must be corrected for Restaurant.
+* a shared helper used by Restaurant is broken
+* a shared type/config must remain compatible
+* business mode contract needs a Restaurant correction
 
-If you touch shared files, explain why.
+If shared files are touched, explain why.
 
-Required First Steps
+---
+
+## Required First Steps
 
 Before editing:
 
-Read all docs related to V3, Restaurant, business modes, shared dashboards, API, database, and phase notes.
-Inspect the Restaurant feature folder.
-Inspect Restaurant routes.
-Inspect Restaurant navigation/sidebar/module registry.
-Inspect Restaurant API clients.
-Inspect Restaurant backend/API routes and services.
-Inspect Prisma schema for restaurant/order/table/menu/payment/inventory/shift/audit-related models.
-Inspect shared dashboards and how they should receive Restaurant context.
-Inspect business mode guard logic for Restaurant.
-Inspect scripts/checks related to Restaurant.
-Write a short audit plan before changing code.
+1. Read all Restaurant docs.
+2. Read V3 canonical business mode docs.
+3. Read Phase 5A Restaurant hardening docs.
+4. Inspect Restaurant workspace files.
+5. Inspect Restaurant feature folder.
+6. Inspect POS/cashier files.
+7. Inspect menu/category files.
+8. Inspect order files.
+9. Inspect table files.
+10. Inspect payment files.
+11. Inspect kitchen/KDS files.
+12. Inspect serving files.
+13. Inspect shift cashier files if present.
+14. Inspect Restaurant API clients.
+15. Inspect Restaurant backend routes/services.
+16. Inspect Prisma schema for Restaurant/order/table/menu/payment/inventory/shift/audit models.
+17. Inspect Restaurant route guards and role permissions.
+18. Write a short audit plan before changing code.
 
 Search terms:
 
+```txt id="i9fbzv"
 restaurant
-fnb
-FNB
-FnB
+pos
+cashier
+checkout
+cart
 menu
-menus
 menu item
 category
 order
 orders
-cashier
-checkout
+order status
+WAITING_CASHIER_APPROVAL
+WAITING_PAYMENT
+PAID
+PREPARING
+READY
+SERVED
+COMPLETED
+CANCELLED
+REJECTED
 payment
 payments
-invoice
-receipt
+payment status
 table
 tables
+table status
 kitchen
 kds
 serving
 server
 shift
+receipt
+invoice
 tax
 service charge
-inventory
+discount
 recipe
+stock
 stock movement
+inventory
 audit
 role
 permission
@@ -125,391 +164,444 @@ MANAGER
 CASHIER
 KITCHEN
 SERVER
-businessMode
-currentBusinessMode
-shared dashboard
-dashboard
-cashflow
-analytics
-financial report
-invoice generator
-sidebar
-module
-registry
-guard
+duplicate submit
+loading
+empty
+error
+sample
+mock
+placeholder
+fnb
+FNB
+FnB
+```
 
-If old names like fnb, FNB, FnB, or Restaurant / F&B still appear in active Restaurant runtime code, fix them.
-Historical docs can mention old names only if they clearly say they are legacy.
+If old names like `fnb`, `FNB`, `FnB`, or active “placeholder” runtime wording still exist in Restaurant operational code, fix them.
 
-Restaurant Product Definition
+---
 
-Restaurant mode should represent an operational Restaurant/Food POS workflow.
+# Part 1: Restaurant Operational Surface Classification
 
-Expected domain areas:
+Classify every Restaurant operational surface:
 
-Menu items
-Categories
-Tables
-Orders
-Cashier / checkout
-Payments
-Kitchen / KDS
-Serving
-Inventory/recipes if already connected
-Tax/service charge/settings if already present
-Shift cashier if already present
-Audit log if already present
-Shared dashboard analytics/reporting if already supported
+1. Real and persisted.
+2. Real read-only.
+3. Local sample/demo fallback.
+4. Planned.
+5. Unsupported and should be hidden/disabled.
 
-Do not invent a massive ERP system.
-Complete and harden what already exists.
+Classify at least:
 
-If a feature does not exist yet, do not build it fully unless it is a small guard/state/helper needed to make the current flow coherent.
-
-Part 1: Restaurant Flow Audit
-
-Audit current Restaurant flow end-to-end.
-
-Check:
-
-Entry Flow
-User selects Restaurant from /select-mode.
-Correct mode ID is stored: restaurant.
-User is redirected to correct Restaurant dashboard/workspace.
-Refresh keeps valid mode.
-Invalid mode redirects safely.
-Old fnb value does not become active runtime mode except storage-boundary migration if intentionally documented.
-Old warehouse value does not affect Restaurant.
-Old service value does not affect Restaurant.
-Route Flow
-Direct Restaurant route works when selected mode is restaurant.
-Direct Restaurant route redirects safely when no mode is selected.
-Direct Restaurant route redirects safely when selected mode is retail.
-Direct Restaurant route redirects safely when selected mode is raw-material.
-Direct Restaurant route redirects safely when selected mode is custom-business.
-next param behavior is safe and predictable if used.
-No active route should use /dashboard/fnb or features/fnb.
-Navigation Flow
-Sidebar shows only Restaurant-relevant modules.
-Sidebar order matches canonical registry.
-Sidebar role permissions match actual access.
-No Retail/Raw Material/Custom Business modules leak into Restaurant.
-No active FNB/Warehouse/Service labels appear.
-Kitchen-only items are not shown to roles that should not see them.
-Cashier-only items are not shown to roles that should not see them.
-Owner/Manager views remain broad where appropriate.
-Data Flow
-Menu data loads safely.
-Table data loads safely.
-Order data loads safely.
-Payment data loads safely.
-Kitchen/serving queues load safely if present.
-Empty states are handled.
-API error states are handled.
-Malformed API envelope is handled.
-Slow loading state is handled if applicable.
-Duplicate submit is prevented where there are forms/actions.
-Part 2: Restaurant Edge Cases
-
-Add guards, states, and validation for these edge cases where the current app supports the flow:
-
-No menu items.
-No categories.
-No tables.
-No active shift.
-No orders.
-No payments.
-Order with invalid status.
-Order transition not allowed.
-Payment missing.
-Payment failed.
-Payment already paid.
-Duplicate checkout submit.
-Duplicate order submit.
-Table already occupied.
-Table unavailable/deleted.
-Table status mismatch.
-Kitchen order already preparing.
-Kitchen order already ready.
-Serving order already served/completed.
-Inventory stock insufficient.
-Recipe missing for menu item if recipe system exists.
-Menu item unavailable.
-Category deleted/unavailable.
-Invalid quantity.
-Invalid discount/tax if supported.
-User role not allowed to perform action.
-API returns empty array.
-API returns error envelope.
-API returns malformed envelope.
-User opens Restaurant route with wrong selected mode.
-User refreshes after selecting Restaurant.
-User manually sets currentBusinessMode to fnb.
-User manually sets currentBusinessMode to restaurant.
-User manually sets currentBusinessMode to invalid random string.
-Planned Custom Business must not reuse Restaurant UI.
-Restaurant shared dashboard must not show Retail/Raw Material copy.
-
-Do not create fake UI just to claim edge cases are handled.
-Use real guards, empty states, validation, and safe fallbacks.
-
-Part 3: Restaurant Prisma / Database Alignment
-
-Inspect Prisma schema and backend models related to Restaurant.
-
-Check whether Restaurant currently has proper persistence for:
-
-restaurant/business entity
-users/roles
-menu items
-categories
-tables
-orders
-order items
-payments
-shifts
-inventory items
-recipes
-stock movements
-tax/service charge/settings
-audit logs
-kitchen/serving status
-ownership/tenant/business scope
-
-If Prisma models already exist:
-
-verify API/services use them correctly
-verify frontend types match backend response
-verify request schemas match database constraints
-verify nullable fields are handled
-verify ownership/tenant filtering exists if applicable
-verify role checks match operations
-
-If Prisma models do not exist but Restaurant frontend pretends data is real:
-
-do not add a massive schema blindly
-document the mismatch
-add Prisma only if necessary to make Restaurant mode coherent and testable
-keep schema changes minimal and scoped
-explain every Prisma change
-
-Allowed Prisma alignment only if needed:
-
-order status enum correction
-payment status enum correction
-table status enum correction
-missing relation needed by existing Restaurant flow
-nullable field correction if current API already depends on it
-missing stock movement relation if current Restaurant stock flow depends on it
+* POS/cashier
+* menu items
+* categories
+* cart
+* order creation
+* order list
+* order status transition
+* payment
+* receipt/invoice
+* tables
+* table lock/status
+* kitchen/KDS
+* serving
+* shift cashier
+* inventory/recipe deduction
+* stock movement
+* settings/tax/service charge
+* audit log
 
 Rules:
 
-Do not break Retail or Raw Material schema.
-Do not rename broad shared models without strong reason.
-Do not create destructive migrations.
-Do not add nullable chaos just to make things pass.
-Do not add schema fields that are not used by current Restaurant flow.
-If migration is required, document exact command and risk.
-If environment cannot run Prisma generate/migrate, report it honestly.
-Part 4: Restaurant Backend/API Hardening
+* Do not show sample data as real persisted data.
+* If a write action is local-only, label it honestly or wire it properly.
+* If a workflow is unsupported, hide/disable/mark planned.
+* If a workflow is real, ensure API/backend/Prisma alignment.
 
-Audit and improve backend/API only for Restaurant-related flow.
+---
+
+# Part 2: POS / Cashier Flow Hardening
+
+Audit and harden Restaurant POS/cashier flow.
 
 Check:
 
-API Design
-endpoints match frontend calls
-endpoint names match behavior
-request payload matches frontend
-response shape matches frontend
-response envelope is consistent
-status codes are correct
-errors are safe
-Validation
-route params validated
-body validated
-order status validated
-payment method/status validated
-table ID validated
-menu item ID validated
-category ID validated
-quantity validated
-tax/discount validated if present
-shift ID validated if present
-Security / Guarding
-no invalid mode accepted
-no old fnb mode accepted as active API mode
-no client mode trusted blindly
-ownership/tenant filter exists if architecture has owner/business/restaurant IDs
-role permission checks exist where role system applies
-cashier/kitchen/server role actions are guarded
-unsafe internal errors are not leaked
-Service Structure
-route handler should not contain too much business logic
-repeated mapper logic should be extracted
-repeated response/error logic should use shared helper if already available
-order transition logic should be centralized
-payment update logic should be consistent
-table status update logic should be consistent
-stock movement writes should be consistent
-audit log write should be consistent if used
+* menu loading
+* category/filter/search
+* item availability
+* cart add/remove/update quantity
+* invalid quantity
+* duplicate add
+* cart empty checkout
+* discount/tax/service charge handling if present
+* payment method selection
+* table selection if dine-in flow exists
+* customer note/order note if present
+* duplicate checkout submit
+* loading state during checkout
+* error state during checkout
+* success state after checkout
+* order created with correct initial status
+* payment created or pending according to method
+* table status updated if table is used
+* inventory/recipe deduction if implemented
+* audit log if implemented
+
+Required fixes:
+
+* prevent duplicate checkout submit
+* guard empty cart
+* validate quantity
+* validate selected payment method
+* validate selected table if required
+* handle menu item unavailable
+* handle API error envelope
+* handle malformed API envelope
+* keep cashier UI clear and consistent
+* remove hardcoded route/status strings if repeated
+
+Do not fake successful checkout.
+
+---
+
+# Part 3: Order Flow and Status Transition Hardening
+
+Audit order flow.
+
+Expected Restaurant order flow may include:
+
+```txt id="7dl8bq"
+WAITING_CASHIER_APPROVAL
+→ WAITING_PAYMENT
+→ PAID
+→ PREPARING
+→ READY
+→ SERVED
+→ COMPLETED
+
+Alternative terminal states:
+CANCELLED
+REJECTED
+```
+
+Check:
+
+* current enum/status values
+* frontend status labels
+* backend status validation
+* allowed transitions
+* role permissions per transition
+* invalid transition handling
+* terminal state handling
+* duplicate status update submit
+* stale order state
+* order not found
+* order belongs to wrong restaurant/business
+* order items missing
+* order total mismatch
+* API response shape
+
+Required fixes:
+
+* centralize allowed transitions if duplicated
+* centralize status labels/badge variants if duplicated
+* enforce invalid transition guard on backend if backend supports transitions
+* enforce UI disabled state for invalid actions
+* use safe error copy
+* do not loosen status types
+
+---
+
+# Part 4: Table Flow and Table-Order Sync
+
+Audit table flow.
+
+Check:
+
+* table list loading
+* table empty state
+* table status labels
+* table status transitions
+* table occupied/available/cleaning state
+* table lock when order created
+* table release when order completed/cancelled if supported
+* table unavailable/deleted handling
+* order linked to table
+* direct table action role permission
+* stale table state after order update
+* UI not showing impossible actions
+
+Required fixes:
+
+* centralize table status config if duplicated
+* prevent selecting occupied/unavailable table when not allowed
+* prevent table/order state mismatch where current code supports prevention
+* update UI labels and disabled states
+* keep backend checks if table mutation exists
+
+---
+
+# Part 5: Payment Flow Hardening
+
+Audit payment flow.
+
+Check:
+
+* payment method config
+* payment method enabled/disabled state
+* cash/QRIS/card/transfer handling if present
+* payment amount validation
+* payment status validation
+* paid/pending/failed/refunded/cancelled states if present
+* duplicate payment submit
+* payment already paid
+* missing payment
+* order total mismatch
+* receipt/invoice generation if present
+* shift cashier effect if cash payment exists
+
+Required fixes:
+
+* centralize payment status/method labels if duplicated
+* disable invalid payment actions
+* prevent duplicate payment submit
+* validate payment amount if input exists
+* do not show unsupported payment methods as active
+* avoid fake payment success
+
+---
+
+# Part 6: Kitchen / KDS Flow Hardening
+
+Audit kitchen/KDS flow.
+
+Check:
+
+* kitchen queue loads only relevant statuses
+* PAID orders appear for kitchen if expected
+* PREPARING orders appear correctly
+* READY orders are removed or moved appropriately
+* Start Cooking action
+* Mark Ready action
+* duplicate kitchen action submit
+* invalid status action
+* role permission for KITCHEN
+* non-kitchen roles blocked/hidden where appropriate
+* order item display clarity
+* empty kitchen queue state
+* API errors
+
+Required fixes:
+
+* disable invalid KDS actions
+* prevent duplicate action submit
+* handle order already preparing/ready
+* centralize kitchen status/action config if duplicated
+* ensure KDS does not show Retail/Raw Material copy or stale FNB labels
+
+---
+
+# Part 7: Serving Flow Hardening
+
+Audit serving flow.
+
+Check:
+
+* serving queue loads READY orders
+* Mark Served action if present
+* Complete order action if present
+* duplicate serving action submit
+* invalid status action
+* role permission for SERVER/MANAGER/OWNER if applicable
+* served/completed terminal behavior
+* table release/cleaning transition if supported
+* empty serving queue state
+* API errors
+
+Required fixes:
+
+* disable invalid serving actions
+* prevent duplicate action submit
+* handle order already served/completed
+* centralize serving status/action config if duplicated
+* ensure serving does not show stale FNB labels
+
+---
+
+# Part 8: Menu and Category Flow Hardening
+
+Audit menu/category flow.
+
+Check:
+
+* menu list loading
+* category list loading
+* empty menu state
+* empty category state
+* unavailable item state
+* invalid price
+* invalid stock/availability
+* duplicate menu submit
+* category deleted/unavailable
+* menu item search/filter
+* image/media handling if present
+* recipe connection if present
+* route/action permissions
+
+Required fixes:
+
+* validate forms if forms exist
+* disable invalid actions
+* centralize menu/category labels/config if duplicated
+* split large menu files if they mix list, form, filter, and API logic
+* avoid sample data pretending to be real
+
+---
+
+# Part 9: Shift Cashier Flow Hardening
+
+If shift cashier exists, audit:
+
+* shift open
+* shift close
+* expected cash
+* actual cash
+* cash difference
+* cash payments during shift
+* no active shift
+* duplicate open/close submit
+* cashier role permission
+* shift required before cash checkout if current flow expects it
+* shift report shared dashboard wiring
+
+Required fixes:
+
+* guard no active shift if necessary
+* prevent duplicate submit
+* validate cash numbers
+* keep shift report context Restaurant-specific
+* hide shift features if not wired
+
+If shift cashier does not exist in current Restaurant flow:
+
+* document it as not present/planned
+* do not invent it fully
+
+---
+
+# Part 10: Backend/API Contract Audit
+
+Audit Restaurant backend/API contracts.
+
+Check:
+
+* order endpoints
+* payment endpoints
+* menu endpoints
+* table endpoints
+* kitchen/KDS endpoints
+* serving endpoints
+* shift endpoints if present
+* shared dashboard endpoint
+* DTOs/mappers
+* validation schemas
+* error envelopes
+* status codes
+* permission guards
+* ownership/tenant scoping
+
+Required:
+
+* frontend calls must match backend endpoints
+* backend must validate route params/body
+* backend must reject invalid status transitions if endpoint mutates status
+* backend must not trust client-provided restaurant/business ID blindly
+* backend errors must not leak internal stack/DB messages
+* response envelope should be consistent with frontend parser
+* touched APIs should remain type-safe
 
 Do not rewrite all backend.
-Only harden Restaurant-related backend/API.
+Fix only Restaurant core flow issues.
 
-Part 5: Restaurant Shared Dashboard Wiring
+---
 
-Wire Restaurant mode into shared dashboards according to existing shared dashboard context.
+# Part 11: Prisma / Database Alignment
 
-Inspect shared dashboards such as:
+Inspect Prisma only for Restaurant flow.
 
-Sales Analytics
-Customers & Partners
-Inventory Management
-Cashflow
-Financial Reports
-Invoice Generator
-Shift Cashier Reports
-Team Management
-Employee Performance
-Approvals
-Audit Log
-Platform Monitoring
-Any shared dashboard registry/module system
+Check:
 
-For each shared dashboard, decide Restaurant behavior:
+* enum values match frontend/backend status types
+* OrderStatus values match allowed transitions
+* PaymentStatus values match UI/API
+* TableStatus values match UI/API
+* relation between Order and Table if used
+* relation between Order and Payment if used
+* relation between MenuItem and Category if used
+* relation between MenuItem and Recipe/Inventory if used
+* relation between Shift and User/Restaurant if used
+* audit log relation if used
+* nullable fields handled safely
 
-Supported and useful for Restaurant
-Supported but with Restaurant-specific labels/data mapping
-Not supported and should be hidden/disabled for Restaurant
-Planned only and should show clear state
+Only change Prisma if:
 
-Expected examples:
+* current Restaurant flow is broken because schema is wrong
+* TypeScript/build fails because schema/client contract is wrong
+* API cannot safely implement current Restaurant flow without minimal schema alignment
 
-Sales Analytics
+Do not:
 
-Restaurant should likely be supported.
-It should show:
+* broad schema rewrite
+* destructive migration
+* unrelated Retail/Raw Material schema changes
+* add unused fields
+* add schema just because it looks nice
 
-order revenue
-menu sales
-payment totals
-daily sales
-average order value
-cashier or table context if present
-Inventory Management
+If Prisma touched:
 
-Restaurant should likely be supported if inventory/recipe system exists.
-It should show:
+* run validate/generate if environment allows
+* document migration risk
 
-ingredient stock
-recipe consumption
-stock movement
-low stock if available
-Cashflow
+---
 
-Restaurant may be supported if payment/sales data exists.
-It should show:
+# Part 12: Restaurant File Structure Cleanup and Fat File Split
 
-cash/card/QRIS revenue
-refunds/cancellations if available
-shift cashier cash summary if available
-Financial Reports
+Find and split Restaurant fat files.
 
-Restaurant may be supported if revenue/cost data exists.
-It should not fake profit if cost/HPP data is missing.
-If only revenue exists, label it clearly as revenue summary.
+Candidates:
 
-Invoice Generator
+* POS workspace files
+* cashier hooks/components
+* menu workspace files
+* order workspace files
+* table workspace files
+* payment workspace files
+* kitchen workspace files
+* serving workspace files
 
-Restaurant may support receipt/invoice generation if order/payment data exists.
-Do not show supplier/procurement invoice copy.
+A fat file is suspicious if it:
 
-Shift Cashier Reports
-
-Restaurant should likely be supported if shift cashier exists.
-It should show:
-
-shift opening cash
-expected cash
-actual cash if available
-cash difference if available
-cashier performance if available
-Customers & Partners
-
-Restaurant may map to customers/tables/guest activity if customer entity exists.
-If no customer entity, hide or show limited context.
-
-Rules:
-
-Do not show Retail/Raw Material dashboard copy in Restaurant.
-Do not fake data.
-Do not wire unsupported dashboards just to make sidebar full.
-Shared dashboard visibility must be mode-aware.
-Shared dashboard labels must be context-aware.
-Shared dashboard empty states must be context-aware.
-Restaurant should only see dashboards that make business sense.
-
-If a shared dashboard needs mode-specific adapter:
-
-create a clean adapter/helper
-keep adapter config typed
-do not hardcode mode checks everywhere
-avoid giant switch statements inside UI components
-Part 6: Restaurant Guarding, Limiting, and Permissions
-
-Tighten access control for Restaurant.
-
-Audit:
-
-route guard
-sidebar visibility
-feature visibility
-role permissions
-planned/unsupported dashboard visibility
-direct URL access
-API access if backend has auth/roles
-
-Expected role examples:
-
-OWNER: broad access
-MANAGER: broad operational access, maybe limited settings
-CASHIER: cashier/order/payment/shift access
-KITCHEN: KDS/kitchen order access
-SERVER: serving/table/order status access
-
-Rules:
-
-unsupported Restaurant features should not appear as active.
-role-limited modules should be hidden or disabled consistently.
-direct route access should not bypass UI guard.
-backend should still validate mutations.
-shared dashboards must check whether Restaurant supports them.
-planned features should be clearly marked, not broken.
-do not copy Raw Material/Retail permission assumptions into Restaurant.
-
-If role system exists:
-
-define which roles can access Restaurant modules.
-align sidebar role permissions with backend role permissions where possible.
-if uncertain, use conservative access and document it.
-Part 7: Restaurant File Structure Cleanup
-
-Clean Restaurant folder structure.
+* mixes UI, fetch, state, constants, formatting, and business logic
+* contains several unrelated components
+* has large inline arrays/configs
+* repeats status checks
+* repeats API parsing
+* repeats JSX sections
+* has long conditional chains
 
 Preferred structure:
 
+```txt id="wi3e6d"
 features/restaurant/
   components/
-    dashboard/
+    pos/
     menu/
     orders/
-    cashier/
     tables/
+    payments/
     kitchen/
     serving/
-    payments/
-    inventory/
+    shifts/
     shared/
   hooks/
   services/
@@ -518,428 +610,397 @@ features/restaurant/
   utils/
   constants/
   config/
-
-Only create folders that are actually used.
-
-Move files if needed:
-
-components into components
-local hooks into hooks
-API clients/services into services
-Zod/form schemas into schemas
-domain types into types
-formatting/domain helpers into utils
-labels/status/routes/config into config or constants
-
-Rules:
-
-no giant dumping file
-no vague utils.ts if domain-specific
-no fnb naming in active Restaurant runtime
-no placeholder naming if file is active production route
-no Retail/Raw Material logic inside Restaurant
-no Restaurant-specific logic inside global shared unless truly shared
-
-If any active Restaurant file still uses old FNB naming:
-
-rename it to Restaurant naming
-update imports
-update docs
-run Restaurant typecheck
-Part 8: Restaurant Fat File Split
-
-Identify and split Restaurant fat files.
-
-Known possible candidates:
-
-large Restaurant menu files
-order workspace files
-cashier/checkout files
-kitchen/serving files
-table management files
-dashboard files
-
-Search for other large Restaurant files.
-
-For each fat file:
-
-identify responsibilities
-extract constants
-extract helper functions
-extract child components
-extract hooks if stateful logic is reusable
-extract schemas/types if useful
-update imports
-preserve visible behavior
-run Restaurant typecheck
+```
 
 Extraction examples:
 
-restaurant-workspace.tsx
-restaurant-dashboard-header.tsx
-restaurant-metric-cards.tsx
-menu-item-table.tsx
-menu-category-filter.tsx
-menu-item-form.tsx
-order-status-badge.tsx
-order-status.config.ts
-order-transition.helpers.ts
-cashier-cart-section.tsx
-cashier-payment-summary.tsx
-kitchen-order-card.tsx
-serving-queue-section.tsx
-table-status-grid.tsx
-restaurant-empty-state.tsx
-restaurant-api.ts
-restaurant-routes.config.ts
+* `restaurant-pos-workspace.tsx`
+* `pos-menu-grid.tsx`
+* `pos-cart-panel.tsx`
+* `pos-payment-panel.tsx`
+* `pos-checkout-summary.tsx`
+* `use-restaurant-pos.ts`
+* `restaurant-order-status.config.ts`
+* `restaurant-order-transitions.ts`
+* `restaurant-table-status.config.ts`
+* `restaurant-payment-methods.config.ts`
+* `kitchen-order-card.tsx`
+* `serving-order-card.tsx`
+* `restaurant-empty-state.tsx`
 
-Do not over-split into tiny useless files.
+Rules:
 
-Part 9: Restaurant Naming Cleanup
+* split only when useful
+* no giant `utils.ts`
+* no shared code importing from Restaurant unless intentionally mode adapter
+* no Restaurant-specific logic dumped into global shared
+* preserve behavior
 
-Canonical naming:
+---
 
-Mode ID: restaurant
-User label: Restaurant
-Folder: features/restaurant
-Route slug: keep existing canonical route if docs define it, otherwise use consistent V3 route
-Type name examples:
-RestaurantMode
-RestaurantOrder
-RestaurantMenuItem
-RestaurantTable
-RestaurantPayment
-RestaurantShift
+# Part 13: Hardcoded/Duplicate Cleanup
 
-Avoid:
-
-fnb
-FNB
-FnB
-food as mode name
-dining as mode name unless it is specifically table/dining domain
-warehouse
-service
-placeholder for active workspace
-data.ts
-helper.ts
-utils.ts
-temp
-old
-final
-
-Rename misleading files/functions/variables.
-
-After renaming:
-
-update imports
-update docs
-run Restaurant typecheck
-Part 10: Restaurant Hardcode and Duplicate Cleanup
-
-Remove Restaurant hardcodes and repeated logic.
+Remove repeated hardcoded logic.
 
 Centralize repeated:
 
-Restaurant route paths
-Restaurant module IDs
-Restaurant dashboard labels
-order status labels
-order status transitions
-table status labels
-payment status labels
-kitchen/serving queue labels
-role labels
-tax/service charge labels if repeated
-empty state copy if repeated
-API endpoints if repeated
-table column configs if repeated
-card metric configs if repeated
-formatter helpers
+* order statuses
+* allowed transitions
+* status labels
+* badge variants
+* table statuses
+* payment statuses
+* payment methods
+* role permissions
+* route paths
+* API endpoints if repeated
+* currency/date formatters
+* tax/service charge logic if repeated
+* empty/loading/error copy if repeated
+* queue action labels
 
-Do not centralize one-off text.
+Do not centralize one-off strings.
 
-Avoid scattered checks like:
+---
 
-mode === "restaurant"
-path.includes("restaurant")
-status === "READY"
-paymentStatus === "PAID"
-role === "CASHIER"
+# Part 14: Frontend/UI Polish
 
-Prefer typed helpers/configs when repeated:
-
-isRestaurantMode(mode)
-RESTAURANT_ROUTES
-ORDER_STATUS_CONFIG
-getOrderStatusLabel()
-getAllowedOrderTransitions()
-getTableStatusVariant()
-canRestaurantRoleAccessModule()
-Part 11: Frontend Polish for Restaurant
-
-Polish Restaurant UI.
+Polish Restaurant operational UI.
 
 Focus:
 
-dashboard clarity
-menu item list/table readability
-category/filter/search clarity
-order list readability
-cashier cart and payment summary clarity
-table status visibility
-kitchen queue clarity
-serving queue clarity
-payment state clarity
-shift state clarity
-empty states
-loading states
-error states
-form validation messages
-disabled states
-duplicate submit prevention
-responsive layout
-consistent badges
-consistent buttons
-context-aware shared dashboard copy
+* POS clarity
+* cart clarity
+* checkout summary
+* table status visibility
+* order status badges
+* payment state
+* kitchen queue
+* serving queue
+* empty states
+* loading states
+* error states
+* disabled states
+* duplicate submit feedback
+* responsive layout if obvious
+* consistent button labels
+* no stale placeholder/FNB copy
 
 Do not redesign the whole app.
-Polish existing UI so Restaurant feels intentional and operational.
 
-Part 12: Tests and Verification
+---
 
-Run Restaurant-specific checks first.
+# Part 15: Verification
 
-Try pnpm if available:
+Run Restaurant-focused checks.
 
+Try pnpm first if environment allows:
+
+```bash id="l54z4l"
 pnpm --filter @workspace/pos-system run typecheck:restaurant
 pnpm restaurant:check
 pnpm business-mode:check
+```
 
-If pnpm is blocked by EPERM lstat C:\Users\LENOVO, use local commands:
+If pnpm is blocked by `EPERM lstat C:\Users\LENOVO`, use local commands:
 
+```bash id="xj2gg5"
 tsc -p artifacts/pos-system/tsconfig.restaurant.json --noEmit
+```
 
 Also run:
 
+```bash id="yi6ljs"
 cd artifacts/pos-system
 vite build
+```
 
-Run backend check if backend touched:
+If backend touched:
 
+```bash id="u4q747"
 tsc -p artifacts/api-server/tsconfig.json --noEmit
+```
 
-Run Prisma checks only if Prisma touched:
+If Prisma touched:
 
+```bash id="jp6w21"
 npx prisma validate
 npx prisma generate
+```
 
-If Prisma commands are blocked by environment:
+Run:
 
-report the exact issue
-do not claim they passed
-
-Run business mode switch check:
-
+```bash id="rf6gzn"
 node scripts/business-mode-switch-check.mjs
+```
 
 Run sidebar parity if Restaurant navigation/sidebar/module registry was touched.
 
 Important:
 
-do not claim full frontend typecheck passed if it times out
-separate passed/failed/blocked/timed-out checks
-separate pre-existing issues from issues caused by this phase
-Part 13: Manual QA Checklist
+* do not claim full frontend typecheck passed if it times out
+* separate passed/failed/blocked/timed-out checks
+* separate pre-existing issues from issues caused by this phase
 
-Provide exact manual QA steps for Restaurant.
+---
 
-Must include:
+# Part 16: Manual QA Checklist
 
-Mode selection
-Open /select-mode.
-Select Restaurant.
-Confirm selected mode is stored as restaurant.
-Confirm app redirects to Restaurant dashboard/workspace.
-Refresh and confirm Restaurant stays active.
-Invalid mode
-Clear currentBusinessMode.
-Open Restaurant route directly.
-Confirm safe redirect.
-Set currentBusinessMode to fnb.
-Refresh and confirm it does not become active runtime mode except documented storage-boundary repair if intended.
-Set currentBusinessMode to restaurant.
-Refresh and confirm it works.
-Set random invalid value.
-Confirm safe redirect.
-Restaurant workspace
-Open Restaurant dashboard.
-Check menu section.
-Check category/filter/search if present.
-Check table section.
-Check order section.
-Check cashier/checkout section if present.
-Check payment section if present.
-Check kitchen/KDS section if present.
-Check serving section if present.
-Check empty states.
-Check loading/error state if possible.
-Try invalid quantity if form exists.
-Try duplicate submit if form exists.
-Confirm no Retail/Raw Material copy appears.
-Confirm no FNB/Warehouse/Service active label appears.
-Order flow
-Create or inspect an order if supported.
-Confirm allowed status transition.
-Try invalid status transition if possible.
-Confirm payment state.
-Confirm kitchen queue state.
-Confirm serving queue state.
-Confirm completed/cancelled state behavior.
-Tables
-Open table management.
-Check available/occupied/cleaning states.
-Try table action if supported.
-Confirm table state does not desync from order state.
-Shared dashboards
-Open each shared dashboard visible in Restaurant.
-Confirm dashboard is relevant to Restaurant.
-Confirm unsupported dashboards are hidden, disabled, or show not-applicable/planned state.
-Confirm copy uses order/menu/table/payment/shift context where appropriate.
-Confirm no Retail/Raw Material-only metric appears as Restaurant data.
-Part 14: Documentation
+Provide exact manual QA steps.
 
-Update or create:
+## Mode and route
 
-docs/v3-phase-5a-restaurant-hardening.md
+1. Open `/select-mode`.
+2. Select Restaurant.
+3. Confirm `currentBusinessMode` is `restaurant`.
+4. Refresh.
+5. Open Restaurant route directly.
+6. Set invalid `currentBusinessMode`.
+7. Set old `fnb`.
+8. Confirm safe behavior.
+
+## POS/Cashier
+
+1. Open Restaurant POS.
+2. Check menu loading.
+3. Add item to cart.
+4. Change quantity.
+5. Remove item.
+6. Try checkout with empty cart.
+7. Try invalid quantity.
+8. Select payment method.
+9. Select table if required.
+10. Submit checkout.
+11. Try duplicate submit.
+12. Confirm success/error behavior.
+
+## Orders
+
+1. Open orders.
+2. Check empty state.
+3. Check status badges.
+4. Try valid status transition.
+5. Try invalid status transition if possible.
+6. Confirm terminal states behave correctly.
+
+## Tables
+
+1. Open tables.
+2. Check available/occupied/cleaning states.
+3. Select table for order if supported.
+4. Confirm table state syncs with order.
+5. Try unavailable table.
+
+## Payments
+
+1. Open payment flow.
+2. Check payment method labels.
+3. Try pending/paid state if possible.
+4. Try duplicate payment submit.
+5. Confirm paid order cannot be paid again.
+
+## Kitchen/KDS
+
+1. Open KDS.
+2. Check empty queue.
+3. Start cooking if order exists.
+4. Mark ready.
+5. Try duplicate action.
+6. Confirm invalid actions are disabled.
+
+## Serving
+
+1. Open serving queue.
+2. Check empty queue.
+3. Mark served/complete if order exists.
+4. Try duplicate action.
+5. Confirm table/order state after serving if supported.
+
+## Shared dashboards
+
+1. Open Restaurant shared dashboards.
+2. Confirm they show Restaurant context.
+3. Confirm no Retail/Raw Material copy.
+4. Confirm unsupported dashboards are hidden/disabled/planned.
+
+---
+
+# Part 17: Documentation
+
+Create or update:
+
+```txt id="g3egwr"
+docs/v3-phase-5b-restaurant-core-flow-hardening.md
+```
 
 Include:
 
-Restaurant current scope
-supported Restaurant modules
-planned/unsupported modules
-shared dashboard wiring decisions
-Prisma/backend decisions
-folder structure changes
-helpers/components created
-commands run
-remaining risks
-manual QA checklist
+* operational surface classification
+* POS/cashier decisions
+* order transition decisions
+* table sync decisions
+* payment decisions
+* kitchen/serving decisions
+* backend/API decisions
+* Prisma decisions
+* file structure changes
+* helpers/components created
+* commands run
+* remaining risks
+* manual QA checklist
 
-Update existing docs if they become outdated.
+Docs must not overclaim.
 
-Docs must not claim Restaurant supports a dashboard or backend feature that does not exist.
+---
 
-Strict Rules
-Work only on Restaurant mode unless shared infrastructure is required.
-Do not globally refactor Retail/Raw Material.
-Do not change Raw Material Phase 4B persistence decisions.
-Do not implement full Custom Business / Service.
-Do not reintroduce fnb as active runtime mode.
-Do not reintroduce warehouse.
-Do not treat service as active mode.
-Do not use any, as any, as unknown as, @ts-ignore, or @ts-expect-error.
-Do not create fake compatibility bridges.
-Do not add Prisma schema unless Restaurant genuinely needs it.
-Do not create destructive database migrations.
-Do not make shared dashboards show fake Restaurant data.
-Do not show unsupported dashboards as active features.
-Do not leave FNB naming on active Restaurant runtime files.
-Do not leave fat Restaurant files untouched without a clear reason.
-Do not create giant utils.ts.
-Do not move Restaurant-specific code into global shared unless truly shared.
-Do not let shared code import from Restaurant if it should remain generic.
-Do not centralize one-off values.
-Do not delete useful logic.
-Do not silently skip checks.
-Do not claim checks passed unless they passed.
-Do not push, commit, branch, or PR.
-Final Report Format
+## Strict Rules
+
+1. Work only on Restaurant core operational flow unless shared infrastructure is required.
+2. Do not modify Raw Material Phase 4B decisions.
+3. Do not globally refactor Retail.
+4. Do not implement Custom Business / Service.
+5. Do not reintroduce FNB as active runtime naming.
+6. Do not accept `fnb` as active API mode ID.
+7. Do not use `any`, `as any`, `as unknown as`, `@ts-ignore`, or `@ts-expect-error`.
+8. Do not create fake compatibility bridges.
+9. Do not fake persisted POS/order/payment data.
+10. Do not show sample data as real.
+11. Do not leave active write buttons unwired unless clearly disabled/planned.
+12. Do not add Prisma schema unless Restaurant genuinely needs it.
+13. Do not create destructive migrations.
+14. Do not leave fat Restaurant files untouched without a clear reason.
+15. Do not create giant `utils.ts`.
+16. Do not move Restaurant-specific logic into global shared unless truly shared.
+17. Do not centralize one-off values.
+18. Do not delete useful logic.
+19. Do not silently skip checks.
+20. Do not claim checks passed unless they passed.
+21. Do not push, branch, commit, or open PR.
+
+---
+
+# Final Report Format
 
 Return this exact report:
 
-Phase 5A Restaurant Report
-1. Summary
-2. Docs read
-3. Restaurant audit
-files inspected
-routes inspected
-backend/API inspected
-shared dashboards inspected
-Prisma inspected
-4. Flow fixes
-mode selection
-route guard
-sidebar/navigation
-data loading
-order flow
-table flow
-payment flow
-kitchen/serving flow
-edge cases
-5. Shared dashboard wiring
+# Phase 5B Restaurant Core Flow Report
 
-For each shared dashboard:
+## 1. Summary
 
-supported / unsupported / planned
-behavior
-files changed
-reason
-6. Prisma/database changes
-changed or not changed
-reason
-migration/generate status
-risks
-7. Backend/API changes
-files changed
-validation changes
-response/error handling
-security/ownership/role checks
-order/payment/table/kitchen/serving handling
-remaining risks
-8. Frontend/UI changes
-files changed
-components split
-polish made
-loading/empty/error states
-remaining risks
-9. Structure and naming changes
+## 2. Docs read
+
+## 3. Operational surface classification
+
+For each surface:
+
+* real / read-only / sample fallback / planned / unsupported
+* reason
+
+## 4. POS/cashier changes
+
+* files inspected
+* flow fixes
+* edge cases handled
+* remaining risks
+
+## 5. Order flow changes
+
+* status transitions
+* validation
+* role/guarding
+* remaining risks
+
+## 6. Table flow changes
+
+* status sync
+* table-order behavior
+* remaining risks
+
+## 7. Payment flow changes
+
+* methods/statuses
+* duplicate submit
+* receipt/invoice behavior
+* remaining risks
+
+## 8. Kitchen/KDS changes
+
+* queue behavior
+* status actions
+* role/guarding
+* remaining risks
+
+## 9. Serving changes
+
+* queue behavior
+* status actions
+* role/guarding
+* remaining risks
+
+## 10. Menu/category changes
+
+* availability
+* validation
+* file split
+* remaining risks
+
+## 11. Shift cashier changes
+
+* supported/planned/unsupported
+* behavior
+* remaining risks
+
+## 12. Backend/API changes
+
+* endpoints touched
+* validation
+* response envelope
+* permission/ownership
+* remaining risks
+
+## 13. Prisma/database decisions
+
+* changed or not changed
+* reason
+* validate/generate status
+* risks
+
+## 14. Structure and naming changes
 
 For each moved/renamed file:
 
-old path
-new path
-reason
-10. Helpers/configs/components created
+* old path
+* new path
+* reason
+
+## 15. Helpers/configs/components created
 
 For each:
 
-file path
-purpose
-where used
-11. Hardcoded/duplicate cleanup
-what was removed
-what was centralized
-why
-12. Files deleted
+* file path
+* purpose
+* where used
+
+## 16. Hardcoded/duplicate cleanup
+
+* what was removed
+* what was centralized
+* why
+
+## 17. Commands run
 
 For each:
 
-path
-why safe to delete
-13. Commands run
+* command
+* passed/failed/blocked/timed out
+* notes
 
-For each:
+## 18. Manual QA checklist
 
-command
-passed/failed/blocked/timed out
-notes
-14. Manual QA checklist
-15. Remaining risks
-16. Next recommended task
+## 19. Remaining risks
+
+## 20. Next recommended task
 
 Give only one next task.
 
-This phase is incomplete if the final report does not prove Restaurant-specific inspection across menu, orders, cashier, tables, payments, kitchen/serving, shared dashboards, backend/API, Prisma, and route guards.
-
-Do not return a successful Phase 5A report if Restaurant fat files, FNB leftovers, order/payment/table edge cases, and shared dashboard relevance were only mentioned but not actually inspected.
+This phase is incomplete if it only changes shared dashboard wiring, copy, or docs. It must inspect and harden Restaurant POS, orders, tables, payments, kitchen/KDS, serving, menu/category, backend/API contracts, and file structure.
