@@ -9,7 +9,7 @@ export const serviceBusinessPermissions = {
   quoteApprove: "service.quotes.approve",
   invoiceCreate: "service.invoices.create",
   invoicePaymentRecord: "service.invoices.record-payment",
-  configManage: "service.policy.view",
+  configManage: "service.workflow.update",
 } as const;
 
 export type ServiceBusinessPermissionKey = keyof typeof serviceBusinessPermissions;
