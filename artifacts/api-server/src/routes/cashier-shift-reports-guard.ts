@@ -121,6 +121,7 @@ router.get("/cashier-shift-reports-capabilities", async (req, res) => {
 router.get("/cashier-shift-reports", requireCashierShiftReportAccess);
 router.get("/cashier-shift-reports/export", requireCashierShiftReportAccess);
 router.get("/cashier-shift-reports/reconciliation", requireCashierShiftReportAccess);
+router.get("/cashier-shift-reports/sync-attempts", requireCashierShiftReportAccess);
 router.get("/shifts", requireCashierShiftReportAccess);
 router.post("/cashflow/sync/shifts/:shiftId", requireCashierShiftReportAccess);
 
