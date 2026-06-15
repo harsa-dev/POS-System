@@ -83,9 +83,11 @@ router.use("/sales-analytics", async (req, res, next) => {
     }
 
     const path = req.path;
-    const needsExportAccess = path.startsWith("/export");
+    const needsExportAccess =
+      path.startsWith("/export") || path.startsWith("/payment-integrity/export");
     const needsReconciliationAccess = path.startsWith("/reconciliation");
-    const needsSourceInspectionAccess = path.startsWith("/filter-options");
+    const needsSourceInspectionAccess =
+      path.startsWith("/filter-options") || path.startsWith("/payment-integrity");
 
     if (needsExportAccess && !capabilities.canExport) {
       return errorResponse(res, {
