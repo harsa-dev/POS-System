@@ -60,6 +60,7 @@ router.post("/auth/login", async (req, res) => {
     const { email, password } = req.body ?? {};
     const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
+    // IP limit happens before validation to catch malformed brute-force/spam attempts.
     enforceRateLimit({
       key: getRateLimitedIpKey(req, "login"),
       ...authRateLimitConfig.loginByIp,
@@ -73,6 +74,7 @@ router.post("/auth/login", async (req, res) => {
       });
     }
 
+    // Email limit happens after basic parsing so raw invalid bodies do not create noisy email buckets.
     enforceRateLimit({
       key: getRateLimitedEmailKey("login", normalizedEmail),
       ...authRateLimitConfig.loginByEmail,
