@@ -10,6 +10,7 @@ const ALL_AUTHENTICATED_ROLES: readonly V3RuntimeRole[] = [
 ];
 
 const MANAGEMENT_ROLES: readonly V3RuntimeRole[] = ["OWNER", "MANAGER", "ADMIN"];
+const PLATFORM_ADMIN_ROLES: readonly V3RuntimeRole[] = ["OWNER", "ADMIN"];
 const OPERATION_ROLES: readonly V3RuntimeRole[] = [
   "OWNER",
   "MANAGER",
@@ -36,6 +37,7 @@ export const permissionRoleCompatibility = {
   "auth.access": ALL_AUTHENTICATED_ROLES,
   "permissions.manage": MANAGEMENT_ROLES,
   "settings.manage": MANAGEMENT_ROLES,
+  "platform-admin.internal-monitoring.read": PLATFORM_ADMIN_ROLES,
   "inventory.view": READ_ONLY_BUSINESS_ROLES,
   "inventory.manage": MANAGEMENT_ROLES,
   "payments.manage": MANAGEMENT_ROLES,
