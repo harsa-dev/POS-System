@@ -167,6 +167,65 @@ function assertResponseEnvelope({ snapshot, frontendDto, backendDto, frontendApi
   });
 }
 
+function assertRuntimeProbes({ snapshot, backendRuntimeProbes, backendService, backendRoute, frontendDto, frontendDataSource }) {
+  assertContains({
+    label: "runtime probe collector",
+    content: backendRuntimeProbes,
+    expected: "collectInternalMonitoringRuntimeProbes",
+  });
+  assertContains({
+    label: "runtime probe collector database ping",
+    content: backendRuntimeProbes,
+    expected: "DATABASE_URL",
+  });
+  assertContains({
+    label: "runtime probe collector database query",
+    content: backendRuntimeProbes,
+    expected: "select 1 as internal_monitoring_probe",
+  });
+
+  for (const probeId of snapshot.runtimeProbeIds) {
+    assertContains({
+      label: `runtime probe id ${probeId}`,
+      content: backendRuntimeProbes,
+      expected: probeId,
+    });
+  }
+
+  assertContains({
+    label: "backend service runtime probe collector usage",
+    content: backendService,
+    expected: "collectInternalMonitoringRuntimeProbes",
+  });
+  assertContains({
+    label: "backend service runtime probe payload",
+    content: backendService,
+    expected: "runtimeProbes",
+  });
+  assertContains({
+    label: "backend health route awaits runtime probe payload",
+    content: backendRoute,
+    expected: "await getInternalMonitoringControlRoom()",
+  });
+  assertDtoFields({
+    label: "frontend runtime probe dto",
+    content: frontendDto,
+    typeName: "InternalMonitoringRuntimeProbeDto",
+    fields: snapshot.dtoTypes.InternalMonitoringRuntimeProbeDto,
+  });
+  assertDtoFields({
+    label: "frontend control room dto runtime probes",
+    content: frontendDto,
+    typeName: "InternalMonitoringControlRoomDto",
+    fields: ["runtimeProbes"],
+  });
+  assertContains({
+    label: "frontend fallback runtime probes",
+    content: frontendDataSource,
+    expected: "mockRuntimeProbes",
+  });
+}
+
 function extractRolesFromPolicy(content, capability) {
   const policyPattern = new RegExp(`"${capability.replaceAll(".", "\\.")}"\\s*:\\s*\\[([^\\]]*)\\]`);
   const match = content.match(policyPattern);
@@ -189,6 +248,7 @@ const backendDto = read(snapshot.sourceFiles.backendDto);
 const backendRoute = read(snapshot.sourceFiles.backendRoute);
 const backendPolicy = read(snapshot.sourceFiles.backendPolicy);
 const backendResponseHelper = read(snapshot.sourceFiles.backendResponseHelper);
+const backendRuntimeProbes = read(snapshot.sourceFiles.backendRuntimeProbes);
 const frontendPolicy = read("artifacts/pos-system/src/components/core/platform-admin/platform-admin-policy.ts");
 const sidebarRegistry = read("artifacts/pos-system/src/app/registry/core-modules.ts");
 const app = read("artifacts/pos-system/src/App.tsx");
@@ -223,6 +283,15 @@ try {
     frontendDataSource,
     backendResponseHelper,
     backendRoute,
+  });
+
+  assertRuntimeProbes({
+    snapshot,
+    backendRuntimeProbes,
+    backendService,
+    backendRoute,
+    frontendDto,
+    frontendDataSource,
   });
 
   for (const endpoint of snapshot.endpoints) {
@@ -288,7 +357,7 @@ try {
     expected: `PlatformAdminProtectedRoute capability="${snapshot.capability}"`,
   });
 
-  console.log(`[platform-admin:contract-parity] ${Object.keys(snapshot.dtoTypes).length} DTOs, ${snapshot.endpoints.length} endpoints, ${snapshot.dashboardSections.length} sections, and response envelope fields match snapshot.`);
+  console.log(`[platform-admin:contract-parity] ${Object.keys(snapshot.dtoTypes).length} DTOs, ${snapshot.endpoints.length} endpoints, ${snapshot.dashboardSections.length} sections, ${snapshot.runtimeProbeIds.length} runtime probes, and response envelope fields match snapshot.`);
 } catch (error) {
   console.error("[platform-admin:contract-parity] Contract parity check failed.");
   console.error(error instanceof Error ? error.message : error);
