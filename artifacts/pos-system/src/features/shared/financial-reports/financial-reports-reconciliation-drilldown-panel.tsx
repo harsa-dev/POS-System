@@ -29,6 +29,7 @@ import {
 
 import {
   openCashflowDrilldown,
+  openInventoryCostSnapshotRepair,
   openInvoiceGeneratorDrilldown,
 } from "./financial-reports-drilldown-bridge";
 import {
@@ -58,7 +59,7 @@ const issueTargets: Record<string, ReconciliationTarget> = {
   missing_cost_snapshots: {
     sectionId: "financial-reconciliation-missing-cost-snapshots",
     label: "Missing cost snapshots",
-    helper: "Inspect COGS stock movements without unit cost snapshots.",
+    helper: "Repair COGS stock movements by backfilling unit cost snapshots from inventory item costs.",
   },
   pending_cashflow_entries: {
     sectionId: "financial-reconciliation-pending-cashflow",
@@ -106,6 +107,7 @@ function getIssueClass(issue: FinancialReconciliationIssueDto) {
 
 function getIssueActionLabel(issueKey: string) {
   if (issueKey === "orders_without_cashflow") return "Open Source Sync";
+  if (issueKey === "missing_cost_snapshots") return "Open Repair";
   if (issueKey === "pending_cashflow_entries") return "Open Pending Ledger";
   if (issueKey === "voided_cashflow_entries") return "Open Voided Ledger";
   if (issueKey === "open_receivables") return "Open Receivables";
@@ -127,6 +129,16 @@ function openIssueTarget(
 ) {
   if (issue.key === "orders_without_cashflow") {
     window.location.assign("/dashboard/cashflow#cashflow-source-sync");
+    return;
+  }
+
+  if (issue.key === "missing_cost_snapshots") {
+    openInventoryCostSnapshotRepair({
+      from: periodContext.from,
+      to: periodContext.to,
+      sourceIssue: "missing_cost_snapshots",
+      message: `Financial reconciliation repair: missing COGS cost snapshots (${periodContext.label}).`,
+    });
     return;
   }
 
@@ -467,9 +479,9 @@ export function FinancialReportsReconciliationDrilldownPanel() {
             <p>
               This drilldown follows the active Financial Reports period and
               basis. Use this panel to jump from reconciliation issue cards into
-              source rows, invoice receivables, or cashflow ledgers. Missing cost
-              snapshot rows remain a focused table here because inventory cost
-              repair is not yet wired to a dedicated shared dashboard action.
+              source rows, invoice receivables, cashflow ledgers, or inventory
+              cost snapshot repair. Missing cost snapshot rows now open a repair
+              workflow instead of remaining a table-shaped shrug.
             </p>
           </div>
         </div>
