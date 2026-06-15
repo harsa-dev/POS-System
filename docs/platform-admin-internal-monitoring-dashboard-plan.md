@@ -104,6 +104,46 @@ Backend mutation-readiness catalog imports its DTO from this consolidated backen
 
 Frontend and backend DTOs intentionally remain package-local because this repository does not have a shared cross-package contract package yet. They must be kept shape-compatible through static checks and typecheck until a proper shared package exists.
 
+## Response envelope contract
+
+Every Internal Monitoring GET endpoint must return the same success envelope shape:
+
+```txt
+success: true
+data: T
+meta.generatedAt
+meta.source
+meta.mock
+meta.mode
+meta.capability
+meta.readOnly
+meta.mutationMode when relevant
+```
+
+Error envelopes follow the existing API error shape:
+
+```txt
+success: false
+message
+code
+details optional
+requestId optional
+```
+
+Backend Internal Monitoring routes use:
+
+```txt
+artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-response.ts
+```
+
+Frontend Internal Monitoring API methods use:
+
+```txt
+InternalMonitoringApiEnvelopeDto<T>
+```
+
+Feature data sources must unwrap that envelope through an explicit success/data check before using section data.
+
 ## Contract parity snapshot
 
 Internal Monitoring has a lightweight machine-readable contract snapshot:
@@ -118,6 +158,7 @@ The snapshot records:
 - route and capability
 - allowed roles
 - read-only and mutation mode
+- response envelope fields
 - frontend/backend DTO source files
 - GET endpoint inventory
 - DTO field expectations
@@ -131,7 +172,7 @@ Parity check command:
 pnpm platform-admin:contract-parity
 ```
 
-The contract parity check compares frontend DTO fields, backend DTO fields, frontend API methods, backend routes, backend services, dashboard section names, blocked mutation copy, and platform-admin role allowlists against the snapshot.
+The contract parity check compares frontend DTO fields, backend DTO fields, response envelope fields, frontend API methods, backend routes, backend services, dashboard section names, blocked mutation copy, and platform-admin role allowlists against the snapshot.
 
 ## Access policy
 
@@ -376,6 +417,23 @@ Implemented:
 
 ### IM-14 - Internal Monitoring response envelope parity
 
+Status: Done.
+
+Implemented:
+
+```txt
+- backend response envelope DTO types
+- frontend response envelope DTO types
+- backend internal monitoring response helper
+- all Internal Monitoring GET routes use the response helper
+- frontend API client uses InternalMonitoringApiEnvelopeDto<T>
+- data source explicitly unwraps success envelope before reading data
+- contract snapshot records response envelope fields
+- contract parity check validates response envelope parity
+```
+
+### IM-15 - Internal Monitoring runtime status polish
+
 Next.
 
-Ensure every Internal Monitoring backend endpoint and frontend client method uses a consistent response envelope shape and metadata contract.
+Use response envelope meta in the dashboard source health panel when backend API is available.
