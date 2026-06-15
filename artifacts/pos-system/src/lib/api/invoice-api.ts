@@ -6,6 +6,18 @@ type ApiRecord = Record<string, unknown>;
 export type InvoiceBackendStatus = "DRAFT" | "SENT" | "PAID" | "CANCELLED";
 export type InvoiceDiscountType = "PERCENTAGE" | "FIXED";
 
+export type InvoiceCapabilitiesDto = {
+  businessId: string;
+  businessMode: string;
+  canView: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canCancel: boolean;
+  canPrint: boolean;
+  isPlannedMode: boolean;
+  plannedReason: string | null;
+};
+
 export type InvoicePayload = {
   status?: InvoiceBackendStatus;
   business: {
@@ -38,7 +50,7 @@ export type InvoicePayload = {
 
 export type InvoiceRecord = {
   id: string;
-  restaurantId: string;
+  businessId: string;
   invoiceNumber: string;
   invoiceDate: string;
   dueDate: string | null;
@@ -76,6 +88,10 @@ export type InvoiceApiResult<T = ApiRecord> = {
 };
 
 export const invoiceApi = {
+  getCapabilities<T = InvoiceCapabilitiesDto>() {
+    return apiClient.get<ApiEnvelope<T>>("/api/invoice-capabilities");
+  },
+
   listInvoices<T = InvoiceRecord[]>() {
     return apiClient.get<ApiEnvelope<T>>("/api/invoices");
   },
