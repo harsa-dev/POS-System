@@ -36,7 +36,8 @@ export const authRateLimitConfig = {
 } as const;
 
 export function hashRateLimitIdentifier(value: string) {
-  return createHash("sha256").update(value.trim().toLowerCase()).digest("hex");
+  const normalized = value.trim().toLowerCase() || "unknown";
+  return createHash("sha256").update(normalized).digest("hex");
 }
 
 export function getRequestIp(req: Request) {
