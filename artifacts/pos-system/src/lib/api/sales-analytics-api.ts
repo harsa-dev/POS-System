@@ -52,6 +52,17 @@ export type SalesAnalyticsExportQuery = SalesAnalyticsQuery & {
   format?: SalesAnalyticsExportFormat;
 };
 
+export type SalesAnalyticsCapabilitiesDto = {
+  businessId: string;
+  businessMode: string;
+  canView: boolean;
+  canExport: boolean;
+  canReconcile: boolean;
+  canInspectSources: boolean;
+  isPlannedMode: boolean;
+  plannedReason: string | null;
+};
+
 export type SalesAnalyticsFilterOptionDto = {
   value: string;
   label: string;
@@ -243,6 +254,12 @@ export function buildSalesAnalyticsQueryString(params?: SalesAnalyticsExportQuer
 }
 
 export const salesAnalyticsApi = {
+  getCapabilities() {
+    return apiClient.get<ApiDataEnvelope<SalesAnalyticsCapabilitiesDto>>(
+      "/api/sales-analytics-capabilities",
+    );
+  },
+
   getReport(params?: SalesAnalyticsQuery) {
     return apiClient.get<ApiDataEnvelope<SalesAnalyticsDto>>(
       `/api/sales-analytics${buildSalesAnalyticsQueryString(params)}`,
