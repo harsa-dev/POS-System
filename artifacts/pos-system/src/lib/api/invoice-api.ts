@@ -24,6 +24,7 @@ export type InvoiceHistoryQuery = {
   status?: InvoiceBackendStatus | "ALL";
   from?: string;
   to?: string;
+  overdue?: boolean;
   page?: number;
   limit?: number;
 };
@@ -183,6 +184,7 @@ function buildInvoiceHistorySearchParams(query: InvoiceHistoryQuery = {}) {
   if (query.status && query.status !== "ALL") params.set("status", query.status);
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
+  if (query.overdue) params.set("overdue", "true");
   if (query.page) params.set("page", String(query.page));
   if (query.limit) params.set("limit", String(query.limit));
   return params;
