@@ -123,7 +123,24 @@ export type CashierShiftSyncState =
   | "SYNCED"
   | "READY_TO_SYNC"
   | "NEEDS_REVIEW"
-  | "BLOCKED_OPEN";
+  | "BLOCKED_OPEN"
+  | "SYNC_FAILED";
+
+export type CashierShiftSyncAttemptStatus = "RUNNING" | "SUCCESS" | "FAILED";
+
+export type CashierShiftSyncAttemptDto = {
+  id: string;
+  shiftId?: string;
+  attemptNumber: number;
+  status: CashierShiftSyncAttemptStatus;
+  errorCode: string | null;
+  errorMessage: string | null;
+  cashflowEntryId: string | null;
+  actorId: string | null;
+  actorRole: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type CashierShiftReconciliationRowDto = {
   shiftId: string;
@@ -142,6 +159,7 @@ export type CashierShiftReconciliationRowDto = {
   cashStatus: string;
   cashflowSynced: boolean;
   syncState: CashierShiftSyncState;
+  latestSyncAttempt: CashierShiftSyncAttemptDto | null;
   recommendedAction: string;
 };
 
@@ -160,6 +178,7 @@ export type CashierShiftReconciliationDto = {
     syncedCount: number;
     readyToSyncCount: number;
     needsReviewCount: number;
+    failedSyncCount: number;
     blockedOpenCount: number;
     unsyncedClosedCount: number;
     totalCashVariance: number;
