@@ -20,6 +20,8 @@ artifacts/pos-system/src/features/shared/platform-monitoring/dev-monitoring-deep
 artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-control-room.tsx
 artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-upgrade-board.tsx
 artifacts/pos-system/src/features/shared/platform-monitoring/internal-production-readiness-board.tsx
+artifacts/pos-system/src/components/core/platform-admin/platform-admin-policy.ts
+artifacts/pos-system/src/components/core/platform-admin/platform-admin-route.tsx
 ```
 
 ## Current route
@@ -28,7 +30,7 @@ artifacts/pos-system/src/features/shared/platform-monitoring/internal-production
 ROUTES.INTERNAL_MONITORING = /dashboard/internal-monitoring
 ```
 
-The route is mounted in `artifacts/pos-system/src/App.tsx` and must use a dedicated Platform Admin guard.
+The route is mounted in `artifacts/pos-system/src/App.tsx` and must use a dedicated Platform Admin guard boundary.
 
 ## Advanced dashboard sections
 
@@ -39,12 +41,11 @@ The route is mounted in `artifacts/pos-system/src/App.tsx` and must use a dedica
 4. Route Ownership Matrix
 5. API Contract Readiness
 6. Data Integrity Checks
-7. Mutation Readiness & Dry-run Contracts
-8. Schema Candidate / Migration Risk
-9. Release Gates
-10. Incident Timeline / Internal Alerts
-11. Dev Action Queue
-12. Observability Targets
+7. Schema Candidate / Migration Risk
+8. Release Gates
+9. Incident Timeline / Internal Alerts
+10. Dev Action Queue
+11. Observability Targets
 ```
 
 ## Backend read-only endpoint plan
@@ -69,31 +70,6 @@ PATCH /api/internal/alerts/:alertId/acknowledge
 ```
 
 Alert acknowledgement must stay blocked until dedicated RBAC, audit logging, approval policy, rollback notes, and rate limits are implemented.
-
-## Mutation readiness and dry-run contract
-
-IM-10 adds a read-only mutation readiness catalog. It is not an executor.
-
-The catalog lists future mutation candidates and their required controls:
-
-```txt
-required capability
-required audit event
-required approval policy
-rollback plan
-rate limit
-blocked reason
-required proof
-dry-run requirement
-```
-
-Current catalog endpoint:
-
-```txt
-GET /api/internal/mutation-readiness/contracts
-```
-
-Proposed future mutation endpoints may appear as strings inside the catalog, but no POST/PATCH/DELETE route or API client call may be implemented in this phase.
 
 ## Frontend data source plan
 
@@ -130,27 +106,17 @@ Capability:
 platform-admin.internal-monitoring.read
 ```
 
-This must replace broad `settings.manage` for the Internal Monitoring sidebar entry in a later phase.
+This replaces broad `settings.manage` for the Internal Monitoring sidebar entry.
 
-## Optional browser smoke
+## Policy boundary extraction
 
-Internal Monitoring has an optional browser smoke command:
-
-```bash
-pnpm platform-admin:browser-smoke
-```
-
-Environment:
+Platform admin route enforcement must live outside `App.tsx`:
 
 ```txt
-PLATFORM_ADMIN_APP_URL=http://localhost:5173
-PLATFORM_ADMIN_SMOKE_COOKIE=<browser cookie for real authenticated checks>
-PLATFORM_ADMIN_SMOKE_HEADLESS=false
-PLATFORM_ADMIN_SMOKE_SKIP_AUTH=true
-PLATFORM_ADMIN_SMOKE_USE_MOCK_AUTH=true
+artifacts/pos-system/src/components/core/platform-admin/platform-admin-route.tsx
 ```
 
-Default smoke uses mocked `/api/auth/me` responses to simulate ADMIN allow and MANAGER deny without needing real accounts. Set `PLATFORM_ADMIN_SMOKE_USE_MOCK_AUTH=false` and provide a cookie when validating against real auth.
+`App.tsx` may keep a small auth bridge wrapper, but the forbidden panel and capability decision must remain in the extracted route boundary.
 
 ## Sensitive implementation rules
 
@@ -315,6 +281,19 @@ Implemented:
 
 ### IM-11 - Internal Monitoring typecheck cleanup and extraction
 
+Status: Done.
+
+Implemented:
+
+```txt
+- extracted PlatformAdminRoute into components/core/platform-admin/platform-admin-route.tsx
+- App route now uses a small PlatformAdminProtectedRoute auth bridge
+- forbidden panel and capability decision no longer live inside App.tsx
+- static guard checks extracted route boundary and prevents forbidden panel from moving back into App.tsx
+```
+
+### IM-12 - Internal Monitoring DTO consolidation
+
 Next.
 
-Extract PlatformAdminRoute out of App and tighten frontend/backend DTO reuse so the dashboard can grow without turning App.tsx into a wiring landfill.
+Consolidate duplicated frontend/backend internal monitoring DTO shapes where safe, or document why shared DTOs stay separate across app/api packages.
