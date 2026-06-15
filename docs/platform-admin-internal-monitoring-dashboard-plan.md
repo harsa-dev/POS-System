@@ -169,6 +169,23 @@ Stale source warning when generatedAt is invalid or older than the freshness thr
 
 The runtime status panel must remain read-only and must not expose any action other than source refresh.
 
+## Browser smoke runtime assertions
+
+`pnpm platform-admin:browser-smoke` must assert the Runtime Status contract in addition to basic dashboard visibility.
+
+Required runtime browser assertions:
+
+```txt
+Runtime Status panel renders
+Runtime Mode card renders
+Freshness card renders
+Section Coverage card renders
+Guardrail card renders
+Runtime mode label renders one of: Operational - API synced, Degraded - fallback active, Mock - local preview, Refreshing
+```
+
+The browser smoke must continue to assert that no internal mutation controls are visible.
+
 ## Contract parity snapshot
 
 Internal Monitoring has a lightweight machine-readable contract snapshot:
@@ -476,6 +493,23 @@ Implemented:
 
 ### IM-16 - Internal Monitoring browser smoke runtime assertions
 
+Status: Done.
+
+Implemented:
+
+```txt
+- browser smoke runtime assertion helper
+- Runtime Status panel visibility check
+- Runtime Mode card visibility check
+- Freshness card visibility check
+- Section Coverage card visibility check
+- Guardrail card visibility check
+- runtime mode label regex check
+- static guard checks browser smoke runtime assertions
+```
+
+### IM-17 - Internal Monitoring final QA checklist
+
 Next.
 
-Extend browser smoke to assert Runtime Status, Runtime Mode, Freshness, Section Coverage, and read-only Guardrail visibility.
+Add a compact final QA checklist doc section for commands, manual smoke, known blocked mutations, and next-safe scope handoff.
