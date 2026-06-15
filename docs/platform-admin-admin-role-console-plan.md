@@ -10,9 +10,23 @@ Dashboard scope:
 
 This dashboard is the next Platform Admin console after Internal Monitoring. It is intentionally scoped as a read-only, mock-backed access governance console for portfolio visibility and future implementation planning.
 
-It does not implement real role assignment, role revocation, permission template persistence, audit writes, approval workflows, or Prisma schema changes in this phase.
+It does not implement real role assignment, role revocation, permission template persistence, audit writes, approval workflows, backend write handlers, or Prisma schema changes in this dashboard phase.
 
-## 2. Current phase
+## 2. Rollout style
+
+Admin Role Console follows the same staged style as Internal Monitoring:
+
+```txt
+AR-1 - Read-only access guard and scope isolation
+AR-2 - Frontend data source adapter and section fallback
+AR-3 - UX hardening and read-only safety copy
+AR-4 - Browser smoke for platform admin access
+AR-5 - Final QA checklist
+```
+
+Backend read APIs are not the next phase. Backend work can be discussed later only after the frontend scope, fallback behavior, and smoke coverage are stable.
+
+## 3. Current phase
 
 ### AR-1 - Read-only access guard and scope isolation
 
@@ -27,22 +41,22 @@ Implemented guardrails:
 - dashboard remains mock-backed
 - no backend API implementation
 - no Prisma schema changes
-- no POST/PATCH/DELETE internal role endpoint
+- no internal admin write route
 - no role assignment mutation
 - no role revocation mutation
 - no permission template mutation
 - no audit write
 - no approval execution
 
-## 3. What the dashboard shows
+## 4. What the dashboard shows
 
 The current console displays mock-backed planning views for:
 
 - Admin role overview
 - Internal admin metrics
 - Access review workflow planning
-- Future API contracts
-- Backend readiness checklist
+- Read-only rollout preview
+- Readiness map
 - Implementation plan
 - Schema candidates
 - Sensitive action dry-run rows
@@ -59,40 +73,37 @@ Current route wrapper:
 artifacts/pos-system/src/pages/dashboard/admin-role-console.tsx
 ```
 
-## 4. Read-only boundary
+## 5. Read-only boundary
 
 This phase must stay read-only. The console may show future role operations as mock rows only.
 
 Blocked in AR-1:
 
 ```txt
-POST /api/internal/admin-console/role-requests
-PATCH /api/internal/admin-console/role-requests/:id
-DELETE /api/internal/admin-console/role-requests/:id
+role assignment execution
+role revocation execution
+permission template write
+approval execution
+audit write
+Prisma schema promotion
 ```
 
-The only planned future read endpoint in the current mock contract is:
+Draft read surfaces may appear as mock readiness rows, but they are not implemented as backend handlers in AR-1.
 
-```txt
-GET /api/internal/admin-console/roles
-```
-
-That endpoint is still not implemented in AR-1.
-
-## 5. Promotion requirements for future real API
+## 6. Promotion requirements for future real data
 
 Before the Admin Role Console can move beyond mock-backed read-only mode, the project must add:
 
-- backend policy for `platform-admin.admin-role-console.read`
-- backend GET endpoint for role overview
-- response envelope contract
-- contract parity snapshot
-- audit model or reuse of existing audit system
-- approval policy for any write workflow
-- rate limit and rollback note for every write path
+- frontend data source adapter with per-section fallback
+- source badge for mock/fallback/API state
+- section-level loading/error handling
+- static guard for read-only copy and blocked write controls
 - browser smoke for OWNER/ADMIN access and MANAGER denial
+- final QA checklist for this dashboard
 
-## 6. Validation command
+Backend read implementation may be proposed after those gates. Write workflows remain out of scope until RBAC, audit, approval policy, rollback, and rate-limit rules exist.
+
+## 7. Validation command
 
 Run:
 
@@ -103,12 +114,12 @@ pnpm platform-admin:check
 
 AR-1 is considered valid only if both pass.
 
-## 7. Next safe phase
+## 8. Next safe phase
 
 Next safe phase:
 
 ```txt
-AR-2 - Admin Role Console read-only backend contract plan
+AR-2 - Admin Role Console frontend data source adapter and section fallback
 ```
 
-AR-2 should add backend DTO/policy planning and a GET-only contract design. It should not add role mutation, audit writes, approval execution, or Prisma schema promotion yet.
+AR-2 should add a frontend data source module, mock/fallback source metadata, and section-level fallback behavior. It should not add backend endpoints, role mutation, audit writes, approval execution, or Prisma schema promotion yet.
