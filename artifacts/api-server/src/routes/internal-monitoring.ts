@@ -2,8 +2,8 @@ import { Router, type IRouter } from "express";
 
 import { requireRole } from "../lib/auth.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
-import { successResponse } from "../lib/responses/success-response.js";
 import { INTERNAL_MONITORING_POLICY } from "../services/platform-admin/internal-monitoring/internal-monitoring.policy.js";
+import { internalMonitoringSuccessResponse } from "../services/platform-admin/internal-monitoring/internal-monitoring-response.js";
 import {
   getInternalMonitoringContractReadiness,
   getInternalMonitoringControlRoom,
@@ -25,15 +25,11 @@ router.get("/internal/health/summary", async (req, res) => {
 
     const data = getInternalMonitoringControlRoom();
 
-    return successResponse(res, {
+    return internalMonitoringSuccessResponse(res, {
       data,
-      meta: {
-        generatedAt: data.generatedAt,
-        source: data.source,
-        mock: true,
-        mode: INTERNAL_MONITORING_POLICY.mode,
-        capability: INTERNAL_MONITORING_POLICY.capability,
-      },
+      generatedAt: data.generatedAt,
+      source: data.source,
+      mock: true,
     });
   } catch (error) {
     return handleApiError(res, error);
@@ -45,14 +41,8 @@ router.get("/internal/routes/inventory", async (req, res) => {
     const user = await requireInternalMonitoringAccess(req, res);
     if (!user) return;
 
-    return successResponse(res, {
+    return internalMonitoringSuccessResponse(res, {
       data: getInternalMonitoringRouteInventory(),
-      meta: {
-        generatedAt: new Date().toISOString(),
-        source: "api",
-        mock: true,
-        mode: INTERNAL_MONITORING_POLICY.mode,
-      },
     });
   } catch (error) {
     return handleApiError(res, error);
@@ -64,14 +54,8 @@ router.get("/internal/contracts/readiness", async (req, res) => {
     const user = await requireInternalMonitoringAccess(req, res);
     if (!user) return;
 
-    return successResponse(res, {
+    return internalMonitoringSuccessResponse(res, {
       data: getInternalMonitoringContractReadiness(),
-      meta: {
-        generatedAt: new Date().toISOString(),
-        source: "api",
-        mock: true,
-        mode: INTERNAL_MONITORING_POLICY.mode,
-      },
     });
   } catch (error) {
     return handleApiError(res, error);
@@ -83,14 +67,8 @@ router.get("/internal/data-integrity/checks", async (req, res) => {
     const user = await requireInternalMonitoringAccess(req, res);
     if (!user) return;
 
-    return successResponse(res, {
+    return internalMonitoringSuccessResponse(res, {
       data: getInternalMonitoringIntegrityChecks(),
-      meta: {
-        generatedAt: new Date().toISOString(),
-        source: "api",
-        mock: true,
-        mode: INTERNAL_MONITORING_POLICY.mode,
-      },
     });
   } catch (error) {
     return handleApiError(res, error);
@@ -102,16 +80,9 @@ router.get("/internal/mutation-readiness/contracts", async (req, res) => {
     const user = await requireInternalMonitoringAccess(req, res);
     if (!user) return;
 
-    return successResponse(res, {
+    return internalMonitoringSuccessResponse(res, {
       data: getInternalMonitoringMutationReadiness(),
-      meta: {
-        generatedAt: new Date().toISOString(),
-        source: "api",
-        mock: true,
-        mode: INTERNAL_MONITORING_POLICY.mode,
-        capability: INTERNAL_MONITORING_POLICY.capability,
-        mutationMode: "design-only",
-      },
+      mutationMode: "design-only",
     });
   } catch (error) {
     return handleApiError(res, error);
