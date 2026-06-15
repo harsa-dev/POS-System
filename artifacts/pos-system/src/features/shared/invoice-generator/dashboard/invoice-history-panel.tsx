@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Ban, ChevronLeft, ChevronRight, Download, RefreshCw, Search } from "lucide-react";
+import { Ban, ChevronLeft, ChevronRight, Download, FileInput, RefreshCw, Search } from "lucide-react";
 
 import {
   invoiceApi,
@@ -17,6 +17,10 @@ import {
   DashboardActions,
   DashboardPanel,
 } from "@/features/shared/dashboard";
+import {
+  INVOICE_GENERATOR_LOAD_INVOICE_EVENT,
+  type InvoiceGeneratorLoadInvoiceEventDetail,
+} from "./invoice-generator-events";
 
 type InvoiceHistoryPanelProps = {
   capabilities: InvoiceCapabilitiesDto;
@@ -129,6 +133,18 @@ export function InvoiceHistoryPanel({ capabilities }: InvoiceHistoryPanelProps) 
     }
   }
 
+  function handleLoadToEditor(invoice: InvoiceRecord) {
+    const detail: InvoiceGeneratorLoadInvoiceEventDetail = {
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+    };
+
+    window.dispatchEvent(new CustomEvent(INVOICE_GENERATOR_LOAD_INVOICE_EVENT, { detail }));
+    document.getElementById("invoice-generator-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setMessage(`Invoice ${invoice.invoiceNumber} sent to the editor.`);
+    setErrorMessage(null);
+  }
+
   async function handleCancel(invoice: InvoiceRecord) {
     if (!capabilities.canCancel || invoice.status === "CANCELLED") return;
     const confirmed = window.confirm(`Cancel invoice ${invoice.invoiceNumber}? This keeps the record but marks it cancelled.`);
@@ -220,7 +236,7 @@ export function InvoiceHistoryPanel({ capabilities }: InvoiceHistoryPanelProps) 
         {errorMessage && <p className="text-sm font-medium text-rose-700">{errorMessage}</p>}
 
         <div className="overflow-x-auto rounded-xl border border-neutral-200">
-          <table className="w-full min-w-[920px] text-left text-sm">
+          <table className="w-full min-w-[1020px] text-left text-sm">
             <thead className="bg-neutral-50 text-neutral-500">
               <tr>
                 <th className="px-3 py-3 font-semibold">Invoice</th>
@@ -272,15 +288,25 @@ export function InvoiceHistoryPanel({ capabilities }: InvoiceHistoryPanelProps) 
                     {new Date(invoice.updatedAt).toLocaleString("id-ID")}
                   </td>
                   <td className="px-3 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => void handleCancel(invoice)}
-                      disabled={!capabilities.canCancel || invoice.status === "CANCELLED" || cancelingId === invoice.id}
-                      className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Ban className="h-4 w-4" />
-                      {cancelingId === invoice.id ? "Canceling..." : "Cancel"}
-                    </button>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleLoadToEditor(invoice)}
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+                      >
+                        <FileInput className="h-4 w-4" />
+                        Load
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleCancel(invoice)}
+                        disabled={!capabilities.canCancel || invoice.status === "CANCELLED" || cancelingId === invoice.id}
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Ban className="h-4 w-4" />
+                        {cancelingId === invoice.id ? "Canceling..." : "Cancel"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
