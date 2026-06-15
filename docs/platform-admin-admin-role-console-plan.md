@@ -93,6 +93,21 @@ Implemented backend read-only scaffold:
 - no approval execution
 - no audit write
 
+### AR-4 - UX hardening and read-only safety copy
+
+Status: Done
+
+Implemented UX hardening:
+
+- added visible `Read-only Operation Notice`
+- added source-specific copy through `getSourceCopy`
+- added API/fallback state explanation
+- added `Fallback State` panel when API or section fallback is active
+- added reusable empty-state copy for metrics, workflows, rollout preview, and schema candidates
+- kept allowed surface visible as GET-only
+- kept write boundary visible as blocked
+- kept no database access and no Prisma promotion copy visible
+
 ## 4. What the dashboard shows
 
 The current console displays read-only planning views through a backend-first data source with frontend fallback for:
@@ -103,6 +118,8 @@ The current console displays read-only planning views through a backend-first da
 - Read-only rollout preview
 - Section source health
 - Read-only safety boundary
+- Read-only Operation Notice
+- Fallback State when fallback data is active
 - Schema candidates
 
 Current frontend fallback source:
@@ -144,13 +161,13 @@ artifacts/pos-system/src/pages/dashboard/admin-role-console.tsx
 
 This phase must stay read-only. The console may show future operations as planning rows only.
 
-Allowed in AR-3:
+Allowed in AR-4:
 
 ```txt
 GET /api/internal/admin-console/roles
 ```
 
-Blocked in AR-3:
+Blocked in AR-4:
 
 ```txt
 POST /api/internal/admin-console/*
@@ -169,7 +186,6 @@ audit write
 
 Before the Admin Role Console can move beyond read-only backend mock data, the project must add:
 
-- UX hardening and stronger read-only safety copy
 - browser smoke for OWNER/ADMIN access and MANAGER denial
 - final QA checklist for this dashboard
 - real permission registry source design
@@ -186,14 +202,14 @@ pnpm platform-admin:admin-role-check
 pnpm platform-admin:check
 ```
 
-AR-3 is considered valid only if both pass.
+AR-4 is considered valid only if both pass.
 
 ## 8. Next safe phase
 
 Next safe phase:
 
 ```txt
-AR-4 - Admin Role Console UX hardening and read-only safety copy
+AR-5 - Browser smoke for platform admin access
 ```
 
-AR-4 should improve visible safety copy, empty/fallback UX, route-level messaging, and mock/fallback state clarity. It should not add database access, Prisma schema promotion, role mutation, audit writes, or approval execution.
+AR-5 should validate OWNER/ADMIN access, MANAGER denial, source badge rendering, operation notice, fallback UI, and blocked write copy. It should not add database access, Prisma schema promotion, role mutation, audit writes, or approval execution.
