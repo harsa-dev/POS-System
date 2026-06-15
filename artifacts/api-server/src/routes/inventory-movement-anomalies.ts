@@ -10,6 +10,7 @@ import { createBusinessScopeWhere, requireBusinessContextForUser } from "../lib/
 import { MANAGEMENT_ROLES } from "../lib/constants.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
+import { prisma } from "../lib/prisma.js";
 import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import {
@@ -33,11 +34,27 @@ const anomalyTypes = [
   "HIGH_VALUE_MOVEMENT",
 ] as const;
 const severityValues = ["INFO", "WARNING", "CRITICAL"] as const;
+const reviewStatuses = ["REVIEWED", "IGNORED", "RESOLVED"] as const;
 
 type InventoryMovementAnomalyType = (typeof anomalyTypes)[number];
 type InventoryMovementAnomalySeverity = (typeof severityValues)[number];
+type InventoryMovementAnomalyReviewStatus = (typeof reviewStatuses)[number];
+type InventoryMovementAnomalyReviewFilter = "UNREVIEWED" | InventoryMovementAnomalyReviewStatus;
 type StockMovementWithItem = Prisma.StockMovementGetPayload<{ include: { inventoryItem: true } }>;
-type InventoryMovementAnomalyRow = ReturnType<typeof toAnomalyRow>;
+type InventoryMovementAnomalyRow = ReturnType<typeof toAnomalyRow> & {
+  reviewStatus: InventoryMovementAnomalyReviewStatus | null;
+  reviewNote: string | null;
+  reviewedById: string | null;
+  reviewedAt: string | null;
+};
+
+type InventoryMovementAnomalyReviewRow = {
+  anomalyId: string;
+  status: InventoryMovementAnomalyReviewStatus;
+  note: string;
+  reviewedById: string | null;
+  updatedAt: Date;
+};
 
 function normalizeEnum(value: string) {
   return value.trim().toUpperCase().replace(/[\s-]/g, "_");
@@ -56,6 +73,16 @@ function parseSeverity(value: unknown): InventoryMovementAnomalySeverity | undef
   const normalized = normalizeEnum(value);
   return severityValues.includes(normalized as InventoryMovementAnomalySeverity)
     ? (normalized as InventoryMovementAnomalySeverity)
+    : undefined;
+}
+
+function parseReviewFilter(value: unknown): InventoryMovementAnomalyReviewFilter | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = normalizeEnum(value);
+  if (normalized === "ALL") return undefined;
+  if (normalized === "UNREVIEWED") return "UNREVIEWED";
+  return reviewStatuses.includes(normalized as InventoryMovementAnomalyReviewStatus)
+    ? (normalized as InventoryMovementAnomalyReviewStatus)
     : undefined;
 }
 
@@ -108,6 +135,7 @@ function getAnomalyQuery(req: { query: Record<string, unknown> }) {
     inventoryItemId: typeof req.query.inventoryItemId === "string" ? req.query.inventoryItemId.trim() : undefined,
     anomalyType: parseAnomalyType(req.query.anomalyType),
     severity: parseSeverity(req.query.severity),
+    reviewStatus: parseReviewFilter(req.query.reviewStatus),
     reason: parseMovementReason(req.query.reason),
     sourceType: parseMovementSource(req.query.sourceType),
     sourceId: typeof req.query.sourceId === "string" ? req.query.sourceId.trim() : undefined,
@@ -117,6 +145,38 @@ function getAnomalyQuery(req: { query: Record<string, unknown> }) {
     adjustmentThreshold: parseNumber(req.query.adjustmentThreshold, DEFAULT_ADJUSTMENT_THRESHOLD),
     limit: parseLimit(req.query.limit),
   };
+}
+
+async function ensureInventoryMovementAnomalyReviewTable() {
+  await prisma.$executeRaw`
+    CREATE TABLE IF NOT EXISTS "InventoryMovementAnomalyReview" (
+      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      "businessId" TEXT NOT NULL,
+      "anomalyId" TEXT NOT NULL,
+      "anomalyType" TEXT NOT NULL,
+      "movementId" TEXT NOT NULL,
+      status TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      "reviewedById" TEXT,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+
+  await prisma.$executeRaw`
+    CREATE UNIQUE INDEX IF NOT EXISTS "InventoryMovementAnomalyReview_business_anomaly_key"
+      ON "InventoryMovementAnomalyReview" ("businessId", "anomalyId")
+  `;
+
+  await prisma.$executeRaw`
+    CREATE INDEX IF NOT EXISTS "InventoryMovementAnomalyReview_business_status_idx"
+      ON "InventoryMovementAnomalyReview" ("businessId", status)
+  `;
+
+  await prisma.$executeRaw`
+    CREATE INDEX IF NOT EXISTS "InventoryMovementAnomalyReview_business_movement_idx"
+      ON "InventoryMovementAnomalyReview" ("businessId", "movementId")
+  `;
 }
 
 function movementUnitCost(movement: StockMovementWithItem) {
@@ -242,6 +302,37 @@ function toAnomalyRow(
   };
 }
 
+function withEmptyReview(row: ReturnType<typeof toAnomalyRow>): InventoryMovementAnomalyRow {
+  return {
+    ...row,
+    reviewStatus: null,
+    reviewNote: null,
+    reviewedById: null,
+    reviewedAt: null,
+  };
+}
+
+function applyReviewToRow(
+  row: ReturnType<typeof toAnomalyRow>,
+  review?: InventoryMovementAnomalyReviewRow,
+): InventoryMovementAnomalyRow {
+  if (!review) return withEmptyReview(row);
+
+  return {
+    ...row,
+    reviewStatus: review.status,
+    reviewNote: review.note,
+    reviewedById: review.reviewedById,
+    reviewedAt: review.updatedAt.toISOString(),
+  };
+}
+
+function matchesReviewFilter(row: InventoryMovementAnomalyRow, reviewStatus?: InventoryMovementAnomalyReviewFilter) {
+  if (!reviewStatus) return true;
+  if (reviewStatus === "UNREVIEWED") return !row.reviewStatus;
+  return row.reviewStatus === reviewStatus;
+}
+
 function summarizeAnomalies(rows: InventoryMovementAnomalyRow[]) {
   return {
     totalAnomalies: rows.length,
@@ -252,6 +343,10 @@ function summarizeAnomalies(rows: InventoryMovementAnomalyRow[]) {
     missingCostSnapshotCount: rows.filter((row) => row.anomalyType === "MISSING_COST_SNAPSHOT").length,
     suspiciousAdjustmentCount: rows.filter((row) => row.anomalyType === "SUSPICIOUS_ADJUSTMENT").length,
     highValueMovementCount: rows.filter((row) => row.anomalyType === "HIGH_VALUE_MOVEMENT").length,
+    reviewedCount: rows.filter((row) => row.reviewStatus === "REVIEWED").length,
+    ignoredCount: rows.filter((row) => row.reviewStatus === "IGNORED").length,
+    resolvedCount: rows.filter((row) => row.reviewStatus === "RESOLVED").length,
+    unreviewedCount: rows.filter((row) => !row.reviewStatus).length,
     totalValueAtRisk: rows.reduce((total, row) => total + row.movementValue, 0),
   };
 }
@@ -277,6 +372,10 @@ function rowsToCsv(rows: InventoryMovementAnomalyRow[]) {
     "Movement Value",
     "Recommended Action",
     "Note",
+    "Review Status",
+    "Review Note",
+    "Reviewed By",
+    "Reviewed At",
   ];
 
   const csvRows = rows.map((row) => [
@@ -299,6 +398,10 @@ function rowsToCsv(rows: InventoryMovementAnomalyRow[]) {
     row.movementValue,
     row.recommendedAction,
     row.note ?? "",
+    row.reviewStatus ?? "UNREVIEWED",
+    row.reviewNote ?? "",
+    row.reviewedById ?? "",
+    row.reviewedAt ?? "",
   ]);
 
   return [header, ...csvRows].map((row) => row.map(csvEscape).join(",")).join("\n");
@@ -310,6 +413,7 @@ async function listInventoryMovementAnomalies(params: {
   inventoryItemId?: string;
   anomalyType?: InventoryMovementAnomalyType;
   severity?: InventoryMovementAnomalySeverity;
+  reviewStatus?: InventoryMovementAnomalyReviewFilter;
   reason?: StockMovementReason;
   sourceType?: StockMovementSource;
   sourceId?: string;
@@ -351,16 +455,41 @@ async function listInventoryMovementAnomalies(params: {
     take: EXPORT_LIMIT,
   });
 
-  const rows = movements.flatMap((movement) =>
+  const baseRows = movements.flatMap((movement) =>
     anomalyDefinitions(movement, {
       adjustmentThreshold: params.adjustmentThreshold,
       highValueThreshold: params.highValueThreshold,
     }).map((definition) => toAnomalyRow(movement, definition)),
   );
 
-  return rows
+  const anomalyIds = Array.from(new Set(baseRows.map((row) => row.id)));
+  const reviewsByAnomalyId = new Map<string, InventoryMovementAnomalyReviewRow>();
+
+  if (anomalyIds.length > 0) {
+    await ensureInventoryMovementAnomalyReviewTable();
+
+    const reviewRows = await prisma.$queryRaw<InventoryMovementAnomalyReviewRow[]>`
+      SELECT
+        "anomalyId" AS "anomalyId",
+        status,
+        note,
+        "reviewedById" AS "reviewedById",
+        "updatedAt" AS "updatedAt"
+      FROM "InventoryMovementAnomalyReview"
+      WHERE "businessId" = ${params.businessContext.businessId}
+        AND "anomalyId" IN (${Prisma.join(anomalyIds)})
+    `;
+
+    for (const review of reviewRows) {
+      reviewsByAnomalyId.set(review.anomalyId, review);
+    }
+  }
+
+  return baseRows
+    .map((row) => applyReviewToRow(row, reviewsByAnomalyId.get(row.id)))
     .filter((row) => (params.anomalyType ? row.anomalyType === params.anomalyType : true))
     .filter((row) => (params.severity ? row.severity === params.severity : true))
+    .filter((row) => matchesReviewFilter(row, params.reviewStatus))
     .slice(0, params.limit);
 }
 
@@ -384,6 +513,7 @@ router.get("/inventory-movement-anomalies", async (req, res) => {
           inventoryItemId: query.inventoryItemId ?? null,
           anomalyType: query.anomalyType ?? null,
           severity: query.severity ?? null,
+          reviewStatus: query.reviewStatus ?? null,
           reason: query.reason ?? null,
           sourceType: query.sourceType ?? null,
           sourceId: query.sourceId ?? null,
@@ -428,6 +558,7 @@ router.get("/inventory-movement-anomalies/export", async (req, res) => {
               inventoryItemId: query.inventoryItemId ?? null,
               anomalyType: query.anomalyType ?? null,
               severity: query.severity ?? null,
+              reviewStatus: query.reviewStatus ?? null,
               reason: query.reason ?? null,
               sourceType: query.sourceType ?? null,
               sourceId: query.sourceId ?? null,
