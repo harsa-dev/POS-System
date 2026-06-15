@@ -25,6 +25,11 @@ export type CustomerProfileDto = {
   address: string | null;
   totalSpending: number;
   transactions: number;
+  loyaltyTierId?: string | null;
+  loyaltyTierName?: string | null;
+  loyaltyTierIcon?: string | null;
+  loyaltyDiscount?: string | null;
+  tierAssignedAt?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -91,6 +96,41 @@ export type CustomersPartnersDashboardDto = {
   customers: CustomerProfileDto[];
   suppliers: SupplierProfileDto[];
   loyaltyTiers: LoyaltyTierDto[];
+};
+
+export type TierAssignmentRowDto = {
+  customerId: string;
+  customerName: string;
+  totalSpending: number;
+  transactions: number;
+  currentTierId: string | null;
+  currentTierName: string | null;
+  assignedTierId: string | null;
+  assignedTierName: string | null;
+  assignedTierIcon: string | null;
+  assignedDiscount: string | null;
+  tierAssignedAt: string | null;
+  changed: boolean;
+};
+
+export type TierAssignmentSummaryDto = {
+  customerCount: number;
+  assignedCount: number;
+  unassignedCount: number;
+  changedCount: number;
+  byTier: Record<string, number>;
+};
+
+export type TierAssignmentPreviewDto = {
+  generatedAt: string;
+  summary: TierAssignmentSummaryDto;
+  rows: TierAssignmentRowDto[];
+};
+
+export type TierAssignmentCommitDto = {
+  assignedAt: string;
+  summary: TierAssignmentSummaryDto;
+  rows: TierAssignmentRowDto[];
 };
 
 export type CreateContactPayload = {
@@ -250,6 +290,19 @@ export const customersPartnersApi = {
     return apiClient.patch<ApiDataEnvelope<LoyaltyTierDto>>(
       `/api/customers-partners/loyalty-tiers/${encodeURIComponent(id)}`,
       { json: payload },
+    );
+  },
+
+  getTierAssignments() {
+    return apiClient.get<ApiDataEnvelope<TierAssignmentPreviewDto>>(
+      "/api/customers-partners/tier-assignments",
+    );
+  },
+
+  assignTiers() {
+    return apiClient.post<ApiDataEnvelope<TierAssignmentCommitDto>>(
+      "/api/customers-partners/assign-tiers",
+      { json: {} },
     );
   },
 
