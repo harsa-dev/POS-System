@@ -939,3 +939,7 @@ notes
 16. Next recommended task
 
 Give only one next task.
+
+This phase is incomplete if the final report does not prove Restaurant-specific inspection across menu, orders, cashier, tables, payments, kitchen/serving, shared dashboards, backend/API, Prisma, and route guards.
+
+Do not return a successful Phase 5A report if Restaurant fat files, FNB leftovers, order/payment/table edge cases, and shared dashboard relevance were only mentioned but not actually inspected.
