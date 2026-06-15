@@ -16,6 +16,10 @@ import {
   type BusinessMode,
 } from "@/components/core/route-guard";
 import { businessModeService } from "@/components/core/business-mode/business-mode-service";
+import {
+  canAccessPlatformAdminCapability,
+  type PlatformAdminCapability,
+} from "@/components/core/platform-admin/platform-admin-policy";
 import { authApi } from "@/lib/api";
 
 const CheckoutPage         = lazy(() => import("@/pages/dashboard/checkout"));
@@ -172,6 +176,61 @@ function ModeProtectedRoute({
 
   if (!routeAccess.canEnter) {
     return <Redirect to={businessModeService.getSelectModeRoute(pathname)} />;
+  }
+
+  return <>{children}</>;
+}
+
+function PlatformAdminForbiddenPanel({
+  capability,
+  role,
+}: {
+  capability: PlatformAdminCapability;
+  role?: string | null;
+}) {
+  return (
+    <div className="flex min-h-[55vh] items-center justify-center p-6">
+      <section className="w-full max-w-2xl rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900 shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-[0.3em] text-amber-700">
+          Platform Admin Restricted
+        </p>
+        <h1 className="mt-3 text-2xl font-bold tracking-tight">
+          Internal Monitoring requires platform admin access.
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-amber-800">
+          This dashboard exposes internal platform health, route inventory, API readiness,
+          and schema risk. Your current role {role ? `(${role})` : ""} is not allowed to
+          access capability <span className="font-mono font-semibold">{capability}</span>.
+        </p>
+        <p className="mt-4 text-xs font-semibold text-amber-700">
+          Allowed frontend roles for this phase: OWNER, ADMIN. Backend policy must still enforce the same boundary.
+        </p>
+      </section>
+    </div>
+  );
+}
+
+function PlatformAdminRoute({
+  children,
+  capability,
+}: {
+  children: React.ReactNode;
+  capability: PlatformAdminCapability;
+}) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="text-sm text-neutral-400">Loading platform admin access...</div>
+      </div>
+    );
+  }
+
+  if (!user) return <Redirect to={ROUTES.LOGIN} />;
+
+  if (!canAccessPlatformAdminCapability({ role: user.role, capability })) {
+    return <PlatformAdminForbiddenPanel capability={capability} role={user.role} />;
   }
 
   return <>{children}</>;
@@ -340,7 +399,11 @@ function ProtectedAppRoutes() {
           <Route path={ROUTES.TABLES}><ModeProtectedRoute requiredMode="restaurant"><TablesPage /></ModeProtectedRoute></Route>
           <Route path={ROUTES.KDS}><ModeProtectedRoute requiredMode="restaurant"><KDSPage /></ModeProtectedRoute></Route>
           <Route path={ROUTES.BUSINESS_OVERVIEW}><BusinessOverviewPage /></Route>
-          <Route path={ROUTES.INTERNAL_MONITORING}><InternalMonitoringPage /></Route>
+          <Route path={ROUTES.INTERNAL_MONITORING}>
+            <PlatformAdminRoute capability="platform-admin.internal-monitoring.read">
+              <InternalMonitoringPage />
+            </PlatformAdminRoute>
+          </Route>
           <Route path={ROUTES.ADMIN_ROLE_CONSOLE}><AdminRoleConsolePage /></Route>
           <Route path={ROUTES.BILLING_OPERATIONS_CONSOLE}><BillingOperationsConsolePage /></Route>
           <Route path={ROUTES.OPERATOR_SUPPORT_CONSOLE}><OperatorSupportConsolePage /></Route>
