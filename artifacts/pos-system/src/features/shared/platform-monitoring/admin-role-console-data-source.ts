@@ -1,3 +1,5 @@
+import { adminRoleConsoleApi } from "@/lib/api/admin-role-console-api";
+
 import {
   internalAdminApiContracts,
   internalAdminConsoleCards,
@@ -12,7 +14,7 @@ import {
   type InternalAdminWorkflow,
 } from "./internal-admin-consoles.mock";
 
-export type AdminRoleConsoleSource = "mock-registry" | "section-fallback";
+export type AdminRoleConsoleSource = "api" | "mock-registry" | "section-fallback" | "fallback";
 
 export type AdminRoleConsoleSectionKey =
   | "console-card"
@@ -73,18 +75,19 @@ function buildSectionState(
   records: number,
   fallback: boolean,
   note: string,
+  source: AdminRoleConsoleSource = fallback ? "section-fallback" : "mock-registry",
 ): AdminRoleConsoleSectionState {
   return {
     key,
     label: adminRoleConsoleSectionLabels[key],
-    source: fallback ? "section-fallback" : "mock-registry",
+    source,
     fallback,
     records,
     note,
   };
 }
 
-export async function loadAdminRoleConsoleData(): Promise<AdminRoleConsoleDataSourceResult> {
+function getMockAdminRoleConsoleData(source: AdminRoleConsoleSource = "mock-registry"): AdminRoleConsoleDataSourceResult {
   const consoleCard =
     internalAdminConsoleCards.find((item) => item.id === ADMIN_ROLE_CONSOLE_ID) ?? fallbackConsoleCard;
 
@@ -101,18 +104,21 @@ export async function loadAdminRoleConsoleData(): Promise<AdminRoleConsoleDataSo
       consoleCard === fallbackConsoleCard
         ? "Console card fallback active; mock registry entry is missing."
         : "Loaded from frontend mock registry.",
+      consoleCard === fallbackConsoleCard ? "section-fallback" : source,
     ),
     buildSectionState(
       "metrics",
       metrics.length,
       metrics.length === 0,
       metrics.length === 0 ? "Metrics fallback active; no records in mock registry." : "Metric records loaded from mock registry.",
+      metrics.length === 0 ? "section-fallback" : source,
     ),
     buildSectionState(
       "workflows",
       workflows.length,
       workflows.length === 0,
       workflows.length === 0 ? "Workflow fallback active; no records in mock registry." : "Workflow records loaded from mock registry.",
+      workflows.length === 0 ? "section-fallback" : source,
     ),
     buildSectionState(
       "rollout-preview",
@@ -121,6 +127,7 @@ export async function loadAdminRoleConsoleData(): Promise<AdminRoleConsoleDataSo
       rolloutPreview.length === 0
         ? "Rollout preview fallback active; no readiness rows in mock registry."
         : "Read-only rollout preview loaded from mock registry.",
+      rolloutPreview.length === 0 ? "section-fallback" : source,
     ),
     buildSectionState(
       "schema-candidates",
@@ -129,12 +136,13 @@ export async function loadAdminRoleConsoleData(): Promise<AdminRoleConsoleDataSo
       schemaCandidates.length === 0
         ? "Schema candidate fallback active; no candidate rows in mock registry."
         : "Schema candidate records loaded from mock registry.",
+      schemaCandidates.length === 0 ? "section-fallback" : source,
     ),
   ];
 
   return {
     consoleId: ADMIN_ROLE_CONSOLE_ID,
-    source: sectionFallbacks.some((section) => section.fallback) ? "section-fallback" : "mock-registry",
+    source: sectionFallbacks.some((section) => section.fallback) ? "section-fallback" : source,
     generatedAt: new Date().toISOString(),
     sectionFallbacks,
     consoleCard,
@@ -144,4 +152,21 @@ export async function loadAdminRoleConsoleData(): Promise<AdminRoleConsoleDataSo
     schemaCandidates,
     blockedWriteItems: rolloutPreview.filter((item) => item.method !== "GET" || item.status === "Blocked").length,
   };
+}
+
+function unwrapAdminRoleConsoleEnvelope(value: Awaited<ReturnType<typeof adminRoleConsoleApi.getOverview>>) {
+  if (!value?.success || !value.data) {
+    throw new Error("Invalid Admin Role Console response envelope");
+  }
+
+  return value.data;
+}
+
+export async function loadAdminRoleConsoleData(): Promise<AdminRoleConsoleDataSourceResult> {
+  try {
+    const envelope = await adminRoleConsoleApi.getOverview();
+    return unwrapAdminRoleConsoleEnvelope(envelope);
+  } catch {
+    return getMockAdminRoleConsoleData("fallback");
+  }
 }
