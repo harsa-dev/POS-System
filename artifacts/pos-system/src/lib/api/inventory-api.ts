@@ -69,6 +69,7 @@ export type StockMovementSource =
 export type InventoryStockStatus = "OUT_OF_STOCK" | "LOW_STOCK" | "IN_STOCK";
 export type InventoryReportStatus = "ALL" | InventoryStockStatus;
 export type InventoryReportSort = "HIGHEST_VALUE" | "LOWEST_STOCK" | "ITEM_NAME" | "NEWEST";
+export type InventoryMovementReportSort = "NEWEST" | "OLDEST" | "HIGHEST_QUANTITY" | "HIGHEST_VALUE";
 export type SharedInventoryBusinessMode =
   | "restaurant"
   | "retail"
@@ -180,6 +181,88 @@ export type InventoryReportCsvDownload = {
   exportedAt: string | null;
 };
 
+export type InventoryMovementReportQuery = {
+  search?: string;
+  inventoryItemId?: string;
+  type?: StockMovementType | "ALL";
+  reason?: StockMovementReason | "ALL";
+  sourceType?: StockMovementSource | "ALL";
+  sourceId?: string;
+  from?: string;
+  to?: string;
+  sort?: InventoryMovementReportSort;
+  limit?: number;
+};
+
+export type InventoryMovementReportRowDto = {
+  id: string;
+  businessId?: string | null;
+  restaurantId?: string | null;
+  actorId?: string | null;
+  inventoryItemId: string;
+  itemName: string;
+  itemSku?: string | null;
+  itemType: InventoryType;
+  itemUnit: InventoryUnit;
+  type: StockMovementType;
+  quantity: number;
+  reason?: StockMovementReason | null;
+  sourceType?: StockMovementSource | null;
+  sourceId?: string | null;
+  note?: string | null;
+  previousStock?: number | null;
+  newStock?: number | null;
+  unitCostSnapshot?: number | null;
+  fallbackCostPerUnit: number;
+  movementValue: number;
+  createdAt: string;
+};
+
+export type InventoryMovementReportDto = {
+  generatedAt: string;
+  filters: {
+    search: string | null;
+    inventoryItemId: string | null;
+    type: StockMovementType | null;
+    reason: StockMovementReason | null;
+    sourceType: StockMovementSource | null;
+    sourceId: string | null;
+    from: string | null;
+    to: string | null;
+    sort: InventoryMovementReportSort;
+    limit: number;
+  };
+  summary: {
+    totalMovements: number;
+    inMovements: number;
+    outMovements: number;
+    adjustmentMovements: number;
+    totalInQuantity: number;
+    totalOutQuantity: number;
+    totalAdjustmentQuantity: number;
+    netQuantity: number;
+    totalMovementValue: number;
+  };
+  rows: InventoryMovementReportRowDto[];
+};
+
+export type InventoryMovementReportExportDto = {
+  rows: InventoryMovementReportRowDto[];
+  meta: {
+    exportedAt: string;
+    rowCount: number;
+    limit: number;
+    filters: Record<string, string | number | boolean | null>;
+  };
+};
+
+export type InventoryMovementReportCsvDownload = {
+  blob: Blob;
+  filename: string;
+  rowCount: number | null;
+  exportedAt: string | null;
+};
+
 export type InventoryModePolicyDto = {
   mode: SharedInventoryBusinessMode;
   label: string;
@@ -273,6 +356,24 @@ function buildInventoryReportSearchParams(query?: InventoryReportQuery) {
   return params;
 }
 
+function buildInventoryMovementReportSearchParams(query?: InventoryMovementReportQuery) {
+  const params = new URLSearchParams();
+  if (!query) return params;
+
+  if (query.search?.trim()) params.set("search", query.search.trim());
+  if (query.inventoryItemId?.trim()) params.set("inventoryItemId", query.inventoryItemId.trim());
+  if (query.type && query.type !== "ALL") params.set("type", query.type);
+  if (query.reason && query.reason !== "ALL") params.set("reason", query.reason);
+  if (query.sourceType && query.sourceType !== "ALL") params.set("sourceType", query.sourceType);
+  if (query.sourceId?.trim()) params.set("sourceId", query.sourceId.trim());
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.sort) params.set("sort", query.sort);
+  if (query.limit) params.set("limit", String(query.limit));
+
+  return params;
+}
+
 export const inventoryApi = {
   getInventoryManagementCapabilities() {
     return apiClient.get<ApiDataEnvelope<InventoryManagementCapabilitiesDto>>(
@@ -321,6 +422,50 @@ export const inventoryApi = {
 
     const blob = await response.blob();
     const filename = getFilenameFromDisposition(response.headers.get("content-disposition")) ?? "inventory-report.csv";
+    const rowCountHeader = response.headers.get("x-row-count");
+
+    return {
+      blob,
+      filename,
+      rowCount: rowCountHeader ? Number(rowCountHeader) : null,
+      exportedAt: response.headers.get("x-exported-at"),
+    };
+  },
+
+  listMovementReports(query?: InventoryMovementReportQuery) {
+    const params = buildInventoryMovementReportSearchParams(query);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return apiClient.get<ApiDataEnvelope<InventoryMovementReportDto>>(
+      `/api/inventory-movement-reports${suffix}`,
+    );
+  },
+
+  exportMovementReportsJson(query?: InventoryMovementReportQuery) {
+    const params = buildInventoryMovementReportSearchParams(query);
+    params.set("format", "json");
+    return apiClient.get<ApiDataEnvelope<InventoryMovementReportExportDto>>(
+      `/api/inventory-movement-reports/export?${params.toString()}`,
+    );
+  },
+
+  async downloadMovementReportsCsv(
+    query?: InventoryMovementReportQuery,
+  ): Promise<InventoryMovementReportCsvDownload> {
+    const params = buildInventoryMovementReportSearchParams(query);
+    params.set("format", "csv");
+
+    const response = await apiFetch(`/api/inventory-movement-reports/export?${params.toString()}`, {
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const body = await readApiEnvelope<Record<string, unknown>>(response, "inventory movement report export");
+      throw new Error(body.message ?? "Failed to export inventory movement report");
+    }
+
+    const blob = await response.blob();
+    const filename =
+      getFilenameFromDisposition(response.headers.get("content-disposition")) ?? "inventory-movement-report.csv";
     const rowCountHeader = response.headers.get("x-row-count");
 
     return {
