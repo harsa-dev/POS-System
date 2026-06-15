@@ -7,6 +7,8 @@ export const FINANCIAL_REPORT_CASHFLOW_DRILLDOWN_KEY =
   "financial-reports:cashflow-drilldown";
 export const FINANCIAL_REPORT_INVENTORY_REPAIR_KEY =
   "financial-reports:inventory-cost-snapshot-repair";
+export const FINANCIAL_REPORT_REPAIR_FEEDBACK_KEY =
+  "financial-reports:repair-feedback";
 
 export type FinancialReportInvoiceDrilldownPayload = {
   search?: string;
@@ -33,6 +35,17 @@ export type FinancialReportInventoryRepairPayload = {
   to?: string;
   sourceIssue?: "missing_cost_snapshots";
   message?: string;
+};
+
+export type FinancialReportRepairFeedbackPayload = {
+  sourceIssue: "missing_cost_snapshots";
+  from?: string;
+  to?: string;
+  repairedCount: number;
+  repairedValue: number;
+  repairedMovementIds?: string[];
+  message?: string;
+  completedAt: string;
 };
 
 function canUseSessionStorage() {
@@ -93,5 +106,18 @@ export function openInventoryCostSnapshotRepair(
 export function consumeInventoryCostSnapshotRepair() {
   return consumeSessionPayload<FinancialReportInventoryRepairPayload>(
     FINANCIAL_REPORT_INVENTORY_REPAIR_KEY,
+  );
+}
+
+export function openFinancialReportsRepairFeedback(
+  payload: FinancialReportRepairFeedbackPayload,
+) {
+  writeSessionPayload(FINANCIAL_REPORT_REPAIR_FEEDBACK_KEY, payload);
+  window.location.assign("/dashboard/financial-reports#financial-reconciliation-drilldown");
+}
+
+export function consumeFinancialReportsRepairFeedback() {
+  return consumeSessionPayload<FinancialReportRepairFeedbackPayload>(
+    FINANCIAL_REPORT_REPAIR_FEEDBACK_KEY,
   );
 }
