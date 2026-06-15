@@ -1,0 +1,82 @@
+{
+  "surface": "internal-monitoring",
+  "route": "/dashboard/internal-monitoring",
+  "capability": "platform-admin.internal-monitoring.read",
+  "allowedRoles": ["ADMIN", "OWNER"],
+  "mutationMode": "design-only",
+  "readOnly": true,
+  "sourceFiles": {
+    "frontendDto": "artifacts/pos-system/src/lib/api/internal-monitoring.dto.ts",
+    "frontendApiClient": "artifacts/pos-system/src/lib/api/internal-monitoring-api.ts",
+    "frontendDataSource": "artifacts/pos-system/src/features/shared/platform-monitoring/internal-monitoring-data-source.ts",
+    "backendDto": "artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.types.ts",
+    "backendRoute": "artifacts/api-server/src/routes/internal-monitoring.ts",
+    "backendPolicy": "artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.policy.ts"
+  },
+  "endpoints": [
+    {
+      "id": "control-room",
+      "method": "GET",
+      "path": "/api/internal/health/summary",
+      "frontendMethod": "getControlRoom",
+      "backendService": "getInternalMonitoringControlRoom"
+    },
+    {
+      "id": "route-inventory",
+      "method": "GET",
+      "path": "/api/internal/routes/inventory",
+      "frontendMethod": "getRouteInventory",
+      "backendService": "getInternalMonitoringRouteInventory"
+    },
+    {
+      "id": "contract-readiness",
+      "method": "GET",
+      "path": "/api/internal/contracts/readiness",
+      "frontendMethod": "getContractReadiness",
+      "backendService": "getInternalMonitoringContractReadiness"
+    },
+    {
+      "id": "data-integrity",
+      "method": "GET",
+      "path": "/api/internal/data-integrity/checks",
+      "frontendMethod": "getDataIntegrityChecks",
+      "backendService": "getInternalMonitoringDataIntegrityChecks"
+    },
+    {
+      "id": "mutation-readiness",
+      "method": "GET",
+      "path": "/api/internal/mutation-readiness/contracts",
+      "frontendMethod": "getMutationReadinessContracts",
+      "backendService": "getInternalMonitoringMutationReadinessContracts"
+    }
+  ],
+  "dtoTypes": {
+    "InternalMonitoringControlRoomCardDto": ["id", "label", "value", "note", "tone"],
+    "InternalMonitoringControlRoomSignalDto": ["id", "area", "signal", "source", "state", "nextAction"],
+    "InternalMonitoringApiImplementationStepDto": ["id", "phase", "endpoint", "mockSource", "contractStatus", "implementationRule", "testPlan"],
+    "InternalMonitoringSchemaDecisionRecordDto": ["id", "candidate", "decision", "reason", "requiredProof"],
+    "InternalMonitoringDevActionItemDto": ["id", "priority", "title", "owner", "status", "doneWhen"],
+    "InternalMonitoringControlRoomSummaryDto": ["totalSignals", "blockedSignals", "readyContracts", "p0Actions"],
+    "InternalMonitoringControlRoomDto": ["source", "generatedAt", "summary", "cards", "signals", "apiImplementationSteps", "schemaDecisionRecords", "devActionItems"],
+    "InternalMonitoringRouteInventoryItemDto": ["id", "route", "owner", "guard", "status", "notes"],
+    "InternalMonitoringDataIntegrityCheckDto": ["id", "check", "status", "severity", "detail"],
+    "InternalMonitoringMutationReadinessContractDto": ["id", "action", "targetSurface", "proposedEndpoint", "proposedMethod", "status", "dryRunMode", "requiredCapability", "requiredAuditEvent", "requiredApproval", "rollbackPlan", "rateLimit", "blockedReason", "requiredProof"]
+  },
+  "dashboardSections": [
+    "Source Health",
+    "Runtime Signals",
+    "Route Inventory",
+    "API Implementation Blueprint",
+    "Data Integrity Checks",
+    "Schema Decision Records",
+    "Dev Action Queue",
+    "Mutation Readiness & Dry-run Contracts",
+    "Next Promotion Checklist"
+  ],
+  "blockedMutations": [
+    "POST /api/internal/*",
+    "PATCH /api/internal/*",
+    "DELETE /api/internal/*",
+    "PATCH /api/internal/alerts/:alertId/acknowledge"
+  ]
+}
