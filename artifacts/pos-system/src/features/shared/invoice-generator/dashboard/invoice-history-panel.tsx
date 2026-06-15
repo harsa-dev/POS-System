@@ -19,8 +19,10 @@ import {
   DashboardPanel,
 } from "@/features/shared/dashboard";
 import {
+  INVOICE_GENERATOR_FILTER_HISTORY_EVENT,
   INVOICE_GENERATOR_LOAD_INVOICE_EVENT,
   INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT,
+  type InvoiceGeneratorFilterHistoryEventDetail,
   type InvoiceGeneratorLoadInvoiceEventDetail,
 } from "./invoice-generator-events";
 
@@ -34,6 +36,7 @@ type FilterState = {
   status: InvoiceBackendStatus | "ALL";
   from: string;
   to: string;
+  overdue: boolean;
 };
 
 type LifecycleActionState = {
@@ -46,6 +49,7 @@ const DEFAULT_FILTERS: FilterState = {
   status: "ALL",
   from: "",
   to: "",
+  overdue: false,
 };
 
 function getStatusTone(status: InvoiceBackendStatus) {
@@ -61,6 +65,11 @@ function canMarkSent(invoice: InvoiceRecord) {
 
 function canMarkPaid(invoice: InvoiceRecord) {
   return invoice.status === "DRAFT" || invoice.status === "SENT";
+}
+
+function isInvoiceOverdue(invoice: InvoiceRecord) {
+  if (!invoice.dueDate || invoice.status === "PAID" || invoice.status === "CANCELLED") return false;
+  return new Date(invoice.dueDate).getTime() < Date.now();
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -80,6 +89,7 @@ function buildQuery(filters: FilterState, page: number): InvoiceHistoryQuery {
     status: filters.status,
     from: filters.from || undefined,
     to: filters.to || undefined,
+    overdue: filters.overdue || undefined,
     page,
     limit: 15,
   };
@@ -126,6 +136,29 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
   useEffect(() => {
     void loadHistory(query);
   }, [query]);
+
+  useEffect(() => {
+    function handleFilterHistory(event: Event) {
+      const detail = (event as CustomEvent<InvoiceGeneratorFilterHistoryEventDetail>).detail;
+      const nextFilters: FilterState = {
+        search: detail?.search ?? "",
+        status: detail?.status ?? "ALL",
+        from: detail?.from ?? "",
+        to: detail?.to ?? "",
+        overdue: Boolean(detail?.overdue),
+      };
+
+      setFilters(nextFilters);
+      setAppliedFilters(nextFilters);
+      setPage(1);
+      setMessage(detail?.message ?? "Invoice history filters updated.");
+      setErrorMessage(null);
+      document.getElementById("invoice-history-operations")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    window.addEventListener(INVOICE_GENERATOR_FILTER_HISTORY_EVENT, handleFilterHistory);
+    return () => window.removeEventListener(INVOICE_GENERATOR_FILTER_HISTORY_EVENT, handleFilterHistory);
+  }, []);
 
   function applyFilters() {
     setPage(1);
@@ -231,9 +264,9 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
 
   return (
     <DashboardPanel title="Invoice History Operations">
-      <div className="space-y-4 p-4">
+      <div id="invoice-history-operations" className="space-y-4 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
             <label className="space-y-1 text-sm font-medium text-neutral-700 xl:col-span-2">
               <span>Search</span>
               <input
@@ -275,6 +308,15 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
                 className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-400"
               />
             </label>
+            <label className="flex h-full items-end gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-700">
+              <input
+                type="checkbox"
+                checked={filters.overdue}
+                onChange={(event) => setFilters((current) => ({ ...current, overdue: event.target.checked }))}
+                className="h-4 w-4 rounded border-neutral-300"
+              />
+              <span>Overdue only</span>
+            </label>
           </div>
           <DashboardActions>
             <DashboardActionButton icon={Search} onClick={applyFilters} disabled={isLoading}>
@@ -289,17 +331,23 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
           </DashboardActions>
         </div>
 
+        {appliedFilters.overdue && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+            Showing overdue open invoices only. Backend filters DRAFT/SENT invoices where due date is already past.
+          </p>
+        )}
         {message && <p className="text-sm font-medium text-emerald-700">{message}</p>}
         {errorMessage && <p className="text-sm font-medium text-rose-700">{errorMessage}</p>}
 
         <div className="overflow-x-auto rounded-xl border border-neutral-200">
-          <table className="w-full min-w-[1180px] text-left text-sm">
+          <table className="w-full min-w-[1280px] text-left text-sm">
             <thead className="bg-neutral-50 text-neutral-500">
               <tr>
                 <th className="px-3 py-3 font-semibold">Invoice</th>
                 <th className="px-3 py-3 font-semibold">Customer</th>
                 <th className="px-3 py-3 font-semibold">Status</th>
                 <th className="px-3 py-3 font-semibold">Invoice Date</th>
+                <th className="px-3 py-3 font-semibold">Due Date</th>
                 <th className="px-3 py-3 text-right font-semibold">Total</th>
                 <th className="px-3 py-3 font-semibold">Updated</th>
                 <th className="px-3 py-3 text-right font-semibold">Actions</th>
@@ -308,14 +356,14 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-neutral-500">
+                  <td colSpan={8} className="px-3 py-8 text-center text-neutral-500">
                     Loading invoice history...
                   </td>
                 </tr>
               )}
               {!isLoading && rows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-neutral-500">
+                  <td colSpan={8} className="px-3 py-8 text-center text-neutral-500">
                     No invoices match the current filters.
                   </td>
                 </tr>
@@ -323,6 +371,7 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
               {!isLoading && rows.map((invoice) => {
                 const isMarkingSent = lifecycleAction?.invoiceId === invoice.id && lifecycleAction.status === "SENT";
                 const isMarkingPaid = lifecycleAction?.invoiceId === invoice.id && lifecycleAction.status === "PAID";
+                const overdue = isInvoiceOverdue(invoice);
                 return (
                   <tr key={invoice.id} className="border-t border-neutral-100 align-top">
                     <td className="px-3 py-3">
@@ -340,6 +389,10 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
                     </td>
                     <td className="px-3 py-3 text-neutral-600">
                       {new Date(invoice.invoiceDate).toLocaleDateString("id-ID")}
+                    </td>
+                    <td className="px-3 py-3 text-neutral-600">
+                      <p>{invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("id-ID") : "No due date"}</p>
+                      {overdue && <p className="mt-1 text-xs font-semibold text-rose-700">Overdue</p>}
                     </td>
                     <td className="px-3 py-3 text-right font-semibold text-neutral-950">
                       {formatCurrency(invoice.grandTotal)}
