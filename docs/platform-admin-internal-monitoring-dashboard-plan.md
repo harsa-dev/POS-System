@@ -28,7 +28,7 @@ artifacts/pos-system/src/features/shared/platform-monitoring/internal-production
 ROUTES.INTERNAL_MONITORING = /dashboard/internal-monitoring
 ```
 
-The route is mounted in `artifacts/pos-system/src/App.tsx` and uses a dedicated Platform Admin guard.
+The route is mounted in `artifacts/pos-system/src/App.tsx` and must use a dedicated Platform Admin guard.
 
 ## Advanced dashboard sections
 
@@ -103,37 +103,7 @@ Capability:
 platform-admin.internal-monitoring.read
 ```
 
-This capability controls frontend route access, sidebar visibility, and backend read access. `settings.manage` must not control Internal Monitoring visibility.
-
-## Policy parity smoke
-
-Policy parity is checked by:
-
-```bash
-pnpm platform-admin:policy-parity
-```
-
-The root command also runs parity checks:
-
-```bash
-pnpm platform-admin:check
-```
-
-The smoke compares:
-
-```txt
-frontend platform admin allowed roles
-backend internal monitoring allowed roles
-sidebar required permission
-App route guard capability
-```
-
-Expected allowlist for this phase:
-
-```txt
-OWNER
-ADMIN
-```
+This must replace broad `settings.manage` for the Internal Monitoring sidebar entry in a later phase.
 
 ## Sensitive implementation rules
 
@@ -250,14 +220,31 @@ Implemented:
 
 ### IM-8 - Internal Monitoring UX hardening
 
-Next.
+Status: Done.
 
-Improve dashboard UI states for restricted/read-only/fallback data:
+Implemented:
 
 ```txt
-- clearer read-only banner
-- policy badge in dashboard header
-- backend source summary
-- empty/degraded state copy
-- manual smoke checklist for OWNER/ADMIN vs denied roles
+- read-only safety banner
+- source health summary panel
+- quick section navigation
+- clearer GET-only and capability badges
+- aria-live source/fallback status copy
+- observability-only promotion checklist item
+- static guard checks UX hardening elements
+```
+
+### IM-9 - Internal Monitoring browser smoke
+
+Next.
+
+Add optional browser smoke coverage for `/dashboard/internal-monitoring`:
+
+```txt
+- OWNER/ADMIN can open dashboard
+- MANAGER/OPERATOR/STAFF/VIEWER get Platform Admin Restricted
+- source health summary renders
+- read-only banner renders
+- quick section links exist
+- no mutation controls are visible
 ```
