@@ -2,7 +2,7 @@ import { getCurrentBusinessMode } from "@/components/core/business-mode/business
 import { RawMaterialSharedDashboardBridge } from "@/features/shared/raw-material-bridge";
 import { RetailSharedDashboardBridge } from "@/features/shared/retail-bridge";
 import { renderRetailDashboardMode } from "@/features/shared/retail-bridge/retail-mode-renderer";
-import { SalesAnalyticsWorkspace } from "@/features/shared/sales";
+import { SalesAnalyticsPaymentWorkspace } from "@/features/shared/sales/sales-analytics-payment-workspace";
 
 export default function AnalyticsPage() {
   if (getCurrentBusinessMode() === "retail") {
@@ -16,7 +16,7 @@ export default function AnalyticsPage() {
   return (
     <RawMaterialSharedDashboardBridge dashboardId="sales">
       <RetailSharedDashboardBridge dashboardId="sales">
-        <SalesAnalyticsWorkspace />
+        <SalesAnalyticsPaymentWorkspace />
       </RetailSharedDashboardBridge>
     </RawMaterialSharedDashboardBridge>
   );
