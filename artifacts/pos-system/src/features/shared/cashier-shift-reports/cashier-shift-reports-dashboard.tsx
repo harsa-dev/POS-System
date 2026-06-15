@@ -269,7 +269,7 @@ export function CashierShiftReportsDashboard() {
         </div>
       </DashboardPanel>
 
-      <CashierShiftSyncReconciliationPanel />
+      <CashierShiftSyncReconciliationPanel onSynced={loadShifts} />
 
       <ShiftKpis shifts={backendFilteredShifts} />
 
