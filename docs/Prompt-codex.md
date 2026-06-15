@@ -1,535 +1,435 @@
-POS System V3 Phase 3: Per-Business-Mode Deep Cleanup, Flow Hardening, and Structure Refactor
+POS System V3 Phase 4A: Raw Material Mode Deep Hardening, Flow Completion, Shared Dashboard Wiring, and Structure Cleanup
 Context
 
-Phase 1 and Phase 2 cleanup have already been implemented locally.
+Phase 1, Phase 2, and Phase 3 cleanup have already been implemented locally.
 
-Known completed work:
+Current business modes:
 
-features/fnb was migrated to features/restaurant.
-features/orders/constans was renamed to features/orders/constants.
-duplicate order-respone.mapper.ts was deleted.
-canonical routes were changed from /dashboard/fnb/* to /dashboard/restaurant/*.
-central business mode contract was added.
-runtime aliases for fnb, warehouse, and service were removed from normal app flow.
-old stored currentBusinessMode values are only repaired at the storage boundary.
-backend mode parsing rejects old API mode IDs.
-UI labels changed from Restaurant / F&B to Restaurant.
-duplicated frontend API envelope parsing was centralized in read-api-envelope.ts.
-order/table/menu/invoice/payment API clients now use the shared parser.
-backend TypeScript passed after fixing upload, audit log ownership, inventory/order stock movement writes, route param narrowing, and restaurant role checks.
-frontend scoped TypeScript passed for Restaurant, Retail, Raw Material, and Service.
-frontend production build passed with existing sourcemap warnings.
-Phase 2 docs were added.
+restaurant: active
+retail: active
+raw-material: active
+custom-business: planned / guarded only
 
-This Phase 3 task must go deeper per business mode.
+This task is scoped to Raw Material mode only, plus shared infrastructure only when Raw Material needs it.
 
-Do not push to GitHub.
-Do not create a branch.
-Do not create a PR.
-Do not commit unless explicitly asked.
+Do not work broadly across all modes.
+Do not polish Restaurant or Retail except when a shared helper/config must be adjusted to support Raw Material correctly.
+
 Work locally only.
 
+Do not:
+
+create branch
+commit
+push
+open PR
+implement full Custom Business / Service
+rewrite the whole app
+change database schema unless Raw Material genuinely needs Prisma alignment and the reason is documented
 Main Goal
 
-Perform a per-business-mode deep cleanup and hardening pass.
+Make Raw Material mode feel like a real, clean, guarded, maintainable business mode.
 
-This phase must not only clean Restaurant.
-You must inspect, test, and improve each mode independently:
+This includes:
 
-Restaurant
-Retail
-Raw Material
-Custom Business / Service planned state
-Business mode switcher and shared mode infrastructure
+Raw Material frontend flow hardening.
+Raw Material backend/API polish.
+Raw Material Prisma/database alignment if needed.
+Raw Material shared dashboard wiring.
+Raw Material route guard and access guard tightening.
+Raw Material feature limiting.
+Raw Material folder/file structure cleanup.
+Raw Material naming cleanup.
+Raw Material duplicate/hardcoded code cleanup.
+Raw Material fat file split.
+Raw Material edge case handling.
+Raw Material docs update.
+Raw Material verification.
 
-For each mode:
+This phase is incomplete if Raw Material remains a placeholder-style workspace without clear structure and flow.
 
-inspect all related files
-check full frontend flow
-check backend/API flow if connected
-check route guards
-check mode-specific data boundaries
-check UI states
-check edge cases
-remove duplicate code
-remove hardcoded values
-split fat files
-create reusable helpers where useful
-fix bugs
-polish frontend
-polish backend/API
-update docs if behavior or structure changes
+Scope Boundary
 
-This is a controlled cleanup and hardening pass, not a full rewrite.
+Focus only on:
 
-Non-Negotiable Rule
+artifacts/pos-system/src/features/raw-material
+artifacts/pos-system/src/app routes related to raw-material
+artifacts/pos-system/src/config related to raw-material
+artifacts/pos-system/src/lib helpers used by raw-material
+artifacts/pos-system/src/components used by raw-material
+artifacts/pos-system/src/features/shared only when Raw Material dashboard wiring needs it
+artifacts/api-server routes/services/controllers related to raw-material
+Prisma schema only if Raw Material requires real backend alignment
+docs related to Raw Material and V3 business modes
+scripts/checks related to Raw Material
 
-Do not only work on Restaurant.
+Do not modify unrelated Restaurant/Retail logic unless:
 
-You must produce a report for each mode:
+Raw Material imports shared code that has a bug.
+Shared dashboard wiring needs a reusable mode-aware helper.
+Business mode contract needs a Raw Material correction.
+Route guard logic must be corrected for Raw Material.
 
-Restaurant audit result
-Retail audit result
-Raw Material audit result
-Custom Business / Service planned-state audit result
-Shared business-mode infrastructure audit result
-
-If one mode has fewer files or fewer issues, say that clearly.
-Do not skip it silently.
+If you touch shared files, explain why.
 
 Required First Steps
 
-Before editing code:
+Before editing:
 
-Read all docs.
-Read V3 canonical business mode docs.
-Read Phase 2 quality cleanup docs.
-Inspect full repository structure.
-Inspect package scripts.
-Inspect all feature folders.
-Inspect all frontend routes.
-Inspect all backend/API routes.
-Inspect all business mode configs.
-Inspect all route guards and mode guards.
-Inspect all shared helpers/components.
-Create a mode-by-mode audit plan before editing.
+Read all docs related to V3, Raw Material, business modes, shared dashboards, API, database, and phase notes.
+Inspect the Raw Material feature folder.
+Inspect Raw Material routes.
+Inspect Raw Material navigation/sidebar/module registry.
+Inspect Raw Material API clients.
+Inspect Raw Material backend/API routes and services.
+Inspect Prisma schema for raw material/inventory/stock/supplier/material-related models.
+Inspect shared dashboards and how they should receive Raw Material context.
+Inspect business mode guard logic for Raw Material.
+Inspect scripts/checks related to Raw Material.
+Write a short audit plan before changing code.
 
-Search globally for:
+Search terms:
 
-restaurant
-retail
 raw-material
 rawMaterial
-custom-business
+material
+materials
+supplier
+suppliers
+stock
+stock movement
+inventory
+procurement
+purchase
+kandang
+unit
+low stock
+minimum stock
+warehouse
 service
+fnb
 businessMode
 currentBusinessMode
-mode
+shared dashboard
 dashboard
-guard
-route
-api
-status
-inventory
-order
-payment
+cashflow
+analytics
 invoice
-cashier
-table
-menu
-material
-stock
-supplier
-customer
-TODO
-FIXME
-mock
-demo
-legacy
-fnb
-warehouse
-any
-@ts-ignore
-as any
-as unknown as
-Canonical Mode Contract
+report
+sidebar
+module
+registry
+role
+permission
+guard
 
-The app must keep these canonical mode IDs:
+If old names like warehouse still appear in active Raw Material runtime code, fix them.
+Historical docs can mention old names only if they clearly say they are legacy.
 
-restaurant
-retail
-raw-material
-custom-business
+Raw Material Product Definition
 
-Rules:
+Raw Material mode should represent a business workflow for managing raw goods/materials.
 
-restaurant, retail, and raw-material are active modes.
-custom-business is planned or guarded only.
-Do not implement full Custom Business / Service mode in this phase.
-Do not reintroduce fnb, warehouse, or service as active runtime mode IDs.
-If old values are handled, they must only be handled at the storage migration boundary.
-Do not create compatibility bridges across normal app flow.
-PART 1: Business Mode Switcher Deep Audit
+Expected domain areas:
 
-Audit and harden the mode switcher globally.
+Material list
+Supplier list
+Stock level
+Stock movement
+Low-stock alert
+Unit handling
+Procurement/purchase planning if already present
+Material usage tracking if already present
+Inventory correction if already present
+Reports/analytics integration if shared dashboards support it
+
+Do not invent a massive ERP system.
+Complete and harden what already exists.
+
+If a feature does not exist yet, do not build it fully unless it is a small guard/state/helper needed to make the current flow coherent.
+
+Part 1: Raw Material Flow Audit
+
+Audit current Raw Material flow end-to-end.
 
 Check:
 
-/select-mode
-selected mode persistence
-localStorage key usage
-invalid stored mode
-empty stored mode
-old stored value migration
-refresh behavior
-direct dashboard access
-switching mode while inside a mode-specific route
-route redirect after mode selection
-next query param if used
-planned mode behavior
-sidebar/topbar mode label
-route guard behavior
-mode-specific navigation
+Entry Flow
+User selects Raw Material from /select-mode.
+Correct mode ID is stored: raw-material.
+User is redirected to correct Raw Material dashboard/workspace.
+Refresh keeps valid mode.
+Invalid mode redirects safely.
+Old warehouse value does not become active runtime mode.
+Old service value does not become active runtime mode.
+Old fnb value does not affect Raw Material.
+Route Flow
+Direct Raw Material route works when selected mode is raw-material.
+Direct Raw Material route redirects safely when no mode is selected.
+Direct Raw Material route redirects safely when selected mode is restaurant.
+Direct Raw Material route redirects safely when selected mode is retail.
+Direct Raw Material route redirects safely when selected mode is custom-business.
+next param behavior is safe and predictable if used.
+Navigation Flow
+Sidebar shows only Raw Material-relevant modules.
+Sidebar order matches canonical registry.
+Sidebar role permissions match actual access.
+No Restaurant/Retail/Custom Business modules leak into Raw Material.
+No FNB/Warehouse/Service active labels appear.
+Data Flow
+Material data loads safely.
+Supplier data loads safely.
+Stock data loads safely.
+Empty states are handled.
+API error states are handled.
+Malformed API envelope is handled.
+Slow loading state is handled if applicable.
+Duplicate submit is prevented where there are forms/actions.
+Part 2: Raw Material Edge Cases
 
-Required fixes:
-
-centralize localStorage key if repeated
-centralize mode route resolution if repeated
-centralize mode label resolution if repeated
-prevent invalid mode from rendering wrong dashboard
-prevent mode leakage between modes
-make planned mode safe and clear
-make redirect behavior predictable
-
-Edge cases to handle:
-
-User opens /dashboard without selected mode.
-User opens /dashboard/restaurant without selected mode.
-User opens /dashboard/retail without selected mode.
-User opens /dashboard/raw-material without selected mode.
-User has invalid currentBusinessMode.
-User has old currentBusinessMode value like fnb, warehouse, or service.
-User selects Restaurant then directly opens Retail route.
-User selects Retail then directly opens Raw Material route.
-User selects Raw Material then directly opens Restaurant route.
-User selects planned Custom Business mode.
-User refreshes each dashboard route.
-User uses browser back after switching modes.
-PART 2: Restaurant Mode Deep Audit
-
-Inspect all Restaurant-related files.
-
-Possible areas:
-
-dashboard
-menu/products
-orders
-cashier
-tables
-kitchen/KDS if present
-serving if present
-payments
-invoices
-inventory integration
-analytics/shared dashboard usage
-API clients
-schemas/types
-constants/helpers
-route guards
-sidebar/nav
-
-Check frontend flow:
-
-loading state
-empty state
-error state
-form validation
-duplicate submit prevention
-status badge consistency
-table readability
-mobile/responsive issues
-broken buttons/actions
-stale labels
-wrong route links
-wrong mode leakage
-hardcoded statuses
-hardcoded routes
-repeated formatters
-repeated API parsing
-
-Check backend/API flow:
-
-order status transitions
-table status transitions
-payment status handling
-inventory stock movement writes
-menu item handling
-restaurant ownership/role checks
-invalid route params
-invalid request body
-safe error responses
-duplicate mapper/service logic
-
-Restaurant edge cases:
-
-No orders.
-No tables.
-No menu items.
-No payments.
-Order with invalid status.
-Payment missing or failed.
-Table already occupied.
-Table deleted/unavailable.
-Inventory stock insufficient.
-Kitchen order already marked ready.
-Serving order already completed.
-Duplicate order submit.
-User role not allowed to perform action.
-API returns empty array.
-API returns malformed or failed envelope.
-
-Required cleanup:
-
-split fat Restaurant files
-move Restaurant-specific helpers into features/restaurant
-move truly shared helpers into shared/lib/config
-remove duplicated status/route/mode checks
-improve UI consistency
-improve API response handling
-avoid Restaurant assumptions in shared components
-PART 3: Retail Mode Deep Audit
-
-Inspect all Retail-related files.
-
-Possible areas:
-
-retail dashboard
-retail products
-retail inventory
-retail transactions/orders
-customer/sales flow
-payment flow
-invoices/receipts
-analytics/shared dashboard usage
-API clients
-schemas/types
-constants/helpers
-route guards
-sidebar/nav
-
-Check frontend flow:
-
-loading state
-empty state
-error state
-validation
-duplicate submit prevention
-product list state
-stock state
-checkout/sales flow if present
-status badges
-price/currency formatting
-table layout
-mobile/responsive issues
-broken actions
-wrong route links
-hardcoded values
-repeated logic
-
-Check backend/API flow:
-
-product create/update/delete if present
-stock mutation if present
-sales/order transaction if present
-payment update if present
-inventory movement if present
-route param validation
-body validation
-ownership/tenant guard
-safe error response
-response envelope consistency
-
-Retail edge cases:
-
-No products.
-Product out of stock.
-Product deleted while selected.
-Invalid quantity.
-Duplicate checkout submit.
-Payment failed/missing.
-Invalid discount/tax if present.
-Empty cart.
-API returns empty array.
-API returns failed envelope.
-User opens Retail route while selected mode is Restaurant.
-User opens Retail route while selected mode is Raw Material.
-
-Required cleanup:
-
-split fat Retail files
-centralize retail status/stock helpers
-centralize repeated product/table/card configs
-remove Restaurant assumptions from Retail
-remove raw-material assumptions from Retail
-polish Retail dashboard and UX
-harden Retail route access and API flow
-PART 4: Raw Material Mode Deep Audit
-
-Inspect all Raw Material-related files.
-
-Possible areas:
-
-raw material dashboard
-materials
-suppliers
-stock
-procurement/purchasing if present
-inventory movement
-material usage
-alerts/low stock
-analytics/shared dashboard usage
-API clients
-schemas/types
-constants/helpers
-route guards
-sidebar/nav
-
-Check frontend flow:
-
-loading state
-empty state
-error state
-validation
-duplicate submit prevention
-stock movement display
-low-stock states
-supplier states
-unit formatting
-table readability
-mobile/responsive issues
-broken actions
-wrong route links
-repeated hardcoded unit/status strings
-repeated API handling
-
-Check backend/API flow:
-
-material create/update/delete if present
-supplier relation if present
-stock movement writes
-inventory correction
-unit validation
-route param validation
-request body validation
-ownership/tenant guard
-safe error response
-response envelope consistency
-
-Raw Material edge cases:
+Add guards, states, and validation for these edge cases where the current app supports the flow:
 
 No materials.
 No suppliers.
-Material out of stock.
 Material below minimum stock.
-Invalid stock movement quantity.
+Material out of stock.
+Material unit missing.
 Invalid unit.
+Invalid stock quantity.
+Negative stock movement where not allowed.
+Stock movement quantity is zero.
 Supplier deleted/unavailable.
+Material deleted while selected.
 Duplicate stock update submit.
 API returns empty array.
-API returns failed envelope.
-User opens Raw Material route while selected mode is Restaurant.
-User opens Raw Material route while selected mode is Retail.
+API returns error envelope.
+API returns malformed envelope.
+User opens Raw Material route with wrong selected mode.
+User refreshes after selecting Raw Material.
+User manually sets currentBusinessMode to warehouse.
+User manually sets currentBusinessMode to rawMaterial.
+User manually sets currentBusinessMode to invalid random string.
+Planned Custom Business must not reuse Raw Material UI.
+Raw Material shared dashboard must not show Restaurant/Retail copy.
 
-Required cleanup:
+Do not create fake UI just to claim edge cases are handled.
+Use real guards, empty states, validation, and safe fallbacks.
 
-split fat Raw Material files
-centralize raw-material unit/status helpers
-centralize stock movement helpers
-remove Restaurant/Retail assumptions
-polish Raw Material dashboard and UX
-harden Raw Material route access and API flow
-PART 5: Custom Business / Service Planned-State Audit
+Part 3: Raw Material Prisma / Database Alignment
 
-Do not fully implement Custom Business / Service.
+Inspect Prisma schema and backend models related to Raw Material.
 
-Audit only:
+Check whether Raw Material currently has proper persistence for:
 
-mode option display
-planned state messaging
-route guard behavior
-docs wording
-type contract
-mode config
-route config
-disabled/coming soon UI if applicable
+materials
+suppliers
+stock level
+stock movement
+unit
+minimum stock threshold
+material category/type if present
+purchase/procurement if present
+audit log if present
+user/business ownership if present
 
-Required behavior:
+If Prisma models already exist:
 
-It must not look production-ready.
-It must not show broken pages.
-It must not accidentally reuse Restaurant/Retail/Raw Material data.
-It must not use old service mode ID as active runtime mode.
-If selectable, it should show a clear planned/coming-soon state.
-If not selectable, docs should say it is planned.
+verify API/services use them correctly
+verify frontend types match backend response
+verify request schemas match database constraints
+verify nullable fields are handled
+verify ownership/tenant scoping exists if applicable
 
-Edge cases:
+If Prisma models do not exist but Raw Material frontend pretends data is real:
 
-User manually sets currentBusinessMode to custom-business.
-User manually opens Custom Business route if it exists.
-User manually sets currentBusinessMode to service.
-User tries to access planned feature through navigation.
-PART 6: Shared Code and Architecture Cleanup
+do not add a massive schema blindly
+document the mismatch
+add Prisma only if necessary to make Raw Material mode coherent and testable
+keep schema changes minimal and scoped
+explain every Prisma change
 
-Audit shared folders.
+Allowed Prisma additions only if needed:
 
-Check:
-
-components/shared
-features/shared
-lib
-config
-types
-schemas
-API clients
-route configs
-navigation configs
-status configs
-formatter helpers
-error helpers
+RawMaterial / Material model
+Supplier model
+RawMaterialStockMovement / MaterialStockMovement model
+necessary enums for movement type/unit/status
+relations to user/business/restaurant/company if existing architecture requires it
 
 Rules:
 
-shared code must be genuinely shared
-shared code must not import from features/restaurant, features/retail, or features/raw-material
-mode-specific code must not be forced into shared
-avoid giant global utility files
-avoid duplicated helpers across modes
-keep helpers domain-specific and clearly named
+Do not break existing Restaurant or Retail schema.
+Do not rename broad shared models without strong reason.
+Do not create destructive migrations.
+Do not add nullable chaos just to make things pass.
+Do not add schema fields that are not used by current Raw Material flow.
+If migration is required, document exact command and risk.
+If environment cannot run Prisma generate/migrate, report it honestly.
+Part 4: Raw Material Backend/API Hardening
 
-Look for:
+Audit and improve backend/API only for Raw Material-related flow.
 
-duplicate API parsing
-duplicate loading/error/empty UI
-duplicate status badge logic
-duplicate currency/date formatters
-duplicate mode route logic
-duplicate navigation logic
-duplicate table/card components
-duplicate validation logic
-duplicate mapper logic
+Check:
 
-Create helpers/components only when they reduce real duplication.
+API Design
+endpoints match frontend calls
+endpoint names match behavior
+request payload matches frontend
+response shape matches frontend
+response envelope is consistent
+status codes are correct
+errors are safe
+Validation
+route params validated
+body validated
+unit validated
+quantity validated
+supplier ID validated
+material ID validated
+movement type validated
+required fields enforced server-side
+Security / Guarding
+no invalid mode accepted
+no old warehouse mode accepted as active API mode
+no client mode trusted blindly
+ownership/tenant filter exists if architecture has owner/business IDs
+role permission checks exist if role system applies
+unsafe internal errors are not leaked
+Service Structure
+route handler should not contain too much business logic
+repeated mapper logic should be extracted
+repeated response/error logic should use shared helper if already available
+stock movement writes should be consistent
+stock level update should be safe
+audit log write should be consistent if used
 
-PART 7: Fat File and Structure Refactor
+Do not rewrite all backend.
+Only harden Raw Material-related backend/API.
 
-Find fat files across all modes and shared/backend.
+Part 5: Raw Material Shared Dashboard Wiring
 
-A file is considered fat if:
+Wire Raw Material mode into shared dashboards according to existing shared dashboard context.
 
-it mixes UI + fetch + business logic + constants + formatting
-it contains multiple unrelated components
-it has long repeated JSX
-it has long if/else or switch chains
-it has duplicated inline arrays/configs
-it is hard to reason about
-it is used as a dumping ground
+Inspect shared dashboards such as:
 
-For each fat file:
+Sales Analytics
+Customers & Partners
+Inventory Management
+Cashflow
+Financial Reports
+Invoice Generator
+Shift Cashier Reports
+Team Management
+Any shared dashboard registry/module system
 
-identify responsibility groups
-extract constants
-extract helpers
-extract hooks
-extract child components
-extract schemas/types if useful
-keep behavior unchanged
-update imports
-run typecheck
+For each shared dashboard, decide Raw Material behavior:
 
-Preferred structure per feature:
+Supported and useful for Raw Material
+Supported but with Raw Material-specific labels/data mapping
+Not supported and should be hidden/disabled for Raw Material
+Planned only and should show clear state
 
-features/{mode}/
+Expected examples:
+
+Inventory Management
+
+Raw Material should likely be supported.
+It should show:
+
+material stock
+low stock
+supplier/material context
+stock movement
+unit-aware quantities
+Financial Reports
+
+May be supported if data exists.
+It should not show Restaurant/Retail-only wording.
+If Raw Material financial data does not exist, show planned/empty state.
+
+Cashflow
+
+May be supported if purchases/procurement/stock costs exist.
+If no real data exists, do not fake it.
+Show guarded empty/planned state.
+
+Invoice Generator
+
+Only support if Raw Material has purchase/supplier invoice context.
+Otherwise hide or mark as not available for Raw Material.
+
+Shift Cashier Reports
+
+Probably not relevant to Raw Material unless the business flow has cashier.
+Hide or mark unsupported for Raw Material.
+
+Customers & Partners
+
+For Raw Material, this may map to suppliers/partners.
+If used, rename copy/context properly.
+
+Sales Analytics
+
+Probably not directly relevant unless Raw Material has sales.
+Hide, disable, or show not applicable.
+
+Rules:
+
+Do not show Restaurant/Retail dashboard copy in Raw Material.
+Do not fake data.
+Do not wire unsupported dashboards just to make sidebar full.
+Shared dashboard visibility must be mode-aware.
+Shared dashboard labels must be context-aware.
+Shared dashboard empty states must be context-aware.
+Raw Material should only see dashboards that make business sense.
+
+If a shared dashboard needs mode-specific adapter:
+
+create a clean adapter/helper
+keep adapter config typed
+do not hardcode mode checks everywhere
+avoid giant switch statements inside UI components
+Part 6: Raw Material Guarding, Limiting, and Permissions
+
+Tighten access control for Raw Material.
+
+Audit:
+
+route guard
+sidebar visibility
+feature visibility
+role permissions
+planned/unsupported dashboard visibility
+direct URL access
+API access if backend has auth/roles
+
+Rules:
+
+unsupported Raw Material features should not appear as active.
+role-limited modules should be hidden or disabled consistently.
+direct route access should not bypass UI guard.
+backend should still validate if data mutation exists.
+shared dashboards must check whether Raw Material supports them.
+planned features should be clearly marked, not broken.
+
+If role system exists:
+
+define which roles can access Raw Material modules.
+avoid copy-paste Restaurant roles if they do not fit.
+if uncertain, use conservative access and document it.
+Part 7: Raw Material File Structure Cleanup
+
+Clean Raw Material folder structure.
+
+Preferred structure:
+
+features/raw-material/
   components/
+    dashboard/
+    materials/
+    suppliers/
+    stock/
+    shared/
   hooks/
   services/
   schemas/
@@ -540,391 +440,373 @@ features/{mode}/
 
 Only create folders that are actually used.
 
-PART 8: Hardcoded Value Cleanup
+Move files if needed:
 
-Remove repeated hardcoded values.
+components into components
+local hooks into hooks
+API clients/services into services
+Zod/form schemas into schemas
+domain types into types
+formatting/domain helpers into utils
+labels/status/routes/config into config or constants
 
-Centralize:
+Rules:
 
-route paths
-business mode IDs
-localStorage keys
-status labels
-status badge variants
-status colors
-role labels
-API endpoints if repeated
-currency formatter
-date formatter
-unit formatter
-empty state copy if repeated
-dashboard metric configs
-table column configs if repeated
-stock thresholds if repeated
-planned mode copy if repeated
+no giant dumping file
+no vague utils.ts if domain-specific
+no placeholder naming if file is active production route
+no warehouse naming in active Raw Material runtime
+no Restaurant/Retail logic inside Raw Material
+no Raw Material-specific logic inside global shared unless truly shared
 
-Do not centralize one-off local UI text.
+If raw-material-placeholder-workspace.tsx is active runtime:
 
-Bad:
+rename it to an accurate name
+split it into smaller files
+remove placeholder wording unless it is truly a planned-only page
+Part 8: Raw Material Fat File Split
 
-if (mode === "restaurant") { ... }
-navigate("/dashboard/restaurant")
-localStorage.getItem("currentBusinessMode")
+Identify and split Raw Material fat files.
 
-Better:
+Known candidate:
 
-isBusinessMode(mode, BUSINESS_MODE_IDS.restaurant)
-getBusinessModeDashboardRoute(mode)
-BUSINESS_MODE_STORAGE_KEY
+raw-material-placeholder-workspace.tsx
 
-But do not create helper noise for a value used only once.
+Also search for other large Raw Material files.
 
-PART 9: Bug Hunting
+For each fat file:
 
-Search for and fix bugs.
+identify responsibilities
+extract constants
+extract helper functions
+extract child components
+extract hooks if stateful logic is reusable
+extract schemas/types if useful
+update imports
+preserve visible behavior
+run Raw Material typecheck
 
-Bug categories:
+Extraction examples:
 
-route guard bug
-selected mode mismatch
-wrong mode data showing
-stale route
-broken import
-wrong API endpoint
-wrong response handling
-missing null check
-missing empty state
-duplicate submit
-invalid form accepted
-wrong status transition
-wrong stock movement sign
-unsafe ownership access
-role check missing
-table/action button enabled incorrectly
-planned mode accidentally active
-old fnb or warehouse runtime path
-service treated as active mode
-dead component still referenced
-API client not using shared envelope parser
-UI expecting data shape that API does not guarantee
+raw-material-workspace.tsx
+raw-material-dashboard-header.tsx
+raw-material-metric-cards.tsx
+material-stock-table.tsx
+supplier-list-section.tsx
+low-stock-alerts.tsx
+stock-movement-section.tsx
+raw-material-empty-state.tsx
+raw-material-status-badge.tsx
+raw-material-units.config.ts
+raw-material-stock.helpers.ts
+raw-material-dashboard-metrics.ts
 
-Do not invent massive new features.
-Fix real bugs.
+Do not over-split into tiny useless files.
 
-PART 10: Backend/API Polish
+Part 9: Raw Material Naming Cleanup
 
-Audit backend files per domain.
+Canonical naming:
 
-Focus on:
+Mode ID: raw-material
+User label: Raw Material
+Folder: features/raw-material
+Route slug: keep existing canonical route if docs define it, otherwise use consistent V3 route
+Type name examples:
+RawMaterialMode
+RawMaterialItem
+RawMaterialSupplier
+RawMaterialStockMovement
 
-validation
-typed request params
-safe response format
-safe error handling
-ownership/tenant checks
-role checks
-mode parsing
-duplicate service logic
-duplicate mapper logic
-stock movement logic
-audit log writes
-inventory updates
-order/payment updates
-upload handling
+Avoid:
 
-Required:
-
-no backend route should trust invalid mode values
-no internal DB/stack error should leak directly
-repeated response/error logic should become helper if duplicated
-mode parsing must use canonical V3 mode contract
-backend services should not be giant mixed-responsibility files when avoidable
-
-If backend file is too broad, split carefully:
-
-route handler
+warehouse as active name
+rawMaterial in route strings if canonical route uses kebab-case
 service
-mapper
-validator
-constants/types
+fnb
+placeholder for active workspace
+data.ts
+helper.ts
+utils.ts
+temp
+old
+final
 
-Do not change database schema unless absolutely required.
+Rename misleading files/functions/variables.
 
-PART 11: Frontend Polish
+After renaming:
 
-Polish frontend per mode.
+update imports
+update docs
+run Raw Material typecheck
+Part 10: Raw Material Hardcode and Duplicate Cleanup
+
+Remove Raw Material hardcodes and repeated logic.
+
+Centralize repeated:
+
+Raw Material route paths
+Raw Material module IDs
+Raw Material dashboard labels
+material status labels
+stock movement labels
+unit labels
+low-stock threshold logic
+supplier labels
+empty state copy if repeated
+API endpoints if repeated
+table column configs if repeated
+card metric configs if repeated
+formatter helpers
+
+Do not centralize one-off text.
+
+Avoid scattered checks like:
+
+mode === "raw-material"
+path.includes("raw-material")
+unit === "kg"
+status === "low"
+
+Prefer typed helpers/configs when repeated:
+
+isRawMaterialMode(mode)
+RAW_MATERIAL_ROUTES
+RAW_MATERIAL_UNITS
+getRawMaterialStockStatus()
+formatRawMaterialQuantity()
+Part 11: Frontend Polish for Raw Material
+
+Polish Raw Material UI.
 
 Focus:
 
-consistent dashboard cards
-consistent empty states
-consistent loading states
-consistent error states
-consistent buttons
-consistent badges
-clear form validation
-table readability
+dashboard clarity
+material list/table readability
+supplier section clarity
+stock movement clarity
+low-stock alert visibility
+empty states
+loading states
+error states
+form validation messages
+disabled states
+duplicate submit prevention
 responsive layout
-mode switcher clarity
-sidebar active states
-planned mode messaging
-no stale FNB labels
-no old route labels
-no mode leakage
+consistent badges
+consistent buttons
+context-aware shared dashboard copy
 
-Do not redesign the whole product.
-Polish what exists.
+Do not redesign the whole app.
+Polish existing UI so Raw Material feels intentional, not leftover.
 
-PART 12: Verification
+Part 12: Tests and Verification
 
-Run checks after changes.
+Run Raw Material-specific checks first.
 
-Try pnpm scripts first if environment allows:
+Try pnpm if available:
 
-pnpm --filter @workspace/pos-system run typecheck:restaurant
-pnpm --filter @workspace/pos-system run typecheck:retail
 pnpm --filter @workspace/pos-system run typecheck:raw-material
-pnpm --filter @workspace/pos-system run typecheck:service
-pnpm --filter @workspace/pos-system run build
-pnpm business-mode:check
-pnpm restaurant:check
-pnpm retail:check
 pnpm raw-material:check
+pnpm business-mode:check
 
-If pnpm is still blocked by local permission error, use the repo-local TypeScript commands that already worked:
+If pnpm is blocked by EPERM lstat C:\Users\LENOVO, use local commands:
 
-tsc -p artifacts/pos-system/tsconfig.restaurant.json --noEmit
-tsc -p artifacts/pos-system/tsconfig.retail.json --noEmit
 tsc -p artifacts/pos-system/tsconfig.raw-material.json --noEmit
-tsc -p artifacts/pos-system/tsconfig.service.json --noEmit
 
-Run frontend build:
+Also run:
 
 cd artifacts/pos-system
 vite build
 
-Run backend TypeScript check if available.
+Run backend check if backend touched:
+
+tsc -p artifacts/api-server/tsconfig.json --noEmit
+
+Run Prisma checks only if Prisma touched:
+
+npx prisma generate
+npx prisma validate
+
+If Prisma commands are blocked by environment:
+
+report the exact issue
+do not claim they passed
+
+Run business mode switch check:
+
+node scripts/business-mode-switch-check.mjs
+
+Run sidebar parity if Raw Material navigation/sidebar was touched.
 
 Important:
 
-Do not claim full frontend tsc -p artifacts/pos-system/tsconfig.json --noEmit passed if it times out.
-If it times out, report timeout honestly.
-Separate:
-checks passed
-checks failed because of environment
-checks failed because of existing issues
-checks failed because of your changes
-PART 13: Manual QA Checklist
+do not claim full frontend typecheck passed if it times out
+separate passed/failed/blocked/timed-out checks
+separate pre-existing issues from issues caused by this phase
+Part 13: Manual QA Checklist
 
-Provide exact manual browser QA steps:
+Provide exact manual QA steps for Raw Material.
 
-Business mode switcher
+Must include:
+
+Mode selection
 Open /select-mode.
-Clear currentBusinessMode.
-Refresh and confirm /select-mode is shown.
-Set invalid currentBusinessMode.
-Refresh and confirm safe redirect/repair.
-Set old fnb.
-Refresh and confirm storage-boundary repair only if migration is intended.
-Set old warehouse.
-Refresh and confirm storage-boundary repair only if migration is intended.
-Set old service.
-Refresh and confirm it does not become active Service mode.
-Restaurant
-Select Restaurant.
-Open Restaurant dashboard.
-Refresh.
-Open direct Restaurant route.
-Check menu/products.
-Check orders.
-Check tables.
-Check payments/invoices.
-Check empty states.
-Check loading/error states if possible.
-Confirm no FNB label.
-Confirm no Retail/Raw Material nav leakage.
-Retail
-Select Retail.
-Open Retail dashboard.
-Refresh.
-Open direct Retail route.
-Check product/inventory/sales flow if present.
-Check empty states.
-Check loading/error states if possible.
-Confirm no Restaurant/Raw Material nav leakage.
-Raw Material
 Select Raw Material.
+Confirm selected mode is stored as raw-material.
+Confirm app redirects to Raw Material dashboard/workspace.
+Refresh and confirm Raw Material stays active.
+Invalid mode
+Clear currentBusinessMode.
+Open Raw Material route directly.
+Confirm safe redirect.
+Set currentBusinessMode to warehouse.
+Refresh and confirm it does not become active runtime mode.
+Set currentBusinessMode to rawMaterial.
+Refresh and confirm it is rejected or repaired only at storage boundary if intended.
+Set random invalid value.
+Confirm safe redirect.
+Raw Material workspace
 Open Raw Material dashboard.
-Refresh.
-Open direct Raw Material route.
-Check material/supplier/stock flow if present.
-Check empty states.
-Check loading/error states if possible.
-Confirm no Restaurant/Retail nav leakage.
-Custom Business / Service planned
-Try selecting planned mode if visible.
-Confirm it is coming soon/guarded.
-Try direct route if route exists.
-Confirm it does not show broken production UI.
-PART 14: Documentation
+Check material list/table.
+Check supplier section.
+Check stock movement section if present.
+Check low-stock section if present.
+Check empty material state.
+Check empty supplier state.
+Check loading/error state if possible.
+Try invalid quantity if form exists.
+Try duplicate submit if form exists.
+Confirm no Restaurant/Retail copy appears.
+Confirm no FNB/Warehouse/Service active label appears.
+Shared dashboards
+Open each shared dashboard visible in Raw Material.
+Confirm dashboard is relevant to Raw Material.
+Confirm unsupported dashboards are hidden, disabled, or show not-applicable/planned state.
+Confirm copy uses material/supplier/stock context where appropriate.
+Confirm no Restaurant/Retail-only metric appears as Raw Material data.
+Part 14: Documentation
 
-Update docs if anything changes.
+Update or create:
 
-Docs must include:
+docs/v3-phase-4a-raw-material-hardening.md
 
-final per-mode structure
-active modes
-planned mode behavior
-route guard behavior
-mode switcher behavior
-important helpers/components added
-checks run
-limitations
+Include:
+
+Raw Material current scope
+supported Raw Material modules
+planned/unsupported modules
+shared dashboard wiring decisions
+Prisma/backend decisions
+folder structure changes
+helpers/components created
+commands run
+remaining risks
 manual QA checklist
-remaining known risks
 
-Do not leave docs outdated.
+Update existing docs if they become outdated.
+
+Docs must not claim Raw Material supports a dashboard or backend feature that does not exist.
 
 Strict Rules
-Do not push to GitHub.
-Do not create a branch.
-Do not create a PR.
-Do not commit unless explicitly asked.
-Do not focus only on Restaurant.
-Do not skip Retail.
-Do not skip Raw Material.
-Do not fully implement Custom Business / Service.
-Do not reintroduce FNB as active runtime naming.
-Do not reintroduce Warehouse as active runtime naming.
-Do not treat Service as an active mode ID.
-Do not create fake compatibility bridges.
-Do not loosen types to pass checks.
+Work only on Raw Material mode unless shared infrastructure is required.
+Do not globally refactor Restaurant/Retail.
+Do not implement full Custom Business / Service.
+Do not reintroduce warehouse as active runtime mode.
+Do not reintroduce fnb.
+Do not treat service as active mode.
 Do not use any, as any, as unknown as, @ts-ignore, or @ts-expect-error.
-Do not create giant utils.ts dumping grounds.
-Do not move mode-specific logic into shared code.
-Do not let shared code import from mode folders.
-Do not leave fat files untouched if they clearly mix unrelated responsibilities.
-Do not leave obvious duplicate code.
-Do not centralize one-off values just to look clever.
-Do not delete files unless confirmed unused.
-Do not delete useful logic. Move it first.
-Do not rewrite the whole app.
-Do not change database schema unless absolutely required.
-Do not silently skip failed checks.
-Do not claim checks passed unless they actually passed.
-Do not leave docs inconsistent with code.
-Do not leave broken routes/navigation.
-Do not leave planned mode looking production-ready.
-Do not stop after the first mode.
+Do not create fake compatibility bridges.
+Do not add Prisma schema unless Raw Material genuinely needs it.
+Do not create destructive database migrations.
+Do not make shared dashboards show fake Raw Material data.
+Do not show unsupported dashboards as active features.
+Do not leave placeholder naming on active Raw Material runtime files.
+Do not leave fat Raw Material files untouched without a clear reason.
+Do not create giant utils.ts.
+Do not move Raw Material-specific code into shared.
+Do not let shared code import from Raw Material.
+Do not centralize one-off values.
+Do not delete useful logic.
+Do not silently skip checks.
+Do not claim checks passed unless they passed.
+Do not push, commit, branch, or PR.
 Final Report Format
 
-At the end, report in this exact structure:
+Return this exact report:
 
-Phase 3 Report
+Phase 4A Raw Material Report
 1. Summary
-
-What was cleaned and hardened.
-
 2. Docs read
-
-List docs inspected.
-
-3. Commands run
-
-For each command:
-
-command
-passed/failed/blocked/timed out
-notes
-4. Restaurant audit and changes
+3. Raw Material audit
 files inspected
-bugs found
-flow fixes
-UI polish
-backend/API fixes
-files split
-helpers created
+routes inspected
+backend/API inspected
+shared dashboards inspected
+Prisma inspected
+4. Flow fixes
+mode selection
+route guard
+sidebar/navigation
+data loading
+edge cases
+5. Shared dashboard wiring
+
+For each shared dashboard:
+
+supported / unsupported / planned
+behavior
+files changed
+reason
+6. Prisma/database changes
+changed or not changed
+reason
+migration/generate status
+risks
+7. Backend/API changes
+files changed
+validation changes
+response/error handling
+security/ownership/role checks
 remaining risks
-5. Retail audit and changes
-files inspected
-bugs found
-flow fixes
-UI polish
-backend/API fixes
-files split
-helpers created
+8. Frontend/UI changes
+files changed
+components split
+polish made
+loading/empty/error states
 remaining risks
-6. Raw Material audit and changes
-files inspected
-bugs found
-flow fixes
-UI polish
-backend/API fixes
-files split
-helpers created
-remaining risks
-7. Custom Business / Service planned-state audit
-behavior checked
-fixes made
-remaining risks
-8. Business mode switcher audit
-edge cases checked
-guard fixes
-route fixes
-storage fixes
-remaining risks
-9. Shared architecture cleanup
-shared files inspected
-helpers/components created
-duplicate code removed
-hardcoded values centralized
-remaining risks
-10. Structure changes
+9. Structure and naming changes
 
 For each moved/renamed file:
 
 old path
 new path
 reason
-11. Fat files split
+10. Helpers/configs/components created
 
 For each:
 
-original file
-extracted files
-reason
+file path
+purpose
+where used
+11. Hardcoded/duplicate cleanup
+what was removed
+what was centralized
+why
 12. Files deleted
 
 For each:
 
 path
 why safe to delete
-13. Backend/API changes
-validation
-response handling
-mode parsing
-services/mappers
-security/ownership
-remaining risks
-14. Frontend/UI changes
-loading states
-empty states
-error states
-mode UI
-dashboard polish
-remaining risks
-15. Hardcoded/duplicate cleanup
-what was removed
-what was centralized
-why
-16. Manual QA checklist
+13. Commands run
 
-Give exact browser steps.
+For each:
 
-17. Remaining risks
-
-Be honest and specific.
-
-18. Next recommended task
+command
+passed/failed/blocked/timed out
+notes
+14. Manual QA checklist
+15. Remaining risks
+16. Next recommended task
 
 Give only one next task.
