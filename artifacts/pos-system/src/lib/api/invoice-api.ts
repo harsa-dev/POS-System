@@ -45,6 +45,25 @@ export type InvoiceSummaryBucketDto = {
   total: number;
 };
 
+export type InvoiceAgingBucketDto = {
+  id: "1-7" | "8-30" | "31-60" | "61+";
+  label: string;
+  minDays: number;
+  maxDays: number | null;
+  count: number;
+  total: number;
+};
+
+export type InvoiceOverdueSampleDto = {
+  id: string;
+  invoiceNumber: string;
+  customerName: string;
+  status: Extract<InvoiceBackendStatus, "DRAFT" | "SENT">;
+  dueDate: string | null;
+  daysOverdue: number;
+  grandTotal: number;
+};
+
 export type InvoiceSummaryDto = {
   buckets: InvoiceSummaryBucketDto[];
   totals: {
@@ -55,6 +74,20 @@ export type InvoiceSummaryDto = {
     cancelledValue: number;
     draftValue: number;
     sentValue: number;
+    overdueValue: number;
+    currentReceivable: number;
+  };
+  aging: {
+    asOf: string;
+    overdueCount: number;
+    overdueValue: number;
+    draftOverdueCount: number;
+    draftOverdueValue: number;
+    sentOverdueCount: number;
+    sentOverdueValue: number;
+    oldestOverdueDays: number;
+    buckets: InvoiceAgingBucketDto[];
+    samples: InvoiceOverdueSampleDto[];
   };
   lastUpdatedAt: string | null;
 };
