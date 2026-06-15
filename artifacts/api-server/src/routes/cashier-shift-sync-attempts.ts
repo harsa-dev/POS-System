@@ -1,3 +1,4 @@
+import type { Role } from "@prisma/client";
 import { Router } from "express";
 
 import { requireRole } from "../lib/auth.js";
@@ -17,7 +18,7 @@ import { syncShiftCloseToCashflow } from "../services/cashflow/index.js";
 
 const router = Router();
 
-function getActor(user: { id: string; role: string }) {
+function getActor(user: { id: string; role: Role }) {
   return {
     id: user.id,
     role: user.role,
