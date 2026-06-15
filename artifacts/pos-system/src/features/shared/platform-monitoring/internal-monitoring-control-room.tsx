@@ -24,6 +24,7 @@ import type {
   InternalMonitoringControlRoomSignalDto,
   InternalMonitoringDataIntegrityCheckDto,
   InternalMonitoringDevActionItemDto,
+  InternalMonitoringMutationReadinessContractDto,
   InternalMonitoringRouteInventoryItemDto,
   InternalMonitoringSchemaDecisionRecordDto,
   InternalMonitoringSource,
@@ -63,6 +64,12 @@ const toneMap: Record<string, DashboardTone> = {
   api: "green",
   mock: "blue",
   fallback: "amber",
+  "Dry-run Only": "blue",
+  Required: "amber",
+  "Design Ready": "green",
+  POST: "rose",
+  PATCH: "rose",
+  DELETE: "rose",
 };
 
 const sectionLinks = [
@@ -70,6 +77,7 @@ const sectionLinks = [
   { id: "route-inventory", label: "Route Inventory" },
   { id: "api-contracts", label: "API Contracts" },
   { id: "data-integrity", label: "Data Integrity" },
+  { id: "mutation-readiness", label: "Mutation Readiness" },
   { id: "schema-decisions", label: "Schema Risk" },
   { id: "dev-actions", label: "Dev Queue" },
   { id: "promotion-checklist", label: "Promotion Checklist" },
@@ -165,7 +173,7 @@ function SourceHealthSummary({
           <p className="text-sm font-semibold text-muted-foreground">Source Health</p>
           <h3 className="mt-1 text-lg font-bold tracking-tight">{statusText}</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Generated {formatGeneratedAt(data.generatedAt)} · {data.routeInventory.length} routes · {data.contractReadiness.length} contracts · {data.dataIntegrityChecks.length} integrity checks.
+            Generated {formatGeneratedAt(data.generatedAt)} · {data.routeInventory.length} routes · {data.contractReadiness.length} contracts · {data.dataIntegrityChecks.length} integrity checks · {data.mutationReadinessContracts.length} dry-run contracts.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs font-semibold">
@@ -177,6 +185,9 @@ function SourceHealthSummary({
           </span>
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
             GET-only
+          </span>
+          <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">
+            Dry-run design only
           </span>
         </div>
       </div>
@@ -214,6 +225,18 @@ const integrityColumns: DataTableColumn<InternalMonitoringDataIntegrityCheckDto>
   { key: "status", header: "Status", cell: (row) => <StatusPill tone={tone(row.status)}>{row.status}</StatusPill> },
   { key: "severity", header: "Severity", cell: (row) => <StatusPill tone={tone(row.severity)}>{row.severity}</StatusPill> },
   { key: "detail", header: "Detail", cell: (row) => <span className="text-sm text-muted-foreground">{row.detail}</span> },
+];
+
+const mutationReadinessColumns: DataTableColumn<InternalMonitoringMutationReadinessContractDto>[] = [
+  { key: "action", header: "Action", cell: (row) => <span className="font-medium text-foreground">{row.action}</span> },
+  { key: "proposedEndpoint", header: "Proposed Endpoint", cell: (row) => <code className="text-xs text-muted-foreground">{row.proposedEndpoint}</code> },
+  { key: "proposedMethod", header: "Method", cell: (row) => <StatusPill tone={tone(row.proposedMethod)}>{row.proposedMethod}</StatusPill> },
+  { key: "status", header: "Status", cell: (row) => <StatusPill tone={tone(row.status)}>{row.status}</StatusPill> },
+  { key: "dryRunMode", header: "Dry-run", cell: (row) => <StatusPill tone={tone(row.dryRunMode)}>{row.dryRunMode}</StatusPill> },
+  { key: "requiredCapability", header: "Capability", cell: (row) => <code className="text-xs text-muted-foreground">{row.requiredCapability}</code> },
+  { key: "requiredAuditEvent", header: "Audit Event", cell: (row) => <code className="text-xs text-muted-foreground">{row.requiredAuditEvent}</code> },
+  { key: "blockedReason", header: "Blocked Reason", cell: (row) => <span className="text-sm text-muted-foreground">{row.blockedReason}</span> },
+  { key: "requiredProof", header: "Required Proof", cell: (row) => <span className="text-sm text-muted-foreground">{row.requiredProof.join(" · ")}</span> },
 ];
 
 const schemaColumns: DataTableColumn<InternalMonitoringSchemaDecisionRecordDto>[] = [
@@ -283,7 +306,7 @@ export function InternalMonitoringControlRoom() {
               Generated: {formatGeneratedAt(controlRoomData.generatedAt)}
             </span>
             <span className="rounded-full bg-muted px-3 py-1">
-              Endpoints: 4 GET-only internal monitoring APIs
+              Endpoints: 5 GET-only internal monitoring APIs
             </span>
             <span className="rounded-full bg-muted px-3 py-1">
               {fallbackSummary}
@@ -336,6 +359,18 @@ export function InternalMonitoringControlRoom() {
         </DashboardPanel>
       </div>
 
+      <DashboardPanel
+        title="Mutation Readiness & Dry-run Contracts"
+        description="Catalog desain untuk future platform mutation. Semua baris ini masih metadata read-only, bukan action executor."
+        className="scroll-mt-24"
+      >
+        <div id="mutation-readiness" className="sr-only">Mutation Readiness</div>
+        <div className="border-b border-border bg-rose-50 p-4 text-sm text-rose-900">
+          Dry-run contract metadata only. Proposed POST/PATCH/DELETE endpoints di bawah ini tetap blocked sampai RBAC, audit event, approval policy, rollback note, rate limit, dan dry-run response siap.
+        </div>
+        <DataTable columns={mutationReadinessColumns} data={controlRoomData.mutationReadinessContracts} getRowKey={(row) => row.id} minWidth={2200} pagination={false} />
+      </DashboardPanel>
+
       <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
         <DashboardPanel title="Schema Decision Records" description="Keputusan sementara untuk kandidat schema. Prisma tetap tidak disentuh sampai proof-nya cukup." className="scroll-mt-24">
           <div id="schema-decisions" className="sr-only">Schema Decisions</div>
@@ -358,7 +393,7 @@ export function InternalMonitoringControlRoom() {
             [ClipboardList, "Contracts synced", `${summary.totalSignals} signals wajib cocok dengan docs.`],
             [ShieldCheck, "Integrity checked", `${controlRoomData.dataIntegrityChecks.length} checks loaded from API/fallback.`],
             [Route, "Routes inventoried", `${controlRoomData.routeInventory.length} internal routes visible.`],
-            [AlertTriangle, "Mutation guarded", "PATCH/POST internal harus nunggu audit + permission."],
+            [AlertTriangle, "Mutation guarded", `${controlRoomData.mutationReadinessContracts.length} mutation readiness contracts remain blocked or dry-run only.`],
             [Eye, "Observability only", "No destructive actions are available in this dashboard."],
             [Activity, "Fallback ready", `${sourceLabel(controlRoomData.source)} source keeps UI alive while backend catches up.`],
           ].map(([Icon, title, note]) => {
