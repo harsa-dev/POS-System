@@ -140,7 +140,12 @@ function createHistorySummary(items: InternalSystemProbeHistoryItemDto[]): Inter
 }
 
 function isMissingTableError(error: unknown) {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "42P01";
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "42P01"
+  );
 }
 
 export async function getInternalSystemProbeHistory(query: ProbeHistoryQuery = {}): Promise<InternalSystemProbeHistoryDto> {
