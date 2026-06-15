@@ -19,6 +19,8 @@ export function InvoiceFinancialReportBridge() {
     const filterDetail: InvoiceGeneratorFilterHistoryEventDetail = {
       search: payload.search ?? payload.invoiceNumber ?? "",
       status: payload.status ?? "ALL",
+      from: payload.from,
+      to: payload.to,
       overdue: payload.overdue,
       message: payload.message ?? "Invoice history opened from Financial Reports.",
     };
