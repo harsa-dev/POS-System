@@ -23,13 +23,13 @@ router.get("/internal/health/summary", async (req, res) => {
     const user = await requireInternalMonitoringAccess(req, res);
     if (!user) return;
 
-    const data = getInternalMonitoringControlRoom();
+    const data = await getInternalMonitoringControlRoom();
 
     return internalMonitoringSuccessResponse(res, {
       data,
       generatedAt: data.generatedAt,
       source: data.source,
-      mock: true,
+      mock: false,
     });
   } catch (error) {
     return handleApiError(res, error);
