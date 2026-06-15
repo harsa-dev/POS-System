@@ -10,6 +10,8 @@ const allModes = [
 ] as const;
 
 const nonRetailModes = ["restaurant", "raw-material", "custom-business"] as const;
+const nonRawMaterialModes = ["restaurant", "retail", "custom-business"] as const;
+const nonRetailNonRawMaterialModes = ["restaurant", "custom-business"] as const;
 const cashierShiftModes = ["restaurant", "retail"] as const;
 
 export const businessModules: readonly V3ModuleMetadata[] = [
@@ -52,7 +54,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
         description: "Hardcoded contract register and renewal readiness dashboard.",
         routePath: ROUTES.EMPLOYEE_CONTRACTS,
         group: "Shared Business",
-        supportedModes: nonRetailModes,
+        supportedModes: nonRetailNonRawMaterialModes,
         requiredPermissions: ["employees.manage"],
         featureFlags: [],
         order: 84,
@@ -63,7 +65,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
         description: "Hardcoded payroll preview for salary, allowance, deduction, and approval readiness.",
         routePath: ROUTES.PAYROLL,
         group: "Shared Business",
-        supportedModes: nonRetailModes,
+        supportedModes: nonRetailNonRawMaterialModes,
         requiredPermissions: ["employees.manage"],
         featureFlags: [],
         order: 86,
@@ -79,7 +81,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
     description: "Planned attendance tracking module for workforce operations.",
     layer: "business",
     status: "planned",
-    supportedModes: nonRetailModes,
+    supportedModes: nonRetailNonRawMaterialModes,
     routeBase: "/v3/business/attendance",
     sidebarGroup: "Shared Business",
     sidebarVisible: false,
@@ -90,7 +92,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
         description: "Hardcoded check-in, check-out, missing attendance, and workforce visibility dashboard.",
         routePath: ROUTES.EMPLOYEE_ATTENDANCE,
         group: "Shared Business",
-        supportedModes: nonRetailModes,
+        supportedModes: nonRetailNonRawMaterialModes,
         requiredPermissions: ["attendance.manage"],
         featureFlags: [],
         order: 88,
@@ -130,7 +132,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
         description: "Hardcoded roster coverage, open slot, and schedule risk dashboard.",
         routePath: ROUTES.ROSTER_OVERVIEW,
         group: "Shared Business",
-        supportedModes: nonRetailModes,
+        supportedModes: nonRetailNonRawMaterialModes,
         requiredPermissions: ["shifts.manage"],
         featureFlags: [],
         order: 74,
@@ -146,7 +148,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
     description: "Shared reporting workspace for financial summaries and profit analysis.",
     layer: "business",
     status: "active",
-    supportedModes: allModes,
+    supportedModes: nonRawMaterialModes,
     routeBase: ROUTES.FINANCIAL_REPORTS,
     sidebarGroup: "Shared Business",
     sidebarVisible: true,
@@ -159,7 +161,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
         description: "Hardcoded cost-of-goods calculator for unit cost, markup, and selling price planning.",
         routePath: ROUTES.HPP_CALCULATOR,
         group: "Shared Business",
-        supportedModes: allModes,
+        supportedModes: nonRawMaterialModes,
         requiredPermissions: ["reports.view"],
         featureFlags: [],
         order: 52,
@@ -191,7 +193,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
     description: "Shared cashflow workspace for income, expenses, and balances.",
     layer: "business",
     status: "active",
-    supportedModes: allModes,
+    supportedModes: nonRawMaterialModes,
     routeBase: ROUTES.CASHFLOW,
     sidebarGroup: "Shared Business",
     sidebarVisible: true,
@@ -207,7 +209,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
     description: "Shared invoice generation workspace for previewing, saving, and downloading invoices.",
     layer: "business",
     status: "active",
-    supportedModes: allModes,
+    supportedModes: nonRawMaterialModes,
     routeBase: ROUTES.INVOICE_GENERATOR,
     sidebarGroup: "Shared Business",
     sidebarVisible: true,

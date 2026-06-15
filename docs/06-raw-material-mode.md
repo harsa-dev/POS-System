@@ -2,20 +2,19 @@
 
 ## 1. Status
 
-Raw Material mode is currently a frontend-safe V3 workspace foundation.
+Raw Material mode is an active V3 workspace with backend-backed operational persistence for suppliers, storage, intakes, weighings, batches, processing runs, kandang pens, stock movements, guarded workflow writes, and summary metrics.
 
 Current scope:
 
 ```txt
-Mock data only
-API contract only
-No Prisma schema change
-No migration
-No real database write
-No stock mutation
+Backend-backed operational reads
+Guarded stock and workflow mutations
+Audit-backed Raw Material writes
+Sample/mock fallback for backend-offline preview only
+Finance/procurement/invoice/HPP remains planned
 ```
 
-This mode exists to validate workflow shape before the database design is locked.
+This mode should not present procurement cashflow, supplier invoice hold, or HPP/COGS as real until purchase, supplier invoice, and costing models are intentionally designed.
 
 ---
 
@@ -64,7 +63,7 @@ Workspace UI:
 
 ```txt
 artifacts/pos-system/src/app/workspace/raw-material/
-├─ raw-material-placeholder-workspace.tsx
+├─ raw-material-workspace.tsx
 ├─ raw-material-workspace.constants.ts
 ├─ raw-material-workspace.types.ts
 └─ raw-material-workspace.utils.ts
@@ -74,30 +73,34 @@ Current split boundary:
 
 | File | Responsibility |
 | --- | --- |
-| `raw-material-placeholder-workspace.tsx` | Temporary composition container and interactive local-state workspace |
+| `raw-material-workspace.tsx` | API-first composition container and guarded Raw Material workspace |
 | `raw-material-workspace.constants.ts` | Module icons, badge tone maps, filter option constants |
 | `raw-material-workspace.types.ts` | UI-only draft/filter types |
 | `raw-material-workspace.utils.ts` | UI lookup helpers, numeric parser, filter normalizers |
 
-The placeholder workspace is still temporary. It should keep shrinking as sections become stable.
+The workspace should keep shrinking as sections become stable.
 
 ---
 
 ## 5. API Contract
 
-The API contract is intentionally frontend-only at this stage.
+The API contract is backend-backed for core operational reads and guarded writes.
 
-Example planned endpoints:
+Implemented operational endpoints include:
 
 ```txt
-GET   /api/v3/raw-material/intakes
-POST  /api/v3/raw-material/intakes
-POST  /api/v3/raw-material/weighings
-GET   /api/v3/raw-material/batches
-PATCH /api/v3/raw-material/storage/transfers/:id
-POST  /api/v3/raw-material/processing-runs
-GET   /api/v3/raw-material/kandang/pens
-GET   /api/v3/raw-material/suppliers
+GET    /raw-material/summary
+GET    /raw-material/suppliers
+GET    /raw-material/storage-locations
+GET    /raw-material/intakes
+GET    /raw-material/weighings
+GET    /raw-material/batches
+GET    /raw-material/processing-runs
+GET    /raw-material/pens
+GET    /raw-material/stock-movements
+POST   /raw-material/stock-movements/adjust
+POST   /raw-material/stock-movements/transfer
+POST   /raw-material/stock-movements/consume-processing
 ```
 
 Contract entries define:
@@ -108,10 +111,10 @@ path
 purpose
 requestShape
 responseShape
-persistence: mock-only | future-db
+persistence: backend-backed | backend-backed-with-mock-fallback | future-db
 ```
 
-No API handler should be added until the database design is reviewed.
+Procurement, supplier invoice, and HPP/COGS handlers should stay planned until the matching schema exists.
 
 ---
 
@@ -148,7 +151,7 @@ Later, mock service can be replaced by API client with minimum UI changes.
 
 ## 7. Workspace Refactor Rule
 
-Do not let `raw-material-placeholder-workspace.tsx` grow forever.
+Do not let `raw-material-workspace.tsx` grow forever.
 
 Move code in this order:
 
@@ -167,7 +170,7 @@ Do not extract a component if it hides business rules or makes state flow harder
 Target future shape:
 
 ```txt
-raw-material-placeholder-workspace.tsx
+raw-material-workspace.tsx
 raw-material-workspace-shell.tsx
 raw-material-draft-forms.tsx
 raw-material-preview-actions.tsx
@@ -181,31 +184,31 @@ The current phase has completed steps 1-3.
 
 ## 8. Database Boundary
 
-Do not touch these until the mode is reviewed:
+The current schema already includes operational Raw Material models for:
 
 ```txt
-prisma/schema.prisma
-migration files
-seed scripts
-stock movement mutations
-inventory deduction logic
+suppliers
+storage locations
+intakes
+weighings
+batches / lots
+processing runs
+kandang pens
+stock movements
 ```
 
-Raw material mode will likely need new database concepts later:
+Do not add these finance/procurement concepts until the workflow is reviewed:
 
 ```txt
-supplier source
-intake document
-weighing record
-batch / lot
-storage location
-storage transfer
-processing run
-kandang pen
-quality inspection
+purchase / procurement order
+purchase item
+supplier invoice
+supplier invoice payment
+average material cost
+COGS / HPP accounting ledger
 ```
 
-But these are not approved yet.
+These are not approved yet and must not be represented as real UI.
 
 ---
 
@@ -219,9 +222,9 @@ Before real schema work, complete this checklist:
 3. Mock service returns typed API envelopes.
 4. API contract covers read and write intent.
 5. UI displays contract readiness.
-6. No Prisma/schema/migration touched.
+6. Operational Prisma/schema/migration alignment is documented.
 7. No backend handler pretending to be production.
-8. No inventory mutation exists yet.
+8. Unsupported finance/procurement/HPP surfaces are hidden or clearly planned.
 9. Workspace constants/types/utils are split from temporary composition file.
 ```
 
@@ -247,7 +250,7 @@ kandang snapshot
 supplier filter preview
 ```
 
-Still no database write.
+Still no unsupported finance/procurement database write.
 
 ---
 

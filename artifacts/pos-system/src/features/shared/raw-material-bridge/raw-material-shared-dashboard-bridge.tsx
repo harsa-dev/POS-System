@@ -6,6 +6,8 @@ import {
 } from "@/components/core/business-mode/business-mode-storage";
 import {
   getRawMaterialSharedDashboardContext,
+  rawMaterialApiClient,
+  type RawMaterialSummaryResponse,
   type RawMaterialSharedDashboardId,
   type RawMaterialSharedRow,
 } from "@/features/raw-material/core-system";
@@ -14,6 +16,7 @@ type RawMaterialSharedRenderPolicy = Readonly<{
   renderBaseDashboard: boolean;
   reason: string;
 }>;
+type RawMaterialSharedSource = "loading" | "backend-summary" | "sample-fallback";
 
 const rawMaterialSharedRenderPolicy: Record<
   RawMaterialSharedDashboardId,
@@ -98,8 +101,39 @@ export function RawMaterialSharedDashboardBridge({
   children: ReactNode;
 }) {
   const isRawMaterialMode = useIsRawMaterialMode();
-  const context = getRawMaterialSharedDashboardContext(dashboardId);
+  const [summary, setSummary] = useState<RawMaterialSummaryResponse | null>(null);
+  const [source, setSource] = useState<RawMaterialSharedSource>("loading");
+  const context = getRawMaterialSharedDashboardContext(dashboardId, summary);
   const renderPolicy = rawMaterialSharedRenderPolicy[dashboardId];
+  const sourceLabel = source === "backend-summary"
+    ? "Backend summary"
+    : source === "loading"
+      ? "Loading summary"
+      : "Sample fallback";
+
+  useEffect(() => {
+    if (!isRawMaterialMode) {
+      setSummary(null);
+      setSource("loading");
+      return;
+    }
+
+    const controller = new AbortController();
+
+    rawMaterialApiClient
+      .getSummary(controller.signal)
+      .then((data) => {
+        setSummary(data);
+        setSource("backend-summary");
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setSummary(null);
+        setSource("sample-fallback");
+      });
+
+    return () => controller.abort();
+  }, [isRawMaterialMode]);
 
   if (!isRawMaterialMode) {
     return <>{children}</>;
@@ -119,7 +153,7 @@ export function RawMaterialSharedDashboardBridge({
             </p>
           </div>
           <div className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-            Preview data
+            {sourceLabel}
           </div>
         </div>
 

@@ -12,6 +12,7 @@ import {
   rawMaterialSuppliers,
   rawMaterialWeighings,
 } from "./raw-material.mock-data";
+import type { RawMaterialSummaryResponse } from "./raw-material.api-client";
 import type { RawMaterialScaleFeatureStatus } from "./raw-material.types";
 
 export type RawMaterialSharedDashboardId =
@@ -320,7 +321,191 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
   },
 };
 
-export function getRawMaterialSharedDashboardContext(id: RawMaterialSharedDashboardId) {
+function distributionRows(
+  title: string,
+  rows: readonly { key: string; count: number }[],
+): readonly RawMaterialSharedRow[] {
+  if (rows.length === 0) {
+    return [{
+      title,
+      primary: "No persisted distribution data yet",
+      secondary: "The backend summary returned an empty distribution for this surface.",
+      status: "planned",
+    }];
+  }
+
+  return rows.map((row) => ({
+    title: `${title}: ${row.key.toLowerCase().replaceAll("_", " ")}`,
+    primary: `${row.count} records`,
+    secondary: "Persisted Raw Material summary distribution",
+    status: row.key.includes("REJECTED") || row.key.includes("CRITICAL") ? "blocked" : row.key.includes("INSPECTION") || row.key.includes("MONITORING") ? "review" : "healthy",
+  }));
+}
+
+function latestActivityRow(summary: RawMaterialSummaryResponse): RawMaterialSharedRow {
+  if (!summary.latestActivity) {
+    return {
+      title: "Latest activity",
+      primary: "No persisted Raw Material activity yet",
+      secondary: "Create intakes, batches, processing runs, or stock movements to populate this row.",
+      status: "planned",
+    };
+  }
+
+  return {
+    title: "Latest activity",
+    primary: summary.latestActivity.label,
+    secondary: `${summary.latestActivity.kind} at ${summary.latestActivity.occurredAt}`,
+    status: "healthy",
+  };
+}
+
+function createSummaryContext(id: RawMaterialSharedDashboardId, summary: RawMaterialSummaryResponse): RawMaterialSharedDashboardContext | null {
+  if (id === "overview") {
+    return {
+      id,
+      title: "Raw Material overview",
+      description: "Persisted intake, batch, storage, processing, kandang, and stock movement summary for Raw Material mode.",
+      metrics: [
+        { label: "Accepted material", value: formatRawMaterialWeight(summary.intakes.acceptedQuantity), helper: `${summary.intakes.acceptanceRate.toFixed(1)}% acceptance rate` },
+        { label: "Remaining stock", value: formatRawMaterialWeight(summary.batches.remainingQuantity), helper: `${summary.batches.active} active batches` },
+        { label: "Storage usage", value: `${summary.storage.usageRate.toFixed(1)}%`, helper: `${formatRawMaterialWeight(summary.storage.availableKg)} available` },
+      ],
+      rows: [
+        latestActivityRow(summary),
+        ...distributionRows("Intake quality", summary.intakes.qualityDistribution),
+        ...distributionRows("Batch quality", summary.batches.qualityDistribution),
+      ].slice(0, 6),
+      bridgeNote: "This bridge is backed by the Raw Material summary API. Finance, payable, and costing records are still planned.",
+    };
+  }
+
+  if (id === "sales") {
+    return {
+      id,
+      title: "Raw Material operational analytics",
+      description: "Sales analytics becomes persisted operational analytics for accepted volume, rejected volume, and processing yield.",
+      metrics: [
+        { label: "Accepted volume", value: formatRawMaterialWeight(summary.intakes.acceptedQuantity), helper: `${summary.intakes.total} persisted intakes` },
+        { label: "Rejected volume", value: formatRawMaterialWeight(summary.intakes.rejectedQuantity), helper: "Quality loss volume, not sales returns" },
+        { label: "Processing yield", value: `${summary.processing.yieldRate.toFixed(1)}%`, helper: `${summary.processing.totalRuns} processing runs` },
+      ],
+      rows: [
+        ...distributionRows("Intake quality", summary.intakes.qualityDistribution),
+        ...distributionRows("Processing status", summary.processing.statusDistribution),
+      ].slice(0, 6),
+      bridgeNote: "Raw Material has no sales revenue context here; this surface shows persisted operational throughput only.",
+    };
+  }
+
+  if (id === "customers") {
+    return {
+      id,
+      title: "Raw Material supplier partners",
+      description: "Customers and partners becomes supplier partner control for Raw Material mode.",
+      metrics: [
+        { label: "Suppliers", value: String(summary.suppliers.total), helper: `${summary.suppliers.active} active suppliers` },
+        { label: "Inactive suppliers", value: String(summary.suppliers.inactive), helper: "Persisted inactive supplier count" },
+        { label: "Reliability", value: `${summary.suppliers.averageReliabilityScore.toFixed(1)}%`, helper: "Average persisted reliability score" },
+      ],
+      rows: [
+        { title: "Active suppliers", primary: `${summary.suppliers.active} active`, secondary: `${summary.suppliers.inactive} inactive`, status: summary.suppliers.active > 0 ? "healthy" : "planned" },
+        latestActivityRow(summary),
+      ],
+      bridgeNote: "This is supplier/partner context only. Customer CRM remains outside Raw Material mode.",
+    };
+  }
+
+  if (id === "inventory") {
+    return {
+      id,
+      title: "Raw Material inventory",
+      description: "Persisted batch, storage, quality, and stock movement state for Raw Material inventory control.",
+      metrics: [
+        { label: "Active lots", value: String(summary.batches.active), helper: `${formatRawMaterialWeight(summary.batches.remainingQuantity)} remaining` },
+        { label: "Storage usage", value: `${summary.storage.usageRate.toFixed(1)}%`, helper: `${summary.storage.activeLocations} active storage locations` },
+        { label: "Stock movements", value: String(summary.stockMovements.total), helper: "Persisted movement ledger rows" },
+      ],
+      rows: [
+        ...distributionRows("Batch quality", summary.batches.qualityDistribution),
+        ...summary.stockMovements.byType.map((row) => ({
+          title: `Movement: ${row.key.toLowerCase().replaceAll("_", " ")}`,
+          primary: `${row.count} records`,
+          secondary: `${formatRawMaterialWeight(row.quantity)} moved`,
+          status: "healthy" as const,
+        })),
+      ].slice(0, 6),
+      bridgeNote: "Inventory bridge is read-only here; stock write actions remain in the guarded Raw Material workspace.",
+    };
+  }
+
+  if (id === "shift-reports") {
+    return {
+      id,
+      title: "Raw Material shift activity",
+      description: "Shift reporting maps to persisted weighing, receiving, processing, and latest activity context.",
+      metrics: [
+        { label: "Weighing records", value: String(summary.weighings.total), helper: `${formatRawMaterialWeight(summary.weighings.netKg)} net measured` },
+        { label: "Process runs", value: String(summary.processing.totalRuns), helper: `${formatRawMaterialWeight(summary.processing.inputQuantity)} input` },
+        { label: "Latest activity", value: summary.latestActivity?.kind ?? "none", helper: summary.latestActivity?.label ?? "No persisted activity yet" },
+      ],
+      rows: [
+        latestActivityRow(summary),
+        ...distributionRows("Processing status", summary.processing.statusDistribution),
+      ].slice(0, 6),
+      bridgeNote: "This surface is operational activity only; attendance and payroll stay unsupported for Raw Material.",
+    };
+  }
+
+  if (id === "team-management" || id === "employee-performance") {
+    return {
+      id,
+      title: id === "team-management" ? "Raw Material responsibility context" : "Raw Material operational performance",
+      description: "Raw Material exposes operational responsibility signals without turning shared HR surfaces into payroll logic.",
+      metrics: [
+        { label: "Kandang watch", value: String(summary.kandang.healthDistribution.find((row) => row.key === "MONITORING")?.count ?? 0), helper: "Pens under monitoring" },
+        { label: "Critical pens", value: String(summary.kandang.healthDistribution.find((row) => row.key === "CRITICAL")?.count ?? 0), helper: "Pens requiring attention" },
+        { label: "Completed runs", value: String(summary.processing.statusDistribution.find((row) => row.key === "COMPLETED")?.count ?? 0), helper: "Persisted completed processing runs" },
+      ],
+      rows: [
+        ...distributionRows("Kandang health", summary.kandang.healthDistribution),
+        ...distributionRows("Processing status", summary.processing.statusDistribution),
+      ].slice(0, 6),
+      bridgeNote: "This bridge is read-only operational context. HR records, contracts, attendance, and payroll remain unsupported.",
+    };
+  }
+
+  if (id === "approvals") {
+    const inspectionBatchesCount = summary.batches.qualityDistribution.find((row) => row.key === "INSPECTION")?.count ?? 0;
+    const criticalPensCount = summary.kandang.healthDistribution.find((row) => row.key === "CRITICAL")?.count ?? 0;
+
+    return {
+      id,
+      title: "Raw Material review queue",
+      description: "Approvals becomes a read-only review queue for persisted quality and kandang attention signals.",
+      metrics: [
+        { label: "Inspection batches", value: String(inspectionBatchesCount), helper: "Persisted batches awaiting quality decision" },
+        { label: "Critical pens", value: String(criticalPensCount), helper: "Persisted kandang health signals" },
+        { label: "Near expiry", value: String(summary.batches.nearExpiry), helper: "Active batches expiring within 14 days" },
+      ],
+      rows: [
+        ...distributionRows("Batch quality", summary.batches.qualityDistribution),
+        ...distributionRows("Kandang health", summary.kandang.healthDistribution),
+      ].slice(0, 6),
+      bridgeNote: "Approval mutations are not implemented here; use Raw Material workflow status actions for guarded writes.",
+    };
+  }
+
+  return null;
+}
+
+export function getRawMaterialSharedDashboardContext(
+  id: RawMaterialSharedDashboardId,
+  summary?: RawMaterialSummaryResponse | null,
+) {
+  const summaryContext = summary ? createSummaryContext(id, summary) : null;
+
+  if (summaryContext) return summaryContext;
   return contexts[id];
 }
 
