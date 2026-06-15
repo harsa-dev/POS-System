@@ -34,6 +34,18 @@ function normalizeList(values) {
   return [...values].sort((a, b) => a.localeCompare(b));
 }
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizePolicyRoleEntry(entry) {
+  return entry
+    .trim()
+    .replaceAll('"', "")
+    .replaceAll("'", "")
+    .replace(/^Role\./, "");
+}
+
 function extractTypeBlock(content, typeName) {
   const typePattern = new RegExp(`export\\s+type\\s+${typeName}(?:<[^>]+>)?\\s*=\\s*{([\\s\\S]*?)\\n};`);
   const match = content.match(typePattern);
@@ -148,17 +160,31 @@ function assertProbeHistory({ snapshot, backendProbeHistory, probeMigration, fro
 }
 
 function extractRolesFromPolicy(content, capability) {
-  const policyPattern = new RegExp(`"${capability.replaceAll(".", "\\.")}"\\s*:\\s*\\[([^\\]]*)\\]`);
-  const match = content.match(policyPattern);
+  const escapedCapability = escapeRegex(capability);
+  const directMapPattern = new RegExp(`"${escapedCapability}"\\s*:\\s*\\[([^\\]]*)\\]`);
+  const directMatch = content.match(directMapPattern);
 
-  if (!match) {
-    fail(`Missing policy role list for capability: ${capability}`);
+  if (directMatch) {
+    return directMatch[1]
+      .split(",")
+      .map(normalizePolicyRoleEntry)
+      .filter(Boolean);
   }
 
-  return match[1]
-    .split(",")
-    .map((entry) => entry.trim().replaceAll('"', ""))
-    .filter(Boolean);
+  const capabilityPolicyPattern = new RegExp(`capability\\s*:\\s*["']${escapedCapability}["'][\\s\\S]*?allowedRoles\\s*:\\s*([A-Z0-9_]+)`);
+  const capabilityPolicyMatch = content.match(capabilityPolicyPattern);
+  const roleListName = capabilityPolicyMatch?.[1] ?? "INTERNAL_MONITORING_READ_ROLES";
+  const roleListPattern = new RegExp(`(?:export\\s+)?const\\s+${roleListName}\\s*:[^=]*=\\s*\\[([^\\]]*)\\]`);
+  const roleListMatch = content.match(roleListPattern);
+
+  if (roleListMatch) {
+    return roleListMatch[1]
+      .split(",")
+      .map(normalizePolicyRoleEntry)
+      .filter(Boolean);
+  }
+
+  fail(`Missing policy role list for capability: ${capability}`);
 }
 
 const snapshot = readJson(snapshotPath);
