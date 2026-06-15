@@ -8,6 +8,7 @@ import type {
   InternalMonitoringRouteInventoryItemDto,
   InternalMonitoringRuntimeProbeDto,
   InternalMonitoringSource,
+  InternalSystemProbeHistoryDto,
 } from "@/lib/api/internal-monitoring.dto";
 
 import {
@@ -26,6 +27,7 @@ export type InternalMonitoringDataSourceResult = InternalMonitoringControlRoomDt
   contractReadiness: InternalMonitoringApiImplementationStepDto[];
   dataIntegrityChecks: InternalMonitoringDataIntegrityCheckDto[];
   mutationReadinessContracts: InternalMonitoringMutationReadinessContractDto[];
+  probeHistory: InternalSystemProbeHistoryDto;
   sectionFallbacks: string[];
 };
 
@@ -93,11 +95,11 @@ const mockDataIntegrityChecks: InternalMonitoringDataIntegrityCheckDto[] = [
     detail: "Fallback mode cannot verify database connectivity or API runtime latency.",
   },
   {
-    id: "no-prisma-promotion",
-    check: "No Prisma schema promotion",
-    status: "pass",
-    severity: "info",
-    detail: "Internal monitoring repository is mock-backed and does not add persistence models.",
+    id: "probe-history-persistence",
+    check: "Probe history persistence",
+    status: "watch",
+    severity: "warning",
+    detail: "Probe history requires internal_system_probes migration before persisted history can be read.",
   },
   {
     id: "mutation-blocker",
@@ -171,6 +173,25 @@ const mockMutationReadinessContracts: InternalMonitoringMutationReadinessContrac
   },
 ];
 
+function createMockProbeHistory(): InternalSystemProbeHistoryDto {
+  return {
+    generatedAt: new Date().toISOString(),
+    items: [],
+    summary: {
+      total: 0,
+      pass: 0,
+      watch: 0,
+      fail: 0,
+      retentionDays: 14,
+      persistenceStatus: "schema-missing",
+      detail: "Probe history is empty until the internal_system_probes migration is applied and snapshots are written.",
+    },
+    filters: {
+      limit: 50,
+    },
+  };
+}
+
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Internal monitoring API section is unavailable.";
 }
@@ -214,6 +235,7 @@ export function getInternalMonitoringMockControlRoomData(
     contractReadiness: apiImplementationSteps,
     dataIntegrityChecks: mockDataIntegrityChecks,
     mutationReadinessContracts: mockMutationReadinessContracts,
+    probeHistory: createMockProbeHistory(),
     sectionFallbacks,
   };
 }
@@ -244,6 +266,7 @@ export async function loadInternalMonitoringControlRoomData(): Promise<InternalM
     contractReadiness,
     dataIntegrityChecks,
     mutationReadinessContracts,
+    probeHistory,
   ] = await Promise.all([
     loadSection("health-summary", () => internalMonitoringApi.getControlRoom(), mock),
     loadSection("route-inventory", () => internalMonitoringApi.getRouteInventory(), mockRouteInventory),
@@ -254,6 +277,7 @@ export async function loadInternalMonitoringControlRoomData(): Promise<InternalM
       () => internalMonitoringApi.getMutationReadinessContracts(),
       mockMutationReadinessContracts,
     ),
+    loadSection("probe-history", () => internalMonitoringApi.getProbeHistory({ limit: 25 }), createMockProbeHistory()),
   ]);
 
   return {
@@ -264,6 +288,7 @@ export async function loadInternalMonitoringControlRoomData(): Promise<InternalM
     contractReadiness,
     dataIntegrityChecks,
     mutationReadinessContracts,
+    probeHistory,
     sectionFallbacks: fallbackMessages,
   };
 }
