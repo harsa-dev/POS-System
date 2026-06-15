@@ -82,7 +82,7 @@ function assertEndpoint({ snapshotEndpoint, frontendApi, backendRoute, backendSe
   });
 }
 
-function assertResponseEnvelope({ snapshot, frontendDto, backendDto, frontendApi, frontendDataSource, backendResponseHelper, backendRoute }) {
+function assertResponseEnvelope({ snapshot, frontendDto, backendDto, frontendApi, frontendDataSource, backendResponseHelper, backendPolicy, backendRoute }) {
   for (const field of snapshot.responseEnvelope.successFields) {
     assertDtoFields({ label: "frontend success envelope", content: frontendDto, typeName: "InternalMonitoringApiSuccessEnvelopeDto", fields: [field] });
     assertDtoFields({ label: "backend success envelope", content: backendDto, typeName: "InternalMonitoringApiSuccessEnvelopeDto", fields: [field] });
@@ -108,7 +108,8 @@ function assertResponseEnvelope({ snapshot, frontendDto, backendDto, frontendApi
   assertContains({ label: "backend route uses internal monitoring envelope helper", content: backendRoute, expected: "internalMonitoringSuccessResponse" });
   assertContains({ label: "backend route no direct generic success response", content: backendRoute, expected: "internal-monitoring-response.js" });
   assertContains({ label: "backend response helper read-only value", content: backendResponseHelper, expected: "readOnly: true" });
-  assertContains({ label: "backend response helper capability value", content: backendResponseHelper, expected: snapshot.responseEnvelope.capabilityValue });
+  assertContains({ label: "backend response helper policy capability indirection", content: backendResponseHelper, expected: "capability: INTERNAL_MONITORING_POLICY.capability" });
+  assertContains({ label: "backend policy capability value", content: backendPolicy, expected: snapshot.responseEnvelope.capabilityValue });
 }
 
 function assertRuntimeProbes({ snapshot, backendRuntimeProbes, backendService, backendRoute, frontendDto, frontendDataSource }) {
@@ -189,7 +190,7 @@ try {
     assertDtoFields({ label: "backend DTO", content: backendDto, typeName, fields });
   }
 
-  assertResponseEnvelope({ snapshot, frontendDto, backendDto, frontendApi, frontendDataSource, backendResponseHelper, backendRoute });
+  assertResponseEnvelope({ snapshot, frontendDto, backendDto, frontendApi, frontendDataSource, backendResponseHelper, backendPolicy, backendRoute });
   assertRuntimeProbes({ snapshot, backendRuntimeProbes, backendService, backendRoute, frontendDto, frontendDataSource });
   assertProbeHistory({ snapshot, backendProbeHistory, probeMigration, frontendApi, frontendDataSource, controlRoom });
 
