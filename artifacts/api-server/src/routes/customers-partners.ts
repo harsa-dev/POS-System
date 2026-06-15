@@ -18,6 +18,8 @@ const PLANNED_MODE_REASON =
   "Customers & Partners is not operational for planned service/custom-business mode yet.";
 
 type PartnerKind = "customer" | "supplier";
+type ExportKind = "customers" | "suppliers";
+type ExportFormat = "csv" | "json";
 
 type ContactInput = {
   name: string;
@@ -139,6 +141,19 @@ function parseContactInput(body: unknown): ContactInput {
 function parseSearch(value: unknown) {
   const search = getText(value);
   return search.length > 80 ? search.slice(0, 80) : search;
+}
+
+function parseExportKind(value: unknown): ExportKind {
+  const kind = getText(value).toLowerCase();
+  if (kind === "suppliers") return "suppliers";
+  return "customers";
+}
+
+function parseExportFormat(value: unknown): ExportFormat {
+  const format = getText(value).toLowerCase();
+  if (!format || format === "csv") return "csv";
+  if (format === "json") return "json";
+  throw new CustomersPartnersInputError("Export format must be csv or json.");
 }
 
 async function ensureCustomersPartnersSchema() {
@@ -307,6 +322,58 @@ async function createContact(kind: PartnerKind, businessId: string, input: Conta
   return rows[0];
 }
 
+async function updateContact(kind: PartnerKind, businessId: string, id: string, input: ContactInput) {
+  if (kind === "customer") {
+    await prisma.$executeRaw`
+      UPDATE "SharedCustomerProfile"
+      SET
+        "name" = ${input.name},
+        "phone" = ${input.phone},
+        "email" = ${input.email},
+        "address" = ${input.address},
+        "updatedAt" = now()
+      WHERE "id" = ${id}
+        AND "businessId" = ${businessId}
+        AND "isActive" = true
+    `;
+
+    const rows = await prisma.$queryRaw<CustomerRow[]>`
+      SELECT *
+      FROM "SharedCustomerProfile"
+      WHERE "id" = ${id} AND "businessId" = ${businessId} AND "isActive" = true
+      LIMIT 1
+    `;
+    return rows[0] ?? null;
+  }
+
+  await prisma.$executeRaw`
+    UPDATE "SharedBusinessPartner"
+    SET
+      "name" = ${input.name},
+      "phone" = ${input.phone},
+      "email" = ${input.email},
+      "address" = ${input.address},
+      "updatedAt" = now()
+    WHERE "id" = ${id}
+      AND "businessId" = ${businessId}
+      AND "partnerType" = 'SUPPLIER'
+      AND "isActive" = true
+  `;
+
+  const rows = await prisma.$queryRaw<SupplierRow[]>`
+    SELECT
+      "id", "businessId", "name", "phone", "email", "address",
+      "totalPurchases", "transactions", "isActive", "createdAt", "updatedAt"
+    FROM "SharedBusinessPartner"
+    WHERE "id" = ${id}
+      AND "businessId" = ${businessId}
+      AND "partnerType" = 'SUPPLIER'
+      AND "isActive" = true
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
 async function softDeleteContact(kind: PartnerKind, businessId: string, id: string) {
   if (kind === "customer") {
     const result = await prisma.$executeRaw`
@@ -322,6 +389,33 @@ async function softDeleteContact(kind: PartnerKind, businessId: string, id: stri
     SET "isActive" = false, "updatedAt" = now()
     WHERE "id" = ${id} AND "businessId" = ${businessId} AND "partnerType" = 'SUPPLIER' AND "isActive" = true
   `;
+}
+
+function csvValue(value: unknown) {
+  if (value === null || value === undefined) return "";
+  const text = value instanceof Date ? value.toISOString() : String(value);
+  if (!/[",\n\r]/.test(text)) return text;
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+function buildContactsCsv(kind: ExportKind, rows: Array<CustomerRow | SupplierRow>) {
+  const amountHeader = kind === "customers" ? "Total Spending" : "Total Purchases";
+  const headers = ["ID", "Name", "Phone", "Email", "Address", amountHeader, "Transactions", "Updated At"];
+  const body = rows.map((row) => {
+    const amount = "totalSpending" in row ? row.totalSpending : row.totalPurchases;
+    return [
+      row.id,
+      row.name,
+      row.phone ?? "",
+      row.email ?? "",
+      row.address ?? "",
+      amount,
+      row.transactions,
+      row.updatedAt,
+    ].map(csvValue).join(",");
+  });
+
+  return [headers.map(csvValue).join(","), ...body].join("\n");
 }
 
 function respondInputError(res: Parameters<typeof errorResponse>[0], error: CustomersPartnersInputError) {
@@ -384,6 +478,49 @@ router.get("/customers-partners-dashboard", async (req, res) => {
   }
 });
 
+router.get("/customers-partners/export", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
+    const businessContext = await requireBusinessContextForUser(user);
+    const caps = capabilities(user.role, businessContext.businessMode, businessContext.businessId);
+    if (!caps.canExport) {
+      return errorResponse(res, { status: 403, code: errorCodes.forbidden, message: caps.plannedReason ?? "Export is not available." });
+    }
+
+    await ensureCustomersPartnersSchema();
+    const search = parseSearch(req.query.search);
+    const kind = parseExportKind(req.query.kind);
+    const format = parseExportFormat(req.query.format);
+    const rows = kind === "customers"
+      ? await listCustomers(businessContext.businessId, search)
+      : await listSuppliers(businessContext.businessId, search);
+    const exportedAt = new Date().toISOString();
+
+    if (format === "json") {
+      return successResponse(res, {
+        data: {
+          kind,
+          exportedAt,
+          rowCount: rows.length,
+          rows,
+        },
+      });
+    }
+
+    const csv = buildContactsCsv(kind, rows);
+    const filename = `${kind}-${exportedAt.slice(0, 10)}.csv`;
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("X-Exported-At", exportedAt);
+    res.setHeader("X-Row-Count", String(rows.length));
+    return res.status(200).send(csv);
+  } catch (error) {
+    if (error instanceof CustomersPartnersInputError) return respondInputError(res, error);
+    return handleApiError(res, error);
+  }
+});
+
 router.post("/customers-partners/customers", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
@@ -408,6 +545,42 @@ router.post("/customers-partners/suppliers", async (req, res) => {
     await ensureCustomersPartnersSchema();
     const supplier = await createContact("supplier", businessContext.businessId, parseContactInput(req.body));
     return successResponse(res, { status: 201, data: supplier, message: "Supplier created." });
+  } catch (error) {
+    if (error instanceof CustomersPartnersInputError) return respondInputError(res, error);
+    return handleApiError(res, error);
+  }
+});
+
+router.patch("/customers-partners/customers/:id", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
+    if (!user) return;
+    const businessContext = await requireBusinessContextForUser(user);
+    requireSupportedMode(businessContext.businessMode);
+    await ensureCustomersPartnersSchema();
+    const customer = await updateContact("customer", businessContext.businessId, req.params.id, parseContactInput(req.body));
+    if (!customer) {
+      return errorResponse(res, { status: 404, code: errorCodes.notFound, message: "Customer not found." });
+    }
+    return successResponse(res, { data: customer, message: "Customer updated." });
+  } catch (error) {
+    if (error instanceof CustomersPartnersInputError) return respondInputError(res, error);
+    return handleApiError(res, error);
+  }
+});
+
+router.patch("/customers-partners/suppliers/:id", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
+    if (!user) return;
+    const businessContext = await requireBusinessContextForUser(user);
+    requireSupportedMode(businessContext.businessMode);
+    await ensureCustomersPartnersSchema();
+    const supplier = await updateContact("supplier", businessContext.businessId, req.params.id, parseContactInput(req.body));
+    if (!supplier) {
+      return errorResponse(res, { status: 404, code: errorCodes.notFound, message: "Supplier not found." });
+    }
+    return successResponse(res, { data: supplier, message: "Supplier updated." });
   } catch (error) {
     if (error instanceof CustomersPartnersInputError) return respondInputError(res, error);
     return handleApiError(res, error);
