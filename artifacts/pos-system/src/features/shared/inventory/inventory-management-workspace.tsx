@@ -15,6 +15,7 @@ import {
   type InventoryManagementCapabilitiesDto,
 } from "@/lib/api/inventory-api";
 
+import { InventoryBackendReportPanel } from "./inventory-backend-report-panel";
 import { InventoryCostSnapshotRepairPanel } from "./inventory-cost-snapshot-repair-panel";
 import { InventoryManagementDashboard } from "./inventory-management-dashboard";
 
@@ -164,6 +165,7 @@ export function InventoryManagementWorkspace() {
         </div>
       </DashboardPanel>
 
+      <InventoryBackendReportPanel />
       <InventoryCostSnapshotRepairPanel />
       <InventoryManagementDashboard />
     </div>
