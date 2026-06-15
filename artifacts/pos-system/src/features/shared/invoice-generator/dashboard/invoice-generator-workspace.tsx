@@ -19,11 +19,11 @@ import { InvoiceHistoryPanel } from "./invoice-history-panel";
 function getGuardMessage(capabilities: InvoiceCapabilitiesDto | null) {
   if (!capabilities) return "Loading invoice permissions...";
   if (capabilities.plannedReason) return capabilities.plannedReason;
-  if (!capabilities.canCreate && !capabilities.canUpdate) {
-    return "Your role can view shared operations, but invoice creation and editing require a management role.";
-  }
   if (!capabilities.canView) {
     return "Your role does not have access to the invoice generator.";
+  }
+  if (!capabilities.canCreate && !capabilities.canUpdate) {
+    return "Your role can view invoice history, but invoice creation and editing require a management role.";
   }
   return null;
 }
@@ -58,18 +58,27 @@ export function InvoiceGeneratorWorkspace() {
   }, []);
 
   const guardMessage = getGuardMessage(capabilities);
-  const canUseDashboard = Boolean(
+  const canViewHistory = Boolean(capabilities?.canView && !capabilities.isPlannedMode);
+  const canUseEditor = Boolean(
     capabilities?.canView &&
       capabilities.canCreate &&
       capabilities.canUpdate &&
       !capabilities.isPlannedMode,
   );
 
-  if (canUseDashboard && capabilities) {
+  if (capabilities && canViewHistory) {
     return (
       <div className="space-y-6">
         <InvoiceHistoryPanel capabilities={capabilities} />
-        <InvoiceGeneratorDashboard />
+        {canUseEditor ? (
+          <InvoiceGeneratorDashboard />
+        ) : (
+          <DashboardPanel title="Invoice Editor Locked">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              {guardMessage ?? "Invoice history is available, but invoice creation and editing require a management role."}
+            </div>
+          </DashboardPanel>
+        )}
       </div>
     );
   }
@@ -77,7 +86,7 @@ export function InvoiceGeneratorWorkspace() {
   return (
     <DashboardShell
       title="Invoice Generator"
-      description="Create, save, and print standalone invoices for this business."
+      description="Create, save, search, export, and print standalone invoices for this business."
     >
       <DashboardPanel title="Invoice Access Guard">
         <div className="space-y-4 p-4">
