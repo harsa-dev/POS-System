@@ -12,7 +12,7 @@ import { successResponse } from "../lib/responses/success-response.js";
 
 const router = Router();
 
-type LifecycleStatus = InvoiceStatus.SENT | InvoiceStatus.PAID;
+type LifecycleStatus = "SENT" | "PAID";
 
 function isPlannedInvoiceMode(businessMode: string) {
   return businessMode === "custom-business";
