@@ -1,5 +1,5 @@
 import { getCurrentBusinessMode } from "@/components/core/business-mode/business-mode-storage";
-import { CashierShiftReportsDashboard } from "@/features/shared/cashier-shift-reports";
+import { CashierShiftReportsWorkspace } from "@/features/shared/cashier-shift-reports";
 import { RawMaterialSharedDashboardBridge } from "@/features/shared/raw-material-bridge";
 import { RetailSharedDashboardBridge } from "@/features/shared/retail-bridge";
 import { renderRetailDashboardMode } from "@/features/shared/retail-bridge/retail-mode-renderer";
@@ -12,7 +12,7 @@ export default function CashierShiftReportsPage() {
   return (
     <RawMaterialSharedDashboardBridge dashboardId="shift-reports">
       <RetailSharedDashboardBridge dashboardId="shift-reports">
-        <CashierShiftReportsDashboard />
+        <CashierShiftReportsWorkspace />
       </RetailSharedDashboardBridge>
     </RawMaterialSharedDashboardBridge>
   );
