@@ -2,7 +2,8 @@ export type PlatformAdminCapability =
   | "platform-admin.internal-monitoring.read"
   | "platform-admin.internal-monitoring.routes.read"
   | "platform-admin.internal-monitoring.contracts.read"
-  | "platform-admin.internal-monitoring.integrity.read";
+  | "platform-admin.internal-monitoring.integrity.read"
+  | "platform-admin.admin-role-console.read";
 
 export type PlatformAdminRuntimeRole =
   | "OWNER"
@@ -18,6 +19,7 @@ const platformAdminCapabilityRoles: Record<PlatformAdminCapability, string[]> = 
   "platform-admin.internal-monitoring.routes.read": ["OWNER", "ADMIN"],
   "platform-admin.internal-monitoring.contracts.read": ["OWNER", "ADMIN"],
   "platform-admin.internal-monitoring.integrity.read": ["OWNER", "ADMIN"],
+  "platform-admin.admin-role-console.read": ["OWNER", "ADMIN"],
 };
 
 export function getPlatformAdminAllowedRoles(capability: PlatformAdminCapability) {
