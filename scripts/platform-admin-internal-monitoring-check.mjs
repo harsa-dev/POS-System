@@ -228,7 +228,9 @@ const checks = [
   () => assertContains({ label: "browser smoke forbidden check", content: files.browserSmoke, expected: "MANAGER sees platform admin restricted panel" }),
   () => assertContains({ label: "browser smoke mutation check", content: files.browserSmoke, expected: "no internal mutation controls are visible" }),
   () => assertContains({ label: "contracts mock", content: files.contractsMock, expected: "/api/internal/health/summary" }),
-  () => assertContains({ label: "upgrade mock", content: files.upgradeMock, expected: "releaseGates" }),
+  () => assertContains({ label: "upgrade mock API rollout plans", content: files.upgradeMock, expected: "apiRolloutPlans" }),
+  () => assertContains({ label: "upgrade mock observability targets", content: files.upgradeMock, expected: "observabilityTargets" }),
+  () => assertContains({ label: "upgrade mock runbook steps", content: files.upgradeMock, expected: "internalRunbookSteps" }),
   () => assertNoInternalMutationCalls(),
 ];
 
