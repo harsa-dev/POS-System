@@ -12,6 +12,14 @@ type PlatformAdminRouteUser = {
   role: string;
 } | null;
 
+function getCapabilityLabel(capability: PlatformAdminCapability) {
+  if (capability === "platform-admin.admin-role-console.read") {
+    return "Admin Role Console";
+  }
+
+  return "Internal Monitoring";
+}
+
 function PlatformAdminForbiddenPanel({
   capability,
   role,
@@ -19,6 +27,8 @@ function PlatformAdminForbiddenPanel({
   capability: PlatformAdminCapability;
   role?: string | null;
 }) {
+  const capabilityLabel = getCapabilityLabel(capability);
+
   return (
     <div className="flex min-h-[55vh] items-center justify-center p-6">
       <section className="w-full max-w-2xl rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900 shadow-sm">
@@ -26,11 +36,11 @@ function PlatformAdminForbiddenPanel({
           Platform Admin Restricted
         </p>
         <h1 className="mt-3 text-2xl font-bold tracking-tight">
-          Internal Monitoring requires platform admin access.
+          {capabilityLabel} requires platform admin access.
         </h1>
         <p className="mt-3 text-sm leading-6 text-amber-800">
-          This dashboard exposes internal platform health, route inventory, API readiness,
-          and schema risk. Your current role {role ? `(${role})` : ""} is not allowed to
+          This dashboard exposes internal platform controls, readiness planning, route access,
+          or policy-sensitive diagnostics. Your current role {role ? `(${role})` : ""} is not allowed to
           access capability <span className="font-mono font-semibold">{capability}</span>.
         </p>
         <p className="mt-4 text-xs font-semibold text-amber-700">
