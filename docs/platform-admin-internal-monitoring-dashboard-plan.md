@@ -10,7 +10,7 @@ This plan is scoped to one dashboard only:
 
 It does not implement every Platform Admin dashboard. Internal Monitoring is sensitive because it exposes platform health, route inventory, API readiness, schema risk, release gates, incidents, and future admin action readiness.
 
-Current phase status: read-only dashboard scope is complete through real runtime probe collection without Prisma persistence.
+Current phase status: read-only dashboard scope is complete through real runtime probe collection and persistence planning. Prisma persistence is planned but not promoted yet.
 
 ## Current frontend files
 
@@ -89,6 +89,37 @@ Database connectivity uses a read-only `pg` probe through `DATABASE_URL` and run
 
 This does not add Prisma models, background jobs, scheduled probes, or historical persistence. Runtime probes are live request-time diagnostics only.
 
+## Runtime probe persistence plan
+
+Persistence is planned in:
+
+```txt
+docs/platform-admin-internal-monitoring-persistence-plan.md
+```
+
+Persistence gate command:
+
+```bash
+pnpm platform-admin:persistence-plan
+```
+
+Current persistence status:
+
+```txt
+InternalSystemProbe model: planned, not implemented
+Probe history endpoint: planned, not implemented
+Scheduled collector: planned, not implemented
+Retention policy: planned at 14 days
+```
+
+The planned history endpoint is:
+
+```txt
+GET /api/internal/probes/history
+```
+
+No Prisma model should be added until the persistence plan gate passes and the migration review is explicitly approved.
+
 ## Frontend data source contract
 
 The dashboard uses a `mock/api/fallback` source model:
@@ -135,6 +166,12 @@ Final QA checklist:
 docs/platform-admin-internal-monitoring-final-qa.md
 ```
 
+Persistence plan:
+
+```txt
+docs/platform-admin-internal-monitoring-persistence-plan.md
+```
+
 ## Required commands
 
 ```bash
@@ -142,6 +179,7 @@ pnpm platform-admin:check
 pnpm platform-admin:policy-parity
 pnpm platform-admin:contract-parity
 pnpm platform-admin:final-qa
+pnpm platform-admin:persistence-plan
 pnpm business-mode:check
 pnpm --filter @workspace/api-server run typecheck:restaurant
 pnpm --filter @workspace/pos-system run typecheck:restaurant
@@ -193,6 +231,7 @@ IM-15 Internal Monitoring runtime status polish               Done
 IM-16 Internal Monitoring browser smoke runtime assertions    Done
 IM-17 Internal Monitoring final QA checklist                  Done
 IM-18 Real runtime probe collector                            Done
+IM-19 InternalSystemProbe persistence planning                Done
 ```
 
 ## IM-18 implemented
@@ -210,16 +249,31 @@ IM-18 Real runtime probe collector                            Done
 - contract parity checks runtime probe collector and DTO fields
 ```
 
+## IM-19 implemented
+
+```txt
+- persistence plan for InternalSystemProbe
+- proposed model fields and indexes
+- retention target
+- planned read-only history endpoint
+- migration gate checklist
+- rollback notes
+- platform-admin:persistence-plan command
+- platform-admin:check includes persistence plan gate
+- no Prisma schema promotion yet
+```
+
 ## Scope handoff
 
-Internal Monitoring read-only scope is now ready for validation with live request-time probes.
+Internal Monitoring read-only scope is now ready for validation with live request-time probes and a persistence plan.
 
 Next safe scope options:
 
 ```txt
 1. Run full validation against a real API server and DATABASE_URL.
-2. If runtime history is needed, plan InternalSystemProbe persistence as a separate phase.
-3. Pick another Platform Admin dashboard one dashboard at a time.
-4. Keep next dashboard read-only first.
-5. Do not implement platform write behavior until audit, approval, rollback, rate-limit, and dry-run execution contracts are implemented.
+2. If runtime history is approved, promote InternalSystemProbe schema in a separate reviewed migration phase.
+3. Keep the first persistence implementation read-only from the frontend.
+4. Pick another Platform Admin dashboard one dashboard at a time.
+5. Keep next dashboard read-only first.
+6. Do not implement platform write behavior until audit, approval, rollback, rate-limit, and dry-run execution contracts are implemented.
 ```
