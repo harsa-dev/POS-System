@@ -15,6 +15,7 @@ import { DashboardActionButton, DashboardActions, DashboardPanel, StatCard } fro
 import {
   INVOICE_GENERATOR_LOAD_INVOICE_EVENT,
   INVOICE_GENERATOR_OPEN_FOLLOW_UP_EVENT,
+  INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT,
   type InvoiceGeneratorLoadInvoiceEventDetail,
   type InvoiceGeneratorOpenFollowUpEventDetail,
 } from "./invoice-generator-events";
@@ -164,6 +165,7 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
       setMessage("Follow-up saved.");
       await loadFollowUps(selectedItem.invoice.id);
       setHistoryReloadKey((current) => current + 1);
+      window.dispatchEvent(new CustomEvent(INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT));
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to save follow-up.");
     } finally {
