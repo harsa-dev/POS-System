@@ -104,6 +104,35 @@ Backend mutation-readiness catalog imports its DTO from this consolidated backen
 
 Frontend and backend DTOs intentionally remain package-local because this repository does not have a shared cross-package contract package yet. They must be kept shape-compatible through static checks and typecheck until a proper shared package exists.
 
+## Contract parity snapshot
+
+Internal Monitoring has a lightweight machine-readable contract snapshot:
+
+```txt
+docs/platform-admin-internal-monitoring-contract-snapshot.json
+```
+
+The snapshot records:
+
+```txt
+- route and capability
+- allowed roles
+- read-only and mutation mode
+- frontend/backend DTO source files
+- GET endpoint inventory
+- DTO field expectations
+- dashboard sections
+- blocked internal mutations
+```
+
+Parity check command:
+
+```bash
+pnpm platform-admin:contract-parity
+```
+
+The contract parity check compares frontend DTO fields, backend DTO fields, frontend API methods, backend routes, backend services, dashboard section names, blocked mutation copy, and platform-admin role allowlists against the snapshot.
+
 ## Access policy
 
 Internal Monitoring must not rely on business mode access.
@@ -330,6 +359,23 @@ Implemented:
 
 ### IM-13 - Internal Monitoring contract parity snapshot
 
+Status: Done.
+
+Implemented:
+
+```txt
+- machine-readable snapshot in docs/platform-admin-internal-monitoring-contract-snapshot.json
+- standalone contract parity script
+- root command pnpm platform-admin:contract-parity
+- root command pnpm platform-admin:check runs contract parity check
+- parity compares frontend DTO fields and backend DTO fields against the same snapshot
+- parity checks endpoint path/method/frontend method/backend route/backend service alignment
+- parity checks dashboard sections and platform-admin role allowlist
+- static guard checks snapshot and parity script presence
+```
+
+### IM-14 - Internal Monitoring response envelope parity
+
 Next.
 
-Add a lightweight parity snapshot/check that compares frontend DTO field expectations against backend DTO field expectations for the Internal Monitoring contract without introducing a shared package yet.
+Ensure every Internal Monitoring backend endpoint and frontend client method uses a consistent response envelope shape and metadata contract.
