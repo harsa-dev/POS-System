@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import type { Request, Response } from "express";
 import type { Business, Role, User } from "@prisma/client";
 
@@ -48,43 +49,104 @@ export type SafeCurrentUser = {
   } | null;
 };
 
-const jwtPackage = "jo" + "se";
+export const SESSION_COOKIE_NAME = "session";
+export const SESSION_MAX_AGE_MS = 60 * 60 * 24 * 7 * 1000;
+
 const hashPackage = "bcrypt" + "js";
-
-const getSecret = () => {
-  const secretKey = process.env.JWT_SECRET;
-  if (!secretKey) {
-    throw new Error("JWT secret is required.");
-  }
-  return new TextEncoder().encode(secretKey);
-};
-
-async function loadJwt() {
-  return import(jwtPackage);
-}
 
 async function loadHasher() {
   return import(hashPackage);
 }
 
-export async function createSessionToken(userId: string) {
-  const { SignJWT } = await loadJwt();
+function getSessionExpiresAt(now = new Date()) {
+  return new Date(now.getTime() + SESSION_MAX_AGE_MS);
+}
 
-  return new SignJWT({ userId })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(getSecret());
+export function hashSessionToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export async function createSessionToken(userId: string) {
+  const now = new Date();
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = hashSessionToken(token);
+
+  await prisma.$transaction([
+    prisma.session.deleteMany({
+      where: {
+        userId,
+        expiresAt: {
+          lte: now,
+        },
+      },
+    }),
+    prisma.session.create({
+      data: {
+        tokenHash,
+        userId,
+        expiresAt: getSessionExpiresAt(now),
+      },
+    }),
+  ]);
+
+  return token;
 }
 
 export async function verifySessionToken(token: string) {
-  try {
-    const { jwtVerify } = await loadJwt();
-    const verified = await jwtVerify(token, getSecret());
-    return verified.payload as { userId: string };
-  } catch {
+  const tokenHash = hashSessionToken(token);
+
+  const session = await prisma.session.findUnique({
+    where: { tokenHash },
+    include: {
+      user: {
+        include: { business: true },
+      },
+    },
+  });
+
+  if (!session) return null;
+
+  if (session.expiresAt <= new Date()) {
+    await prisma.session.deleteMany({
+      where: { id: session.id },
+    });
+
     return null;
   }
+
+  return {
+    sessionId: session.id,
+    userId: session.userId,
+    user: session.user,
+  };
+}
+
+export async function revokeSessionToken(token: string | null | undefined) {
+  if (!token) return false;
+
+  const tokenHash = hashSessionToken(token);
+
+  const result = await prisma.session.deleteMany({
+    where: { tokenHash },
+  });
+
+  return result.count > 0;
+}
+
+export async function revokeAllUserSessions(userId: string) {
+  await prisma.session.deleteMany({
+    where: { userId },
+  });
+}
+
+export async function pruneExpiredSessions(now = new Date()) {
+  return prisma.session.deleteMany({
+    where: {
+      expiresAt: {
+        lte: now,
+      },
+    },
+  });
 }
 
 export async function hashPassword(value: string) {
@@ -98,16 +160,13 @@ export async function verifyPassword(value: string, hash: string) {
 }
 
 export async function getCurrentUser(req: Request): Promise<AuthenticatedUser | null> {
-  const token = req.cookies?.session;
-  if (!token) return null;
+  const token = req.cookies?.[SESSION_COOKIE_NAME];
+  if (!token || typeof token !== "string") return null;
 
-  const payload = await verifySessionToken(token);
-  if (!payload) return null;
+  const session = await verifySessionToken(token);
+  if (!session) return null;
 
-  return prisma.user.findUnique({
-    where: { id: payload.userId },
-    include: { business: true },
-  });
+  return session.user;
 }
 
 export function sanitizeUser(user: AuthenticatedUser): SafeCurrentUser {
