@@ -270,32 +270,34 @@ export function CashierShiftSyncReconciliationPanel({
                         </td>
                         <td className="px-4 py-3 text-neutral-600">{row.recommendedAction}</td>
                         <td className="px-4 py-3 text-right">
-                          <DashboardActions className="justify-end">
-                            <DashboardActionButton
-                              icon={Clock3}
-                              onClick={() => setSelectedHistoryRow(row)}
-                              disabled={isLoading}
-                            >
-                              History
-                            </DashboardActionButton>
-                            {isSyncEligible(row) ? (
+                          <div className="flex justify-end">
+                            <DashboardActions>
                               <DashboardActionButton
-                                icon={RefreshCw}
-                                onClick={() => void handleSync(row)}
-                                disabled={Boolean(syncingShiftId)}
+                                icon={Clock3}
+                                onClick={() => setSelectedHistoryRow(row)}
+                                disabled={isLoading}
                               >
-                                {syncingShiftId === row.shiftId
-                                  ? "Syncing..."
-                                  : row.syncState === "SYNC_FAILED"
-                                    ? "Retry Sync"
-                                    : "Sync"}
+                                History
                               </DashboardActionButton>
-                            ) : row.syncState === "BLOCKED_OPEN" ? (
-                              <StatusPill tone="slate">Close First</StatusPill>
-                            ) : (
-                              <StatusPill tone="green">Done</StatusPill>
-                            )}
-                          </DashboardActions>
+                              {isSyncEligible(row) ? (
+                                <DashboardActionButton
+                                  icon={RefreshCw}
+                                  onClick={() => void handleSync(row)}
+                                  disabled={Boolean(syncingShiftId)}
+                                >
+                                  {syncingShiftId === row.shiftId
+                                    ? "Syncing..."
+                                    : row.syncState === "SYNC_FAILED"
+                                      ? "Retry Sync"
+                                      : "Sync"}
+                                </DashboardActionButton>
+                              ) : row.syncState === "BLOCKED_OPEN" ? (
+                                <StatusPill tone="slate">Close First</StatusPill>
+                              ) : (
+                                <StatusPill tone="green">Done</StatusPill>
+                              )}
+                            </DashboardActions>
+                          </div>
                         </td>
                       </tr>
                     );
