@@ -93,6 +93,15 @@ async function expectVisible(page, textOrPattern, name) {
   }
 }
 
+async function expectRuntimeStatusAssertions(page) {
+  await expectVisible(page, /Runtime Status/i, "runtime status panel renders");
+  await expectVisible(page, /Runtime Mode/i, "runtime mode card renders");
+  await expectVisible(page, /Freshness/i, "runtime freshness card renders");
+  await expectVisible(page, /Section Coverage/i, "runtime section coverage card renders");
+  await expectVisible(page, /Guardrail/i, "runtime guardrail card renders");
+  await expectVisible(page, /Operational - API synced|Degraded - fallback active|Mock - local preview|Refreshing/i, "runtime mode label renders");
+}
+
 async function expectNoDangerButtons(page) {
   const dangerButtons = page.getByRole("button", {
     name: /acknowledge|delete|suspend|refund|elevate|promote|mutation/i,
@@ -120,6 +129,7 @@ async function runAdminSmoke(browser) {
   try {
     await page.goto(`${APP_URL}/dashboard/internal-monitoring`, { waitUntil: "domcontentloaded" });
     await expectVisible(page, /Read-only internal monitoring/i, "read-only safety banner renders");
+    await expectRuntimeStatusAssertions(page);
     await expectVisible(page, /Source Health/i, "source health summary renders");
     await expectVisible(page, /Internal Monitoring sections/i, "quick section navigation renders");
     await expectVisible(page, /Route Inventory/i, "route inventory section renders");
