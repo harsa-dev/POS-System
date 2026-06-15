@@ -25,6 +25,7 @@ import {
   inventoryMovementAnomalyApi,
   type InventoryMovementAnomalyQuery,
   type InventoryMovementAnomalyReviewDto,
+  type InventoryMovementAnomalyReviewFilter,
   type InventoryMovementAnomalyReviewStatus,
   type InventoryMovementAnomalyRowDto,
   type InventoryMovementAnomalySeverity,
@@ -52,6 +53,14 @@ const severityOptions: Array<{ label: string; value: InventoryMovementAnomalySev
   { label: "Critical", value: "CRITICAL" },
   { label: "Warning", value: "WARNING" },
   { label: "Info", value: "INFO" },
+];
+
+const reviewFilterOptions: Array<{ label: string; value: InventoryMovementAnomalyReviewFilter }> = [
+  { label: "All Review States", value: "ALL" },
+  { label: "Unreviewed", value: "UNREVIEWED" },
+  { label: "Reviewed", value: "REVIEWED" },
+  { label: "Ignored", value: "IGNORED" },
+  { label: "Resolved", value: "RESOLVED" },
 ];
 
 const reviewStatusOptions: Array<{ label: string; value: InventoryMovementAnomalyReviewStatus }> = [
@@ -86,6 +95,7 @@ type FilterState = {
   search: string;
   anomalyType: InventoryMovementAnomalyType | typeof ALL;
   severity: InventoryMovementAnomalySeverity | typeof ALL;
+  reviewStatus: InventoryMovementAnomalyReviewFilter;
   reason: StockMovementReason | typeof ALL;
   sourceType: StockMovementSource | typeof ALL;
   sourceId: string;
@@ -99,6 +109,7 @@ const defaultFilters: FilterState = {
   search: "",
   anomalyType: ALL,
   severity: ALL,
+  reviewStatus: ALL,
   reason: ALL,
   sourceType: ALL,
   sourceId: "",
@@ -157,6 +168,7 @@ function buildQuery(filters: FilterState): InventoryMovementAnomalyQuery {
     search: filters.search,
     anomalyType: filters.anomalyType,
     severity: filters.severity,
+    reviewStatus: filters.reviewStatus,
     reason: filters.reason,
     sourceType: filters.sourceType,
     sourceId: filters.sourceId,
@@ -335,6 +347,10 @@ export function InventoryMovementAnomalyPanel() {
     missingCostSnapshotCount: 0,
     suspiciousAdjustmentCount: 0,
     highValueMovementCount: 0,
+    reviewedCount: 0,
+    ignoredCount: 0,
+    resolvedCount: 0,
+    unreviewedCount: 0,
     totalValueAtRisk: 0,
   });
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
@@ -346,17 +362,13 @@ export function InventoryMovementAnomalyPanel() {
   const query = useMemo(() => buildQuery(appliedFilters), [appliedFilters]);
 
   const reviewSummary = useMemo(() => {
-    const reviewed = rows.filter((row) => reviewsByAnomalyId[row.id]?.status === "REVIEWED").length;
-    const ignored = rows.filter((row) => reviewsByAnomalyId[row.id]?.status === "IGNORED").length;
-    const resolved = rows.filter((row) => reviewsByAnomalyId[row.id]?.status === "RESOLVED").length;
+    const reviewed = summary.reviewedCount ?? rows.filter((row) => reviewsByAnomalyId[row.id]?.status === "REVIEWED").length;
+    const ignored = summary.ignoredCount ?? rows.filter((row) => reviewsByAnomalyId[row.id]?.status === "IGNORED").length;
+    const resolved = summary.resolvedCount ?? rows.filter((row) => reviewsByAnomalyId[row.id]?.status === "RESOLVED").length;
+    const unreviewed = summary.unreviewedCount ?? Math.max(rows.length - reviewed - ignored - resolved, 0);
 
-    return {
-      reviewed,
-      ignored,
-      resolved,
-      unreviewed: Math.max(rows.length - reviewed - ignored - resolved, 0),
-    };
-  }, [reviewsByAnomalyId, rows]);
+    return { reviewed, ignored, resolved, unreviewed };
+  }, [reviewsByAnomalyId, rows, summary.ignoredCount, summary.resolvedCount, summary.reviewedCount, summary.unreviewedCount]);
 
   const loadReport = useCallback(async () => {
     setIsLoading(true);
@@ -427,6 +439,7 @@ export function InventoryMovementAnomalyPanel() {
       setReviewsByAnomalyId((current) => ({ ...current, [row.id]: response.data }));
       setReviewDrafts((current) => ({ ...current, [row.id]: createDefaultDraft(response.data) }));
       setMessage(`Marked anomaly as ${formatEnumLabel(response.data.status)}.`);
+      await loadReport();
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error, "Failed to save anomaly review."));
     } finally {
@@ -442,7 +455,7 @@ export function InventoryMovementAnomalyPanel() {
     try {
       const result = await inventoryMovementAnomalyApi.downloadCsv(query);
       downloadBlob(result.blob, result.filename);
-      setMessage(`Exported ${result.rowCount ?? rows.length} anomaly row(s) from backend.`);
+      setMessage(`Exported ${result.rowCount ?? rows.length} anomaly row(s) from backend with review state.`);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to export anomaly CSV.");
     } finally {
@@ -458,7 +471,7 @@ export function InventoryMovementAnomalyPanel() {
     try {
       const response = await inventoryMovementAnomalyApi.exportJson(query);
       downloadJson(response.data, `inventory-movement-anomalies-${new Date().toISOString().slice(0, 10)}.json`);
-      setMessage(`Exported ${response.data.meta.rowCount} anomaly row(s) to JSON.`);
+      setMessage(`Exported ${response.data.meta.rowCount} anomaly row(s) to JSON with review state.`);
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error, "Failed to export anomaly JSON."));
     } finally {
@@ -469,7 +482,7 @@ export function InventoryMovementAnomalyPanel() {
   return (
     <DashboardPanel
       title="Inventory Movement Anomaly Reconciliation"
-      description="Backend-detected movement anomalies with review status and required notes, because anomaly reports should become workflow, not spreadsheet archaeology."
+      description="Backend-detected movement anomalies with review filters, review-aware export, and required notes, because anomaly reports should become workflow, not spreadsheet archaeology."
       icon={<ShieldAlert className="h-4 w-4" aria-hidden="true" />}
       actions={
         <DashboardActions>
@@ -486,7 +499,7 @@ export function InventoryMovementAnomalyPanel() {
       }
     >
       <div className="space-y-4 p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <label className="space-y-1 text-sm font-medium text-neutral-700 xl:col-span-2">
             <span>Search</span>
             <input
@@ -516,6 +529,18 @@ export function InventoryMovementAnomalyPanel() {
               className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-400"
             >
               {severityOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm font-medium text-neutral-700">
+            <span>Review</span>
+            <select
+              value={filters.reviewStatus}
+              onChange={(event) => setFilters((current) => ({ ...current, reviewStatus: event.target.value as FilterState["reviewStatus"] }))}
+              className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-400"
+            >
+              {reviewFilterOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
