@@ -108,6 +108,26 @@ Implemented UX hardening:
 - kept write boundary visible as blocked
 - kept no database access and no Prisma promotion copy visible
 
+### AR-5 - Browser smoke for platform admin access
+
+Status: Done
+
+Implemented browser smoke:
+
+- added `scripts/platform-admin-admin-role-browser-smoke.mjs`
+- added root command `pnpm platform-admin:admin-role-browser-smoke`
+- smoke can mock ADMIN access through `PLATFORM_ADMIN_SMOKE_USE_MOCK_AUTH=true`
+- smoke validates MANAGER denial through the generic Platform Admin restricted panel
+- smoke checks `Read-only Operation Notice`, `Allowed Surface`, source badge, read-only safety boundary, section source health, metrics, workflows, rollout preview, and schema candidates
+- smoke checks that management mutation controls are not visible
+- no database access
+- no Prisma schema changes
+- no role assignment execution
+- no role revocation execution
+- no permission template write
+- no approval execution
+- no audit write
+
 ## 4. What the dashboard shows
 
 The current console displays read-only planning views through a backend-first data source with frontend fallback for:
@@ -145,6 +165,12 @@ artifacts/api-server/src/services/platform-admin/admin-role-console/admin-role-c
 artifacts/api-server/src/services/platform-admin/admin-role-console/admin-role-console.mock-repository.ts
 ```
 
+Current browser smoke:
+
+```txt
+scripts/platform-admin-admin-role-browser-smoke.mjs
+```
+
 Current page:
 
 ```txt
@@ -161,13 +187,13 @@ artifacts/pos-system/src/pages/dashboard/admin-role-console.tsx
 
 This phase must stay read-only. The console may show future operations as planning rows only.
 
-Allowed in AR-4:
+Allowed in AR-5:
 
 ```txt
 GET /api/internal/admin-console/roles
 ```
 
-Blocked in AR-4:
+Blocked in AR-5:
 
 ```txt
 POST /api/internal/admin-console/*
@@ -186,7 +212,6 @@ audit write
 
 Before the Admin Role Console can move beyond read-only backend mock data, the project must add:
 
-- browser smoke for OWNER/ADMIN access and MANAGER denial
 - final QA checklist for this dashboard
 - real permission registry source design
 - audit/event policy before any write behavior exists
@@ -199,17 +224,18 @@ Run:
 
 ```bash
 pnpm platform-admin:admin-role-check
+pnpm platform-admin:admin-role-browser-smoke
 pnpm platform-admin:check
 ```
 
-AR-4 is considered valid only if both pass.
+AR-5 is considered valid when static guard passes, and browser smoke passes in an environment with the frontend dev server and Playwright installed.
 
 ## 8. Next safe phase
 
 Next safe phase:
 
 ```txt
-AR-5 - Browser smoke for platform admin access
+AR-6 - Admin Role Console final QA checklist
 ```
 
-AR-5 should validate OWNER/ADMIN access, MANAGER denial, source badge rendering, operation notice, fallback UI, and blocked write copy. It should not add database access, Prisma schema promotion, role mutation, audit writes, or approval execution.
+AR-6 should document validation commands, manual smoke expectations, read-only boundaries, and handoff status. It should not add database access, Prisma schema promotion, role mutation, audit writes, or approval execution.
