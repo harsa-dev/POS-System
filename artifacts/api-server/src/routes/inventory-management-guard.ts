@@ -142,6 +142,8 @@ router.get("/inventory", requireInventoryManagementAccess);
 router.post("/inventory", requireInventoryManagementAccess);
 router.get("/inventory-reports", requireInventoryManagementAccess);
 router.get("/inventory-reports/export", requireInventoryManagementAccess);
+router.get("/inventory-movement-reports", requireInventoryManagementAccess);
+router.get("/inventory-movement-reports/export", requireInventoryManagementAccess);
 router.get("/inventory-cost-snapshot-repairs", requireInventoryManagementAccess);
 router.post("/inventory-cost-snapshot-repairs/backfill", requireInventoryManagementAccess);
 
