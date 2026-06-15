@@ -27,12 +27,14 @@ import {
   type SalesAnalyticsReconciliationIssueDto,
   type SalesAnalyticsReconciliationIssueSeverity,
 } from "@/lib/api/sales-analytics-api";
+import type { SalesPaymentIntegrityIssue } from "@/lib/api/sales-payment-integrity-api";
 
 import {
   getInitialSalesAnalyticsFilterContext,
   SALES_ANALYTICS_FILTER_SYNC_EVENT,
   type SalesAnalyticsFilterContext,
 } from "./sales-analytics-filter-sync";
+import { openSalesPaymentIntegrityWorkbench } from "./sales-payment-integrity-workbench-events";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("id-ID", {
@@ -70,22 +72,25 @@ function getRowStatusTone(status: string): DashboardTone {
 type SalesIssueAction = {
   label: string;
   description: string;
-  action: "focus" | "inventory_repair" | "none";
+  action: "focus" | "inventory_repair" | "payment_integrity" | "none";
   targetId?: string;
+  paymentIssue?: SalesPaymentIntegrityIssue;
 };
 
 const issueActionMap: Record<string, SalesIssueAction> = {
   orders_without_paid_payment: {
-    label: "Focus Rows",
-    description: "Review lifecycle-paid orders that do not have a PAID payment record.",
-    action: "focus",
+    label: "Open Payment Workbench",
+    description: "Open the payment integrity workbench filtered to lifecycle-paid orders without PAID payment records.",
+    action: "payment_integrity",
     targetId: "sales-reconciliation-orders-without-paid-payment",
+    paymentIssue: "orders_without_paid_payment",
   },
   payment_total_mismatch: {
-    label: "Focus Rows",
-    description: "Review paid orders whose amountPaid does not match order total.",
-    action: "focus",
+    label: "Open Payment Workbench",
+    description: "Open the payment integrity workbench filtered to paid orders whose amountPaid does not match order total.",
+    action: "payment_integrity",
     targetId: "sales-reconciliation-payment-total-mismatches",
+    paymentIssue: "payment_total_mismatch",
   },
   missing_cost_snapshots: {
     label: "Open Inventory Repair",
@@ -257,6 +262,14 @@ export function SalesAnalyticsSyncedReconciliationDrilldownPanel() {
         return;
       }
 
+      if (action.action === "payment_integrity") {
+        openSalesPaymentIntegrityWorkbench({
+          issue: action.paymentIssue,
+          message: `Opened from Sales Analytics ${issue.title.toLowerCase()} (${filterContext.label}).`,
+        });
+        return;
+      }
+
       if (action.action === "inventory_repair") {
         openInventoryCostSnapshotRepair({
           from: reconciliation?.period.from ?? filterContext.query.from,
@@ -375,7 +388,11 @@ export function SalesAnalyticsSyncedReconciliationDrilldownPanel() {
                       <p className="mt-1 text-xs text-muted-foreground">{action.description}</p>
                     </div>
                     <DashboardActionButton
-                      icon={action.action === "inventory_repair" ? ExternalLink : Search}
+                      icon={
+                        action.action === "inventory_repair" || action.action === "payment_integrity"
+                          ? ExternalLink
+                          : Search
+                      }
                       onClick={() => handleIssueAction(issue)}
                       disabled={action.action === "none"}
                     >
@@ -393,13 +410,13 @@ export function SalesAnalyticsSyncedReconciliationDrilldownPanel() {
             <ReconciliationDetailSection
               id="sales-reconciliation-orders-without-paid-payment"
               title="Orders Without Paid Payment"
-              description="Lifecycle-paid orders without a PAID payment record. No payment dashboard bridge is enabled yet, so this section focuses the source rows."
+              description="Lifecycle-paid orders without a PAID payment record. Use Open Payment Workbench for backend detail, export, and review guidance."
               rows={reconciliation.ordersWithoutPaidPayment}
             />
             <ReconciliationDetailSection
               id="sales-reconciliation-payment-total-mismatches"
               title="Payment Total Mismatches"
-              description="Paid orders whose amountPaid does not match order total. Review the source rows before repair automation exists."
+              description="Paid orders whose amountPaid does not match order total. Use Open Payment Workbench to isolate mismatches before repair automation exists."
               rows={reconciliation.paymentTotalMismatches}
             />
             <ReconciliationDetailSection
