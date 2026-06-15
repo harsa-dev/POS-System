@@ -1,24 +1,4 @@
-export type InternalMonitoringMutationReadinessStatus =
-  | "Blocked"
-  | "Design Ready"
-  | "Dry-run Only";
-
-export type InternalMonitoringMutationReadinessContractDto = {
-  id: string;
-  action: string;
-  targetSurface: string;
-  proposedEndpoint: string;
-  proposedMethod: "POST" | "PATCH" | "DELETE";
-  status: InternalMonitoringMutationReadinessStatus;
-  dryRunMode: "Required" | "Not Ready";
-  requiredCapability: string;
-  requiredAuditEvent: string;
-  requiredApproval: string;
-  rollbackPlan: string;
-  rateLimit: string;
-  blockedReason: string;
-  requiredProof: string[];
-};
+import type { InternalMonitoringMutationReadinessContractDto } from "./internal-monitoring.types.js";
 
 export function getInternalMonitoringMutationReadinessContracts(): InternalMonitoringMutationReadinessContractDto[] {
   return [
