@@ -78,6 +78,7 @@ export type CreateContactPayload = {
 export type UpdateContactPayload = CreateContactPayload;
 
 export type CustomersPartnersExportKind = "customers" | "suppliers";
+export type CustomersPartnersImportKind = CustomersPartnersExportKind;
 
 export type CustomersPartnersExportDto = {
   kind: CustomersPartnersExportKind;
@@ -91,6 +92,42 @@ export type CustomersPartnersCsvDownload = {
   filename: string;
   rowCount: number | null;
   exportedAt: string | null;
+};
+
+export type CustomersPartnersImportRowStatus = "ready" | "error" | "duplicate";
+
+export type CustomersPartnersImportPreviewRowDto = {
+  rowNumber: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  status: CustomersPartnersImportRowStatus;
+  errors: string[];
+};
+
+export type CustomersPartnersImportPreviewDto = {
+  kind: CustomersPartnersImportKind;
+  rowCount: number;
+  readyCount: number;
+  errorCount: number;
+  duplicateCount: number;
+  rows: CustomersPartnersImportPreviewRowDto[];
+};
+
+export type CustomersPartnersImportResultRowDto = CustomersPartnersImportPreviewRowDto & {
+  action: "created" | "updated" | "skipped";
+  contactId: string | null;
+};
+
+export type CustomersPartnersImportResultDto = {
+  kind: CustomersPartnersImportKind;
+  rowCount: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  importedAt: string;
+  rows: CustomersPartnersImportResultRowDto[];
 };
 
 export type SalesSyncCustomerCandidateDto = {
@@ -209,6 +246,20 @@ export const customersPartnersApi = {
   exportContactsJson(params: { kind: CustomersPartnersExportKind; search?: string }) {
     return apiClient.get<ApiDataEnvelope<CustomersPartnersExportDto>>(
       `/api/customers-partners/export${buildExportQuery({ ...params, format: "json" })}`,
+    );
+  },
+
+  previewImport(payload: { kind: CustomersPartnersImportKind; csvText: string }) {
+    return apiClient.post<ApiDataEnvelope<CustomersPartnersImportPreviewDto>>(
+      "/api/customers-partners/import-preview",
+      { json: payload },
+    );
+  },
+
+  commitImport(payload: { kind: CustomersPartnersImportKind; csvText: string }) {
+    return apiClient.post<ApiDataEnvelope<CustomersPartnersImportResultDto>>(
+      "/api/customers-partners/import-commit",
+      { json: payload },
     );
   },
 
