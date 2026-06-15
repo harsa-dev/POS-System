@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development pnpm run build && pnpm run start",
     "generate": "prisma generate",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "build": "pnpm run generate && node ./build.mjs",
     "start": "node --env-file-if-exists=.env --enable-source-maps ./dist/index.mjs",
     "typecheck": "pnpm run generate && tsc -p tsconfig.json --noEmit",
