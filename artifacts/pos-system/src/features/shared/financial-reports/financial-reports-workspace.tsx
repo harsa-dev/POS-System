@@ -18,6 +18,7 @@ import { FinancialReportsDashboard } from "./financial-reports-dashboard";
 import { FinancialReportsDrilldownPanel } from "./financial-reports-drilldown-panel";
 import { FinancialReportsPeriodSyncObserver } from "./financial-reports-period-sync-observer";
 import { FinancialReportsReconciliationDrilldownPanel } from "./financial-reports-reconciliation-drilldown-panel";
+import { FinancialReportsRepairFeedbackPanel } from "./financial-reports-repair-feedback-panel";
 
 function getGuardMessage(capabilities: FinancialReportsCapabilitiesDto | null) {
   if (!capabilities) return "Loading financial report permissions...";
@@ -77,6 +78,7 @@ export function FinancialReportsWorkspace() {
       <div className="space-y-5">
         <FinancialReportsPeriodSyncObserver />
         <FinancialReportsDrilldownPanel />
+        <FinancialReportsRepairFeedbackPanel />
         <FinancialReportsReconciliationDrilldownPanel />
         <FinancialReportsDashboard />
       </div>
