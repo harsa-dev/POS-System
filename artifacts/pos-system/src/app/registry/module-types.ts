@@ -65,6 +65,7 @@ export type V3PermissionKey =
   | "permissions.manage"
   | "settings.manage"
   | "platform-admin.internal-monitoring.read"
+  | "platform-admin.admin-role-console.read"
   | "inventory.view"
   | "inventory.manage"
   | "payments.manage"
