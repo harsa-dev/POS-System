@@ -39,8 +39,10 @@ function formatDateTime(value: string | null | undefined) {
 }
 
 function hasRepairHash() {
-  return typeof window !== "undefined" &&
-    window.location.hash === "#inventory-cost-snapshot-repair";
+  return (
+    typeof window !== "undefined" &&
+    window.location.hash === "#inventory-cost-snapshot-repair"
+  );
 }
 
 function getInitialPayload(): FinancialReportInventoryRepairPayload | null {
@@ -74,8 +76,10 @@ function buildRepairFeedbackPayload(
 }
 
 export function InventoryCostSnapshotRepairPanel() {
-  const [payload, setPayload] = useState<FinancialReportInventoryRepairPayload | null>(null);
-  const [preview, setPreview] = useState<InventoryCostSnapshotRepairPreviewDto | null>(null);
+  const [payload, setPayload] =
+    useState<FinancialReportInventoryRepairPayload | null>(null);
+  const [preview, setPreview] =
+    useState<InventoryCostSnapshotRepairPreviewDto | null>(null);
   const [lastRepairFeedback, setLastRepairFeedback] =
     useState<FinancialReportRepairFeedbackPayload | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -160,8 +164,9 @@ export function InventoryCostSnapshotRepairPanel() {
     openFinancialReportsRepairFeedback(lastRepairFeedback);
   }, [lastRepairFeedback]);
 
-  const columns = useMemo<DataTableColumn<InventoryCostSnapshotRepairRowDto>[]>
-    (
+  const columns = useMemo<
+    DataTableColumn<InventoryCostSnapshotRepairRowDto>[]
+  >(
     () => [
       {
         key: "createdAt",
@@ -174,7 +179,9 @@ export function InventoryCostSnapshotRepairPanel() {
         cell: (row) => (
           <div>
             <p className="font-semibold text-foreground">{row.itemName}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{row.inventoryItemId ?? "Missing item id"}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {row.inventoryItemId ?? "Missing item id"}
+            </p>
           </div>
         ),
       },
@@ -185,7 +192,9 @@ export function InventoryCostSnapshotRepairPanel() {
         cell: (row) => (
           <div>
             <p className="font-medium text-foreground">{row.sourceType}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{row.sourceId ?? "No source id"}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {row.sourceId ?? "No source id"}
+            </p>
           </div>
         ),
       },
@@ -200,7 +209,9 @@ export function InventoryCostSnapshotRepairPanel() {
         key: "estimatedCost",
         header: "Estimated COGS",
         className: "text-right",
-        cell: (row) => <span className="font-semibold">{formatCurrency(row.estimatedCost)}</span>,
+        cell: (row) => (
+          <span className="font-semibold">{formatCurrency(row.estimatedCost)}</span>
+        ),
       },
       {
         key: "repairStatus",
