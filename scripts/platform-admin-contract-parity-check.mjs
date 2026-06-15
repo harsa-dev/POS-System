@@ -29,7 +29,7 @@ function normalizeList(values) {
 }
 
 function extractTypeBlock(content, typeName) {
-  const typePattern = new RegExp(`export\\s+type\\s+${typeName}\\s*=\\s*{([\\s\\S]*?)\\n};`);
+  const typePattern = new RegExp(`export\\s+type\\s+${typeName}(?:<[^>]+>)?\\s*=\\s*{([\\s\\S]*?)\\n};`);
   const match = content.match(typePattern);
 
   if (!match) {
@@ -76,6 +76,97 @@ function assertEndpoint({ snapshotEndpoint, frontendApi, backendRoute, backendSe
   });
 }
 
+function assertResponseEnvelope({ snapshot, frontendDto, backendDto, frontendApi, frontendDataSource, backendResponseHelper, backendRoute }) {
+  for (const field of snapshot.responseEnvelope.successFields) {
+    assertDtoFields({
+      label: "frontend success envelope",
+      content: frontendDto,
+      typeName: "InternalMonitoringApiSuccessEnvelopeDto",
+      fields: [field],
+    });
+    assertDtoFields({
+      label: "backend success envelope",
+      content: backendDto,
+      typeName: "InternalMonitoringApiSuccessEnvelopeDto",
+      fields: [field],
+    });
+  }
+
+  for (const field of snapshot.responseEnvelope.errorFields) {
+    assertDtoFields({
+      label: "frontend error envelope",
+      content: frontendDto,
+      typeName: "InternalMonitoringApiErrorEnvelopeDto",
+      fields: [field],
+    });
+    assertDtoFields({
+      label: "backend error envelope",
+      content: backendDto,
+      typeName: "InternalMonitoringApiErrorEnvelopeDto",
+      fields: [field],
+    });
+  }
+
+  for (const field of snapshot.responseEnvelope.metaFields) {
+    assertDtoFields({
+      label: "frontend meta envelope",
+      content: frontendDto,
+      typeName: "InternalMonitoringApiMetaDto",
+      fields: [field],
+    });
+    assertDtoFields({
+      label: "backend meta envelope",
+      content: backendDto,
+      typeName: "InternalMonitoringApiMetaDto",
+      fields: [field],
+    });
+  }
+
+  for (const field of snapshot.responseEnvelope.requiredMetaFields) {
+    assertContains({
+      label: "backend response helper required meta",
+      content: backendResponseHelper,
+      expected: field,
+    });
+  }
+
+  assertContains({
+    label: "frontend api envelope usage",
+    content: frontendApi,
+    expected: "InternalMonitoringApiEnvelopeDto",
+  });
+  assertContains({
+    label: "frontend data source envelope unwrap",
+    content: frontendDataSource,
+    expected: "unwrapInternalMonitoringEnvelope",
+  });
+  assertContains({
+    label: "backend response helper",
+    content: backendResponseHelper,
+    expected: "internalMonitoringSuccessResponse",
+  });
+  assertContains({
+    label: "backend route uses internal monitoring envelope helper",
+    content: backendRoute,
+    expected: "internalMonitoringSuccessResponse",
+  });
+  assertContains({
+    label: "backend route no direct generic success response",
+    content: backendRoute,
+    expected: "internal-monitoring-response.js",
+  });
+  assertContains({
+    label: "backend response helper read-only value",
+    content: backendResponseHelper,
+    expected: "readOnly: true",
+  });
+  assertContains({
+    label: "backend response helper capability value",
+    content: backendResponseHelper,
+    expected: snapshot.responseEnvelope.capabilityValue,
+  });
+}
+
 function extractRolesFromPolicy(content, capability) {
   const policyPattern = new RegExp(`"${capability.replaceAll(".", "\\.")}"\\s*:\\s*\\[([^\\]]*)\\]`);
   const match = content.match(policyPattern);
@@ -97,6 +188,7 @@ const frontendDataSource = read(snapshot.sourceFiles.frontendDataSource);
 const backendDto = read(snapshot.sourceFiles.backendDto);
 const backendRoute = read(snapshot.sourceFiles.backendRoute);
 const backendPolicy = read(snapshot.sourceFiles.backendPolicy);
+const backendResponseHelper = read(snapshot.sourceFiles.backendResponseHelper);
 const frontendPolicy = read("artifacts/pos-system/src/components/core/platform-admin/platform-admin-policy.ts");
 const sidebarRegistry = read("artifacts/pos-system/src/app/registry/core-modules.ts");
 const app = read("artifacts/pos-system/src/App.tsx");
@@ -122,6 +214,16 @@ try {
     assertDtoFields({ label: "frontend DTO", content: frontendDto, typeName, fields });
     assertDtoFields({ label: "backend DTO", content: backendDto, typeName, fields });
   }
+
+  assertResponseEnvelope({
+    snapshot,
+    frontendDto,
+    backendDto,
+    frontendApi,
+    frontendDataSource,
+    backendResponseHelper,
+    backendRoute,
+  });
 
   for (const endpoint of snapshot.endpoints) {
     if (endpoint.method !== "GET") {
@@ -186,7 +288,7 @@ try {
     expected: `PlatformAdminProtectedRoute capability="${snapshot.capability}"`,
   });
 
-  console.log(`[platform-admin:contract-parity] ${Object.keys(snapshot.dtoTypes).length} DTOs, ${snapshot.endpoints.length} endpoints, and ${snapshot.dashboardSections.length} sections match snapshot.`);
+  console.log(`[platform-admin:contract-parity] ${Object.keys(snapshot.dtoTypes).length} DTOs, ${snapshot.endpoints.length} endpoints, ${snapshot.dashboardSections.length} sections, and response envelope fields match snapshot.`);
 } catch (error) {
   console.error("[platform-admin:contract-parity] Contract parity check failed.");
   console.error(error instanceof Error ? error.message : error);
