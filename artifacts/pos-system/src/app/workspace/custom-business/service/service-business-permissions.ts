@@ -1,15 +1,15 @@
 export const serviceBusinessPermissions = {
-  workspaceView: "custom-business.service.view",
-  workspaceManage: "custom-business.service.manage",
-  requestCreate: "custom-business.service.request.create",
-  requestUpdate: "custom-business.service.request.update",
-  jobAssign: "custom-business.service.job.assign",
-  jobStatusUpdate: "custom-business.service.job.status.update",
-  quoteCreate: "custom-business.service.quote.create",
-  quoteApprove: "custom-business.service.quote.approve",
-  invoiceCreate: "custom-business.service.invoice.create",
-  invoicePaymentRecord: "custom-business.service.invoice.payment.record",
-  configManage: "custom-business.service.config.manage",
+  workspaceView: "service.dashboard.view",
+  workspaceManage: "service.workflow.update",
+  requestCreate: "service.jobs.create",
+  requestUpdate: "service.jobs.update",
+  jobAssign: "service.jobs.assign",
+  jobStatusUpdate: "service.jobs.update",
+  quoteCreate: "service.quotes.create",
+  quoteApprove: "service.quotes.approve",
+  invoiceCreate: "service.invoices.create",
+  invoicePaymentRecord: "service.invoices.record-payment",
+  configManage: "service.policy.view",
 } as const;
 
 export type ServiceBusinessPermissionKey = keyof typeof serviceBusinessPermissions;
