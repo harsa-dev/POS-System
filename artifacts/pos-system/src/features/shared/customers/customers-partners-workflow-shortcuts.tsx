@@ -1,6 +1,6 @@
 "use client";
 
-import { FileUp, Search, Sparkles, UploadCloud, UserCheck, UsersRound } from "lucide-react";
+import { Award, FileUp, Search, Sparkles, UploadCloud, UserCheck, UsersRound } from "lucide-react";
 
 import { DashboardPanel } from "@/features/shared/dashboard";
 
@@ -28,6 +28,12 @@ const shortcuts = [
     icon: UserCheck,
     title: "Assign customer tiers",
     description: "Apply tier settings to customer profiles based on backend spending totals.",
+  },
+  {
+    href: "#customers-tier-directory",
+    icon: Award,
+    title: "Review assigned tiers",
+    description: "Inspect which tier is currently stored on every customer profile.",
   },
   {
     href: "#customers-detail-lookup",
