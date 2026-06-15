@@ -72,7 +72,10 @@ function getFilenameFromDisposition(disposition: string | null) {
 export const financialReportsRepairAuditApi = {
   getAudit(params?: FinancialReportQuery & { limit?: number }) {
     return apiClient.get<ApiEnvelope<FinancialRepairAuditDto>>(
-      `/api/financial-reports/repair-audit${buildFinancialReportQueryString(params)}`,
+      `/api/financial-reports/repair-audit${buildFinancialReportQueryString(
+        params,
+        { limit: params?.limit },
+      )}`,
     );
   },
 
