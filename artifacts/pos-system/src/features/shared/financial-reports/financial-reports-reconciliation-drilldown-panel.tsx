@@ -31,6 +31,12 @@ import {
   openCashflowDrilldown,
   openInvoiceGeneratorDrilldown,
 } from "./financial-reports-drilldown-bridge";
+import {
+  FINANCIAL_REPORTS_PERIOD_SYNC_EVENT,
+  readFinancialReportsPeriodContext,
+  resolveFinancialReportsPeriodContext,
+  type FinancialReportsPeriodContext,
+} from "./financial-reports-period-sync";
 
 type ReconciliationTarget = {
   sectionId: string;
@@ -115,7 +121,10 @@ function focusSection(sectionId: string) {
   });
 }
 
-function openIssueTarget(issue: FinancialReconciliationIssueDto) {
+function openIssueTarget(
+  issue: FinancialReconciliationIssueDto,
+  periodContext: FinancialReportsPeriodContext,
+) {
   if (issue.key === "orders_without_cashflow") {
     window.location.assign("/dashboard/cashflow#cashflow-source-sync");
     return;
@@ -124,7 +133,9 @@ function openIssueTarget(issue: FinancialReconciliationIssueDto) {
   if (issue.key === "pending_cashflow_entries") {
     openCashflowDrilldown({
       status: "PENDING",
-      message: "Financial reconciliation drilldown: pending cashflow entries.",
+      from: periodContext.from,
+      to: periodContext.to,
+      message: `Financial reconciliation drilldown: pending cashflow entries (${periodContext.label}).`,
     });
     return;
   }
@@ -132,7 +143,9 @@ function openIssueTarget(issue: FinancialReconciliationIssueDto) {
   if (issue.key === "voided_cashflow_entries") {
     openCashflowDrilldown({
       status: "VOIDED",
-      message: "Financial reconciliation drilldown: voided cashflow entries.",
+      from: periodContext.from,
+      to: periodContext.to,
+      message: `Financial reconciliation drilldown: voided cashflow entries (${periodContext.label}).`,
     });
     return;
   }
@@ -141,7 +154,9 @@ function openIssueTarget(issue: FinancialReconciliationIssueDto) {
     openInvoiceGeneratorDrilldown({
       status: "ALL",
       overdue: false,
-      message: "Financial reconciliation drilldown: open invoice receivables.",
+      from: periodContext.from,
+      to: periodContext.to,
+      message: `Financial reconciliation drilldown: open invoice receivables (${periodContext.label}).`,
     });
     return;
   }
@@ -150,7 +165,9 @@ function openIssueTarget(issue: FinancialReconciliationIssueDto) {
     openInvoiceGeneratorDrilldown({
       status: "ALL",
       overdue: true,
-      message: "Financial reconciliation drilldown: overdue invoice receivables.",
+      from: periodContext.from,
+      to: periodContext.to,
+      message: `Financial reconciliation drilldown: overdue invoice receivables (${periodContext.label}).`,
     });
     return;
   }
@@ -160,17 +177,33 @@ function openIssueTarget(issue: FinancialReconciliationIssueDto) {
 }
 
 export function FinancialReportsReconciliationDrilldownPanel() {
+  const [periodContext, setPeriodContext] =
+    useState<FinancialReportsPeriodContext>(() =>
+      readFinancialReportsPeriodContext() ??
+      resolveFinancialReportsPeriodContext({}),
+    );
   const [reconciliation, setReconciliation] =
     useState<FinancialReconciliationDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const reconciliationQuery = useMemo(
+    () => ({
+      from: periodContext.from,
+      to: periodContext.to,
+      basis: periodContext.basis,
+    }),
+    [periodContext.basis, periodContext.from, periodContext.to],
+  );
 
   const loadReconciliation = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage(null);
 
     try {
-      const response = await financialReportsReconciliationApi.getReconciliation();
+      const response = await financialReportsReconciliationApi.getReconciliation(
+        reconciliationQuery,
+      );
       setReconciliation(response.data);
     } catch (error) {
       setErrorMessage(
@@ -180,11 +213,35 @@ export function FinancialReportsReconciliationDrilldownPanel() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [reconciliationQuery]);
 
   useEffect(() => {
     void loadReconciliation();
   }, [loadReconciliation]);
+
+  useEffect(() => {
+    const storedContext = readFinancialReportsPeriodContext();
+    if (storedContext) setPeriodContext(storedContext);
+
+    const handlePeriodSync = (event: Event) => {
+      const detail = (event as CustomEvent<FinancialReportsPeriodContext>).detail;
+      if (!detail?.from || !detail?.to || !detail.basis) return;
+
+      setPeriodContext(detail);
+    };
+
+    window.addEventListener(
+      FINANCIAL_REPORTS_PERIOD_SYNC_EVENT,
+      handlePeriodSync,
+    );
+
+    return () => {
+      window.removeEventListener(
+        FINANCIAL_REPORTS_PERIOD_SYNC_EVENT,
+        handlePeriodSync,
+      );
+    };
+  }, []);
 
   const sections = useMemo<ReconciliationSection[]>(() => {
     if (!reconciliation) return [];
@@ -255,7 +312,7 @@ export function FinancialReportsReconciliationDrilldownPanel() {
   return (
     <DashboardPanel
       title="Reconciliation Issue Drilldown"
-      description="Action bridge for source integrity issues detected by financial reports."
+      description="Action bridge for source integrity issues detected by the active financial report period."
       action={
         <DashboardActions>
           <DashboardActionButton
@@ -298,13 +355,20 @@ export function FinancialReportsReconciliationDrilldownPanel() {
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Period
+              Synced Period
             </p>
             <p className="mt-2 text-sm font-semibold text-foreground">
-              {reconciliation
-                ? `${formatDate(reconciliation.period.from)} → ${formatDate(reconciliation.period.to)}`
-                : "Loading..."}
+              {periodContext.label} · {periodContext.basis}
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {formatDate(periodContext.from)} → {formatDate(periodContext.to)}
+            </p>
+            {reconciliation && (
+              <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+                Backend: {formatDate(reconciliation.period.from)} →{" "}
+                {formatDate(reconciliation.period.to)}
+              </p>
+            )}
           </div>
         </div>
 
@@ -316,7 +380,7 @@ export function FinancialReportsReconciliationDrilldownPanel() {
 
         {reconciliation && reconciliation.issues.length === 0 && (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-            No reconciliation issues detected for the current reporting period.
+            No reconciliation issues detected for the synced reporting period.
           </div>
         )}
 
@@ -358,7 +422,7 @@ export function FinancialReportsReconciliationDrilldownPanel() {
                     )}
                     <DashboardActionButton
                       icon={ArrowRight}
-                      onClick={() => openIssueTarget(issue)}
+                      onClick={() => openIssueTarget(issue, periodContext)}
                     >
                       {getIssueActionLabel(issue.key)}
                     </DashboardActionButton>
@@ -401,10 +465,11 @@ export function FinancialReportsReconciliationDrilldownPanel() {
           <div className="flex gap-3">
             <WalletCards className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <p>
-              Use this panel to jump from reconciliation issue cards into source
-              rows, invoice receivables, or cashflow ledgers. Missing cost snapshot
-              rows remain a focused table here because inventory cost repair is
-              not yet wired to a dedicated shared dashboard action.
+              This drilldown follows the active Financial Reports period and
+              basis. Use this panel to jump from reconciliation issue cards into
+              source rows, invoice receivables, or cashflow ledgers. Missing cost
+              snapshot rows remain a focused table here because inventory cost
+              repair is not yet wired to a dedicated shared dashboard action.
             </p>
           </div>
         </div>
