@@ -93,6 +93,31 @@ export type CustomersPartnersCsvDownload = {
   exportedAt: string | null;
 };
 
+export type SalesSyncCustomerCandidateDto = {
+  identityKey: string;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  totalSpending: number;
+  transactions: number;
+  lastInvoiceAt: string | null;
+};
+
+export type SalesSyncPreviewDto = {
+  source: "PAID_INVOICES";
+  candidateCount: number;
+  candidates: SalesSyncCustomerCandidateDto[];
+};
+
+export type SalesSyncResultDto = {
+  source: "PAID_INVOICES";
+  sourceCount: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  syncedAt: string;
+};
+
 type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 
 function buildQuery(params?: { search?: string }) {
@@ -111,6 +136,13 @@ function buildExportQuery(params: {
   searchParams.set("kind", params.kind);
   if (params.search) searchParams.set("search", params.search);
   if (params.format) searchParams.set("format", params.format);
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
+function buildSalesSyncPreviewQuery(params?: { limit?: number }) {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set("limit", String(params.limit));
   const query = searchParams.toString();
   return query ? `?${query}` : "";
 }
@@ -177,6 +209,19 @@ export const customersPartnersApi = {
   exportContactsJson(params: { kind: CustomersPartnersExportKind; search?: string }) {
     return apiClient.get<ApiDataEnvelope<CustomersPartnersExportDto>>(
       `/api/customers-partners/export${buildExportQuery({ ...params, format: "json" })}`,
+    );
+  },
+
+  getSalesSyncPreview(params?: { limit?: number }) {
+    return apiClient.get<ApiDataEnvelope<SalesSyncPreviewDto>>(
+      `/api/customers-partners/sales-sync-preview${buildSalesSyncPreviewQuery(params)}`,
+    );
+  },
+
+  syncFromSales() {
+    return apiClient.post<ApiDataEnvelope<SalesSyncResultDto>>(
+      "/api/customers-partners/sync-from-sales",
+      { json: {} },
     );
   },
 
