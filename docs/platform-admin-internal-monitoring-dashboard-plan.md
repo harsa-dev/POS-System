@@ -10,7 +10,7 @@ This plan is scoped to one dashboard only:
 
 It does not implement every Platform Admin dashboard. Internal Monitoring is sensitive because it exposes platform health, route inventory, API readiness, schema risk, release gates, incidents, and future admin action readiness.
 
-Current phase status: read-only dashboard scope is complete through final QA checklist.
+Current phase status: read-only dashboard scope is complete through real runtime probe collection without Prisma persistence.
 
 ## Current frontend files
 
@@ -32,6 +32,7 @@ artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-mo
 artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-response.ts
 artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.service.ts
 artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.mock-repository.ts
+artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-runtime-probes.ts
 artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-mutation-readiness.ts
 ```
 
@@ -65,6 +66,29 @@ DELETE /api/internal/*
 
 All write behavior remains design-only until dedicated RBAC, audit logging, approval policy, rollback notes, rate limits, and dry-run contracts are implemented.
 
+## Real runtime probe contract
+
+`GET /api/internal/health/summary` now includes runtime probes collected server-side at request time.
+
+Implemented probes:
+
+```txt
+api-server-runtime
+runtime-environment
+internal-contract-inventory
+database-connectivity
+```
+
+Runtime probe source:
+
+```txt
+artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-runtime-probes.ts
+```
+
+Database connectivity uses a read-only `pg` probe through `DATABASE_URL` and runs `select 1 as internal_monitoring_probe`.
+
+This does not add Prisma models, background jobs, scheduled probes, or historical persistence. Runtime probes are live request-time diagnostics only.
+
 ## Frontend data source contract
 
 The dashboard uses a `mock/api/fallback` source model:
@@ -76,6 +100,8 @@ The dashboard uses a `mock/api/fallback` source model:
 4. If backend fails, keep mock fallback and show fallback reason.
 5. Never call POST/PATCH/DELETE from this dashboard in this scope.
 ```
+
+Runtime probes appear in the existing cards and runtime signal table when the backend API responds. Fallback mode exposes mock probe warnings so admins can tell the probe collector is not active.
 
 ## Contract ownership
 
@@ -166,31 +192,34 @@ IM-14 Internal Monitoring response envelope parity            Done
 IM-15 Internal Monitoring runtime status polish               Done
 IM-16 Internal Monitoring browser smoke runtime assertions    Done
 IM-17 Internal Monitoring final QA checklist                  Done
+IM-18 Real runtime probe collector                            Done
 ```
 
-## IM-17 implemented
+## IM-18 implemented
 
 ```txt
-- final QA checklist doc
-- required command gate
-- manual smoke matrix for platform-admin and non-platform roles
-- blocked internal write route list
-- contract gate summary
-- policy parity gate summary
-- browser smoke expectations
-- safe scope handoff guidance
-- root command pnpm platform-admin:final-qa
-- root command pnpm platform-admin:check includes final QA gate
+- backend runtime probe collector
+- live API process probe
+- runtime environment probe
+- internal contract inventory probe
+- read-only database connectivity probe via pg and DATABASE_URL
+- runtime probe DTO in frontend and backend contracts
+- health summary includes runtimeProbes and probe summary counts
+- mock fallback exposes runtime probe warnings
+- contract snapshot includes runtime probe fields and IDs
+- contract parity checks runtime probe collector and DTO fields
 ```
 
 ## Scope handoff
 
-Internal Monitoring read-only scope is now ready for validation and handoff.
+Internal Monitoring read-only scope is now ready for validation with live request-time probes.
 
 Next safe scope options:
 
 ```txt
-1. Pick another Platform Admin dashboard one dashboard at a time.
-2. Keep next dashboard read-only first.
-3. Do not implement platform write behavior until audit, approval, rollback, rate-limit, and dry-run execution contracts are implemented.
+1. Run full validation against a real API server and DATABASE_URL.
+2. If runtime history is needed, plan InternalSystemProbe persistence as a separate phase.
+3. Pick another Platform Admin dashboard one dashboard at a time.
+4. Keep next dashboard read-only first.
+5. Do not implement platform write behavior until audit, approval, rollback, rate-limit, and dry-run execution contracts are implemented.
 ```
