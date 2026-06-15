@@ -15,6 +15,7 @@ import {
 } from "@/features/shared/dashboard";
 import { InvoiceGeneratorDashboard } from "./invoice-generator-dashboard";
 import { InvoiceHistoryPanel } from "./invoice-history-panel";
+import { InvoiceSummaryPanel } from "./invoice-summary-panel";
 
 function getGuardMessage(capabilities: InvoiceCapabilitiesDto | null) {
   if (!capabilities) return "Loading invoice permissions...";
@@ -69,6 +70,7 @@ export function InvoiceGeneratorWorkspace() {
   if (capabilities && canViewHistory) {
     return (
       <div className="space-y-6">
+        <InvoiceSummaryPanel />
         <InvoiceHistoryPanel capabilities={capabilities} canLoadToEditor={canUseEditor} />
         {canUseEditor ? (
           <InvoiceGeneratorDashboard />
