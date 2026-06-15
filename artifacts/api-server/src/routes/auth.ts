@@ -4,8 +4,9 @@ import { prisma } from "../lib/prisma.js";
 import {
   createSessionToken,
   hashPassword,
+  requireAuth,
+  sanitizeUser,
   verifyPassword,
-  getCurrentUser,
 } from "../lib/auth.js";
 import { createBusinessWithRestaurantProfile } from "../lib/business-context/create-business-with-profile.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
@@ -15,6 +16,7 @@ import { errorResponse } from "../lib/responses/error-response.js";
 
 const router = Router();
 const sessionCookieMaxAgeMs = 60 * 60 * 24 * 7 * 1000;
+const invalidLoginMessage = "Email atau password salah.";
 
 function getSessionCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
@@ -27,11 +29,20 @@ function getSessionCookieOptions() {
   } as const;
 }
 
+function invalidCredentialsResponse(res: Parameters<typeof errorResponse>[0]) {
+  return errorResponse(res, {
+    status: 401,
+    code: errorCodes.invalidCredentials,
+    message: invalidLoginMessage,
+  });
+}
+
 router.post("/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body ?? {};
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
-    if (!email || !password) {
+    if (!normalizedEmail || typeof password !== "string" || !password) {
       return errorResponse(res, {
         status: 400,
         code: errorCodes.validationError,
@@ -39,25 +50,20 @@ router.post("/auth/login", async (req, res) => {
       });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      include: { business: true },
+    });
     const isValidPassword = user
       ? await verifyPassword(password, user.passwordHash)
       : false;
 
     if (!user || !isValidPassword) {
-      return errorResponse(res, {
-        status: 401,
-        code: errorCodes.invalidCredentials,
-        message: "Email atau password salah.",
-      });
+      return invalidCredentialsResponse(res);
     }
 
-    if (!user.isActive) {
-      return errorResponse(res, {
-        status: 403,
-        code: errorCodes.userInactive,
-        message: "Akun ini sudah dinonaktifkan.",
-      });
+    if (!user.isActive || (user.businessId && (!user.business || !user.business.isActive))) {
+      return invalidCredentialsResponse(res);
     }
 
     const token = await createSessionToken(user.id);
@@ -69,7 +75,7 @@ router.post("/auth/login", async (req, res) => {
 
     return successResponse(res, {
       message: "Login berhasil.",
-      data: null,
+      data: sanitizeUser(user),
     });
   } catch (error) {
     return handleApiError(res, error);
@@ -87,20 +93,10 @@ router.post("/auth/logout", (_req, res) => {
 
 router.get("/auth/me", async (req, res) => {
   try {
-    const user = await getCurrentUser(req);
-
-    if (!user) {
-      return errorResponse(res, {
-        status: 401,
-        code: errorCodes.unauthorized,
-        message: "Unauthorized.",
-      });
-    }
-
-    const { passwordHash, ...safeUser } = user;
+    const user = await requireAuth(req);
 
     return successResponse(res, {
-      data: safeUser,
+      data: sanitizeUser(user),
     });
   } catch (error) {
     return handleApiError(res, error);
@@ -110,8 +106,10 @@ router.get("/auth/me", async (req, res) => {
 router.post("/auth/register", async (req, res) => {
   try {
     const { name, email, password } = req.body ?? {};
+    const normalizedName = typeof name === "string" ? name.trim() : "";
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
-    if (!name || !email || !password) {
+    if (!normalizedName || !normalizedEmail || typeof password !== "string" || !password) {
       return errorResponse(res, {
         status: 400,
         code: errorCodes.validationError,
@@ -127,7 +125,7 @@ router.post("/auth/register", async (req, res) => {
       });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
     if (existing) {
       return errorResponse(res, {
@@ -141,37 +139,26 @@ router.post("/auth/register", async (req, res) => {
 
     const user = await prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
-        data: { name, email, passwordHash, role: "OWNER" },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-        },
+        data: { name: normalizedName, email: normalizedEmail, passwordHash, role: "OWNER" },
       });
 
-      const businessName = `${name}'s Business`;
+      const businessName = `${normalizedName}'s Business`;
       const business = await createBusinessWithRestaurantProfile(tx, {
         name: businessName,
         ownerId: newUser.id,
       });
 
-      await tx.user.update({
+      return tx.user.update({
         where: { id: newUser.id },
         data: { businessId: business.id },
+        include: { business: true },
       });
-
-      return {
-        ...newUser,
-        businessId: business.id,
-      };
     });
 
     return successResponse(res, {
       status: 201,
       message: "User registered successfully.",
-      data: user,
+      data: sanitizeUser(user),
     });
   } catch (error) {
     return handleApiError(res, error);
