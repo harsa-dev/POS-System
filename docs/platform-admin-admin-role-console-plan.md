@@ -12,6 +12,8 @@ This dashboard is the next Platform Admin console after Internal Monitoring. It 
 
 It does not implement real assignment execution, revocation execution, permission template persistence, audit writes, approval workflows, backend write handlers, database access, or Prisma schema changes in this dashboard phase.
 
+Current phase status: read-only Admin Role Console scope is complete through access guard, frontend fallback, backend GET-only scaffold, UX hardening, browser smoke, and final QA checklist.
+
 ## 2. Rollout style
 
 Admin Role Console follows the same staged style as Internal Monitoring:
@@ -128,6 +130,25 @@ Implemented browser smoke:
 - no approval execution
 - no audit write
 
+### AR-6 - Final QA checklist
+
+Status: Done
+
+Implemented final QA:
+
+- added `docs/platform-admin-admin-role-console-final-qa.md`
+- added `scripts/platform-admin-admin-role-final-qa-check.mjs`
+- added root command `pnpm platform-admin:admin-role-final-qa`
+- added Admin Role final QA gate to `pnpm platform-admin:check`
+- documented command gate, manual smoke matrix, backend boundary, frontend boundary, browser smoke expectations, and handoff note
+- no database access
+- no Prisma schema changes
+- no role assignment execution
+- no role revocation execution
+- no permission template write
+- no approval execution
+- no audit write
+
 ## 4. What the dashboard shows
 
 The current console displays read-only planning views through a backend-first data source with frontend fallback for:
@@ -171,6 +192,13 @@ Current browser smoke:
 scripts/platform-admin-admin-role-browser-smoke.mjs
 ```
 
+Current final QA:
+
+```txt
+docs/platform-admin-admin-role-console-final-qa.md
+scripts/platform-admin-admin-role-final-qa-check.mjs
+```
+
 Current page:
 
 ```txt
@@ -187,13 +215,13 @@ artifacts/pos-system/src/pages/dashboard/admin-role-console.tsx
 
 This phase must stay read-only. The console may show future operations as planning rows only.
 
-Allowed in AR-5:
+Allowed in AR-6:
 
 ```txt
 GET /api/internal/admin-console/roles
 ```
 
-Blocked in AR-5:
+Blocked in AR-6:
 
 ```txt
 POST /api/internal/admin-console/*
@@ -212,9 +240,10 @@ audit write
 
 Before the Admin Role Console can move beyond read-only backend mock data, the project must add:
 
-- final QA checklist for this dashboard
 - real permission registry source design
 - audit/event policy before any write behavior exists
+- approval and rollback policy before any management execution exists
+- browser smoke expansion for real data once a real source exists
 
 Write workflows remain out of scope until RBAC, audit, approval policy, rollback, and rate-limit rules exist.
 
@@ -224,18 +253,35 @@ Run:
 
 ```bash
 pnpm platform-admin:admin-role-check
-pnpm platform-admin:admin-role-browser-smoke
+pnpm platform-admin:admin-role-final-qa
 pnpm platform-admin:check
+pnpm platform-admin:policy-parity
+pnpm platform-admin:contract-parity
+pnpm business-mode:check
+pnpm --filter @workspace/api-server run typecheck:restaurant
+pnpm --filter @workspace/pos-system run typecheck:restaurant
 ```
 
-AR-5 is considered valid when static guard passes, and browser smoke passes in an environment with the frontend dev server and Playwright installed.
+Optional browser smoke:
 
-## 8. Next safe phase
+```bash
+pnpm platform-admin:admin-role-browser-smoke
+```
 
-Next safe phase:
+AR-6 is considered valid when static guard and final QA pass. Browser smoke should pass in an environment with the frontend dev server and Playwright installed.
+
+## 8. Handoff status
+
+Admin Role Console is ready for validation and handoff as a read-only Platform Admin dashboard.
+
+Next Platform Admin dashboard should reuse the same flow:
 
 ```txt
-AR-6 - Admin Role Console final QA checklist
+scope
+access guard
+frontend data source
+backend read-only scaffold
+UX hardening
+browser smoke
+final QA
 ```
-
-AR-6 should document validation commands, manual smoke expectations, read-only boundaries, and handoff status. It should not add database access, Prisma schema promotion, role mutation, audit writes, or approval execution.
