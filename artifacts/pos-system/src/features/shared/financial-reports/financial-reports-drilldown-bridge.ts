@@ -10,6 +10,8 @@ export type FinancialReportInvoiceDrilldownPayload = {
   search?: string;
   status?: InvoiceBackendStatus | "ALL";
   overdue?: boolean;
+  from?: string;
+  to?: string;
   invoiceId?: string;
   invoiceNumber?: string;
   message?: string;
