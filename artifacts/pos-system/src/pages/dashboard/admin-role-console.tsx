@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { PlatformAdminRoute } from "@/components/core/platform-admin/platform-admin-route";
-import { AdminRoleConsolePage } from "@/features/shared/platform-monitoring/internal-admin-console-page";
+import { AdminRoleConsolePage } from "@/features/shared/platform-monitoring/admin-role-console-page";
 import { authApi } from "@/lib/api";
 
 type AdminRoleConsoleUser = {
