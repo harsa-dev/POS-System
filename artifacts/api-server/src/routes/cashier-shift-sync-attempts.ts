@@ -10,8 +10,10 @@ import {
   createShiftSyncAttempt,
   ensureShiftSyncAttemptTable,
   listLatestShiftSyncAttempts,
+  listShiftSyncAttemptHistory,
   markShiftSyncAttemptFailed,
   markShiftSyncAttemptSuccess,
+  type ShiftSyncAttemptLogRecord,
 } from "../lib/shift-sync-attempt-log.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import { syncShiftCloseToCashflow } from "../services/cashflow/index.js";
@@ -44,6 +46,90 @@ function getErrorDetails(error: unknown) {
     code: null,
     message: "Unknown shift sync error.",
   };
+}
+
+function serializeAttempt(attempt: ShiftSyncAttemptLogRecord) {
+  return {
+    id: attempt.id,
+    shiftId: attempt.shiftId,
+    attemptNumber: attempt.attemptNumber,
+    status: attempt.status,
+    errorCode: attempt.errorCode,
+    errorMessage: attempt.errorMessage,
+    cashflowEntryId: attempt.cashflowEntryId,
+    actorId: attempt.actorId,
+    actorRole: attempt.actorRole,
+    createdAt: attempt.createdAt.toISOString(),
+    updatedAt: attempt.updatedAt.toISOString(),
+  };
+}
+
+function buildAttemptSummary(attempts: ShiftSyncAttemptLogRecord[]) {
+  return attempts.reduce(
+    (summary, attempt) => {
+      summary.totalAttempts += 1;
+      if (attempt.status === "SUCCESS") summary.successCount += 1;
+      if (attempt.status === "FAILED") summary.failedCount += 1;
+      if (attempt.status === "RUNNING") summary.runningCount += 1;
+      summary.latestStatus = summary.latestStatus ?? attempt.status;
+      summary.latestAttemptNumber = summary.latestAttemptNumber ?? attempt.attemptNumber;
+      summary.latestErrorMessage = summary.latestErrorMessage ?? attempt.errorMessage;
+      summary.latestUpdatedAt = summary.latestUpdatedAt ?? attempt.updatedAt.toISOString();
+      return summary;
+    },
+    {
+      totalAttempts: 0,
+      successCount: 0,
+      failedCount: 0,
+      runningCount: 0,
+      latestStatus: null as string | null,
+      latestAttemptNumber: null as number | null,
+      latestErrorMessage: null as string | null,
+      latestUpdatedAt: null as string | null,
+    },
+  );
+}
+
+function csvEscape(value: unknown) {
+  const raw = value == null ? "" : String(value);
+  return `"${raw.replaceAll('"', '""')}"`;
+}
+
+function buildAttemptCsv(attempts: ShiftSyncAttemptLogRecord[]) {
+  const headers = [
+    "Shift ID",
+    "Attempt Number",
+    "Status",
+    "Error Code",
+    "Error Message",
+    "Cashflow Entry ID",
+    "Actor ID",
+    "Actor Role",
+    "Created At",
+    "Updated At",
+  ];
+
+  const rows = attempts.map((attempt) => [
+    attempt.shiftId,
+    attempt.attemptNumber,
+    attempt.status,
+    attempt.errorCode,
+    attempt.errorMessage,
+    attempt.cashflowEntryId,
+    attempt.actorId,
+    attempt.actorRole,
+    attempt.createdAt.toISOString(),
+    attempt.updatedAt.toISOString(),
+  ]);
+
+  return [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\n");
+}
+
+function getLimit(value: unknown, fallback = 50) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const parsed = typeof raw === "string" ? Number(raw) : fallback;
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(Math.max(Math.trunc(parsed), 1), 500);
 }
 
 router.post("/cashflow/sync/shifts/:shiftId", async (req, res) => {
@@ -118,20 +204,75 @@ router.get("/cashier-shift-reports/sync-attempts", async (req, res) => {
     });
 
     return successResponse(res, {
-      data: Array.from(attempts.values()).map((attempt) => ({
-        id: attempt.id,
-        shiftId: attempt.shiftId,
-        attemptNumber: attempt.attemptNumber,
-        status: attempt.status,
-        errorCode: attempt.errorCode,
-        errorMessage: attempt.errorMessage,
-        cashflowEntryId: attempt.cashflowEntryId,
-        actorId: attempt.actorId,
-        actorRole: attempt.actorRole,
-        createdAt: attempt.createdAt.toISOString(),
-        updatedAt: attempt.updatedAt.toISOString(),
-      })),
+      data: Array.from(attempts.values()).map(serializeAttempt),
     });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/cashier-shift-reports/sync-attempts/:shiftId", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+    const attempts = await listShiftSyncAttemptHistory({
+      businessId: businessContext.businessId,
+      shiftId: req.params.shiftId,
+      limit: getLimit(req.query.limit),
+    });
+
+    return successResponse(res, {
+      data: {
+        shiftId: req.params.shiftId,
+        summary: buildAttemptSummary(attempts),
+        attempts: attempts.map(serializeAttempt),
+      },
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/cashier-shift-reports/sync-attempts/:shiftId/export", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+    const format = req.query.format === "json" ? "json" : "csv";
+    const attempts = await listShiftSyncAttemptHistory({
+      businessId: businessContext.businessId,
+      shiftId: req.params.shiftId,
+      limit: getLimit(req.query.limit, 500),
+    });
+
+    if (format === "json") {
+      return successResponse(res, {
+        data: {
+          shiftId: req.params.shiftId,
+          summary: buildAttemptSummary(attempts),
+          attempts: attempts.map(serializeAttempt),
+          meta: {
+            exportedAt: new Date().toISOString(),
+            rowCount: attempts.length,
+            limit: getLimit(req.query.limit, 500),
+          },
+        },
+      });
+    }
+
+    const csv = buildAttemptCsv(attempts);
+    const exportedAt = new Date().toISOString();
+    res.setHeader("content-type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "content-disposition",
+      `attachment; filename="cashier-shift-sync-attempts-${req.params.shiftId.slice(0, 8)}.csv"`,
+    );
+    res.setHeader("x-row-count", String(attempts.length));
+    res.setHeader("x-exported-at", exportedAt);
+    return res.status(200).send(csv);
   } catch (error) {
     return handleApiError(res, error);
   }
