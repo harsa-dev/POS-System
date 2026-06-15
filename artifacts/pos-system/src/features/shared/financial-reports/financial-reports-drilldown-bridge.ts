@@ -5,6 +5,8 @@ export const FINANCIAL_REPORT_INVOICE_DRILLDOWN_KEY =
   "financial-reports:invoice-drilldown";
 export const FINANCIAL_REPORT_CASHFLOW_DRILLDOWN_KEY =
   "financial-reports:cashflow-drilldown";
+export const FINANCIAL_REPORT_INVENTORY_REPAIR_KEY =
+  "financial-reports:inventory-cost-snapshot-repair";
 
 export type FinancialReportInvoiceDrilldownPayload = {
   search?: string;
@@ -23,6 +25,13 @@ export type FinancialReportCashflowDrilldownPayload = {
   search?: string;
   from?: string;
   to?: string;
+  message?: string;
+};
+
+export type FinancialReportInventoryRepairPayload = {
+  from?: string;
+  to?: string;
+  sourceIssue?: "missing_cost_snapshots";
   message?: string;
 };
 
@@ -71,5 +80,18 @@ export function openCashflowDrilldown(payload: FinancialReportCashflowDrilldownP
 export function consumeCashflowDrilldown() {
   return consumeSessionPayload<FinancialReportCashflowDrilldownPayload>(
     FINANCIAL_REPORT_CASHFLOW_DRILLDOWN_KEY,
+  );
+}
+
+export function openInventoryCostSnapshotRepair(
+  payload: FinancialReportInventoryRepairPayload,
+) {
+  writeSessionPayload(FINANCIAL_REPORT_INVENTORY_REPAIR_KEY, payload);
+  window.location.assign("/dashboard/inventory#inventory-cost-snapshot-repair");
+}
+
+export function consumeInventoryCostSnapshotRepair() {
+  return consumeSessionPayload<FinancialReportInventoryRepairPayload>(
+    FINANCIAL_REPORT_INVENTORY_REPAIR_KEY,
   );
 }
