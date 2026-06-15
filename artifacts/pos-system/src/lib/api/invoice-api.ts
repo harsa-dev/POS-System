@@ -4,6 +4,7 @@ import { readApiEnvelope } from "@/lib/api/read-api-envelope";
 type ApiRecord = Record<string, unknown>;
 
 export type InvoiceBackendStatus = "DRAFT" | "SENT" | "PAID" | "CANCELLED";
+export type InvoiceLifecycleStatus = "SENT" | "PAID";
 export type InvoiceDiscountType = "PERCENTAGE" | "FIXED";
 
 export type InvoiceCapabilitiesDto = {
@@ -216,6 +217,24 @@ export const invoiceApi = {
       ok: response.ok,
       status: response.status,
       body: await readApiEnvelope<T>(response, "invoice"),
+    };
+  },
+
+  async updateInvoiceStatusWithResult<T = InvoiceRecord>(
+    id: string,
+    status: InvoiceLifecycleStatus,
+  ): Promise<InvoiceApiResult<T>> {
+    const response = await apiFetch(`/api/invoices/${id}/status`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: await readApiEnvelope<T>(response, "invoice status"),
     };
   },
 
