@@ -13,6 +13,7 @@ import {
   DashboardPanel,
   DashboardShell,
 } from "@/features/shared/dashboard";
+import { InvoiceFinancialReportBridge } from "./invoice-financial-report-bridge";
 import { InvoiceFollowUpAnalyticsPanel } from "./invoice-follow-up-analytics-panel";
 import { InvoiceFollowUpPanel } from "./invoice-follow-up-panel";
 import { InvoiceFollowUpRemindersPanel } from "./invoice-follow-up-reminders-panel";
@@ -78,6 +79,7 @@ export function InvoiceGeneratorWorkspace() {
   if (capabilities && canViewHistory) {
     return (
       <div className="space-y-6">
+        <InvoiceFinancialReportBridge />
         <InvoiceSummaryPanel />
         <InvoiceFollowUpRemindersPanel />
         <InvoiceFollowUpAnalyticsPanel />
