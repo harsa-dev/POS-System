@@ -86,7 +86,7 @@ function main() {
   assertContains({
     label: "App internal monitoring route guard",
     content: app,
-    expected: `PlatformAdminRoute capability="${INTERNAL_MONITORING_CAPABILITY}"`,
+    expected: `PlatformAdminProtectedRoute capability="${INTERNAL_MONITORING_CAPABILITY}"`,
   });
 
   console.log("[platform-admin:policy-parity] frontend/backend/sidebar/route policy parity checks passed.");
