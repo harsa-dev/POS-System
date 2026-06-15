@@ -6,6 +6,12 @@ type ApiRecord = Record<string, unknown>;
 export type InvoiceBackendStatus = "DRAFT" | "SENT" | "PAID" | "CANCELLED";
 export type InvoiceLifecycleStatus = "SENT" | "PAID";
 export type InvoiceDiscountType = "PERCENTAGE" | "FIXED";
+export type InvoiceFollowUpStatus =
+  | "CONTACTED"
+  | "WAITING_RESPONSE"
+  | "PROMISED_PAYMENT"
+  | "RESOLVED"
+  | "ESCALATED";
 
 export type InvoiceCapabilitiesDto = {
   businessId: string;
@@ -91,6 +97,42 @@ export type InvoiceSummaryDto = {
     samples: InvoiceOverdueSampleDto[];
   };
   lastUpdatedAt: string | null;
+};
+
+export type InvoiceFollowUpDto = {
+  id: string;
+  businessId: string;
+  invoiceId: string;
+  status: InvoiceFollowUpStatus;
+  note: string;
+  nextFollowUpAt: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InvoiceFollowUpDashboardItemDto = {
+  invoice: InvoiceOverdueSampleDto;
+  latestFollowUp: InvoiceFollowUpDto | null;
+};
+
+export type InvoiceFollowUpSummaryDto = {
+  overdueCount: number;
+  withFollowUpCount: number;
+  withoutFollowUpCount: number;
+  unresolvedCount: number;
+  statusCounts: Record<InvoiceFollowUpStatus, number>;
+};
+
+export type InvoiceFollowUpDashboardDto = {
+  items: InvoiceFollowUpDashboardItemDto[];
+  summary: InvoiceFollowUpSummaryDto;
+};
+
+export type InvoiceFollowUpPayload = {
+  status: InvoiceFollowUpStatus;
+  note: string;
+  nextFollowUpAt?: string | null;
 };
 
 export type InvoiceExportDto = {
@@ -213,6 +255,14 @@ export const invoiceApi = {
     return apiClient.get<InvoiceHistoryEnvelope<T>>(`/api/invoices${suffix}`);
   },
 
+  getFollowUpDashboard<T = InvoiceFollowUpDashboardDto>() {
+    return apiClient.get<ApiEnvelope<T>>("/api/invoice-follow-ups");
+  },
+
+  listInvoiceFollowUps<T = InvoiceFollowUpDto[]>(invoiceId: string) {
+    return apiClient.get<ApiEnvelope<T>>(`/api/invoices/${invoiceId}/follow-ups`);
+  },
+
   getInvoice<T = InvoiceRecord>(id: string) {
     return apiClient.get<ApiEnvelope<T>>(`/api/invoices/${id}`);
   },
@@ -296,6 +346,42 @@ export const invoiceApi = {
       ok: response.ok,
       status: response.status,
       body: await readApiEnvelope<T>(response, "invoice status"),
+    };
+  },
+
+  async createInvoiceFollowUpWithResult<T = InvoiceFollowUpDto>(
+    invoiceId: string,
+    payload: InvoiceFollowUpPayload,
+  ): Promise<InvoiceApiResult<T>> {
+    const response = await apiFetch(`/api/invoices/${invoiceId}/follow-ups`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: await readApiEnvelope<T>(response, "invoice follow-up"),
+    };
+  },
+
+  async updateInvoiceFollowUpWithResult<T = InvoiceFollowUpDto>(
+    followUpId: string,
+    payload: InvoiceFollowUpPayload,
+  ): Promise<InvoiceApiResult<T>> {
+    const response = await apiFetch(`/api/invoice-follow-ups/${followUpId}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: await readApiEnvelope<T>(response, "invoice follow-up"),
     };
   },
 
