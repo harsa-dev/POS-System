@@ -1,10 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BellRing, CalendarClock, ClipboardList, FileInput, RefreshCw } from "lucide-react";
+import {
+  AlertTriangle,
+  BellRing,
+  CalendarClock,
+  CheckCircle2,
+  ClipboardList,
+  FileInput,
+  RefreshCw,
+  TimerReset,
+} from "lucide-react";
 
 import {
   invoiceApi,
+  type InvoiceFollowUpPayload,
   type InvoiceFollowUpReminderDashboardDto,
   type InvoiceFollowUpReminderDto,
   type InvoiceFollowUpReminderScope,
@@ -23,6 +33,8 @@ type ScopeOption = {
   value: InvoiceFollowUpReminderScope;
   label: string;
 };
+
+type QuickAction = "resolve" | "snooze" | "escalate";
 
 const SCOPE_OPTIONS: ScopeOption[] = [
   { value: "due", label: "Due now" },
@@ -76,11 +88,52 @@ function openFollowUp(item: InvoiceFollowUpReminderDto) {
   document.getElementById("invoice-follow-up-tracker")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function addDaysFromNow(days: number) {
+  const nextDate = new Date();
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate.toISOString();
+}
+
+function buildQuickActionPayload(item: InvoiceFollowUpReminderDto, action: QuickAction): InvoiceFollowUpPayload {
+  const fallbackNote = `Quick action applied for invoice ${item.invoice.invoiceNumber}.`;
+  const currentNote = item.followUp.note?.trim() || fallbackNote;
+
+  if (action === "resolve") {
+    return {
+      status: "RESOLVED",
+      note: currentNote,
+      nextFollowUpAt: null,
+    };
+  }
+
+  if (action === "snooze") {
+    return {
+      status: item.followUp.status,
+      note: currentNote,
+      nextFollowUpAt: addDaysFromNow(3),
+    };
+  }
+
+  return {
+    status: "ESCALATED",
+    note: currentNote,
+    nextFollowUpAt: new Date().toISOString(),
+  };
+}
+
+function getQuickActionLabel(action: QuickAction) {
+  if (action === "resolve") return "Resolve";
+  if (action === "snooze") return "Snooze 3d";
+  return "Escalate";
+}
+
 export function InvoiceFollowUpRemindersPanel() {
   const [dashboard, setDashboard] = useState<InvoiceFollowUpReminderDashboardDto | null>(null);
   const [scope, setScope] = useState<InvoiceFollowUpReminderScope>("due");
   const [isLoading, setIsLoading] = useState(false);
+  const [quickActionKey, setQuickActionKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const loadReminders = useCallback(async (nextScope: InvoiceFollowUpReminderScope = scope) => {
     setIsLoading(true);
@@ -113,6 +166,32 @@ export function InvoiceFollowUpRemindersPanel() {
     return () => window.removeEventListener(INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT, handleRefresh);
   }, [loadReminders, scope]);
 
+  async function handleQuickAction(item: InvoiceFollowUpReminderDto, action: QuickAction) {
+    const actionKey = `${item.followUp.id}:${action}`;
+    setQuickActionKey(actionKey);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await invoiceApi.updateInvoiceFollowUpWithResult(
+        item.followUp.id,
+        buildQuickActionPayload(item, action),
+      );
+
+      if (!response.ok || !response.body.success) {
+        setErrorMessage(response.body.message ?? `Failed to ${getQuickActionLabel(action).toLowerCase()} follow-up reminder.`);
+        return;
+      }
+
+      setSuccessMessage(`${getQuickActionLabel(action)} applied to ${item.invoice.invoiceNumber}.`);
+      window.dispatchEvent(new CustomEvent(INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT));
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : `Failed to ${getQuickActionLabel(action).toLowerCase()} follow-up reminder.`);
+    } finally {
+      setQuickActionKey(null);
+    }
+  }
+
   const summary = dashboard?.summary;
   const items = dashboard?.items ?? [];
 
@@ -133,6 +212,11 @@ export function InvoiceFollowUpRemindersPanel() {
           {errorMessage && (
             <p className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-700">
               {errorMessage}
+            </p>
+          )}
+          {successMessage && (
+            <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-700">
+              {successMessage}
             </p>
           )}
 
@@ -196,41 +280,57 @@ export function InvoiceFollowUpRemindersPanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
-                {items.map((item) => (
-                  <tr key={item.followUp.id} className={item.reminder.isDue ? "bg-rose-50/40" : "hover:bg-neutral-50"}>
-                    <td className="px-3 py-2">
-                      <p className="font-semibold text-neutral-950">{item.invoice.invoiceNumber}</p>
-                      <p className="text-xs text-neutral-500">
-                        {item.invoice.customerName} · {item.invoice.daysOverdue} invoice overdue day(s)
-                      </p>
-                    </td>
-                    <td className="px-3 py-2">
-                      <p className={item.reminder.isDue ? "font-semibold text-rose-700" : "font-semibold text-amber-700"}>
-                        {getReminderLabel(item)}
-                      </p>
-                      <p className="text-xs text-neutral-500">{formatDateTime(item.reminder.nextFollowUpAt)}</p>
-                    </td>
-                    <td className="px-3 py-2">
-                      <p className="font-semibold text-neutral-800">
-                        {FOLLOW_UP_STATUS_LABELS[item.followUp.status] ?? item.followUp.status}
-                      </p>
-                      <p className="line-clamp-1 text-xs text-neutral-500">{item.followUp.note}</p>
-                    </td>
-                    <td className="px-3 py-2 text-right font-semibold text-neutral-900">
-                      {formatCurrency(item.invoice.grandTotal)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex justify-end gap-2">
-                        <DashboardActionButton icon={ClipboardList} onClick={() => openFollowUp(item)}>
-                          Follow Up
-                        </DashboardActionButton>
-                        <DashboardActionButton icon={FileInput} onClick={() => loadInvoiceToEditor(item)}>
-                          Load
-                        </DashboardActionButton>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {items.map((item) => {
+                  const resolveKey = `${item.followUp.id}:resolve`;
+                  const snoozeKey = `${item.followUp.id}:snooze`;
+                  const escalateKey = `${item.followUp.id}:escalate`;
+                  const isQuickActionRunning = Boolean(quickActionKey?.startsWith(`${item.followUp.id}:`));
+
+                  return (
+                    <tr key={item.followUp.id} className={item.reminder.isDue ? "bg-rose-50/40" : "hover:bg-neutral-50"}>
+                      <td className="px-3 py-2">
+                        <p className="font-semibold text-neutral-950">{item.invoice.invoiceNumber}</p>
+                        <p className="text-xs text-neutral-500">
+                          {item.invoice.customerName} · {item.invoice.daysOverdue} invoice overdue day(s)
+                        </p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <p className={item.reminder.isDue ? "font-semibold text-rose-700" : "font-semibold text-amber-700"}>
+                          {getReminderLabel(item)}
+                        </p>
+                        <p className="text-xs text-neutral-500">{formatDateTime(item.reminder.nextFollowUpAt)}</p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <p className="font-semibold text-neutral-800">
+                          {FOLLOW_UP_STATUS_LABELS[item.followUp.status] ?? item.followUp.status}
+                        </p>
+                        <p className="line-clamp-1 text-xs text-neutral-500">{item.followUp.note}</p>
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold text-neutral-900">
+                        {formatCurrency(item.invoice.grandTotal)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <DashboardActionButton icon={CheckCircle2} onClick={() => void handleQuickAction(item, "resolve")} disabled={isQuickActionRunning}>
+                            {quickActionKey === resolveKey ? "Resolving..." : "Resolve"}
+                          </DashboardActionButton>
+                          <DashboardActionButton icon={TimerReset} onClick={() => void handleQuickAction(item, "snooze")} disabled={isQuickActionRunning}>
+                            {quickActionKey === snoozeKey ? "Snoozing..." : "Snooze 3d"}
+                          </DashboardActionButton>
+                          <DashboardActionButton icon={AlertTriangle} onClick={() => void handleQuickAction(item, "escalate")} disabled={isQuickActionRunning}>
+                            {quickActionKey === escalateKey ? "Escalating..." : "Escalate"}
+                          </DashboardActionButton>
+                          <DashboardActionButton icon={ClipboardList} onClick={() => openFollowUp(item)} disabled={isQuickActionRunning}>
+                            Follow Up
+                          </DashboardActionButton>
+                          <DashboardActionButton icon={FileInput} onClick={() => loadInvoiceToEditor(item)} disabled={isQuickActionRunning}>
+                            Load
+                          </DashboardActionButton>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {items.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-3 py-8 text-center text-sm text-neutral-500">
