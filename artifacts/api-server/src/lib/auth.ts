@@ -117,7 +117,7 @@ export async function verifySessionToken(token: string) {
   return {
     sessionId: session.id,
     userId: session.userId,
-    user: session.user,
+    user: session.user as AuthenticatedUser,
   };
 }
 
