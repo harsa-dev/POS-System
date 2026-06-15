@@ -18,6 +18,7 @@ import {
 import { InventoryBackendReportPanel } from "./inventory-backend-report-panel";
 import { InventoryCostSnapshotRepairPanel } from "./inventory-cost-snapshot-repair-panel";
 import { InventoryManagementDashboard } from "./inventory-management-dashboard";
+import { InventoryMovementAnomalyPanel } from "./inventory-movement-anomaly-panel";
 import { InventoryMovementReportPanel } from "./inventory-movement-report-panel";
 
 function InventoryAccessGuard({
@@ -168,6 +169,7 @@ export function InventoryManagementWorkspace() {
 
       <InventoryBackendReportPanel />
       <InventoryMovementReportPanel />
+      <InventoryMovementAnomalyPanel />
       <InventoryCostSnapshotRepairPanel />
       <InventoryManagementDashboard />
     </div>
