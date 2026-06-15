@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const rootDir = process.cwd();
@@ -16,6 +16,12 @@ function readJson(path) {
 
 function fail(message) {
   throw new Error(message);
+}
+
+function assertFileExists(path) {
+  if (!existsSync(resolve(rootDir, path))) {
+    fail(`Expected file to exist: ${path}`);
+  }
 }
 
 function assertContains({ label, content, expected }) {
@@ -78,152 +84,66 @@ function assertEndpoint({ snapshotEndpoint, frontendApi, backendRoute, backendSe
 
 function assertResponseEnvelope({ snapshot, frontendDto, backendDto, frontendApi, frontendDataSource, backendResponseHelper, backendRoute }) {
   for (const field of snapshot.responseEnvelope.successFields) {
-    assertDtoFields({
-      label: "frontend success envelope",
-      content: frontendDto,
-      typeName: "InternalMonitoringApiSuccessEnvelopeDto",
-      fields: [field],
-    });
-    assertDtoFields({
-      label: "backend success envelope",
-      content: backendDto,
-      typeName: "InternalMonitoringApiSuccessEnvelopeDto",
-      fields: [field],
-    });
+    assertDtoFields({ label: "frontend success envelope", content: frontendDto, typeName: "InternalMonitoringApiSuccessEnvelopeDto", fields: [field] });
+    assertDtoFields({ label: "backend success envelope", content: backendDto, typeName: "InternalMonitoringApiSuccessEnvelopeDto", fields: [field] });
   }
 
   for (const field of snapshot.responseEnvelope.errorFields) {
-    assertDtoFields({
-      label: "frontend error envelope",
-      content: frontendDto,
-      typeName: "InternalMonitoringApiErrorEnvelopeDto",
-      fields: [field],
-    });
-    assertDtoFields({
-      label: "backend error envelope",
-      content: backendDto,
-      typeName: "InternalMonitoringApiErrorEnvelopeDto",
-      fields: [field],
-    });
+    assertDtoFields({ label: "frontend error envelope", content: frontendDto, typeName: "InternalMonitoringApiErrorEnvelopeDto", fields: [field] });
+    assertDtoFields({ label: "backend error envelope", content: backendDto, typeName: "InternalMonitoringApiErrorEnvelopeDto", fields: [field] });
   }
 
   for (const field of snapshot.responseEnvelope.metaFields) {
-    assertDtoFields({
-      label: "frontend meta envelope",
-      content: frontendDto,
-      typeName: "InternalMonitoringApiMetaDto",
-      fields: [field],
-    });
-    assertDtoFields({
-      label: "backend meta envelope",
-      content: backendDto,
-      typeName: "InternalMonitoringApiMetaDto",
-      fields: [field],
-    });
+    assertDtoFields({ label: "frontend meta envelope", content: frontendDto, typeName: "InternalMonitoringApiMetaDto", fields: [field] });
+    assertDtoFields({ label: "backend meta envelope", content: backendDto, typeName: "InternalMonitoringApiMetaDto", fields: [field] });
   }
 
   for (const field of snapshot.responseEnvelope.requiredMetaFields) {
-    assertContains({
-      label: "backend response helper required meta",
-      content: backendResponseHelper,
-      expected: field,
-    });
+    assertContains({ label: "backend response helper required meta", content: backendResponseHelper, expected: field });
   }
 
-  assertContains({
-    label: "frontend api envelope usage",
-    content: frontendApi,
-    expected: "InternalMonitoringApiEnvelopeDto",
-  });
-  assertContains({
-    label: "frontend data source envelope unwrap",
-    content: frontendDataSource,
-    expected: "unwrapInternalMonitoringEnvelope",
-  });
-  assertContains({
-    label: "backend response helper",
-    content: backendResponseHelper,
-    expected: "internalMonitoringSuccessResponse",
-  });
-  assertContains({
-    label: "backend route uses internal monitoring envelope helper",
-    content: backendRoute,
-    expected: "internalMonitoringSuccessResponse",
-  });
-  assertContains({
-    label: "backend route no direct generic success response",
-    content: backendRoute,
-    expected: "internal-monitoring-response.js",
-  });
-  assertContains({
-    label: "backend response helper read-only value",
-    content: backendResponseHelper,
-    expected: "readOnly: true",
-  });
-  assertContains({
-    label: "backend response helper capability value",
-    content: backendResponseHelper,
-    expected: snapshot.responseEnvelope.capabilityValue,
-  });
+  assertContains({ label: "frontend api envelope usage", content: frontendApi, expected: "InternalMonitoringApiEnvelopeDto" });
+  assertContains({ label: "frontend data source envelope unwrap", content: frontendDataSource, expected: "unwrapInternalMonitoringEnvelope" });
+  assertContains({ label: "backend response helper", content: backendResponseHelper, expected: "internalMonitoringSuccessResponse" });
+  assertContains({ label: "backend route uses internal monitoring envelope helper", content: backendRoute, expected: "internalMonitoringSuccessResponse" });
+  assertContains({ label: "backend route no direct generic success response", content: backendRoute, expected: "internal-monitoring-response.js" });
+  assertContains({ label: "backend response helper read-only value", content: backendResponseHelper, expected: "readOnly: true" });
+  assertContains({ label: "backend response helper capability value", content: backendResponseHelper, expected: snapshot.responseEnvelope.capabilityValue });
 }
 
 function assertRuntimeProbes({ snapshot, backendRuntimeProbes, backendService, backendRoute, frontendDto, frontendDataSource }) {
-  assertContains({
-    label: "runtime probe collector",
-    content: backendRuntimeProbes,
-    expected: "collectInternalMonitoringRuntimeProbes",
-  });
-  assertContains({
-    label: "runtime probe collector database ping",
-    content: backendRuntimeProbes,
-    expected: "DATABASE_URL",
-  });
-  assertContains({
-    label: "runtime probe collector database query",
-    content: backendRuntimeProbes,
-    expected: "select 1 as internal_monitoring_probe",
-  });
+  assertContains({ label: "runtime probe collector", content: backendRuntimeProbes, expected: "collectInternalMonitoringRuntimeProbes" });
+  assertContains({ label: "runtime probe collector database ping", content: backendRuntimeProbes, expected: "DATABASE_URL" });
+  assertContains({ label: "runtime probe collector database query", content: backendRuntimeProbes, expected: "select 1 as internal_monitoring_probe" });
 
   for (const probeId of snapshot.runtimeProbeIds) {
-    assertContains({
-      label: `runtime probe id ${probeId}`,
-      content: backendRuntimeProbes,
-      expected: probeId,
-    });
+    assertContains({ label: `runtime probe id ${probeId}`, content: backendRuntimeProbes, expected: probeId });
   }
 
-  assertContains({
-    label: "backend service runtime probe collector usage",
-    content: backendService,
-    expected: "collectInternalMonitoringRuntimeProbes",
-  });
-  assertContains({
-    label: "backend service runtime probe payload",
-    content: backendService,
-    expected: "runtimeProbes",
-  });
-  assertContains({
-    label: "backend health route awaits runtime probe payload",
-    content: backendRoute,
-    expected: "await getInternalMonitoringControlRoom()",
-  });
-  assertDtoFields({
-    label: "frontend runtime probe dto",
-    content: frontendDto,
-    typeName: "InternalMonitoringRuntimeProbeDto",
-    fields: snapshot.dtoTypes.InternalMonitoringRuntimeProbeDto,
-  });
-  assertDtoFields({
-    label: "frontend control room dto runtime probes",
-    content: frontendDto,
-    typeName: "InternalMonitoringControlRoomDto",
-    fields: ["runtimeProbes"],
-  });
-  assertContains({
-    label: "frontend fallback runtime probes",
-    content: frontendDataSource,
-    expected: "mockRuntimeProbes",
-  });
+  assertContains({ label: "backend service runtime probe collector usage", content: backendService, expected: "collectInternalMonitoringRuntimeProbes" });
+  assertContains({ label: "backend service runtime probe payload", content: backendService, expected: "runtimeProbes" });
+  assertContains({ label: "backend health route awaits runtime probe payload", content: backendRoute, expected: "await getInternalMonitoringControlRoom()" });
+  assertDtoFields({ label: "frontend runtime probe dto", content: frontendDto, typeName: "InternalMonitoringRuntimeProbeDto", fields: snapshot.dtoTypes.InternalMonitoringRuntimeProbeDto });
+  assertDtoFields({ label: "frontend control room dto runtime probes", content: frontendDto, typeName: "InternalMonitoringControlRoomDto", fields: ["runtimeProbes"] });
+  assertContains({ label: "frontend fallback runtime probes", content: frontendDataSource, expected: "mockRuntimeProbes" });
+}
+
+function assertProbeHistory({ snapshot, backendProbeHistory, probeMigration, frontendApi, frontendDataSource, controlRoom }) {
+  assertFileExists(snapshot.sourceFiles.backendProbeHistory);
+  assertFileExists(snapshot.sourceFiles.probeMigration);
+
+  assertContains({ label: "probe migration table", content: probeMigration, expected: "internal_system_probes" });
+  assertContains({ label: "probe migration status check", content: probeMigration, expected: "internal_system_probes_status_check" });
+  assertContains({ label: "probe migration probe observed index", content: probeMigration, expected: "internal_system_probes_probe_id_observed_at_idx" });
+
+  assertContains({ label: "backend probe history reader", content: backendProbeHistory, expected: "getInternalSystemProbeHistory" });
+  assertContains({ label: "backend probe history table", content: backendProbeHistory, expected: "internal_system_probes" });
+  assertContains({ label: "backend probe history retention", content: backendProbeHistory, expected: "RETENTION_DAYS" });
+  assertContains({ label: "backend probe history missing table handling", content: backendProbeHistory, expected: "schema-missing" });
+  assertContains({ label: "frontend probe history api", content: frontendApi, expected: "getProbeHistory" });
+  assertContains({ label: "frontend probe history data source", content: frontendDataSource, expected: "probeHistory" });
+  assertContains({ label: "frontend probe history panel", content: controlRoom, expected: "InternalSystemProbe History" });
+  assertContains({ label: "frontend probe history panel status", content: controlRoom, expected: "Persistence Status" });
 }
 
 function extractRolesFromPolicy(content, capability) {
@@ -249,6 +169,8 @@ const backendRoute = read(snapshot.sourceFiles.backendRoute);
 const backendPolicy = read(snapshot.sourceFiles.backendPolicy);
 const backendResponseHelper = read(snapshot.sourceFiles.backendResponseHelper);
 const backendRuntimeProbes = read(snapshot.sourceFiles.backendRuntimeProbes);
+const backendProbeHistory = read(snapshot.sourceFiles.backendProbeHistory);
+const probeMigration = read(snapshot.sourceFiles.probeMigration);
 const frontendPolicy = read("artifacts/pos-system/src/components/core/platform-admin/platform-admin-policy.ts");
 const sidebarRegistry = read("artifacts/pos-system/src/app/registry/core-modules.ts");
 const app = read("artifacts/pos-system/src/App.tsx");
@@ -256,71 +178,32 @@ const controlRoom = read("artifacts/pos-system/src/features/shared/platform-moni
 const backendService = read("artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.service.ts");
 
 try {
-  assertContains({
-    label: "snapshot",
-    content: read(snapshotPath),
-    expected: "InternalMonitoringMutationReadinessContractDto",
-  });
+  assertContains({ label: "snapshot", content: read(snapshotPath), expected: "InternalMonitoringMutationReadinessContractDto" });
+  assertContains({ label: "snapshot", content: read(snapshotPath), expected: "InternalSystemProbeHistoryDto" });
 
-  if (snapshot.readOnly !== true) {
-    fail("Contract snapshot must remain readOnly: true.");
-  }
-
-  if (snapshot.mutationMode !== "design-only") {
-    fail("Contract snapshot mutationMode must remain design-only.");
-  }
+  if (snapshot.readOnly !== true) fail("Contract snapshot must remain readOnly: true.");
+  if (snapshot.mutationMode !== "design-only") fail("Contract snapshot mutationMode must remain design-only.");
 
   for (const [typeName, fields] of Object.entries(snapshot.dtoTypes)) {
     assertDtoFields({ label: "frontend DTO", content: frontendDto, typeName, fields });
     assertDtoFields({ label: "backend DTO", content: backendDto, typeName, fields });
   }
 
-  assertResponseEnvelope({
-    snapshot,
-    frontendDto,
-    backendDto,
-    frontendApi,
-    frontendDataSource,
-    backendResponseHelper,
-    backendRoute,
-  });
-
-  assertRuntimeProbes({
-    snapshot,
-    backendRuntimeProbes,
-    backendService,
-    backendRoute,
-    frontendDto,
-    frontendDataSource,
-  });
+  assertResponseEnvelope({ snapshot, frontendDto, backendDto, frontendApi, frontendDataSource, backendResponseHelper, backendRoute });
+  assertRuntimeProbes({ snapshot, backendRuntimeProbes, backendService, backendRoute, frontendDto, frontendDataSource });
+  assertProbeHistory({ snapshot, backendProbeHistory, probeMigration, frontendApi, frontendDataSource, controlRoom });
 
   for (const endpoint of snapshot.endpoints) {
-    if (endpoint.method !== "GET") {
-      fail(`Endpoint ${endpoint.id} must remain GET-only in this phase.`);
-    }
-
-    assertEndpoint({
-      snapshotEndpoint: endpoint,
-      frontendApi,
-      backendRoute,
-      backendService,
-    });
+    if (endpoint.method !== "GET") fail(`Endpoint ${endpoint.id} must remain GET-only in this phase.`);
+    assertEndpoint({ snapshotEndpoint: endpoint, frontendApi, backendRoute, backendService });
   }
 
   for (const section of snapshot.dashboardSections) {
-    assertContains({
-      label: "internal monitoring dashboard section",
-      content: controlRoom,
-      expected: section,
-    });
+    assertContains({ label: "internal monitoring dashboard section", content: controlRoom, expected: section });
   }
 
   for (const blockedMutation of snapshot.blockedMutations) {
-    assertContains({
-      label: "backend policy blocked mutation list",
-      content: backendPolicy,
-      expected: blockedMutation,
-    });
+    assertContains({ label: "backend policy blocked mutation list", content: backendPolicy, expected: blockedMutation });
   }
 
   const frontendRoles = extractRolesFromPolicy(frontendPolicy, snapshot.capability);
@@ -341,23 +224,11 @@ try {
     }
   }
 
-  assertContains({
-    label: "frontend data source mutation readiness section",
-    content: frontendDataSource,
-    expected: "mutationReadinessContracts",
-  });
-  assertContains({
-    label: "sidebar platform admin capability",
-    content: sidebarRegistry,
-    expected: snapshot.capability,
-  });
-  assertContains({
-    label: "App route platform admin capability",
-    content: app,
-    expected: `PlatformAdminProtectedRoute capability="${snapshot.capability}"`,
-  });
+  assertContains({ label: "frontend data source mutation readiness section", content: frontendDataSource, expected: "mutationReadinessContracts" });
+  assertContains({ label: "sidebar platform admin capability", content: sidebarRegistry, expected: snapshot.capability });
+  assertContains({ label: "App route platform admin capability", content: app, expected: `PlatformAdminProtectedRoute capability="${snapshot.capability}"` });
 
-  console.log(`[platform-admin:contract-parity] ${Object.keys(snapshot.dtoTypes).length} DTOs, ${snapshot.endpoints.length} endpoints, ${snapshot.dashboardSections.length} sections, ${snapshot.runtimeProbeIds.length} runtime probes, and response envelope fields match snapshot.`);
+  console.log(`[platform-admin:contract-parity] ${Object.keys(snapshot.dtoTypes).length} DTOs, ${snapshot.endpoints.length} endpoints, ${snapshot.dashboardSections.length} sections, ${snapshot.runtimeProbeIds.length} runtime probes, probe history, and response envelope fields match snapshot.`);
 } catch (error) {
   console.error("[platform-admin:contract-parity] Contract parity check failed.");
   console.error(error instanceof Error ? error.message : error);
