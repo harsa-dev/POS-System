@@ -1,4 +1,5 @@
-import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
+import { apiClient, apiFetch, type ApiEnvelope } from "@/lib/api/api-client";
+import { readApiEnvelope } from "@/lib/api/read-api-envelope";
 
 export type InventoryType =
   | "INGREDIENT"
@@ -66,6 +67,8 @@ export type StockMovementSource =
   | "SYSTEM";
 
 export type InventoryStockStatus = "OUT_OF_STOCK" | "LOW_STOCK" | "IN_STOCK";
+export type InventoryReportStatus = "ALL" | InventoryStockStatus;
+export type InventoryReportSort = "HIGHEST_VALUE" | "LOWEST_STOCK" | "ITEM_NAME" | "NEWEST";
 export type SharedInventoryBusinessMode =
   | "restaurant"
   | "retail"
@@ -129,6 +132,54 @@ export type InventoryDashboardDto = {
   recentMovements: StockMovementDto[];
 };
 
+export type InventoryReportQuery = {
+  search?: string;
+  type?: InventoryType | "ALL";
+  status?: InventoryReportStatus;
+  lowStock?: boolean;
+  sort?: InventoryReportSort;
+  limit?: number;
+};
+
+export type InventoryReportDto = {
+  generatedAt: string;
+  filters: {
+    search: string | null;
+    type: InventoryType | null;
+    status: InventoryReportStatus;
+    lowStock: boolean;
+    sort: InventoryReportSort;
+    limit: number;
+  };
+  summary: {
+    totalItems: number;
+    lowStockItems: number;
+    outOfStockItems: number;
+    inStockItems: number;
+    totalStockValue: number;
+    totalUnits: number;
+    averageCostPerUnit: number;
+  };
+  rows: InventoryItemDto[];
+};
+
+export type InventoryReportExportDto = {
+  rows: InventoryItemDto[];
+  meta: {
+    exportedAt: string;
+    rowCount: number;
+    limit: number;
+    filters: Record<string, string | number | boolean | null>;
+  };
+};
+
+export type InventoryReportCsvDownload = {
+  blob: Blob;
+  filename: string;
+  rowCount: number | null;
+  exportedAt: string | null;
+};
+
 export type InventoryModePolicyDto = {
   mode: SharedInventoryBusinessMode;
   label: string;
@@ -190,6 +241,12 @@ export type StockMovementQuery = {
   limit?: number;
 };
 
+function getFilenameFromDisposition(disposition: string | null) {
+  if (!disposition) return null;
+  const match = disposition.match(/filename="?([^";]+)"?/i);
+  return match?.[1] ?? null;
+}
+
 function buildStockMovementQuery(params?: StockMovementQuery) {
   if (!params) return "";
 
@@ -200,6 +257,20 @@ function buildStockMovementQuery(params?: StockMovementQuery) {
 
   const query = searchParams.toString();
   return query ? `?${query}` : "";
+}
+
+function buildInventoryReportSearchParams(query?: InventoryReportQuery) {
+  const params = new URLSearchParams();
+  if (!query) return params;
+
+  if (query.search?.trim()) params.set("search", query.search.trim());
+  if (query.type && query.type !== "ALL") params.set("type", query.type);
+  if (query.status && query.status !== "ALL") params.set("status", query.status);
+  if (query.lowStock) params.set("lowStock", "true");
+  if (query.sort) params.set("sort", query.sort);
+  if (query.limit) params.set("limit", String(query.limit));
+
+  return params;
 }
 
 export const inventoryApi = {
@@ -219,6 +290,45 @@ export const inventoryApi = {
 
   listInventoryItems() {
     return apiClient.get<ApiDataEnvelope<InventoryItemDto[]>>("/api/inventory-items");
+  },
+
+  listReports(query?: InventoryReportQuery) {
+    const params = buildInventoryReportSearchParams(query);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return apiClient.get<ApiDataEnvelope<InventoryReportDto>>(`/api/inventory-reports${suffix}`);
+  },
+
+  exportReportsJson(query?: InventoryReportQuery) {
+    const params = buildInventoryReportSearchParams(query);
+    params.set("format", "json");
+    return apiClient.get<ApiDataEnvelope<InventoryReportExportDto>>(
+      `/api/inventory-reports/export?${params.toString()}`,
+    );
+  },
+
+  async downloadReportsCsv(query?: InventoryReportQuery): Promise<InventoryReportCsvDownload> {
+    const params = buildInventoryReportSearchParams(query);
+    params.set("format", "csv");
+
+    const response = await apiFetch(`/api/inventory-reports/export?${params.toString()}`, {
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const body = await readApiEnvelope<Record<string, unknown>>(response, "inventory report export");
+      throw new Error(body.message ?? "Failed to export inventory report");
+    }
+
+    const blob = await response.blob();
+    const filename = getFilenameFromDisposition(response.headers.get("content-disposition")) ?? "inventory-report.csv";
+    const rowCountHeader = response.headers.get("x-row-count");
+
+    return {
+      blob,
+      filename,
+      rowCount: rowCountHeader ? Number(rowCountHeader) : null,
+      exportedAt: response.headers.get("x-exported-at"),
+    };
   },
 
   createInventoryItem(payload: InventoryItemPayload) {
