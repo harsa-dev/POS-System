@@ -8,6 +8,7 @@ import {
   getInternalMonitoringContractReadiness,
   getInternalMonitoringControlRoom,
   getInternalMonitoringIntegrityChecks,
+  getInternalMonitoringMutationReadiness,
   getInternalMonitoringRouteInventory,
 } from "../services/platform-admin/internal-monitoring/internal-monitoring.service.js";
 
@@ -89,6 +90,27 @@ router.get("/internal/data-integrity/checks", async (req, res) => {
         source: "api",
         mock: true,
         mode: INTERNAL_MONITORING_POLICY.mode,
+      },
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/internal/mutation-readiness/contracts", async (req, res) => {
+  try {
+    const user = await requireInternalMonitoringAccess(req, res);
+    if (!user) return;
+
+    return successResponse(res, {
+      data: getInternalMonitoringMutationReadiness(),
+      meta: {
+        generatedAt: new Date().toISOString(),
+        source: "api",
+        mock: true,
+        mode: INTERNAL_MONITORING_POLICY.mode,
+        capability: INTERNAL_MONITORING_POLICY.capability,
+        mutationMode: "design-only",
       },
     });
   } catch (error) {
