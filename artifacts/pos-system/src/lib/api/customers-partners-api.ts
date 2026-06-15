@@ -75,6 +75,24 @@ export type CreateContactPayload = {
   address?: string;
 };
 
+export type UpdateContactPayload = CreateContactPayload;
+
+export type CustomersPartnersExportKind = "customers" | "suppliers";
+
+export type CustomersPartnersExportDto = {
+  kind: CustomersPartnersExportKind;
+  exportedAt: string;
+  rowCount: number;
+  rows: CustomerProfileDto[] | SupplierProfileDto[];
+};
+
+export type CustomersPartnersCsvDownload = {
+  blob: Blob;
+  filename: string;
+  rowCount: number | null;
+  exportedAt: string | null;
+};
+
 type ApiDataEnvelope<T> = ApiEnvelope<T> & { data: T };
 
 function buildQuery(params?: { search?: string }) {
@@ -82,6 +100,25 @@ function buildQuery(params?: { search?: string }) {
   if (params?.search) searchParams.set("search", params.search);
   const query = searchParams.toString();
   return query ? `?${query}` : "";
+}
+
+function buildExportQuery(params: {
+  kind: CustomersPartnersExportKind;
+  search?: string;
+  format?: "csv" | "json";
+}) {
+  const searchParams = new URLSearchParams();
+  searchParams.set("kind", params.kind);
+  if (params.search) searchParams.set("search", params.search);
+  if (params.format) searchParams.set("format", params.format);
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
+function getFilenameFromDisposition(disposition: string | null, fallback: string) {
+  if (!disposition) return fallback;
+  const match = disposition.match(/filename="?([^";]+)"?/i);
+  return match?.[1] ?? fallback;
 }
 
 export const customersPartnersApi = {
@@ -111,6 +148,20 @@ export const customersPartnersApi = {
     );
   },
 
+  updateCustomer(id: string, payload: UpdateContactPayload) {
+    return apiClient.patch<ApiDataEnvelope<CustomerProfileDto>>(
+      `/api/customers-partners/customers/${encodeURIComponent(id)}`,
+      { json: payload },
+    );
+  },
+
+  updateSupplier(id: string, payload: UpdateContactPayload) {
+    return apiClient.patch<ApiDataEnvelope<SupplierProfileDto>>(
+      `/api/customers-partners/suppliers/${encodeURIComponent(id)}`,
+      { json: payload },
+    );
+  },
+
   deleteCustomer(id: string) {
     return apiClient.delete<ApiDataEnvelope<{ id: string }>>(
       `/api/customers-partners/customers/${encodeURIComponent(id)}`,
@@ -121,5 +172,42 @@ export const customersPartnersApi = {
     return apiClient.delete<ApiDataEnvelope<{ id: string }>>(
       `/api/customers-partners/suppliers/${encodeURIComponent(id)}`,
     );
+  },
+
+  exportContactsJson(params: { kind: CustomersPartnersExportKind; search?: string }) {
+    return apiClient.get<ApiDataEnvelope<CustomersPartnersExportDto>>(
+      `/api/customers-partners/export${buildExportQuery({ ...params, format: "json" })}`,
+    );
+  },
+
+  async downloadContactsCsv(params: { kind: CustomersPartnersExportKind; search?: string }): Promise<CustomersPartnersCsvDownload> {
+    const response = await fetch(
+      `/api/customers-partners/export${buildExportQuery({ ...params, format: "csv" })}`,
+      {
+        credentials: "include",
+        headers: { Accept: "text/csv" },
+      },
+    );
+
+    if (!response.ok) {
+      let message = `Failed to export ${params.kind}.`;
+      try {
+        const errorBody = await response.json();
+        if (typeof errorBody?.message === "string") message = errorBody.message;
+      } catch {
+        // Keep fallback message for non-JSON failures.
+      }
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const fallback = `${params.kind}-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    return {
+      blob,
+      filename: getFilenameFromDisposition(response.headers.get("Content-Disposition"), fallback),
+      rowCount: Number(response.headers.get("X-Row-Count")) || null,
+      exportedAt: response.headers.get("X-Exported-At"),
+    };
   },
 };
