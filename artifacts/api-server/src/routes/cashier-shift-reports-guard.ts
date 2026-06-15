@@ -1,5 +1,5 @@
 import type { Role } from "@prisma/client";
-import { Router } from "express";
+import { Router, type NextFunction, type Request, type Response } from "express";
 
 import { requireRole } from "../lib/auth.js";
 import { requireBusinessContextForUser } from "../lib/business-context/index.js";
@@ -40,9 +40,9 @@ function getCashierShiftReportCapabilities(role: Role, businessMode: string) {
 }
 
 async function requireCashierShiftReportAccess(
-  req: Parameters<Parameters<typeof router.use>[1]>[0],
-  res: Parameters<Parameters<typeof router.use>[1]>[1],
-  next: Parameters<Parameters<typeof router.use>[1]>[2],
+  req: Request,
+  res: Response,
+  next: NextFunction,
 ) {
   try {
     const user = await requireRole(req, res, ALL_ROLES);
