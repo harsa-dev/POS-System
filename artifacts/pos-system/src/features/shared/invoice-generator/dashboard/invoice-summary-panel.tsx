@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock3, FileText, RefreshCw, Send, TimerReset, WalletCards, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, FileInput, FileText, ListFilter, RefreshCw, Send, TimerReset, WalletCards, XCircle } from "lucide-react";
 
-import { invoiceApi, type InvoiceBackendStatus, type InvoiceSummaryDto } from "@/lib/api/invoice-api";
+import { invoiceApi, type InvoiceBackendStatus, type InvoiceOverdueSampleDto, type InvoiceSummaryDto } from "@/lib/api/invoice-api";
 import { formatCurrency } from "@/features/shared/format";
 import { DashboardActionButton, DashboardActions, DashboardPanel, StatCard } from "@/features/shared/dashboard";
-import { INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT } from "./invoice-generator-events";
+import {
+  INVOICE_GENERATOR_FILTER_HISTORY_EVENT,
+  INVOICE_GENERATOR_LOAD_INVOICE_EVENT,
+  INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT,
+  type InvoiceGeneratorFilterHistoryEventDetail,
+  type InvoiceGeneratorLoadInvoiceEventDetail,
+} from "./invoice-generator-events";
 
 type InvoiceSummaryPanelProps = {
   reloadSignal?: number;
@@ -39,6 +45,25 @@ function formatDate(value: string | null | undefined) {
   });
 }
 
+function showOverdueInHistory() {
+  const detail: InvoiceGeneratorFilterHistoryEventDetail = {
+    overdue: true,
+    status: "ALL",
+    message: "Showing overdue open invoices from backend history.",
+  };
+  window.dispatchEvent(new CustomEvent(INVOICE_GENERATOR_FILTER_HISTORY_EVENT, { detail }));
+  document.getElementById("invoice-history-operations")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function loadSampleToEditor(invoice: InvoiceOverdueSampleDto) {
+  const detail: InvoiceGeneratorLoadInvoiceEventDetail = {
+    invoiceId: invoice.id,
+    invoiceNumber: invoice.invoiceNumber,
+  };
+  window.dispatchEvent(new CustomEvent(INVOICE_GENERATOR_LOAD_INVOICE_EVENT, { detail }));
+  document.getElementById("invoice-generator-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelProps) {
   const [summary, setSummary] = useState<InvoiceSummaryDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +72,7 @@ export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelPro
   const buckets = useMemo(() => buildBucketMap(summary), [summary]);
   const agingBuckets = summary?.aging.buckets ?? [];
   const overdueSamples = summary?.aging.samples ?? [];
+  const hasOverdue = (summary?.aging.overdueCount ?? 0) > 0;
 
   async function loadSummary() {
     setIsLoading(true);
@@ -88,6 +114,9 @@ export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelPro
       description="Backend-backed status totals, receivables, and overdue aging for the current business. Finally, unpaid invoices can no longer hide politely."
       actions={
         <DashboardActions>
+          <DashboardActionButton icon={ListFilter} onClick={showOverdueInHistory} disabled={!hasOverdue}>
+            Show Overdue
+          </DashboardActionButton>
           <DashboardActionButton icon={RefreshCw} onClick={() => void loadSummary()} disabled={isLoading}>
             {isLoading ? "Refreshing..." : "Refresh"}
           </DashboardActionButton>
@@ -208,6 +237,7 @@ export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelPro
                     <th className="px-3 py-2">Due Date</th>
                     <th className="px-3 py-2">Overdue</th>
                     <th className="px-3 py-2 text-right">Amount</th>
+                    <th className="px-3 py-2 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-amber-100">
@@ -218,6 +248,26 @@ export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelPro
                       <td className="px-3 py-2 text-neutral-700">{formatDate(invoice.dueDate)}</td>
                       <td className="px-3 py-2 text-rose-700">{invoice.daysOverdue} day(s)</td>
                       <td className="px-3 py-2 text-right font-semibold text-neutral-900">{formatCurrency(invoice.grandTotal)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={showOverdueInHistory}
+                            className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+                          >
+                            <ListFilter className="h-3.5 w-3.5" />
+                            History
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => loadSampleToEditor(invoice)}
+                            className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                          >
+                            <FileInput className="h-3.5 w-3.5" />
+                            Load
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
