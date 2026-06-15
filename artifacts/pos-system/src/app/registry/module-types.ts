@@ -66,6 +66,7 @@ export type V3PermissionKey =
   | "settings.manage"
   | "platform-admin.internal-monitoring.read"
   | "platform-admin.admin-role-console.read"
+  | "platform-admin.billing-operations-console.read"
   | "inventory.view"
   | "inventory.manage"
   | "payments.manage"
@@ -119,38 +120,21 @@ export type V3SidebarGroup =
   | "Restaurant Operations"
   | "Retail Operations"
   | "Raw Material Operations"
-  | "Custom Business";
+  | "Custom Business Operations";
 
-export type V3SidebarRegistration = Readonly<{
+export type V3SidebarEntry = {
   moduleId: V3ModuleId;
   label: string;
-  description: string;
+  description?: string;
   routePath: string;
   group: V3SidebarGroup;
   supportedModes: readonly V3BusinessMode[];
   requiredPermissions: readonly V3PermissionKey[];
-  featureFlags: readonly V3FeatureFlag[];
-  requiredRoles?: readonly V3RuntimeRole[];
-  order: number;
-}>;
+  featureFlags?: readonly V3FeatureFlag[];
+  order?: number;
+};
 
-export type V3WorkspaceRegistration = Readonly<{
-  id: V3ModuleId;
-  moduleId: V3ModuleId;
-  label: string;
-  description: string;
-  routePath: string;
-  currentRoute?: string | null;
-  workspaceRoute?: string;
-  layer: V3ModuleLayer;
-  supportedModes: readonly V3BusinessMode[];
-  requiredPermissions: readonly V3PermissionKey[];
-  featureFlags: readonly V3FeatureFlag[];
-  dependencies: readonly V3ModuleId[];
-  order: number;
-}>;
-
-export type V3ModuleMetadata = Readonly<{
+export type V3ModuleMetadata = {
   id: V3ModuleId;
   label: string;
   description: string;
@@ -158,14 +142,12 @@ export type V3ModuleMetadata = Readonly<{
   status: V3ModuleStatus;
   supportedModes: readonly V3BusinessMode[];
   routeBase: string | null;
-  workspaceRoute?: string | null;
   sidebarGroup: V3SidebarGroup;
   sidebarVisible: boolean;
   sidebarOrder?: number;
   workspaceOrder?: number;
-  sidebarEntries?: readonly V3SidebarRegistration[];
-  workspaceEntries?: readonly V3WorkspaceRegistration[];
+  sidebarEntries?: readonly V3SidebarEntry[];
   requiredPermissions: readonly V3PermissionKey[];
-  featureFlags: readonly V3FeatureFlag[];
+  featureFlags?: readonly V3FeatureFlag[];
   dependencies: readonly V3ModuleId[];
-}>;
+};
