@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, Clock3, FileText, RefreshCw, Send, WalletC
 import { invoiceApi, type InvoiceBackendStatus, type InvoiceSummaryDto } from "@/lib/api/invoice-api";
 import { formatCurrency } from "@/features/shared/format";
 import { DashboardActionButton, DashboardActions, DashboardPanel, StatCard } from "@/features/shared/dashboard";
+import { INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT } from "./invoice-generator-events";
 
 type InvoiceSummaryPanelProps = {
   reloadSignal?: number;
@@ -57,6 +58,15 @@ export function InvoiceSummaryPanel({ reloadSignal = 0 }: InvoiceSummaryPanelPro
   useEffect(() => {
     void loadSummary();
   }, [reloadSignal]);
+
+  useEffect(() => {
+    function handleRefreshSummary() {
+      void loadSummary();
+    }
+
+    window.addEventListener(INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT, handleRefreshSummary);
+    return () => window.removeEventListener(INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT, handleRefreshSummary);
+  }, []);
 
   const lastUpdated = summary?.lastUpdatedAt ? new Date(summary.lastUpdatedAt).toLocaleString("id-ID") : "No invoices yet";
 
