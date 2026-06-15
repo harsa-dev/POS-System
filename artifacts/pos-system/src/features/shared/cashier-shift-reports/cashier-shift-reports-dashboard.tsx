@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, RefreshCw } from "lucide-react";
 
 import { DashboardActionButton, DashboardActions, DashboardFilters, DashboardPanel, DashboardShell } from "@/features/shared/dashboard";
-import { exportCsv } from "@/features/shared/export";
 import { DateRangeFilter, SelectFilter, StatusFilter } from "@/features/shared/filters";
 import { ShiftKpis } from "./components/shift-analysis/shift-kpis";
 import { ShiftList } from "./components/shift-list/shift-list";
@@ -12,7 +11,12 @@ import { ShiftDetailDrawer } from "./components/shift-detail-drawer";
 import type { CashierShift, ShiftFilters } from "@/features/shared/types";
 import { cashflowApi } from "@/lib/api/cashflow-api";
 import { getApiErrorMessage } from "@/lib/api/api-client";
-import { shiftsApi, type ApiShiftDto, type ApiShiftOrderDto } from "@/lib/api/shifts-api";
+import {
+  shiftsApi,
+  type ApiShiftDto,
+  type ApiShiftOrderDto,
+  type CashierShiftReportQuery,
+} from "@/lib/api/shifts-api";
 
 const statusOptions = ["All", "Active", "Completed"];
 
@@ -23,6 +27,25 @@ function countActiveFilters(filters: ShiftFilters) {
     filters.dateRange !== "This Month",
     filters.warehouse !== "All",
   ].filter(Boolean).length;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+function buildReportQuery(filters: ShiftFilters): CashierShiftReportQuery {
+  return {
+    status: filters.status,
+    cashier: filters.cashier,
+    dateRange: filters.dateRange,
+  };
 }
 
 function formatDate(value: string) {
@@ -54,25 +77,25 @@ function isOrderCountedInShiftSales(order: ApiShiftOrderDto) {
 function mapApiShiftToCashierShift(shift: ApiShiftDto, failedSyncIds: Set<string>): CashierShift {
   const orders = shift.orders ?? [];
   const countedOrders = orders.filter(isOrderCountedInShiftSales);
-  const totalSales = countedOrders.reduce((total, order) => total + order.total, 0);
-  const cashDifference = shift.cashDifference ?? 0;
+  const totalSales = shift.report?.totalSales ?? countedOrders.reduce((total, order) => total + order.total, 0);
+  const cashDifference = shift.report?.cashDifference ?? shift.cashDifference ?? 0;
   const isClosed = shift.status === "CLOSED";
 
   return {
     id: shift.id,
-    cashierName: shift.user?.name ?? shift.user?.email ?? "Unknown Cashier",
+    cashierName: shift.report?.cashierName ?? shift.user?.name ?? shift.user?.email ?? "Unknown Cashier",
     status: isClosed ? "Completed" : "Active",
-    warehouse: "Current Business",
+    warehouse: shift.report?.businessScope ?? "Current Business",
     date: formatDate(shift.openedAt),
     startTime: formatTime(shift.openedAt) ?? "-",
     endTime: formatTime(shift.closedAt),
     totalSales,
-    transactionCount: countedOrders.length,
-    cashOut: Math.max(0, -cashDifference),
+    transactionCount: shift.report?.transactionCount ?? countedOrders.length,
+    cashOut: shift.report?.cashOut ?? Math.max(0, -cashDifference),
     startingCash: shift.openingCash,
-    endingCash: shift.closingCash ?? shift.expectedCash,
+    endingCash: shift.report?.endingCash ?? shift.closingCash ?? shift.expectedCash,
     cashDifference,
-    cashStatus: getCashStatus(cashDifference),
+    cashStatus: shift.report?.cashStatus as CashierShift["cashStatus"] | undefined ?? getCashStatus(cashDifference),
     syncStatus: failedSyncIds.has(shift.id)
       ? "Sync Failed"
       : shift.cashflowSynced
@@ -115,6 +138,7 @@ export function CashierShiftReportsDashboard() {
   const [activeShift, setActiveShift] = useState<CashierShift | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const loadShifts = useCallback(async () => {
@@ -199,6 +223,21 @@ export function CashierShiftReportsDashboard() {
     await loadShifts();
   }
 
+  async function handleExport() {
+    setIsExporting(true);
+    setMessage(null);
+
+    try {
+      const download = await shiftsApi.downloadReportsCsv(buildReportQuery(filters));
+      downloadBlob(download.blob, download.filename);
+      setMessage(`Exported ${download.rowCount ?? "all"} cashier shift report row(s).`);
+    } catch (error) {
+      setMessage(getApiErrorMessage(error, "Failed to export cashier shift reports."));
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <DashboardShell
       title="Cashier Shift Reports"
@@ -233,23 +272,10 @@ export function CashierShiftReportsDashboard() {
             </DashboardActionButton>
             <DashboardActionButton
               icon={Download}
-              onClick={() =>
-                exportCsv({
-                  filename: "cashier-shift-reports",
-                  rows: filteredShifts,
-                  columns: [
-                    { key: "cashier", header: "Cashier", value: (shift) => shift.cashierName },
-                    { key: "status", header: "Status", value: (shift) => shift.status },
-                    { key: "warehouse", header: "Business Scope", value: (shift) => shift.warehouse },
-                    { key: "date", header: "Date", value: (shift) => shift.date },
-                    { key: "sales", header: "Total Sales", value: (shift) => shift.totalSales },
-                    { key: "cashDifference", header: "Cash Difference", value: (shift) => shift.cashDifference },
-                    { key: "syncStatus", header: "Sync Status", value: (shift) => shift.syncStatus },
-                  ],
-                })
-              }
+              disabled={isExporting || isFetching}
+              onClick={() => void handleExport()}
             >
-              Export
+              {isExporting ? "Exporting..." : "Export"}
             </DashboardActionButton>
           </DashboardActions>
         </div>
