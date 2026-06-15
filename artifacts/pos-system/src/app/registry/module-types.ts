@@ -64,6 +64,7 @@ export type V3PermissionKey =
   | "auth.access"
   | "permissions.manage"
   | "settings.manage"
+  | "platform-admin.internal-monitoring.read"
   | "inventory.view"
   | "inventory.manage"
   | "payments.manage"
@@ -159,42 +160,11 @@ export type V3ModuleMetadata = Readonly<{
   workspaceRoute?: string | null;
   sidebarGroup: V3SidebarGroup;
   sidebarVisible: boolean;
-  sidebarLabel?: string;
   sidebarOrder?: number;
-  workspaceLabel?: string;
   workspaceOrder?: number;
   sidebarEntries?: readonly V3SidebarRegistration[];
   workspaceEntries?: readonly V3WorkspaceRegistration[];
   requiredPermissions: readonly V3PermissionKey[];
   featureFlags: readonly V3FeatureFlag[];
   dependencies: readonly V3ModuleId[];
-}>;
-
-export type V3SidebarItem = Readonly<{
-  moduleId: V3ModuleId;
-  label: string;
-  description: string;
-  routePath: string;
-  group: V3SidebarGroup;
-  supportedModes: readonly V3BusinessMode[];
-  requiredPermissions: readonly V3PermissionKey[];
-  featureFlags: readonly V3FeatureFlag[];
-  requiredRoles: readonly V3RuntimeRole[];
-  order: number;
-}>;
-
-export type V3WorkspaceMetadata = Readonly<{
-  id: V3ModuleId;
-  moduleId: V3ModuleId;
-  label: string;
-  description: string;
-  routePath: string;
-  currentRoute: string | null;
-  workspaceRoute: string;
-  layer: V3ModuleLayer;
-  supportedModes: readonly V3BusinessMode[];
-  requiredPermissions: readonly V3PermissionKey[];
-  featureFlags: readonly V3FeatureFlag[];
-  dependencies: readonly V3ModuleId[];
-  order: number;
 }>;
