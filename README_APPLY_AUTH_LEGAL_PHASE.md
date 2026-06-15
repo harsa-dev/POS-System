@@ -22,7 +22,6 @@ Test:
 - /terms
 - /security
 - /cookies
-```
 
 ## Auth hardening note
 
