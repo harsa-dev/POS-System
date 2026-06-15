@@ -38,6 +38,8 @@ const toneMap: Record<ConsoleStatus | ConsoleRisk | string, DashboardTone> = {
   Medium: "amber",
   High: "rose",
   Critical: "rose",
+  api: "green",
+  fallback: "amber",
   "mock-registry": "slate",
   "section-fallback": "amber",
 };
@@ -135,6 +137,7 @@ export function AdminRoleConsolePage() {
   }
 
   const { consoleCard } = data;
+  const backendState = data.source === "api" ? "Connected" : "Fallback active";
 
   return (
     <div className="space-y-6">
@@ -143,42 +146,42 @@ export function AdminRoleConsolePage() {
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <StatusPill tone={tone(data.source)}>Source: {data.source}</StatusPill>
             <span>Generated {new Date(data.generatedAt).toLocaleString()}</span>
-            <span>Read-only frontend adapter. No backend, DB, Prisma, or role mutation in AR-2.</span>
+            <span>Read-only API first, frontend fallback second. No DB, Prisma, or management mutation in this phase.</span>
           </div>
         </div>
         <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard label="Owner Role" value={consoleCard.ownerRole} note={consoleCard.primaryJobs} icon={Crown} tone="slate" />
-          <StatCard label="Readiness" value={consoleCard.readiness} note="Frontend mock registry with section fallback." icon={ClipboardCheck} tone={tone(consoleCard.readiness)} />
-          <StatCard label="Risk" value={consoleCard.risk} note="Write behavior remains blocked." icon={LockKeyhole} tone={tone(consoleCard.risk)} />
+          <StatCard label="Readiness" value={consoleCard.readiness} note="Backend read-only mock with frontend fallback." icon={ClipboardCheck} tone={tone(consoleCard.readiness)} />
+          <StatCard label="Risk" value={consoleCard.risk} note="Management behavior remains blocked." icon={LockKeyhole} tone={tone(consoleCard.risk)} />
           <StatCard label="Fallback Sections" value={fallbackSections.length} note="Section-level fallback coverage." icon={RotateCcw} tone={fallbackSections.length > 0 ? "amber" : "green"} />
         </div>
       </DashboardPanel>
 
-      <DashboardPanel title="Read-only Safety Boundary" description="AR-2 is a frontend rollout step, not an internal role management engine.">
+      <DashboardPanel title="Read-only Safety Boundary" description="Admin Role Console now has a backend read route, but still no management execution.">
         <div className="grid gap-4 p-4 lg:grid-cols-3">
-          <StatCard label="Backend" value="Not connected" note="No internal admin role endpoint is called in this phase." icon={Database} tone="slate" />
-          <StatCard label="Mutation" value="Blocked" note="No role assignment, revocation, approval execution, or template write." icon={ShieldCheck} tone="rose" />
+          <StatCard label="Backend" value={backendState} note="GET /api/internal/admin-console/roles with mock fallback." icon={Database} tone={data.source === "api" ? "green" : "amber"} />
+          <StatCard label="Mutation" value="Blocked" note="No assignment, revocation, approval execution, or template write." icon={ShieldCheck} tone="rose" />
           <StatCard label="Write Items" value={data.blockedWriteItems} note="Rows that must stay planning-only." icon={LockKeyhole} tone={data.blockedWriteItems > 0 ? "rose" : "green"} />
         </div>
       </DashboardPanel>
 
-      <DashboardPanel title="Section Source Health" description="Setiap section punya source/fallback state supaya nanti gampang diganti loader real tanpa membongkar UI.">
+      <DashboardPanel title="Section Source Health" description="Setiap section punya source/fallback state supaya API read route bisa gagal tanpa menjatuhkan UI.">
         <DataTable columns={sectionColumns} data={data.sectionFallbacks} getRowKey={(row) => row.key} minWidth={1100} pagination={false} />
       </DashboardPanel>
 
-      <DashboardPanel title="Console Metrics" description="Mock metrics loaded through the Admin Role Console data source adapter.">
+      <DashboardPanel title="Console Metrics" description="Metrics loaded from backend read-only route when available, otherwise frontend fallback.">
         <DataTable columns={metricColumns} data={data.metrics} getRowKey={(row) => row.id} minWidth={950} pagination={false} />
       </DashboardPanel>
 
-      <DashboardPanel title="Console Workflows" description="Workflow planning rows from the frontend adapter. Execution remains blocked.">
+      <DashboardPanel title="Console Workflows" description="Workflow planning rows. Execution remains blocked.">
         <DataTable columns={workflowColumns} data={data.workflows} getRowKey={(row) => row.id} minWidth={1700} pagination={false} />
       </DashboardPanel>
 
-      <DashboardPanel title="Read-only Rollout Preview" description="Frontend-only readiness map. This is not a backend contract phase.">
+      <DashboardPanel title="Read-only Rollout Preview" description="Read-only readiness map from the Admin Role Console loader.">
         <DataTable columns={rolloutColumns} data={data.rolloutPreview} getRowKey={(row) => row.id} minWidth={1500} pagination={false} />
       </DashboardPanel>
 
-      <DashboardPanel title="Schema Candidates" description="Candidate storage only. No Prisma promotion in AR-2.">
+      <DashboardPanel title="Schema Candidates" description="Candidate storage only. No Prisma promotion in this phase.">
         <DataTable columns={schemaColumns} data={data.schemaCandidates} getRowKey={(row) => row.id} minWidth={1500} pagination={false} />
       </DashboardPanel>
     </div>
