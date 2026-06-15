@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { v3PosTables } from "@/app/workspace/restaurant/pos-placeholder-data";
+import { v3PosTables } from "@/app/workspace/restaurant/pos-sample-data";
 import type {
   PosTableItem,
   PosTableSummary,

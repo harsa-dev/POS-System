@@ -806,8 +806,8 @@ export function MenuWorkspaceBoard({
 
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-        Basic create, edit, image, and availability are enabled. Delete and
-        recipes remain placeholders.
+        Basic create, edit, image, and availability are enabled. Delete remains
+        planned; recipes are managed from the Recipes workspace.
       </div>
 
       {filteredItems.length === 0 ? (

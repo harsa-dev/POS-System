@@ -28,8 +28,8 @@ export function PosOrderPanel({
           <h3 className="text-sm font-bold text-neutral-950">Current Order</h3>
           <p className="mt-1 text-xs text-neutral-500">
             {selectedTable
-              ? `${selectedTable.name}, dine in placeholder`
-              : "No table selected, dine in placeholder"}
+              ? `${selectedTable.name}, dine-in order`
+              : "No table selected for dine-in"}
           </p>
         </div>
         <span className="rounded-full bg-neutral-950 px-3 py-1 text-xs font-semibold text-white">

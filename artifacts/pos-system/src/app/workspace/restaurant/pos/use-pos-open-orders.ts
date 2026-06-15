@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { v3PosOpenOrders } from "@/app/workspace/restaurant/pos-placeholder-data";
+import { v3PosOpenOrders } from "@/app/workspace/restaurant/pos-sample-data";
 import type { PosOpenOrderItem } from "@/app/workspace/restaurant/pos/pos-workspace-types";
 import { orderApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils/format";

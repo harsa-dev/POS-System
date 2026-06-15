@@ -11,6 +11,10 @@ import {
 } from "@/features/shared/raw-material-bridge";
 import type { RawMaterialSharedDashboardId } from "@/features/raw-material/core-system";
 import {
+  RestaurantSharedDashboardBridge,
+} from "@/features/shared/restaurant-bridge";
+import type { RestaurantSharedDashboardId } from "@/lib/api";
+import {
   shouldCallServiceBusinessSharedSurface,
   shouldHideSharedDashboardForServiceMode,
 } from "@/features/shared/service-business/service-business-shared-dashboard-config";
@@ -54,6 +58,26 @@ const rawMaterialDashboardBySurface: Partial<Record<SharedDashboardSurfaceId, Ra
   "team-management": "team-management",
   "employee-performance": "employee-performance",
   approvals: "approvals",
+};
+
+const restaurantDashboardBySurface: Partial<Record<SharedDashboardSurfaceId, RestaurantSharedDashboardId>> = {
+  "business-overview": "overview",
+  sales: "sales",
+  customers: "customers",
+  inventory: "inventory",
+  cashflow: "cashflow",
+  "financial-reports": "financial-reports",
+  invoice: "invoice-generator",
+  "cashier-shift-reports": "shift-reports",
+  "operation-reports": "shift-reports",
+  "team-management": "team-management",
+  "roster-overview": "roster-overview",
+  "employee-performance": "employee-performance",
+  "audit-log": "audit-controls",
+  approvals: "approvals",
+  contracts: "employee-contracts",
+  attendance: "employee-attendance",
+  payroll: "payroll",
 };
 
 function isServiceBusinessPreviewModeActive(): boolean {
@@ -115,16 +139,31 @@ export function DashboardShell({
   const rawMaterialDashboardId = serviceBusinessSurface
     ? rawMaterialDashboardBySurface[serviceBusinessSurface as SharedDashboardSurfaceId]
     : undefined;
+  const restaurantDashboardId = serviceBusinessSurface
+    ? restaurantDashboardBySurface[serviceBusinessSurface as SharedDashboardSurfaceId]
+    : undefined;
   const dashboardContent = shouldHideChildrenForService && serviceBusinessSurface ? (
     <ServiceBusinessSharedDashboardHiddenNotice surface={serviceBusinessSurface} />
   ) : (
     children
   );
-  const bridgedDashboardContent = rawMaterialDashboardId ? (
-    <RawMaterialSharedDashboardBridge dashboardId={rawMaterialDashboardId}>
-      {dashboardContent}
-    </RawMaterialSharedDashboardBridge>
-  ) : dashboardContent;
+  let bridgedDashboardContent = dashboardContent;
+
+  if (rawMaterialDashboardId) {
+    bridgedDashboardContent = (
+      <RawMaterialSharedDashboardBridge dashboardId={rawMaterialDashboardId}>
+        {bridgedDashboardContent}
+      </RawMaterialSharedDashboardBridge>
+    );
+  }
+
+  if (restaurantDashboardId) {
+    bridgedDashboardContent = (
+      <RestaurantSharedDashboardBridge dashboardId={restaurantDashboardId}>
+        {bridgedDashboardContent}
+      </RestaurantSharedDashboardBridge>
+    );
+  }
 
   return (
     <section className="flex min-h-0 flex-col gap-5">

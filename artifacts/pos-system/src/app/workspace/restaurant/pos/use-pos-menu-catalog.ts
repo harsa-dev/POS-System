@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   v3PosCategories,
   v3PosProducts,
-} from "@/app/workspace/restaurant/pos-placeholder-data";
+} from "@/app/workspace/restaurant/pos-sample-data";
 import type {
   PosCategoryItem,
   PosProductItem,

@@ -320,8 +320,8 @@ export function TablesWorkspaceBoard({
 
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-        Mark clean is enabled only for cleaning tables. Other table actions are
-        placeholders.
+        Mark clean is enabled for cleaning tables. Seating changes stay planned
+        until the floor workflow is wired end to end.
       </div>
 
       {filteredTables.length === 0 ? (

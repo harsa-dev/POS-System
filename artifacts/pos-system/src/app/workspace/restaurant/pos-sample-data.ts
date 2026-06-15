@@ -40,7 +40,7 @@ export const v3PosProducts = [
     imageUrl: null,
   },
   {
-    name: "Manual Item Placeholder",
+    name: "Manual Item Sample",
     category: "Custom",
     price: "Rp 0",
     priceValue: 0,
