@@ -78,7 +78,7 @@ export const coreModules: readonly V3ModuleMetadata[] = [
         routePath: ROUTES.BILLING_OPERATIONS_CONSOLE,
         group: "Core Systems",
         supportedModes: allModes,
-        requiredPermissions: ["settings.manage"],
+        requiredPermissions: ["platform-admin.billing-operations-console.read"],
         featureFlags: [],
         order: 10,
       },
