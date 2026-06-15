@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BellRing, CalendarClock, ClipboardList, FileInput, RefreshCw } from "lucide-react";
 
 import {
@@ -14,6 +14,7 @@ import { DashboardActionButton, DashboardActions, DashboardPanel, StatCard } fro
 import {
   INVOICE_GENERATOR_LOAD_INVOICE_EVENT,
   INVOICE_GENERATOR_OPEN_FOLLOW_UP_EVENT,
+  INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT,
   type InvoiceGeneratorLoadInvoiceEventDetail,
   type InvoiceGeneratorOpenFollowUpEventDetail,
 } from "./invoice-generator-events";
@@ -81,7 +82,7 @@ export function InvoiceFollowUpRemindersPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function loadReminders(nextScope = scope) {
+  const loadReminders = useCallback(async (nextScope: InvoiceFollowUpReminderScope = scope) => {
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -97,11 +98,20 @@ export function InvoiceFollowUpRemindersPanel() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [scope]);
 
   useEffect(() => {
     void loadReminders(scope);
-  }, [scope]);
+  }, [loadReminders, scope]);
+
+  useEffect(() => {
+    function handleRefresh() {
+      void loadReminders(scope);
+    }
+
+    window.addEventListener(INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT, handleRefresh);
+    return () => window.removeEventListener(INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT, handleRefresh);
+  }, [loadReminders, scope]);
 
   const summary = dashboard?.summary;
   const items = dashboard?.items ?? [];
