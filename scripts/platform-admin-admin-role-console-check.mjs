@@ -12,6 +12,8 @@ const files = {
   permissionCompat: "artifacts/pos-system/src/app/registry/permission-compat.ts",
   coreModules: "artifacts/pos-system/src/app/registry/core-modules.ts",
   routePage: "artifacts/pos-system/src/pages/dashboard/admin-role-console.tsx",
+  dataSource: "artifacts/pos-system/src/features/shared/platform-monitoring/admin-role-console-data-source.ts",
+  page: "artifacts/pos-system/src/features/shared/platform-monitoring/admin-role-console-page.tsx",
   mock: "artifacts/pos-system/src/features/shared/platform-monitoring/internal-admin-consoles.mock.ts",
   packageJson: "package.json",
 };
@@ -44,6 +46,8 @@ const moduleTypes = readFile("module types", files.moduleTypes);
 const permissionCompat = readFile("permission compatibility", files.permissionCompat);
 const coreModules = readFile("core modules", files.coreModules);
 const routePage = readFile("admin role route page", files.routePage);
+const dataSource = readFile("admin role data source", files.dataSource);
+const page = readFile("admin role page", files.page);
 const mock = readFile("internal admin mock", files.mock);
 const packageJson = readFile("root package", files.packageJson);
 
@@ -61,13 +65,17 @@ const checks = [
   () => assertIncludes("plan", plan, routePath),
   () => assertIncludes("plan", plan, capability),
   () => assertIncludes("plan", plan, "AR-1 - Read-only access guard and scope isolation"),
+  () => assertIncludes("plan", plan, "AR-2 - Frontend data source adapter and section fallback"),
   () => assertIncludes("plan", plan, "Status: Done"),
-  () => assertIncludes("plan", plan, "mock-backed"),
-  () => assertIncludes("plan", plan, "no Prisma schema changes"),
-  () => assertIncludes("plan", plan, "AR-2 - Admin Role Console frontend data source adapter and section fallback"),
+  () => assertIncludes("plan", plan, "admin-role-console-data-source.ts"),
+  () => assertIncludes("plan", plan, "admin-role-console-page.tsx"),
+  () => assertIncludes("plan", plan, "source metadata"),
+  () => assertIncludes("plan", plan, "section fallback state"),
   () => assertIncludes("plan", plan, "Backend read APIs are not the next phase"),
-  () => assertIncludes("plan", plan, "section-level fallback behavior"),
-  () => assertIncludes("plan", plan, "Draft read surfaces may appear as mock readiness rows"),
+  () => assertIncludes("plan", plan, "no backend endpoint implementation"),
+  () => assertIncludes("plan", plan, "no database access"),
+  () => assertIncludes("plan", plan, "no Prisma schema changes"),
+  () => assertIncludes("plan", plan, "AR-3 - Admin Role Console UX hardening and read-only safety copy"),
   () => assertNotIncludes("plan", plan, "backend contract plan"),
   () => assertNotIncludes("plan", plan, "GET-only contract design"),
   () => assertIncludes("policy", policy, capability),
@@ -80,6 +88,23 @@ const checks = [
   () => assertIncludes("route page", routePage, "PlatformAdminRoute"),
   () => assertIncludes("route page", routePage, capability),
   () => assertIncludes("route page", routePage, "authApi.me"),
+  () => assertIncludes("route page", routePage, "@/features/shared/platform-monitoring/admin-role-console-page"),
+  () => assertNotIncludes("route page", routePage, "internal-admin-console-page"),
+  () => assertIncludes("data source", dataSource, "loadAdminRoleConsoleData"),
+  () => assertIncludes("data source", dataSource, "AdminRoleConsoleDataSourceResult"),
+  () => assertIncludes("data source", dataSource, "sectionFallbacks"),
+  () => assertIncludes("data source", dataSource, "mock-registry"),
+  () => assertIncludes("data source", dataSource, "section-fallback"),
+  () => assertIncludes("data source", dataSource, "No role assignment, revocation"),
+  () => assertIncludes("admin role page", page, "loadAdminRoleConsoleData"),
+  () => assertIncludes("admin role page", page, "Source: {data.source}"),
+  () => assertIncludes("admin role page", page, "Section Source Health"),
+  () => assertIncludes("admin role page", page, "Read-only Safety Boundary"),
+  () => assertIncludes("admin role page", page, "Read-only Rollout Preview"),
+  () => assertIncludes("admin role page", page, "No backend, DB, Prisma, or role mutation in AR-2"),
+  () => assertIncludes("admin role page", page, "No internal admin role endpoint is called in this phase"),
+  () => assertNotIncludes("admin role page", page, "Future API Contracts"),
+  () => assertNotIncludes("admin role page", page, "Backend Contract Map"),
   () => assertIncludes("mock", mock, "admin-role-console"),
   () => assertIncludes("mock", mock, "Admin Role Console"),
   () => assertIncludes("mock", mock, "AdminRolePolicy"),
