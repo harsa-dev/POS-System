@@ -5,8 +5,6 @@ import {
   ClipboardCheck,
   Crown,
   Database,
-  FileStack,
-  GitBranch,
   LockKeyhole,
   RotateCcw,
   ShieldCheck,
