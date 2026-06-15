@@ -5,6 +5,7 @@ import { useState } from "react";
 import { CustomersPartnersDashboard } from "./customers-partners-dashboard";
 import { CustomersPartnersImportPanel } from "./customers-partners-import-panel";
 import { CustomersPartnersSalesSyncPanel } from "./customers-partners-sales-sync-panel";
+import { CustomersPartnersWorkflowShortcuts } from "./customers-partners-workflow-shortcuts";
 
 export function CustomersPartnersWorkspace() {
   const [reloadKey, setReloadKey] = useState(0);
@@ -12,14 +13,23 @@ export function CustomersPartnersWorkspace() {
 
   return (
     <div className="space-y-6">
+      <CustomersPartnersWorkflowShortcuts />
+
       <div className="grid gap-6 xl:grid-cols-2">
-        <CustomersPartnersSalesSyncPanel
-          reloadSignal={reloadKey}
-          onSynced={reloadDashboard}
-        />
-        <CustomersPartnersImportPanel onImported={reloadDashboard} />
+        <section id="customers-sales-sync" className="scroll-mt-24">
+          <CustomersPartnersSalesSyncPanel
+            reloadSignal={reloadKey}
+            onSynced={reloadDashboard}
+          />
+        </section>
+        <section id="customers-csv-import" className="scroll-mt-24">
+          <CustomersPartnersImportPanel onImported={reloadDashboard} />
+        </section>
       </div>
-      <CustomersPartnersDashboard key={reloadKey} />
+
+      <section id="customers-directory" className="scroll-mt-24">
+        <CustomersPartnersDashboard key={reloadKey} />
+      </section>
     </div>
   );
 }
