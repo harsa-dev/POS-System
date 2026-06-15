@@ -6,6 +6,7 @@ import { RetailSharedDashboardBridge } from "@/features/shared/retail-bridge";
 
 import { CashflowAccountBalancesPanel } from "./cashflow-account-balances-panel";
 import { CashflowDashboard } from "./cashflow-dashboard";
+import { CashflowFinancialReportDrilldownPanel } from "./cashflow-financial-report-drilldown-panel";
 import { CashflowSourceSyncPanel } from "./cashflow-source-sync-panel";
 import { CashflowWorkspaceOverview } from "./cashflow-workspace-overview";
 
@@ -20,6 +21,7 @@ export function CashflowWorkspace() {
     <RetailSharedDashboardBridge dashboardId="cashflow">
       <div className="space-y-5">
         <CashflowWorkspaceOverview />
+        <CashflowFinancialReportDrilldownPanel />
 
         <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
           <CashflowAccountBalancesPanel reloadSignal={dashboardReloadKey} />
