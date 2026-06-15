@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
-  FileText,
   RefreshCw,
   Search,
   WalletCards,
