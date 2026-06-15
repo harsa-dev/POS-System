@@ -15,6 +15,7 @@
     "platform-admin:final-qa": "node ./scripts/platform-admin-final-qa-check.mjs",
     "platform-admin:persistence-plan": "node ./scripts/platform-admin-persistence-plan-check.mjs",
     "platform-admin:admin-role-check": "node ./scripts/platform-admin-admin-role-console-check.mjs",
+    "platform-admin:admin-role-browser-smoke": "node ./scripts/platform-admin-admin-role-browser-smoke.mjs",
     "platform-admin:browser-smoke": "node ./scripts/platform-admin-internal-monitoring-browser-smoke.mjs",
     "restaurant:baseline": "pnpm --filter @workspace/api-server run restaurant:baseline:check",
     "restaurant:check": "node ./scripts/restaurant-check.mjs",
