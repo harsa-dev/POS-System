@@ -161,7 +161,7 @@ function anomalyDefinitions(movement: StockMovementWithItem, thresholds: {
       type: "NEGATIVE_STOCK",
       severity: (movement.newStock ?? 0) < 0 ? "CRITICAL" : "WARNING",
       title: "Negative stock transition",
-      description: `Stock moved from ${movement.previousStock ?? "unknown"} to ${movement.newStock ?? "unknown"}.",
+      description: `Stock moved from ${movement.previousStock ?? "unknown"} to ${movement.newStock ?? "unknown"}.`,
       recommendedAction: "Review the source transaction and add a correction or stock count movement if the snapshot is wrong.",
     });
   }
@@ -186,7 +186,7 @@ function anomalyDefinitions(movement: StockMovementWithItem, thresholds: {
       type: "SUSPICIOUS_ADJUSTMENT",
       severity: "WARNING",
       title: "Suspicious stock adjustment",
-      description: `Adjustment quantity or stock delta meets the threshold of ${thresholds.adjustmentThreshold} units.",
+      description: `Adjustment quantity or stock delta meets the threshold of ${thresholds.adjustmentThreshold} units.`,
       recommendedAction: "Confirm the adjustment source, physical stock count, and actor note before trusting inventory valuation.",
     });
   }
@@ -197,7 +197,7 @@ function anomalyDefinitions(movement: StockMovementWithItem, thresholds: {
       type: "HIGH_VALUE_MOVEMENT",
       severity: value >= thresholds.highValueThreshold * 3 ? "CRITICAL" : "WARNING",
       title: "High-value stock movement",
-      description: `Movement value ${value} meets the high-value threshold of ${thresholds.highValueThreshold}.",
+      description: `Movement value ${value} meets the high-value threshold of ${thresholds.highValueThreshold}.`,
       recommendedAction: "Verify source document, item cost, and stock snapshot before closing inventory review.",
     });
   }
