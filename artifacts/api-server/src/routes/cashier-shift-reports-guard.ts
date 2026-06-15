@@ -63,9 +63,9 @@ async function requireCashierShiftReportAccess(
     }
 
     const isShiftSync = req.path.startsWith("/cashflow/sync/shifts/");
-    const isExport =
-      req.path === "/cashier-shift-reports/export" ||
+    const isAttemptExport =
       req.path.includes("/sync-attempts/") && req.path.endsWith("/export");
+    const isExport = req.path === "/cashier-shift-reports/export" || isAttemptExport;
 
     if (isShiftSync && !capabilities.canSyncToCashflow) {
       return errorResponse(res, {
