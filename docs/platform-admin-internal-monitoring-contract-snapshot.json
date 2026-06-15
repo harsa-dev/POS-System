@@ -13,7 +13,9 @@
     "backendRoute": "artifacts/api-server/src/routes/internal-monitoring.ts",
     "backendPolicy": "artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring.policy.ts",
     "backendResponseHelper": "artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-response.ts",
-    "backendRuntimeProbes": "artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-runtime-probes.ts"
+    "backendRuntimeProbes": "artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-monitoring-runtime-probes.ts",
+    "backendProbeHistory": "artifacts/api-server/src/services/platform-admin/internal-monitoring/internal-system-probe-history.ts",
+    "probeMigration": "artifacts/api-server/prisma/migrations/20260615000000_add_internal_system_probes/migration.sql"
   },
   "responseEnvelope": {
     "successFields": ["success", "data", "meta"],
@@ -59,6 +61,13 @@
       "path": "/api/internal/mutation-readiness/contracts",
       "frontendMethod": "getMutationReadinessContracts",
       "backendService": "getInternalMonitoringMutationReadinessContracts"
+    },
+    {
+      "id": "probe-history",
+      "method": "GET",
+      "path": "/api/internal/probes/history",
+      "frontendMethod": "getProbeHistory",
+      "backendService": "getInternalMonitoringProbeHistory"
     }
   ],
   "dtoTypes": {
@@ -75,7 +84,10 @@
     "InternalMonitoringControlRoomDto": ["source", "generatedAt", "summary", "cards", "runtimeProbes", "signals", "apiImplementationSteps", "schemaDecisionRecords", "devActionItems"],
     "InternalMonitoringRouteInventoryItemDto": ["id", "route", "owner", "guard", "status", "notes"],
     "InternalMonitoringDataIntegrityCheckDto": ["id", "check", "status", "severity", "detail"],
-    "InternalMonitoringMutationReadinessContractDto": ["id", "action", "targetSurface", "proposedEndpoint", "proposedMethod", "status", "dryRunMode", "requiredCapability", "requiredAuditEvent", "requiredApproval", "rollbackPlan", "rateLimit", "blockedReason", "requiredProof"]
+    "InternalMonitoringMutationReadinessContractDto": ["id", "action", "targetSurface", "proposedEndpoint", "proposedMethod", "status", "dryRunMode", "requiredCapability", "requiredAuditEvent", "requiredApproval", "rollbackPlan", "rateLimit", "blockedReason", "requiredProof"],
+    "InternalSystemProbeHistoryItemDto": ["id", "probeId", "label", "area", "status", "latencyMs", "message", "observedAt", "source", "metadataJson", "createdAt"],
+    "InternalSystemProbeHistorySummaryDto": ["total", "pass", "watch", "fail", "retentionDays", "persistenceStatus", "detail"],
+    "InternalSystemProbeHistoryDto": ["generatedAt", "items", "summary", "filters"]
   },
   "runtimeProbeIds": [
     "api-server-runtime",
@@ -87,6 +99,7 @@
     "Source Health",
     "Runtime Status",
     "Runtime Signals",
+    "InternalSystemProbe History",
     "Route Inventory",
     "API Implementation Blueprint",
     "Data Integrity Checks",
