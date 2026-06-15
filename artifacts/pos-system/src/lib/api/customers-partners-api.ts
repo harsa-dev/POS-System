@@ -30,6 +30,12 @@ export type CustomerProfileDto = {
   updatedAt: string;
 };
 
+export type CustomerDetailDto = CustomerProfileDto & {
+  identityKey: string | null;
+  lastSalesSyncedAt: string | null;
+  salesSourceCount: number | null;
+};
+
 export type SupplierProfileDto = {
   id: string;
   businessId: string;
@@ -43,6 +49,12 @@ export type SupplierProfileDto = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type CustomersPartnersContactDetailKind = "customer" | "supplier";
+
+export type CustomersPartnersContactDetailDto =
+  | { kind: "customer"; contact: CustomerDetailDto }
+  | { kind: "supplier"; contact: SupplierProfileDto };
 
 export type LoyaltyTierDto = {
   id: string;
@@ -200,6 +212,18 @@ export const customersPartnersApi = {
   getDashboard(params?: { search?: string }) {
     return apiClient.get<ApiDataEnvelope<CustomersPartnersDashboardDto>>(
       `/api/customers-partners-dashboard${buildQuery(params)}`,
+    );
+  },
+
+  getCustomerDetail(id: string) {
+    return apiClient.get<ApiDataEnvelope<CustomersPartnersContactDetailDto>>(
+      `/api/customers-partners/customers/${encodeURIComponent(id)}`,
+    );
+  },
+
+  getSupplierDetail(id: string) {
+    return apiClient.get<ApiDataEnvelope<CustomersPartnersContactDetailDto>>(
+      `/api/customers-partners/suppliers/${encodeURIComponent(id)}`,
     );
   },
 
