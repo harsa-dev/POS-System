@@ -13,6 +13,7 @@ import {
   DashboardPanel,
   DashboardShell,
 } from "@/features/shared/dashboard";
+import { InvoiceFollowUpAnalyticsPanel } from "./invoice-follow-up-analytics-panel";
 import { InvoiceFollowUpPanel } from "./invoice-follow-up-panel";
 import { InvoiceFollowUpRemindersPanel } from "./invoice-follow-up-reminders-panel";
 import { InvoiceGeneratorDashboard } from "./invoice-generator-dashboard";
@@ -79,6 +80,7 @@ export function InvoiceGeneratorWorkspace() {
       <div className="space-y-6">
         <InvoiceSummaryPanel />
         <InvoiceFollowUpRemindersPanel />
+        <InvoiceFollowUpAnalyticsPanel />
         <InvoiceFollowUpPanel canManage={canManageFollowUps} />
         <InvoiceHistoryPanel capabilities={capabilities} canLoadToEditor={canUseEditor} />
         {canUseEditor ? (
