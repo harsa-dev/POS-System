@@ -21,7 +21,6 @@ import {
   DashboardShell,
   DashboardTabs,
 } from "@/features/shared/dashboard";
-import { exportCsv } from "@/features/shared/export";
 import { SearchFilter } from "@/features/shared/filters";
 import { formatCurrency, formatNumber } from "@/features/shared/format";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/features/shared/table";
@@ -31,6 +30,7 @@ import {
   type CreateContactPayload,
   type CustomerProfileDto,
   type CustomersPartnersCapabilitiesDto,
+  type CustomersPartnersExportKind,
   type LoyaltyTierDto,
   type SupplierProfileDto,
 } from "@/lib/api/customers-partners-api";
@@ -91,8 +91,36 @@ function getContactPayload(form: ContactForm): CreateContactPayload {
   };
 }
 
+function getContactForm(row: PartnerRow): ContactForm {
+  return {
+    name: row.name,
+    phone: row.phone ?? "",
+    email: row.email ?? "",
+    address: row.address ?? "",
+  };
+}
+
+function getRowLabel(row: PartnerRow) {
+  return "totalSpending" in row ? "Customer" : "Supplier";
+}
+
+function getExportKind(viewMode: ViewMode): CustomersPartnersExportKind {
+  return viewMode === "Customers" ? "customers" : "suppliers";
+}
+
 function getApiErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 export function CustomersPartnersDashboard() {
@@ -110,14 +138,19 @@ export function CustomersPartnersDashboard() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingRow, setEditingRow] = useState<PartnerRow | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const activeRows: PartnerRow[] = viewMode === "Customers" ? customers : suppliers;
-  const canManageCurrentView = capabilities.canCreate && !capabilities.isPlannedMode;
+  const canCreateCurrentView = capabilities.canCreate && !capabilities.isPlannedMode;
+  const canEditContact = capabilities.canUpdate && !capabilities.isPlannedMode;
   const currentLabel = viewMode === "Customers" ? "Customer" : "Supplier";
+  const formLabel = editingRow ? getRowLabel(editingRow) : currentLabel;
+  const showContactForm = showCreateForm || editingRow !== null;
 
   const filteredRows = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -171,8 +204,32 @@ export function CustomersPartnersDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function resetContactForm() {
+    setShowCreateForm(false);
+    setEditingRow(null);
+    setForm(emptyForm);
+  }
+
+  function handleStartCreate() {
+    setMessage(null);
+    setError(null);
+    setEditingRow(null);
+    setForm(emptyForm);
+    setShowCreateForm(true);
+  }
+
+  function handleStartEdit(row: PartnerRow) {
+    if (!canEditContact) return;
+    setMessage(null);
+    setError(null);
+    setShowCreateForm(false);
+    setEditingRow(row);
+    setForm(getContactForm(row));
+  }
+
   async function handleSubmitContact() {
     const payload = getContactPayload(form);
+    const isEditing = editingRow !== null;
     setMessage(null);
     setError(null);
 
@@ -184,18 +241,25 @@ export function CustomersPartnersDashboard() {
     setIsSubmitting(true);
 
     try {
-      if (viewMode === "Customers") {
+      if (isEditing) {
+        if ("totalSpending" in editingRow) {
+          await customersPartnersApi.updateCustomer(editingRow.id, payload);
+        } else {
+          await customersPartnersApi.updateSupplier(editingRow.id, payload);
+        }
+        setMessage(`${formLabel} updated.`);
+      } else if (viewMode === "Customers") {
         await customersPartnersApi.createCustomer(payload);
+        setMessage(`${currentLabel} created.`);
       } else {
         await customersPartnersApi.createSupplier(payload);
+        setMessage(`${currentLabel} created.`);
       }
 
-      setMessage(`${currentLabel} created.`);
-      setForm(emptyForm);
-      setShowCreateForm(false);
+      resetContactForm();
       await loadDashboard();
     } catch (submitError) {
-      setError(getApiErrorMessage(submitError, `Failed to create ${currentLabel.toLowerCase()}.`));
+      setError(getApiErrorMessage(submitError, `Failed to save ${formLabel.toLowerCase()}.`));
     } finally {
       setIsSubmitting(false);
     }
@@ -216,12 +280,34 @@ export function CustomersPartnersDashboard() {
       } else {
         await customersPartnersApi.deleteSupplier(row.id);
       }
+      if (editingRow?.id === row.id) resetContactForm();
       setMessage(`${row.name} deleted.`);
       await loadDashboard();
     } catch (deleteError) {
       setError(getApiErrorMessage(deleteError, "Failed to delete contact."));
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleExport() {
+    if (!capabilities.canExport) return;
+    setMessage(null);
+    setError(null);
+    setIsExporting(true);
+
+    try {
+      const kind = getExportKind(viewMode);
+      const download = await customersPartnersApi.downloadContactsCsv({
+        kind,
+        search: search.trim() || undefined,
+      });
+      downloadBlob(download.blob, download.filename);
+      setMessage(`Exported ${download.rowCount ?? filteredRows.length} ${kind}.`);
+    } catch (exportError) {
+      setError(getApiErrorMessage(exportError, "Failed to export contacts."));
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -251,8 +337,9 @@ export function CustomersPartnersDashboard() {
           </button>
           <button
             type="button"
-            disabled={!capabilities.canUpdate}
+            disabled={!capabilities.canUpdate || isSubmitting}
             title={capabilities.canUpdate ? "Edit contact" : "Edit requires management access"}
+            onClick={() => handleStartEdit(row)}
             className="inline-flex h-9 items-center gap-1 rounded-lg border border-neutral-200 px-2 text-xs font-semibold hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
@@ -364,10 +451,10 @@ export function CustomersPartnersDashboard() {
         </div>
       </DashboardPanel>
 
-      {showCreateForm ? (
+      {showContactForm ? (
         <DashboardPanel
-          title={`Add ${currentLabel}`}
-          description={`Create a backend-scoped ${currentLabel.toLowerCase()} record for this business.`}
+          title={editingRow ? `Edit ${formLabel}` : `Add ${currentLabel}`}
+          description={editingRow ? `Update the selected ${formLabel.toLowerCase()} record for this business.` : `Create a backend-scoped ${currentLabel.toLowerCase()} record for this business.`}
         >
           <div className="grid gap-4 p-4 md:grid-cols-2">
             <label className="space-y-1 text-sm font-medium text-neutral-700">
@@ -376,7 +463,7 @@ export function CustomersPartnersDashboard() {
                 value={form.name}
                 onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
                 className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm"
-                placeholder={`${currentLabel} name`}
+                placeholder={`${formLabel} name`}
               />
             </label>
             <label className="space-y-1 text-sm font-medium text-neutral-700">
@@ -411,10 +498,7 @@ export function CustomersPartnersDashboard() {
             <button
               type="button"
               className="rounded-lg border border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
-              onClick={() => {
-                setShowCreateForm(false);
-                setForm(emptyForm);
-              }}
+              onClick={resetContactForm}
             >
               Cancel
             </button>
@@ -424,7 +508,7 @@ export function CustomersPartnersDashboard() {
               className="rounded-lg bg-neutral-950 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => void handleSubmitContact()}
             >
-              {isSubmitting ? "Saving..." : `Create ${currentLabel}`}
+              {isSubmitting ? "Saving..." : editingRow ? `Update ${formLabel}` : `Create ${currentLabel}`}
             </button>
           </div>
         </DashboardPanel>
@@ -454,9 +538,9 @@ export function CustomersPartnersDashboard() {
               <DashboardActionButton
                 icon={Plus}
                 variant="primary"
-                disabled={!canManageCurrentView || isSubmitting}
-                title={canManageCurrentView ? `Add ${currentLabel}` : "Create requires management access"}
-                onClick={() => setShowCreateForm(true)}
+                disabled={!canCreateCurrentView || isSubmitting}
+                title={canCreateCurrentView ? `Add ${currentLabel}` : "Create requires management access"}
+                onClick={handleStartCreate}
               >
                 Add {currentLabel}
               </DashboardActionButton>
@@ -468,24 +552,11 @@ export function CustomersPartnersDashboard() {
               </DashboardActionButton>
               <DashboardActionButton
                 icon={Download}
-                disabled={!capabilities.canExport || filteredRows.length === 0}
-                title={capabilities.canExport ? "Export current filtered rows" : "Export is not available"}
-                onClick={() =>
-                  exportCsv({
-                    filename: viewMode === "Customers" ? "customers" : "suppliers",
-                    rows: filteredRows,
-                    columns: [
-                      { key: "name", header: "Name", value: (row) => row.name },
-                      { key: "phone", header: "Phone", value: (row) => row.phone ?? "" },
-                      { key: "email", header: "Email", value: (row) => row.email ?? "" },
-                      { key: "address", header: "Address", value: (row) => row.address ?? "" },
-                      { key: "amount", header: viewMode === "Customers" ? "Total Spending" : "Total Purchases", value: (row) => getTotalAmount(row) },
-                      { key: "transactions", header: "Transactions", value: (row) => getTransactions(row) },
-                    ],
-                  })
-                }
+                disabled={!capabilities.canExport || isExporting || filteredRows.length === 0}
+                title={capabilities.canExport ? "Export matching backend records" : "Export is not available"}
+                onClick={() => void handleExport()}
               >
-                Export Data
+                {isExporting ? "Exporting..." : "Export Data"}
               </DashboardActionButton>
             </DashboardActions>
           }
