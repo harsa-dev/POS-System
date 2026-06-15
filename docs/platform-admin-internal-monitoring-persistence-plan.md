@@ -8,46 +8,68 @@ This plan is scoped only to persisted runtime probe history for:
 /dashboard/internal-monitoring
 ```
 
-IM-18 made runtime probes real at request time. IM-19 defines the persistence gate before adding Prisma models or scheduled probe writes.
+IM-18 made runtime probes real at request time. IM-19 defined the persistence gate. IM-20 promotes the first persistence layer with a migration SQL artifact and a read-only history endpoint.
 
 ## Current state
 
 ```txt
 Runtime probes: real request-time diagnostics
 Backend endpoint: GET /api/internal/health/summary
-Persistence: not implemented
-Prisma model: not implemented
-History API: not implemented
+Persistence migration: implemented as migration SQL
+Prisma model source: pending full schema patch review
+History API: implemented as GET-only
 Scheduled collector: not implemented
+Frontend history panel: implemented
 ```
 
-This phase does not add Prisma schema changes. It records the exact requirements that must be satisfied before schema promotion.
+This phase adds persistence infrastructure but still does not add scheduled writes or frontend mutation controls.
 
-## Why persistence is needed
+## Persistence artifact
 
-Persisted probes should be added only when the dashboard needs more than request-time status.
-
-Valid reasons:
+Migration SQL:
 
 ```txt
-- uptime trend over time
-- database connectivity history
-- internal API health history
-- release readiness audit evidence
-- incident reconstruction
-- probe flakiness detection
+artifacts/api-server/prisma/migrations/20260615000000_add_internal_system_probes/migration.sql
 ```
 
-Invalid reasons:
+Table:
 
 ```txt
-- making the dashboard look more enterprise
-- storing mock data
-- adding a model before a write policy exists
-- adding history before retention is defined
+internal_system_probes
 ```
 
-## Proposed Prisma model
+Columns:
+
+```txt
+id
+probe_id
+label
+area
+status
+latency_ms
+message
+observed_at
+source
+metadata_json
+created_at
+```
+
+Indexes:
+
+```txt
+internal_system_probes_probe_id_observed_at_idx
+internal_system_probes_status_observed_at_idx
+internal_system_probes_area_observed_at_idx
+internal_system_probes_observed_at_idx
+```
+
+Status constraint:
+
+```txt
+internal_system_probes_status_check: pass, watch, fail
+```
+
+## Prisma model proposal
 
 Model name:
 
@@ -55,7 +77,9 @@ Model name:
 InternalSystemProbe
 ```
 
-Proposed fields:
+Prisma model source is still pending full `schema.prisma` patch review because the active schema file is large. The migration artifact is the promoted database schema source for this phase.
+
+Planned Prisma fields:
 
 ```txt
 id                 String   @id @default(cuid())
@@ -71,7 +95,7 @@ metadataJson       Json?
 createdAt          DateTime @default(now())
 ```
 
-Proposed indexes:
+Planned Prisma indexes:
 
 ```txt
 @@index([probeId, observedAt])
@@ -80,17 +104,9 @@ Proposed indexes:
 @@index([observedAt])
 ```
 
-Allowed status values should mirror runtime probe status:
+## Implemented read-only history API
 
-```txt
-pass
-watch
-fail
-```
-
-## Proposed API after schema promotion
-
-Read-only history endpoint:
+Endpoint:
 
 ```txt
 GET /api/internal/probes/history
@@ -100,16 +116,43 @@ Query parameters:
 
 ```txt
 probeId optional
-status optional
+status optional: pass, watch, fail
 area optional
 from optional ISO timestamp
 to optional ISO timestamp
-limit default 100 max 500
+limit default 50 max 200
 ```
 
-Write endpoint remains internal-only and must not be exposed to the frontend in the first persistence phase.
+Response behavior:
 
-Scheduled collector or backend service may write probe snapshots later, but frontend must remain read-only.
+```txt
+ready: table exists and query succeeds
+schema-missing: migration has not been applied yet
+database-unavailable: DATABASE_URL exists but query failed
+not-configured: DATABASE_URL is missing
+```
+
+The endpoint stays success-envelope compatible and never exposes a write action.
+
+## Frontend history panel
+
+Dashboard section:
+
+```txt
+InternalSystemProbe History
+```
+
+The panel displays:
+
+```txt
+Persistence Status
+Retention
+Records
+Status Mix
+Latest history rows
+```
+
+If the migration has not been applied, the panel shows `schema-missing` instead of breaking the dashboard. Because blank dashboards are not observability, they are just decorative failure.
 
 ## Retention policy
 
@@ -120,15 +163,15 @@ keep 14 days of probe snapshots
 compact or delete older rows
 ```
 
-Retention job is not part of the Prisma model migration. It must be planned before enabling scheduled writes.
+Retention job is not part of IM-20. It must be planned before enabling scheduled writes.
 
 ## Write policy gate
 
 Probe writes may be enabled only after:
 
 ```txt
-- Prisma model exists
-- migration reviewed
+- Prisma schema source includes InternalSystemProbe
+- migration reviewed and applied
 - backend write path is service-only, not public frontend action
 - read-only frontend contract stays unchanged
 - audit note exists for enabling scheduled probe writes
@@ -137,9 +180,9 @@ Probe writes may be enabled only after:
 - rollback command is documented
 ```
 
-## Migration gate
+## Validation gate
 
-Before adding the Prisma model, run:
+Before enabling scheduled writes, run:
 
 ```bash
 pnpm platform-admin:check
@@ -147,16 +190,17 @@ pnpm platform-admin:contract-parity
 pnpm platform-admin:policy-parity
 pnpm platform-admin:persistence-plan
 pnpm --filter @workspace/api-server run typecheck:restaurant
+pnpm --filter @workspace/pos-system run typecheck:restaurant
 ```
 
 Required manual review:
 
 ```txt
+- confirm migration SQL applied cleanly
 - confirm DATABASE_URL is stable
-- confirm probe collector returns real runtimeProbes
-- confirm model fields and indexes match this plan
+- confirm GET /api/internal/probes/history returns ready or schema-missing intentionally
 - confirm no /api/internal POST/PATCH/DELETE endpoint is added
-- confirm history read endpoint is GET-only
+- confirm dashboard history panel renders without write controls
 ```
 
 ## Rollback plan
@@ -164,30 +208,32 @@ Required manual review:
 If the migration causes issues:
 
 ```txt
-1. disable scheduled probe writes
+1. disable any future scheduled probe writes
 2. keep request-time probes active
-3. hide history panel if added
+3. keep history panel read-only and tolerate schema-missing
 4. roll back the migration only after data/export review
 5. keep /api/internal/health/summary GET-only
 ```
 
-## Do not implement yet
+## Still blocked after IM-20
 
 ```txt
-- InternalSystemProbe Prisma model
 - scheduled collector
-- probe history chart
-- probe history API
 - probe write endpoint exposed to frontend
 - alert persistence
+- alert acknowledgement mutation
+- destructive internal controls
 ```
 
-## Exit criteria for this phase
+## Exit criteria for IM-20
 
 ```txt
-- this persistence plan exists
-- platform-admin:persistence-plan command exists
-- platform-admin:check includes the persistence plan gate
-- static guard verifies model proposal, retention, migration gate, and blocked internal write endpoints
-- docs/platform-admin-internal-monitoring-dashboard-plan.md marks IM-19 as Done
+- migration SQL exists
+- GET /api/internal/probes/history exists
+- history repository reads internal_system_probes safely
+- history endpoint handles schema-missing without crashing
+- frontend API client loads probe history
+- Control Room renders InternalSystemProbe History
+- contract parity snapshot includes probe history endpoint and DTOs
+- platform-admin:check includes persistence and contract gates
 ```
