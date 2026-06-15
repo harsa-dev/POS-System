@@ -12,6 +12,7 @@ export type InvoiceFollowUpStatus =
   | "PROMISED_PAYMENT"
   | "RESOLVED"
   | "ESCALATED";
+export type InvoiceFollowUpReminderScope = "due" | "upcoming" | "all";
 
 export type InvoiceCapabilitiesDto = {
   businessId: string;
@@ -129,6 +130,38 @@ export type InvoiceFollowUpDashboardDto = {
   summary: InvoiceFollowUpSummaryDto;
 };
 
+export type InvoiceFollowUpReminderDto = {
+  invoice: InvoiceOverdueSampleDto;
+  followUp: InvoiceFollowUpDto;
+  reminder: {
+    nextFollowUpAt: string;
+    isDue: boolean;
+    daysLate: number;
+    daysUntil: number;
+  };
+};
+
+export type InvoiceFollowUpReminderSummaryDto = {
+  asOf: string;
+  totalReminderCount: number;
+  dueCount: number;
+  upcomingCount: number;
+  oldestDueDays: number;
+  nextUpcomingAt: string | null;
+};
+
+export type InvoiceFollowUpReminderDashboardDto = {
+  items: InvoiceFollowUpReminderDto[];
+  summary: InvoiceFollowUpReminderSummaryDto;
+  scope: InvoiceFollowUpReminderScope;
+  limit: number;
+};
+
+export type InvoiceFollowUpReminderQuery = {
+  scope?: InvoiceFollowUpReminderScope;
+  limit?: number;
+};
+
 export type InvoiceFollowUpPayload = {
   status: InvoiceFollowUpStatus;
   note: string;
@@ -232,6 +265,13 @@ function buildInvoiceHistorySearchParams(query: InvoiceHistoryQuery = {}) {
   return params;
 }
 
+function buildFollowUpReminderSearchParams(query: InvoiceFollowUpReminderQuery = {}) {
+  const params = new URLSearchParams();
+  if (query.scope) params.set("scope", query.scope);
+  if (query.limit) params.set("limit", String(query.limit));
+  return params;
+}
+
 function getFilenameFromDisposition(disposition: string | null) {
   if (!disposition) return null;
   const match = disposition.match(/filename="?([^";]+)"?/i);
@@ -257,6 +297,14 @@ export const invoiceApi = {
 
   getFollowUpDashboard<T = InvoiceFollowUpDashboardDto>() {
     return apiClient.get<ApiEnvelope<T>>("/api/invoice-follow-ups");
+  },
+
+  getFollowUpReminders<T = InvoiceFollowUpReminderDashboardDto>(
+    query?: InvoiceFollowUpReminderQuery,
+  ) {
+    const params = buildFollowUpReminderSearchParams(query);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return apiClient.get<ApiEnvelope<T>>(`/api/invoice-follow-up-reminders${suffix}`);
   },
 
   listInvoiceFollowUps<T = InvoiceFollowUpDto[]>(invoiceId: string) {
