@@ -17,12 +17,14 @@ export type InventoryMovementAnomalyType =
 
 export type InventoryMovementAnomalySeverity = "INFO" | "WARNING" | "CRITICAL";
 export type InventoryMovementAnomalyReviewStatus = "REVIEWED" | "IGNORED" | "RESOLVED";
+export type InventoryMovementAnomalyReviewFilter = InventoryMovementAnomalyReviewStatus | "UNREVIEWED" | "ALL";
 
 export type InventoryMovementAnomalyQuery = {
   search?: string;
   inventoryItemId?: string;
   anomalyType?: InventoryMovementAnomalyType | "ALL";
   severity?: InventoryMovementAnomalySeverity | "ALL";
+  reviewStatus?: InventoryMovementAnomalyReviewFilter;
   reason?: StockMovementReason | "ALL";
   sourceType?: StockMovementSource | "ALL";
   sourceId?: string;
@@ -61,6 +63,10 @@ export type InventoryMovementAnomalyRowDto = {
   fallbackCostPerUnit: number;
   movementValue: number;
   createdAt: string;
+  reviewStatus?: InventoryMovementAnomalyReviewStatus | null;
+  reviewNote?: string | null;
+  reviewedById?: string | null;
+  reviewedAt?: string | null;
 };
 
 export type InventoryMovementAnomalyReviewDto = {
@@ -95,6 +101,7 @@ export type InventoryMovementAnomalyDto = {
     inventoryItemId: string | null;
     anomalyType: InventoryMovementAnomalyType | null;
     severity: InventoryMovementAnomalySeverity | null;
+    reviewStatus: InventoryMovementAnomalyReviewFilter | null;
     reason: StockMovementReason | null;
     sourceType: StockMovementSource | null;
     sourceId: string | null;
@@ -113,6 +120,10 @@ export type InventoryMovementAnomalyDto = {
     missingCostSnapshotCount: number;
     suspiciousAdjustmentCount: number;
     highValueMovementCount: number;
+    reviewedCount: number;
+    ignoredCount: number;
+    resolvedCount: number;
+    unreviewedCount: number;
     totalValueAtRisk: number;
   };
   rows: InventoryMovementAnomalyRowDto[];
@@ -150,6 +161,7 @@ function buildAnomalySearchParams(query?: InventoryMovementAnomalyQuery) {
   if (query.inventoryItemId?.trim()) params.set("inventoryItemId", query.inventoryItemId.trim());
   if (query.anomalyType && query.anomalyType !== "ALL") params.set("anomalyType", query.anomalyType);
   if (query.severity && query.severity !== "ALL") params.set("severity", query.severity);
+  if (query.reviewStatus && query.reviewStatus !== "ALL") params.set("reviewStatus", query.reviewStatus);
   if (query.reason && query.reason !== "ALL") params.set("reason", query.reason);
   if (query.sourceType && query.sourceType !== "ALL") params.set("sourceType", query.sourceType);
   if (query.sourceId?.trim()) params.set("sourceId", query.sourceId.trim());
