@@ -39,11 +39,12 @@ The route is mounted in `artifacts/pos-system/src/App.tsx` and must use a dedica
 4. Route Ownership Matrix
 5. API Contract Readiness
 6. Data Integrity Checks
-7. Schema Candidate / Migration Risk
-8. Release Gates
-9. Incident Timeline / Internal Alerts
-10. Dev Action Queue
-11. Observability Targets
+7. Mutation Readiness & Dry-run Contracts
+8. Schema Candidate / Migration Risk
+9. Release Gates
+10. Incident Timeline / Internal Alerts
+11. Dev Action Queue
+12. Observability Targets
 ```
 
 ## Backend read-only endpoint plan
@@ -55,6 +56,7 @@ GET /api/internal/health/summary
 GET /api/internal/routes/inventory
 GET /api/internal/contracts/readiness
 GET /api/internal/data-integrity/checks
+GET /api/internal/mutation-readiness/contracts
 ```
 
 Blocked until later phases:
@@ -67,6 +69,31 @@ PATCH /api/internal/alerts/:alertId/acknowledge
 ```
 
 Alert acknowledgement must stay blocked until dedicated RBAC, audit logging, approval policy, rollback notes, and rate limits are implemented.
+
+## Mutation readiness and dry-run contract
+
+IM-10 adds a read-only mutation readiness catalog. It is not an executor.
+
+The catalog lists future mutation candidates and their required controls:
+
+```txt
+required capability
+required audit event
+required approval policy
+rollback plan
+rate limit
+blocked reason
+required proof
+dry-run requirement
+```
+
+Current catalog endpoint:
+
+```txt
+GET /api/internal/mutation-readiness/contracts
+```
+
+Proposed future mutation endpoints may appear as strings inside the catalog, but no POST/PATCH/DELETE route or API client call may be implemented in this phase.
 
 ## Frontend data source plan
 
@@ -272,6 +299,22 @@ Implemented:
 
 ### IM-10 - Mutation readiness design and dry-run contract
 
+Status: Done.
+
+Implemented:
+
+```txt
+- backend mutation readiness contract catalog
+- GET /api/internal/mutation-readiness/contracts endpoint
+- frontend API client method for mutation readiness catalog
+- adapter fallback for mutation readiness contracts
+- Mutation Readiness & Dry-run Contracts dashboard panel
+- static guard checks endpoint, service, UI panel, and required controls
+- no real mutation route, API client mutation, Prisma schema, or alert acknowledgement implementation
+```
+
+### IM-11 - Internal Monitoring typecheck cleanup and extraction
+
 Next.
 
-Design future alert acknowledgement as dry-run only. Do not implement PATCH yet.
+Extract PlatformAdminRoute out of App and tighten frontend/backend DTO reuse so the dashboard can grow without turning App.tsx into a wiring landfill.
