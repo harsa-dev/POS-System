@@ -67,7 +67,7 @@ export const coreModules: readonly V3ModuleMetadata[] = [
         routePath: ROUTES.ADMIN_ROLE_CONSOLE,
         group: "Core Systems",
         supportedModes: allModes,
-        requiredPermissions: ["settings.manage"],
+        requiredPermissions: ["platform-admin.admin-role-console.read"],
         featureFlags: [],
         order: 9,
       },
