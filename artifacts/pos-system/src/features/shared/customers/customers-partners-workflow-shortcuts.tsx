@@ -1,6 +1,6 @@
 "use client";
 
-import { FileUp, Search, UploadCloud, UsersRound } from "lucide-react";
+import { FileUp, Search, Sparkles, UploadCloud, UsersRound } from "lucide-react";
 
 import { DashboardPanel } from "@/features/shared/dashboard";
 
@@ -16,6 +16,12 @@ const shortcuts = [
     icon: FileUp,
     title: "Import CSV contacts",
     description: "Preview customer or supplier CSV rows before saving backend records.",
+  },
+  {
+    href: "#customers-loyalty-tiers",
+    icon: Sparkles,
+    title: "Manage loyalty tiers",
+    description: "Adjust tier thresholds, period labels, and discount settings.",
   },
   {
     href: "#customers-detail-lookup",
@@ -35,9 +41,9 @@ export function CustomersPartnersWorkflowShortcuts() {
   return (
     <DashboardPanel
       title="Customers & Partners Workflow"
-      description="Use the workflow panels before editing the directory. Import, sales sync, and detail view are backend-backed workflows."
+      description="Use the workflow panels before editing the directory. Import, sales sync, loyalty tiers, and detail view are backend-backed workflows."
     >
-      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-5">
         {shortcuts.map((item) => {
           const Icon = item.icon;
 
