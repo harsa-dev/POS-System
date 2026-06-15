@@ -1,8 +1,8 @@
-import { apiClient, type ApiEnvelope } from "@/lib/api/api-client";
+import { apiClient } from "@/lib/api/api-client";
 
 import type {
+  InternalMonitoringApiEnvelopeDto,
   InternalMonitoringApiImplementationStepDto,
-  InternalMonitoringApiMetaDto,
   InternalMonitoringControlRoomDto,
   InternalMonitoringDataIntegrityCheckDto,
   InternalMonitoringMutationReadinessContractDto,
@@ -10,8 +10,11 @@ import type {
 } from "./internal-monitoring.dto";
 
 export type {
+  InternalMonitoringApiEnvelopeDto,
+  InternalMonitoringApiErrorEnvelopeDto,
   InternalMonitoringApiImplementationStepDto,
   InternalMonitoringApiMetaDto,
+  InternalMonitoringApiSuccessEnvelopeDto,
   InternalMonitoringControlRoomCardDto,
   InternalMonitoringControlRoomDto,
   InternalMonitoringControlRoomSignalDto,
@@ -26,38 +29,33 @@ export type {
   InternalMonitoringTone,
 } from "./internal-monitoring.dto";
 
-type ApiDataEnvelope<T> = ApiEnvelope<T> & {
-  data: T;
-  meta?: InternalMonitoringApiMetaDto;
-};
-
 export const internalMonitoringApi = {
   getControlRoom() {
-    return apiClient.get<ApiDataEnvelope<InternalMonitoringControlRoomDto>>(
+    return apiClient.get<InternalMonitoringApiEnvelopeDto<InternalMonitoringControlRoomDto>>(
       "/api/internal/health/summary",
     );
   },
 
   getRouteInventory() {
-    return apiClient.get<ApiDataEnvelope<InternalMonitoringRouteInventoryItemDto[]>>(
+    return apiClient.get<InternalMonitoringApiEnvelopeDto<InternalMonitoringRouteInventoryItemDto[]>>(
       "/api/internal/routes/inventory",
     );
   },
 
   getContractReadiness() {
-    return apiClient.get<ApiDataEnvelope<InternalMonitoringApiImplementationStepDto[]>>(
+    return apiClient.get<InternalMonitoringApiEnvelopeDto<InternalMonitoringApiImplementationStepDto[]>>(
       "/api/internal/contracts/readiness",
     );
   },
 
   getDataIntegrityChecks() {
-    return apiClient.get<ApiDataEnvelope<InternalMonitoringDataIntegrityCheckDto[]>>(
+    return apiClient.get<InternalMonitoringApiEnvelopeDto<InternalMonitoringDataIntegrityCheckDto[]>>(
       "/api/internal/data-integrity/checks",
     );
   },
 
   getMutationReadinessContracts() {
-    return apiClient.get<ApiDataEnvelope<InternalMonitoringMutationReadinessContractDto[]>>(
+    return apiClient.get<InternalMonitoringApiEnvelopeDto<InternalMonitoringMutationReadinessContractDto[]>>(
       "/api/internal/mutation-readiness/contracts",
     );
   },
