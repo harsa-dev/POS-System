@@ -60,7 +60,7 @@ export function resolveFinancialReportsPeriodContext({
   basis?: FinancialReportBasis | null;
 }): FinancialReportsPeriodContext {
   const options = getFinancialReportsPeriodOptions();
-  const selected = options.find((option) => option.label === label) ?? options[0];
+  const selected = options.find((option) => option.label === label) ?? options[0]!;
 
   return {
     label: selected.label,
