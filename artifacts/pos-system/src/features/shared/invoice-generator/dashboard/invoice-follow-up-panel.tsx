@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, CheckCircle2, ClipboardList, FileInput, RefreshCw } from "lucide-react";
+import { CalendarClock, CheckCircle2, ClipboardList, FileInput, ListFilter, RefreshCw } from "lucide-react";
 
 import {
   invoiceApi,
@@ -13,9 +13,11 @@ import {
 import { formatCurrency } from "@/features/shared/format";
 import { DashboardActionButton, DashboardActions, DashboardPanel, StatCard } from "@/features/shared/dashboard";
 import {
+  INVOICE_GENERATOR_FILTER_FOLLOW_UP_EVENT,
   INVOICE_GENERATOR_LOAD_INVOICE_EVENT,
   INVOICE_GENERATOR_OPEN_FOLLOW_UP_EVENT,
   INVOICE_GENERATOR_REFRESH_SUMMARY_EVENT,
+  type InvoiceGeneratorFilterFollowUpEventDetail,
   type InvoiceGeneratorLoadInvoiceEventDetail,
   type InvoiceGeneratorOpenFollowUpEventDetail,
 } from "./invoice-generator-events";
@@ -41,6 +43,10 @@ const STATUS_LABELS: Record<InvoiceFollowUpStatus, string> = {
   RESOLVED: "Resolved",
   ESCALATED: "Escalated",
 };
+
+function getStatusFilterLabel(status: InvoiceFollowUpStatus | "ALL") {
+  return status === "ALL" ? "All follow-up statuses" : STATUS_LABELS[status];
+}
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "No date";
@@ -71,6 +77,7 @@ function getInitialForm(selected: InvoiceFollowUpDashboardItemDto | null): Invoi
 export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFollowUpPanelProps) {
   const [dashboard, setDashboard] = useState<InvoiceFollowUpDashboardDto | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<InvoiceFollowUpStatus | "ALL">("ALL");
   const [form, setForm] = useState<InvoiceFollowUpPayload>({ status: "CONTACTED", note: "", nextFollowUpAt: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -78,7 +85,12 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const items = dashboard?.items ?? [];
+  const rawItems = dashboard?.items ?? [];
+  const items = useMemo(() => {
+    if (statusFilter === "ALL") return rawItems;
+    return rawItems.filter((item) => item.latestFollowUp?.status === statusFilter);
+  }, [rawItems, statusFilter]);
+
   const selectedItem = useMemo(
     () => items.find((item) => item.invoice.id === selectedInvoiceId) ?? items[0] ?? null,
     [items, selectedInvoiceId],
@@ -118,6 +130,7 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
       const customEvent = event as CustomEvent<InvoiceGeneratorOpenFollowUpEventDetail>;
       const invoiceId = customEvent.detail?.invoiceId;
       if (!invoiceId) return;
+      setStatusFilter("ALL");
       setSelectedInvoiceId(invoiceId);
       void loadFollowUps(invoiceId);
       document.getElementById("invoice-follow-up-tracker")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -125,6 +138,22 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
 
     window.addEventListener(INVOICE_GENERATOR_OPEN_FOLLOW_UP_EVENT, handleOpenFollowUp);
     return () => window.removeEventListener(INVOICE_GENERATOR_OPEN_FOLLOW_UP_EVENT, handleOpenFollowUp);
+  }, []);
+
+  useEffect(() => {
+    function handleFilterFollowUp(event: Event) {
+      const customEvent = event as CustomEvent<InvoiceGeneratorFilterFollowUpEventDetail>;
+      const status = customEvent.detail?.status ?? "ALL";
+      const invoiceId = customEvent.detail?.invoiceId ?? null;
+      setStatusFilter(status);
+      setSelectedInvoiceId(invoiceId);
+      setMessage(customEvent.detail?.message ?? `Filtered tracker by ${getStatusFilterLabel(status)}.`);
+      setErrorMessage(null);
+      document.getElementById("invoice-follow-up-tracker")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    window.addEventListener(INVOICE_GENERATOR_FILTER_FOLLOW_UP_EVENT, handleFilterFollowUp);
+    return () => window.removeEventListener(INVOICE_GENERATOR_FILTER_FOLLOW_UP_EVENT, handleFilterFollowUp);
   }, []);
 
   useEffect(() => {
@@ -223,6 +252,41 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
             />
           </div>
 
+          <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+            <label className="min-w-[220px] text-sm font-semibold text-neutral-700">
+              Drilldown status
+              <select
+                value={statusFilter}
+                onChange={(event) => {
+                  setStatusFilter(event.target.value as InvoiceFollowUpStatus | "ALL");
+                  setSelectedInvoiceId(null);
+                }}
+                className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+              >
+                <option value="ALL">All follow-up statuses</option>
+                {FOLLOW_UP_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+              <span className="rounded-full bg-white px-3 py-2 font-semibold text-neutral-700">
+                Showing {items.length} of {rawItems.length} overdue invoice(s)
+              </span>
+              {statusFilter !== "ALL" && (
+                <DashboardActionButton
+                  icon={ListFilter}
+                  onClick={() => {
+                    setStatusFilter("ALL");
+                    setSelectedInvoiceId(null);
+                  }}
+                >
+                  Clear Drilldown
+                </DashboardActionButton>
+              )}
+            </div>
+          </div>
+
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_440px]">
             <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
               <table className="min-w-full divide-y divide-neutral-100 text-sm">
@@ -272,7 +336,7 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
                   {items.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-3 py-8 text-center text-sm text-neutral-500">
-                        No overdue invoices require follow-up right now.
+                        No overdue invoices match {getStatusFilterLabel(statusFilter).toLowerCase()}.
                       </td>
                     </tr>
                   )}
