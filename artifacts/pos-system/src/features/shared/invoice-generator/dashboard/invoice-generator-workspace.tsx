@@ -13,6 +13,7 @@ import {
   DashboardPanel,
   DashboardShell,
 } from "@/features/shared/dashboard";
+import { InvoiceFollowUpPanel } from "./invoice-follow-up-panel";
 import { InvoiceGeneratorDashboard } from "./invoice-generator-dashboard";
 import { InvoiceHistoryPanel } from "./invoice-history-panel";
 import { InvoiceSummaryPanel } from "./invoice-summary-panel";
@@ -66,11 +67,17 @@ export function InvoiceGeneratorWorkspace() {
       capabilities.canUpdate &&
       !capabilities.isPlannedMode,
   );
+  const canManageFollowUps = Boolean(
+    capabilities?.canView &&
+      capabilities.canUpdate &&
+      !capabilities.isPlannedMode,
+  );
 
   if (capabilities && canViewHistory) {
     return (
       <div className="space-y-6">
         <InvoiceSummaryPanel />
+        <InvoiceFollowUpPanel canManage={canManageFollowUps} />
         <InvoiceHistoryPanel capabilities={capabilities} canLoadToEditor={canUseEditor} />
         {canUseEditor ? (
           <InvoiceGeneratorDashboard />
