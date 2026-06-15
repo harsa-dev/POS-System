@@ -8,6 +8,7 @@ import { CustomersPartnersDetailTable } from "./customers-partners-detail-table"
 import { CustomersPartnersImportPanel } from "./customers-partners-import-panel";
 import { CustomersPartnersLoyaltyTiersPanel } from "./customers-partners-loyalty-tiers-panel";
 import { CustomersPartnersSalesSyncPanel } from "./customers-partners-sales-sync-panel";
+import { CustomersPartnersTierAssignmentPanel } from "./customers-partners-tier-assignment-panel";
 import { CustomersPartnersWorkflowShortcuts } from "./customers-partners-workflow-shortcuts";
 
 export function CustomersPartnersWorkspace() {
@@ -34,6 +35,13 @@ export function CustomersPartnersWorkspace() {
         <CustomersPartnersLoyaltyTiersPanel
           reloadSignal={reloadKey}
           onUpdated={reloadDashboard}
+        />
+      </section>
+
+      <section id="customers-tier-assignment" className="scroll-mt-24">
+        <CustomersPartnersTierAssignmentPanel
+          reloadSignal={reloadKey}
+          onAssigned={reloadDashboard}
         />
       </section>
 
