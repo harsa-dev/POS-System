@@ -15,11 +15,11 @@ const steps = [
   },
   {
     label: "Apply Retail core tables and indexes",
-    file: "prisma/migrations/202606140001_add_retail_core/migration.sql",
+    file: "prisma/sql/retail-core.sql",
   },
   {
     label: "Apply Retail return tables and indexes",
-    file: "prisma/migrations/202606140004_add_retail_returns/migration.sql",
+    file: "prisma/sql/retail-returns.sql",
   },
   {
     label: "Verify Retail scoped schema",
