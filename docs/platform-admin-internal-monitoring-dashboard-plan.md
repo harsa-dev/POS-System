@@ -84,13 +84,13 @@ The dashboard uses a `mock/api/fallback` source model:
 
 Internal Monitoring must not rely on business mode access.
 
-Temporary backend policy:
+Backend policy:
 
 ```txt
 OWNER and ADMIN may inspect Internal Monitoring read-only payloads.
 ```
 
-Temporary frontend policy:
+Frontend policy:
 
 ```txt
 OWNER and ADMIN may view Internal Monitoring.
@@ -103,7 +103,7 @@ Capability:
 platform-admin.internal-monitoring.read
 ```
 
-This must replace broad `settings.manage` for the Internal Monitoring sidebar entry in a later phase.
+This capability now controls the Internal Monitoring route guard and sidebar entry. `settings.manage` must not control Internal Monitoring visibility anymore.
 
 ## Sensitive implementation rules
 
@@ -192,6 +192,20 @@ Implemented:
 
 ### IM-6 - Sidebar permission isolation
 
+Status: Done.
+
+Implemented:
+
+```txt
+- V3PermissionKey includes platform-admin.internal-monitoring.read
+- permission compatibility maps platform-admin.internal-monitoring.read to OWNER/ADMIN only
+- Internal Monitor sidebar entry uses platform-admin.internal-monitoring.read
+- Internal Monitor sidebar entry no longer uses settings.manage
+- static guard checks sidebar permission isolation
+```
+
+### IM-7 - Policy parity smoke and hardening
+
 Next.
 
-Move Internal Monitoring entry away from broad `settings.manage` into `platform-admin.internal-monitoring.read`.
+Add a small policy parity check that compares frontend policy, sidebar permission compatibility, and backend internal monitoring policy so OWNER/ADMIN access stays aligned across route guard, sidebar, and API.
