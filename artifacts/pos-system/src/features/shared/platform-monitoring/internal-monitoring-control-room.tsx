@@ -70,9 +70,14 @@ const toneMap: Record<string, DashboardTone> = {
   POST: "rose",
   PATCH: "rose",
   DELETE: "rose",
+  "Operational - API synced": "green",
+  "Degraded - fallback active": "amber",
+  "Mock - local preview": "blue",
+  Refreshing: "blue",
 };
 
 const sectionLinks = [
+  { id: "runtime-status", label: "Runtime Status" },
   { id: "runtime-signals", label: "Runtime Signals" },
   { id: "route-inventory", label: "Route Inventory" },
   { id: "api-contracts", label: "API Contracts" },
@@ -98,6 +103,52 @@ function formatGeneratedAt(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function getGeneratedAtAgeMinutes(value: string) {
+  const generatedAtTime = new Date(value).getTime();
+
+  if (Number.isNaN(generatedAtTime)) return null;
+
+  return Math.max(0, Math.floor((Date.now() - generatedAtTime) / 60_000));
+}
+
+function getRuntimeStatus(data: InternalMonitoringDataSourceResult, isLoading: boolean) {
+  const generatedAtAgeMinutes = getGeneratedAtAgeMinutes(data.generatedAt);
+  const staleSourceWarning =
+    generatedAtAgeMinutes === null
+      ? "Generated timestamp is invalid."
+      : generatedAtAgeMinutes > 15
+        ? `Generated timestamp is ${generatedAtAgeMinutes} minutes old.`
+        : null;
+  const fallbackCount = data.sectionFallbacks.length;
+  const totalSections = 5;
+  const apiCoverage = totalSections - fallbackCount;
+  const sectionCoverageLabel = `${apiCoverage}/${totalSections} sections synced`;
+  const runtimeStatusLabel = isLoading
+    ? "Refreshing"
+    : data.source === "api" && fallbackCount === 0 && !staleSourceWarning
+      ? "Operational - API synced"
+      : data.source === "fallback" || fallbackCount > 0 || staleSourceWarning
+        ? "Degraded - fallback active"
+        : "Mock - local preview";
+  const runtimeMode = data.source === "api" ? "Read-only API" : data.source === "fallback" ? "Fallback mode" : "Mock preview";
+  const freshnessLabel =
+    generatedAtAgeMinutes === null
+      ? "Invalid timestamp"
+      : generatedAtAgeMinutes === 0
+        ? "Fresh now"
+        : `${generatedAtAgeMinutes} minutes old`;
+
+  return {
+    apiCoverage,
+    fallbackCount,
+    freshnessLabel,
+    runtimeMode,
+    runtimeStatusLabel,
+    sectionCoverageLabel,
+    staleSourceWarning,
+  };
 }
 
 function ReadOnlySafetyBanner({ source }: { source: InternalMonitoringSource }) {
@@ -195,6 +246,59 @@ function SourceHealthSummary({
   );
 }
 
+function RuntimeStatusPanel({
+  data,
+  isLoading,
+}: {
+  data: InternalMonitoringDataSourceResult;
+  isLoading: boolean;
+}) {
+  const runtime = getRuntimeStatus(data, isLoading);
+
+  return (
+    <DashboardPanel
+      title="Runtime Status"
+      description="Ringkasan operasional supaya admin tahu apakah dashboard sedang API-synced, fallback, mock, atau stale. Sangat revolusioner: status yang benar-benar menjelaskan status."
+      className="scroll-mt-24"
+    >
+      <div id="runtime-status" className="sr-only">Runtime Status</div>
+      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4" aria-live="polite">
+        <article className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Runtime Mode</p>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="text-lg font-bold text-foreground">{runtime.runtimeMode}</p>
+            <StatusPill tone={tone(runtime.runtimeStatusLabel)}>{runtime.runtimeStatusLabel}</StatusPill>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">Current source: {sourceLabel(data.source)}</p>
+        </article>
+        <article className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Freshness</p>
+          <p className="mt-3 text-lg font-bold text-foreground">{runtime.freshnessLabel}</p>
+          <p className="mt-2 text-sm text-muted-foreground">Generated: {formatGeneratedAt(data.generatedAt)}</p>
+        </article>
+        <article className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Section Coverage</p>
+          <p className="mt-3 text-lg font-bold text-foreground">{runtime.sectionCoverageLabel}</p>
+          <p className="mt-2 text-sm text-muted-foreground">Fallback sections: {runtime.fallbackCount}</p>
+        </article>
+        <article className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Guardrail</p>
+          <p className="mt-3 text-lg font-bold text-foreground">Read-only enforced</p>
+          <p className="mt-2 text-sm text-muted-foreground">No POST/PATCH/DELETE runtime controls are exposed.</p>
+        </article>
+      </div>
+      {runtime.staleSourceWarning ? (
+        <div className="border-t border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status">
+          <div className="flex gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <p><span className="font-semibold">Stale source warning:</span> {runtime.staleSourceWarning}</p>
+          </div>
+        </div>
+      ) : null}
+    </DashboardPanel>
+  );
+}
+
 const signalColumns: DataTableColumn<InternalMonitoringControlRoomSignalDto>[] = [
   { key: "area", header: "Area", cell: (row) => <span className="font-medium text-foreground">{row.area}</span> },
   { key: "signal", header: "Signal", cell: (row) => <span className="text-sm text-muted-foreground">{row.signal}</span> },
@@ -286,6 +390,7 @@ export function InternalMonitoringControlRoom() {
     <>
       <ReadOnlySafetyBanner source={controlRoomData.source} />
       <SourceHealthSummary data={controlRoomData} isLoading={isLoading} />
+      <RuntimeStatusPanel data={controlRoomData} isLoading={isLoading} />
       <QuickSectionNavigation />
 
       <DashboardPanel
