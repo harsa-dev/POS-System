@@ -24,6 +24,7 @@ import {
 
 type InvoiceHistoryPanelProps = {
   capabilities: InvoiceCapabilitiesDto;
+  canLoadToEditor?: boolean;
 };
 
 type FilterState = {
@@ -69,7 +70,7 @@ function buildQuery(filters: FilterState, page: number): InvoiceHistoryQuery {
   };
 }
 
-export function InvoiceHistoryPanel({ capabilities }: InvoiceHistoryPanelProps) {
+export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: InvoiceHistoryPanelProps) {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
@@ -134,6 +135,12 @@ export function InvoiceHistoryPanel({ capabilities }: InvoiceHistoryPanelProps) 
   }
 
   function handleLoadToEditor(invoice: InvoiceRecord) {
+    if (!canLoadToEditor) {
+      setErrorMessage("Invoice editor access is required to load history records into the editor.");
+      setMessage(null);
+      return;
+    }
+
     const detail: InvoiceGeneratorLoadInvoiceEventDetail = {
       invoiceId: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
@@ -292,7 +299,9 @@ export function InvoiceHistoryPanel({ capabilities }: InvoiceHistoryPanelProps) 
                       <button
                         type="button"
                         onClick={() => handleLoadToEditor(invoice)}
-                        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+                        disabled={!canLoadToEditor}
+                        title={canLoadToEditor ? "Load this invoice into the editor." : "Invoice editor access is required to load this record."}
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <FileInput className="h-4 w-4" />
                         Load
