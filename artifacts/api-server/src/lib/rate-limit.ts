@@ -17,6 +17,8 @@ type RateLimitBucket = {
 
 const rateLimitBuckets = new Map<string, RateLimitBucket>();
 
+// MVP in-memory limiter config.
+// Production multi-instance/serverless deployments should move this storage to Redis or an edge/WAF layer.
 export const authRateLimitConfig = {
   loginByIp: {
     limit: 10,
