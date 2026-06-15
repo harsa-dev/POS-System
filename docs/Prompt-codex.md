@@ -1,92 +1,88 @@
-POS System V3 Phase 4A: Raw Material Mode Deep Hardening, Flow Completion, Shared Dashboard Wiring, and Structure Cleanup
+POS System V3 Phase 4B: Raw Material Persistence, Workflow Delegates, Procurement Cashflow, Supplier Invoice Hold, and HPP Costing
 Context
 
-Phase 1, Phase 2, and Phase 3 cleanup have already been implemented locally.
+Phase 4A Raw Material cleanup has already been implemented locally.
 
-Current business modes:
+Known Phase 4A result:
 
-restaurant: active
-retail: active
-raw-material: active
-custom-business: planned / guarded only
+Active Raw Material workspace was renamed from placeholder naming to raw-material-workspace.tsx.
+Raw Material routes now lazy-load RawMaterialWorkspace.
+Old raw-material-placeholder-workspace.tsx was deleted.
+Debug/dummy wording was replaced with planning-preview/sample/preview language.
+Raw Material scale dashboard status changed from new-dummy to planning-preview.
+dummyMetric became previewMetric.
+Raw Material shared-dashboard bridge behavior moved into features/shared/dashboard/dashboard-shell.tsx.
+One-off Raw Material cashflow wrapper was removed from cashflow-workspace.tsx.
+Unrelated shared surfaces like payroll, attendance, contracts, audit log, roster overview, and platform monitoring were restricted for Raw Material.
+Backend audit found Raw Material routes already use requireBusinessMode(["raw-material"]) and Raw Material permission checks.
+TypeScript checks passed through local commands.
+Vite build passed.
+pnpm commands remain blocked by local permission issue.
+Browser QA could not run because local browser/runtime failed.
 
-This task is scoped to Raw Material mode only, plus shared infrastructure only when Raw Material needs it.
+This Phase 4B task is still scoped to Raw Material mode only, plus shared infrastructure only when required for Raw Material.
 
-Do not work broadly across all modes.
-Do not polish Restaurant or Retail except when a shared helper/config must be adjusted to support Raw Material correctly.
-
+Do not work broadly on Restaurant or Retail.
+Do not push, branch, commit, or open PR.
 Work locally only.
 
-Do not:
-
-create branch
-commit
-push
-open PR
-implement full Custom Business / Service
-rewrite the whole app
-change database schema unless Raw Material genuinely needs Prisma alignment and the reason is documented
 Main Goal
 
-Make Raw Material mode feel like a real, clean, guarded, maintainable business mode.
+Turn Raw Material from mostly preview/planning surfaces into a coherent persisted business mode where the current UI can safely read/write real data where appropriate.
 
-This includes:
+Focus areas:
 
-Raw Material frontend flow hardening.
-Raw Material backend/API polish.
-Raw Material Prisma/database alignment if needed.
-Raw Material shared dashboard wiring.
-Raw Material route guard and access guard tightening.
-Raw Material feature limiting.
-Raw Material folder/file structure cleanup.
-Raw Material naming cleanup.
-Raw Material duplicate/hardcoded code cleanup.
-Raw Material fat file split.
-Raw Material edge case handling.
-Raw Material docs update.
-Raw Material verification.
+Raw Material persistence.
+Procurement cashflow.
+Supplier invoice hold.
+HPP / COGS costing.
+Workflow write delegates.
+Raw Material API contracts.
+Raw Material Prisma alignment if needed.
+Raw Material shared dashboard wiring based on real support, not fake preview data.
+Guarding and limiting unsupported flows.
+File structure, naming, helper extraction, and docs.
 
-This phase is incomplete if Raw Material remains a placeholder-style workspace without clear structure and flow.
+This is not a full ERP build.
+Implement only the minimal real workflow needed to make the current Raw Material surfaces honest and testable.
 
-Scope Boundary
+Strict Scope
 
-Focus only on:
+Work only on:
 
+artifacts/pos-system/src/app/workspace/raw-material
 artifacts/pos-system/src/features/raw-material
-artifacts/pos-system/src/app routes related to raw-material
-artifacts/pos-system/src/config related to raw-material
-artifacts/pos-system/src/lib helpers used by raw-material
-artifacts/pos-system/src/components used by raw-material
-artifacts/pos-system/src/features/shared only when Raw Material dashboard wiring needs it
-artifacts/api-server routes/services/controllers related to raw-material
-Prisma schema only if Raw Material requires real backend alignment
-docs related to Raw Material and V3 business modes
+artifacts/pos-system/src/features/shared only when Raw Material shared-dashboard wiring requires it
+artifacts/pos-system/src/config related to Raw Material mode/modules/routes
+artifacts/pos-system/src/lib/api or helpers used by Raw Material
+artifacts/api-server Raw Material related routes/services/controllers
+Prisma schema only if needed for Raw Material persistence
+docs related to Raw Material and V3 phases
 scripts/checks related to Raw Material
 
-Do not modify unrelated Restaurant/Retail logic unless:
+Do not modify Restaurant/Retail except when:
 
-Raw Material imports shared code that has a bug.
-Shared dashboard wiring needs a reusable mode-aware helper.
-Business mode contract needs a Raw Material correction.
-Route guard logic must be corrected for Raw Material.
+shared contracts break because of Raw Material wiring
+shared dashboard adapter must become mode-aware
+business mode contract needs a Raw Material correction
 
 If you touch shared files, explain why.
 
 Required First Steps
 
-Before editing:
+Before editing code:
 
-Read all docs related to V3, Raw Material, business modes, shared dashboards, API, database, and phase notes.
-Inspect the Raw Material feature folder.
-Inspect Raw Material routes.
-Inspect Raw Material navigation/sidebar/module registry.
+Read all Raw Material docs.
+Read V3 canonical business mode docs.
+Read Phase 4A Raw Material hardening docs.
+Inspect Raw Material workspace and feature folder.
 Inspect Raw Material API clients.
-Inspect Raw Material backend/API routes and services.
-Inspect Prisma schema for raw material/inventory/stock/supplier/material-related models.
-Inspect shared dashboards and how they should receive Raw Material context.
-Inspect business mode guard logic for Raw Material.
-Inspect scripts/checks related to Raw Material.
-Write a short audit plan before changing code.
+Inspect Raw Material backend routes/services.
+Inspect Prisma schema.
+Inspect shared dashboards currently visible to Raw Material.
+Inspect cashflow, invoice, inventory, financial report, and dashboard shell shared files.
+Inspect role/permission guards for Raw Material.
+Produce a short implementation plan before editing.
 
 Search terms:
 
@@ -96,330 +92,427 @@ material
 materials
 supplier
 suppliers
+procurement
+purchase
+purchase order
+invoice
+supplier invoice
+cashflow
+cash flow
+hpp
+cogs
+costing
 stock
 stock movement
 inventory
-procurement
-purchase
-kandang
+movement
 unit
 low stock
 minimum stock
-warehouse
-service
-fnb
-businessMode
-currentBusinessMode
-shared dashboard
-dashboard
-cashflow
-analytics
-invoice
-report
-sidebar
-module
-registry
-role
-permission
-guard
+planning-preview
+previewMetric
+preview
+sample
+workflow delegate
+delegate
+write
+mutation
+requireBusinessMode
+raw-material permission
+Part 1: Decide What Should Become Real vs Stay Planned
 
-If old names like warehouse still appear in active Raw Material runtime code, fix them.
-Historical docs can mention old names only if they clearly say they are legacy.
+Audit every Raw Material surface and classify it:
 
-Raw Material Product Definition
+Real and should persist now.
+Real read-only for now.
+Preview/planned only.
+Unsupported and should be hidden/disabled.
+Shared dashboard that needs Raw Material adapter.
 
-Raw Material mode should represent a business workflow for managing raw goods/materials.
-
-Expected domain areas:
+You must classify at least:
 
 Material list
 Supplier list
 Stock level
 Stock movement
-Low-stock alert
-Unit handling
-Procurement/purchase planning if already present
-Material usage tracking if already present
-Inventory correction if already present
-Reports/analytics integration if shared dashboards support it
+Low-stock alerts
+Procurement cashflow
+Supplier invoice hold
+HPP / COGS costing
+Inventory Management shared dashboard
+Cashflow shared dashboard
+Financial Reports shared dashboard
+Invoice Generator shared dashboard
+Customers & Partners shared dashboard
+Sales Analytics shared dashboard
+Shift Cashier Reports shared dashboard
 
-Do not invent a massive ERP system.
-Complete and harden what already exists.
+Rules:
 
-If a feature does not exist yet, do not build it fully unless it is a small guard/state/helper needed to make the current flow coherent.
+Do not fake data as real.
+Do not leave fake preview data on a surface that claims persistence.
+Do not wire unsupported dashboards as if they work.
+If a surface remains preview, label it honestly.
+If a surface is real, connect it to real API/persistence.
+Part 2: Raw Material Prisma / Database Persistence
 
-Part 1: Raw Material Flow Audit
+Inspect current Prisma schema and backend models.
 
-Audit current Raw Material flow end-to-end.
-
-Check:
-
-Entry Flow
-User selects Raw Material from /select-mode.
-Correct mode ID is stored: raw-material.
-User is redirected to correct Raw Material dashboard/workspace.
-Refresh keeps valid mode.
-Invalid mode redirects safely.
-Old warehouse value does not become active runtime mode.
-Old service value does not become active runtime mode.
-Old fnb value does not affect Raw Material.
-Route Flow
-Direct Raw Material route works when selected mode is raw-material.
-Direct Raw Material route redirects safely when no mode is selected.
-Direct Raw Material route redirects safely when selected mode is restaurant.
-Direct Raw Material route redirects safely when selected mode is retail.
-Direct Raw Material route redirects safely when selected mode is custom-business.
-next param behavior is safe and predictable if used.
-Navigation Flow
-Sidebar shows only Raw Material-relevant modules.
-Sidebar order matches canonical registry.
-Sidebar role permissions match actual access.
-No Restaurant/Retail/Custom Business modules leak into Raw Material.
-No FNB/Warehouse/Service active labels appear.
-Data Flow
-Material data loads safely.
-Supplier data loads safely.
-Stock data loads safely.
-Empty states are handled.
-API error states are handled.
-Malformed API envelope is handled.
-Slow loading state is handled if applicable.
-Duplicate submit is prevented where there are forms/actions.
-Part 2: Raw Material Edge Cases
-
-Add guards, states, and validation for these edge cases where the current app supports the flow:
-
-No materials.
-No suppliers.
-Material below minimum stock.
-Material out of stock.
-Material unit missing.
-Invalid unit.
-Invalid stock quantity.
-Negative stock movement where not allowed.
-Stock movement quantity is zero.
-Supplier deleted/unavailable.
-Material deleted while selected.
-Duplicate stock update submit.
-API returns empty array.
-API returns error envelope.
-API returns malformed envelope.
-User opens Raw Material route with wrong selected mode.
-User refreshes after selecting Raw Material.
-User manually sets currentBusinessMode to warehouse.
-User manually sets currentBusinessMode to rawMaterial.
-User manually sets currentBusinessMode to invalid random string.
-Planned Custom Business must not reuse Raw Material UI.
-Raw Material shared dashboard must not show Restaurant/Retail copy.
-
-Do not create fake UI just to claim edge cases are handled.
-Use real guards, empty states, validation, and safe fallbacks.
-
-Part 3: Raw Material Prisma / Database Alignment
-
-Inspect Prisma schema and backend models related to Raw Material.
-
-Check whether Raw Material currently has proper persistence for:
+Determine whether Raw Material already has models for:
 
 materials
 suppliers
-stock level
 stock movement
 unit
-minimum stock threshold
-material category/type if present
-purchase/procurement if present
-audit log if present
-user/business ownership if present
+minimum stock
+procurement/purchase
+supplier invoice
+cost/HPP/COGS
+audit trail
+ownership/tenant/business scope
 
-If Prisma models already exist:
+If suitable models already exist:
 
-verify API/services use them correctly
-verify frontend types match backend response
-verify request schemas match database constraints
-verify nullable fields are handled
-verify ownership/tenant scoping exists if applicable
+use them
+do not duplicate models
+align API response types
+align frontend types
+fix nullable handling
+fix ownership/tenant filtering if needed
 
-If Prisma models do not exist but Raw Material frontend pretends data is real:
+If models are missing and current Raw Material flow needs real persistence:
 
-do not add a massive schema blindly
-document the mismatch
-add Prisma only if necessary to make Raw Material mode coherent and testable
-keep schema changes minimal and scoped
-explain every Prisma change
+add minimal Prisma models only for the current flow
+keep schema scoped
+avoid destructive migrations
+avoid broad renames
+avoid nullable chaos
+avoid fields not used by the current UI/API
 
-Allowed Prisma additions only if needed:
+Allowed minimal models if missing:
 
-RawMaterial / Material model
-Supplier model
-RawMaterialStockMovement / MaterialStockMovement model
-necessary enums for movement type/unit/status
-relations to user/business/restaurant/company if existing architecture requires it
+model RawMaterial {
+  id             String   @id @default(cuid())
+  businessId     String
+  name           String
+  sku            String?
+  unit           String
+  currentStock   Decimal  @default(0)
+  minimumStock   Decimal  @default(0)
+  averageCost    Decimal  @default(0)
+  supplierId     String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
 
-Rules:
+model RawMaterialSupplier {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  contactName String?
+  phone       String?
+  email       String?
+  address     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
 
-Do not break existing Restaurant or Retail schema.
-Do not rename broad shared models without strong reason.
-Do not create destructive migrations.
-Do not add nullable chaos just to make things pass.
-Do not add schema fields that are not used by current Raw Material flow.
-If migration is required, document exact command and risk.
-If environment cannot run Prisma generate/migrate, report it honestly.
-Part 4: Raw Material Backend/API Hardening
+model RawMaterialStockMovement {
+  id            String   @id @default(cuid())
+  businessId    String
+  materialId    String
+  type          String
+  quantity      Decimal
+  unitCost      Decimal?
+  totalCost     Decimal?
+  referenceType String?
+  referenceId   String?
+  note          String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+}
 
-Audit and improve backend/API only for Raw Material-related flow.
+Only add equivalent models if the existing schema does not already provide them.
 
-Check:
+If procurement and supplier invoice persistence is needed, prefer minimal scoped models:
 
-API Design
-endpoints match frontend calls
-endpoint names match behavior
-request payload matches frontend
-response shape matches frontend
-response envelope is consistent
-status codes are correct
-errors are safe
-Validation
-route params validated
-body validated
-unit validated
-quantity validated
-supplier ID validated
-material ID validated
-movement type validated
-required fields enforced server-side
-Security / Guarding
-no invalid mode accepted
-no old warehouse mode accepted as active API mode
-no client mode trusted blindly
-ownership/tenant filter exists if architecture has owner/business IDs
-role permission checks exist if role system applies
-unsafe internal errors are not leaked
-Service Structure
-route handler should not contain too much business logic
-repeated mapper logic should be extracted
-repeated response/error logic should use shared helper if already available
-stock movement writes should be consistent
-stock level update should be safe
-audit log write should be consistent if used
+model RawMaterialPurchase {
+  id           String   @id @default(cuid())
+  businessId   String
+  supplierId   String?
+  status       String
+  subtotal     Decimal  @default(0)
+  taxAmount    Decimal  @default(0)
+  totalAmount  Decimal  @default(0)
+  dueDate      DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
 
-Do not rewrite all backend.
-Only harden Raw Material-related backend/API.
+model RawMaterialPurchaseItem {
+  id          String  @id @default(cuid())
+  purchaseId  String
+  materialId  String
+  quantity    Decimal
+  unitCost    Decimal
+  totalCost   Decimal
+}
 
-Part 5: Raw Material Shared Dashboard Wiring
+model RawMaterialSupplierInvoice {
+  id          String   @id @default(cuid())
+  businessId  String
+  supplierId  String?
+  purchaseId  String?
+  status      String
+  invoiceNo   String?
+  amount      Decimal
+  dueDate     DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
 
-Wire Raw Material mode into shared dashboards according to existing shared dashboard context.
+Only add these if actually needed.
 
-Inspect shared dashboards such as:
+Required:
 
-Sales Analytics
-Customers & Partners
-Inventory Management
-Cashflow
-Financial Reports
-Invoice Generator
-Shift Cashier Reports
-Team Management
-Any shared dashboard registry/module system
+document every schema decision
+run Prisma validate/generate if environment allows
+update backend types/services if Prisma changed
+update docs
 
-For each shared dashboard, decide Raw Material behavior:
+Do not change Restaurant/Retail schema.
 
-Supported and useful for Raw Material
-Supported but with Raw Material-specific labels/data mapping
-Not supported and should be hidden/disabled for Raw Material
-Planned only and should show clear state
+Part 3: Procurement Cashflow
 
-Expected examples:
+Make Raw Material cashflow honest.
 
-Inventory Management
+Determine current behavior:
 
-Raw Material should likely be supported.
-It should show:
+Is cashflow shown to Raw Material?
+Is it preview-only?
+Does it claim real procurement expenses?
+Does backend have purchase/payment data?
+Does shared cashflow expect sales revenue, which may not fit Raw Material?
 
-material stock
-low stock
-supplier/material context
-stock movement
-unit-aware quantities
-Financial Reports
+Required behavior:
 
-May be supported if data exists.
-It should not show Restaurant/Retail-only wording.
-If Raw Material financial data does not exist, show planned/empty state.
+Raw Material cashflow should represent procurement/material spending, supplier payables, inventory cost movement, or planned preview.
+It must not show Restaurant/Retail sales copy as Raw Material data.
+It must not use fake preview data while pretending it is persisted.
+Unsupported metrics must be hidden or marked not available.
 
-Cashflow
+If implementing real minimal procurement cashflow:
 
-May be supported if purchases/procurement/stock costs exist.
-If no real data exists, do not fake it.
-Show guarded empty/planned state.
+create/read purchase expense records
+map supplier invoice/payment status into cashflow
+expose API response for Raw Material cashflow summary
+wire shared cashflow dashboard through a Raw Material adapter
+label metrics clearly:
+procurement spend
+pending supplier invoices
+paid supplier invoices
+stock value
+average material cost
+low-stock restock estimate if already calculable
 
-Invoice Generator
+Do not implement full accounting.
 
-Only support if Raw Material has purchase/supplier invoice context.
-Otherwise hide or mark as not available for Raw Material.
+Part 4: Supplier Invoice Hold
 
-Shift Cashier Reports
+Implement or clarify supplier invoice hold.
 
-Probably not relevant to Raw Material unless the business flow has cashier.
-Hide or mark unsupported for Raw Material.
-
-Customers & Partners
-
-For Raw Material, this may map to suppliers/partners.
-If used, rename copy/context properly.
-
-Sales Analytics
-
-Probably not directly relevant unless Raw Material has sales.
-Hide, disable, or show not applicable.
-
-Rules:
-
-Do not show Restaurant/Retail dashboard copy in Raw Material.
-Do not fake data.
-Do not wire unsupported dashboards just to make sidebar full.
-Shared dashboard visibility must be mode-aware.
-Shared dashboard labels must be context-aware.
-Shared dashboard empty states must be context-aware.
-Raw Material should only see dashboards that make business sense.
-
-If a shared dashboard needs mode-specific adapter:
-
-create a clean adapter/helper
-keep adapter config typed
-do not hardcode mode checks everywhere
-avoid giant switch statements inside UI components
-Part 6: Raw Material Guarding, Limiting, and Permissions
-
-Tighten access control for Raw Material.
+Definition:
+Supplier invoice hold means supplier invoices can exist in a pending/held/unpaid state before payment is completed.
 
 Audit:
 
-route guard
-sidebar visibility
-feature visibility
-role permissions
-planned/unsupported dashboard visibility
-direct URL access
-API access if backend has auth/roles
+Is there an invoice generator shared dashboard?
+Is there supplier invoice UI?
+Is there backend support?
+Is there Prisma support?
+Is there cashflow linkage?
+
+Required behavior:
+
+If supported, supplier invoices must have clear statuses:
+draft
+held
+pending
+paid
+cancelled
+If not supported, hide or mark planned.
+Do not reuse customer invoice wording for supplier invoices.
+Do not show sales invoice UI as Raw Material supplier invoice UI.
+Do not fake invoice persistence.
+
+If implementing minimal support:
+
+add typed status config
+add API route/service if needed
+add frontend service/client method
+show held/pending supplier invoices in Raw Material context
+wire to cashflow as payable/pending expense if appropriate
+Part 5: HPP / COGS Costing
+
+Raw Material should support cost context if current UI already mentions costing, HPP, COGS, average cost, stock value, or financial reports.
+
+Audit:
+
+Does Raw Material show HPP/costing metrics?
+Does inventory have average cost?
+Do stock movements store unit cost?
+Do purchases update average cost?
+Do shared financial reports show irrelevant Restaurant/Retail metrics?
+
+Required behavior:
+
+If HPP/costing is shown, it must be based on clear data or marked preview.
+Stock value should be calculated consistently:
+currentStock * averageCost
+Purchase items should update or at least record unit cost.
+Stock movement should store quantity and optional cost if relevant.
+Financial reports should not pretend Raw Material has sales/profit data if it only has procurement data.
+
+Possible minimal helper:
+
+calculateRawMaterialStockValue(material)
+calculateAverageCostAfterPurchase(previousStock, previousAverageCost, purchaseQuantity, purchaseUnitCost)
+calculateRawMaterialMovementTotal(quantity, unitCost)
+
+Keep helpers typed and tested through TypeScript.
+
+Part 6: Workflow Write Delegates
+
+Audit current Raw Material workspace actions.
+
+Check whether UI has buttons/actions for:
+
+add material
+edit material
+delete/deactivate material
+add supplier
+edit supplier
+record stock movement
+record purchase
+hold supplier invoice
+mark invoice paid
+inventory correction
+procurement request
+
+For every visible write action:
+
+either wire it to a real API mutation
+or disable/mark as planned
+or remove it from active UI if unsupported
+
+Do not leave clickable buttons that only mutate local preview data while pretending to be real.
+
+Create workflow delegates where useful:
+
+features/raw-material/services/
+  raw-material-api.ts
+  raw-material-purchase-api.ts
+  supplier-invoice-api.ts
+
+features/raw-material/hooks/
+  use-raw-materials.ts
+  use-raw-material-suppliers.ts
+  use-raw-material-stock-movements.ts
+  use-raw-material-cashflow.ts
+
+features/raw-material/utils/
+  raw-material-costing.ts
+  raw-material-stock-status.ts
+
+Only create files actually used.
+
+Part 7: Raw Material Backend/API Contracts
+
+Create or harden Raw Material API contracts.
+
+Expected API areas if supported:
+
+GET materials
+POST material
+PATCH material
+GET suppliers
+POST supplier
+PATCH supplier
+GET stock movements
+POST stock movement
+GET procurement cashflow summary
+GET supplier invoices
+POST supplier invoice hold
+PATCH supplier invoice status
+
+Do not implement all if current flow does not need them.
 
 Rules:
 
-unsupported Raw Material features should not appear as active.
-role-limited modules should be hidden or disabled consistently.
-direct route access should not bypass UI guard.
-backend should still validate if data mutation exists.
-shared dashboards must check whether Raw Material supports them.
-planned features should be clearly marked, not broken.
+validate request body
+validate route params
+reject invalid business mode
+enforce Raw Material permission checks
+return consistent envelope
+avoid leaking internal errors
+keep ownership/tenant scoping
+update frontend API clients
+avoid duplicated parser logic, use shared read-api-envelope.ts
+Part 8: Shared Dashboard Adapter for Raw Material
 
-If role system exists:
+Instead of scattered if (mode === "raw-material"), create a clean typed adapter/config if needed.
 
-define which roles can access Raw Material modules.
-avoid copy-paste Restaurant roles if they do not fit.
-if uncertain, use conservative access and document it.
-Part 7: Raw Material File Structure Cleanup
+Possible file:
 
-Clean Raw Material folder structure.
+features/shared/dashboard/mode-dashboard-adapters.ts
+
+Adapter should define for Raw Material:
+
+dashboard availability
+labels
+empty-state copy
+metric mapping
+unsupported reason
+planned reason
+route visibility
+
+Example:
+
+type SharedDashboardSupport = "supported" | "preview" | "planned" | "unsupported";
+
+Rules:
+
+no fake data
+no giant untyped switch
+no Restaurant/Retail copy leakage
+keep Raw Material context clear:
+materials
+suppliers
+procurement
+stock
+payables
+costing
+Part 9: Raw Material Guarding and Limiting
+
+Tighten Raw Material feature limiting.
+
+Required:
+
+hide unsupported shared surfaces
+disable planned actions clearly
+prevent direct route access to unsupported Raw Material dashboards
+ensure role guard matches module registry
+ensure API guard matches UI guard
+ensure wrong selected mode redirects safely
+ensure warehouse is not active runtime mode
+ensure rawMaterial is not silently accepted unless documented storage migration handles it
+Part 10: Structure and Naming Cleanup
+
+Clean Raw Material structure further.
 
 Preferred structure:
 
@@ -429,187 +522,66 @@ features/raw-material/
     materials/
     suppliers/
     stock/
+    procurement/
+    invoices/
     shared/
+  config/
   hooks/
-  services/
   schemas/
+  services/
   types/
   utils/
-  constants/
-  config/
 
 Only create folders that are actually used.
 
-Move files if needed:
-
-components into components
-local hooks into hooks
-API clients/services into services
-Zod/form schemas into schemas
-domain types into types
-formatting/domain helpers into utils
-labels/status/routes/config into config or constants
-
 Rules:
 
-no giant dumping file
-no vague utils.ts if domain-specific
-no placeholder naming if file is active production route
-no warehouse naming in active Raw Material runtime
-no Restaurant/Retail logic inside Raw Material
-no Raw Material-specific logic inside global shared unless truly shared
+no active file should use placeholder naming
+no active file should use warehouse naming
+no vague dumping files
+no giant workspace file if responsibilities can be split
+no Raw Material-specific code in global shared unless it is an adapter/config intended for shared dashboard
 
-If raw-material-placeholder-workspace.tsx is active runtime:
+If raw-material-workspace.tsx is still large:
 
-rename it to an accurate name
-split it into smaller files
-remove placeholder wording unless it is truly a planned-only page
-Part 8: Raw Material Fat File Split
+split it further
+extract sections/components/helpers
+preserve behavior
+Part 11: Frontend Polish
 
-Identify and split Raw Material fat files.
-
-Known candidate:
-
-raw-material-placeholder-workspace.tsx
-
-Also search for other large Raw Material files.
-
-For each fat file:
-
-identify responsibilities
-extract constants
-extract helper functions
-extract child components
-extract hooks if stateful logic is reusable
-extract schemas/types if useful
-update imports
-preserve visible behavior
-run Raw Material typecheck
-
-Extraction examples:
-
-raw-material-workspace.tsx
-raw-material-dashboard-header.tsx
-raw-material-metric-cards.tsx
-material-stock-table.tsx
-supplier-list-section.tsx
-low-stock-alerts.tsx
-stock-movement-section.tsx
-raw-material-empty-state.tsx
-raw-material-status-badge.tsx
-raw-material-units.config.ts
-raw-material-stock.helpers.ts
-raw-material-dashboard-metrics.ts
-
-Do not over-split into tiny useless files.
-
-Part 9: Raw Material Naming Cleanup
-
-Canonical naming:
-
-Mode ID: raw-material
-User label: Raw Material
-Folder: features/raw-material
-Route slug: keep existing canonical route if docs define it, otherwise use consistent V3 route
-Type name examples:
-RawMaterialMode
-RawMaterialItem
-RawMaterialSupplier
-RawMaterialStockMovement
-
-Avoid:
-
-warehouse as active name
-rawMaterial in route strings if canonical route uses kebab-case
-service
-fnb
-placeholder for active workspace
-data.ts
-helper.ts
-utils.ts
-temp
-old
-final
-
-Rename misleading files/functions/variables.
-
-After renaming:
-
-update imports
-update docs
-run Raw Material typecheck
-Part 10: Raw Material Hardcode and Duplicate Cleanup
-
-Remove Raw Material hardcodes and repeated logic.
-
-Centralize repeated:
-
-Raw Material route paths
-Raw Material module IDs
-Raw Material dashboard labels
-material status labels
-stock movement labels
-unit labels
-low-stock threshold logic
-supplier labels
-empty state copy if repeated
-API endpoints if repeated
-table column configs if repeated
-card metric configs if repeated
-formatter helpers
-
-Do not centralize one-off text.
-
-Avoid scattered checks like:
-
-mode === "raw-material"
-path.includes("raw-material")
-unit === "kg"
-status === "low"
-
-Prefer typed helpers/configs when repeated:
-
-isRawMaterialMode(mode)
-RAW_MATERIAL_ROUTES
-RAW_MATERIAL_UNITS
-getRawMaterialStockStatus()
-formatRawMaterialQuantity()
-Part 11: Frontend Polish for Raw Material
-
-Polish Raw Material UI.
+Polish Raw Material UI only.
 
 Focus:
 
-dashboard clarity
-material list/table readability
-supplier section clarity
-stock movement clarity
-low-stock alert visibility
+material stock cards
+supplier invoice hold section
+procurement cashflow summary
+low-stock alerts
+material table
+supplier table
+stock movement table
+planned/unsupported states
 empty states
 loading states
 error states
-form validation messages
 disabled states
-duplicate submit prevention
-responsive layout
-consistent badges
-consistent buttons
-context-aware shared dashboard copy
+form validation messages
+consistent wording
 
 Do not redesign the whole app.
-Polish existing UI so Raw Material feels intentional, not leftover.
+Make existing UI coherent and honest.
 
-Part 12: Tests and Verification
+Part 12: Verification
 
-Run Raw Material-specific checks first.
+Run Raw Material-focused checks.
 
-Try pnpm if available:
+Try pnpm first if environment allows:
 
 pnpm --filter @workspace/pos-system run typecheck:raw-material
 pnpm raw-material:check
 pnpm business-mode:check
 
-If pnpm is blocked by EPERM lstat C:\Users\LENOVO, use local commands:
+If pnpm is blocked by EPERM lstat C:\Users\LENOVO, use:
 
 tsc -p artifacts/pos-system/tsconfig.raw-material.json --noEmit
 
@@ -618,162 +590,168 @@ Also run:
 cd artifacts/pos-system
 vite build
 
-Run backend check if backend touched:
+If backend touched:
 
 tsc -p artifacts/api-server/tsconfig.json --noEmit
 
-Run Prisma checks only if Prisma touched:
+If Prisma touched:
 
-npx prisma generate
 npx prisma validate
+npx prisma generate
 
-If Prisma commands are blocked by environment:
-
-report the exact issue
-do not claim they passed
-
-Run business mode switch check:
+If scripts exist:
 
 node scripts/business-mode-switch-check.mjs
 
-Run sidebar parity if Raw Material navigation/sidebar was touched.
+Run sidebar parity only if Raw Material navigation/sidebar/shared dashboard availability changed.
 
 Important:
 
 do not claim full frontend typecheck passed if it times out
-separate passed/failed/blocked/timed-out checks
-separate pre-existing issues from issues caused by this phase
+do not claim Prisma passed if it was blocked
+separate passed, failed, blocked, and timed-out commands
+separate pre-existing issues from new issues
 Part 13: Manual QA Checklist
 
-Provide exact manual QA steps for Raw Material.
+Provide Raw Material manual QA steps.
 
 Must include:
 
-Mode selection
+Mode and route
 Open /select-mode.
 Select Raw Material.
-Confirm selected mode is stored as raw-material.
-Confirm app redirects to Raw Material dashboard/workspace.
-Refresh and confirm Raw Material stays active.
-Invalid mode
-Clear currentBusinessMode.
+Confirm currentBusinessMode is raw-material.
+Refresh.
 Open Raw Material route directly.
-Confirm safe redirect.
-Set currentBusinessMode to warehouse.
-Refresh and confirm it does not become active runtime mode.
-Set currentBusinessMode to rawMaterial.
-Refresh and confirm it is rejected or repaired only at storage boundary if intended.
-Set random invalid value.
-Confirm safe redirect.
-Raw Material workspace
-Open Raw Material dashboard.
-Check material list/table.
-Check supplier section.
-Check stock movement section if present.
-Check low-stock section if present.
-Check empty material state.
-Check empty supplier state.
-Check loading/error state if possible.
-Try invalid quantity if form exists.
-Try duplicate submit if form exists.
-Confirm no Restaurant/Retail copy appears.
-Confirm no FNB/Warehouse/Service active label appears.
-Shared dashboards
-Open each shared dashboard visible in Raw Material.
-Confirm dashboard is relevant to Raw Material.
-Confirm unsupported dashboards are hidden, disabled, or show not-applicable/planned state.
-Confirm copy uses material/supplier/stock context where appropriate.
-Confirm no Restaurant/Retail-only metric appears as Raw Material data.
+Set invalid currentBusinessMode.
+Set old warehouse.
+Set old rawMaterial.
+Confirm safe behavior.
+Materials
+Open material list.
+Check empty state.
+Add material if supported.
+Edit material if supported.
+Check missing unit handling.
+Check low-stock state.
+Check out-of-stock state.
+Suppliers
+Open supplier section.
+Check empty state.
+Add supplier if supported.
+Edit supplier if supported.
+Check unavailable/deleted supplier state if supported.
+Stock movement
+Record stock movement if supported.
+Try zero quantity.
+Try negative quantity where not allowed.
+Check stock update.
+Check movement history.
+Procurement cashflow
+Open cashflow shared dashboard in Raw Material context if visible.
+Confirm it shows procurement/material spending context.
+Confirm no Restaurant/Retail sales copy.
+Confirm preview/planned data is labeled honestly.
+Supplier invoice hold
+Open supplier invoice section if supported.
+Create held invoice if supported.
+Mark invoice pending/paid if supported.
+Confirm cashflow/payable impact if implemented.
+Confirm unsupported flows are disabled or planned.
+HPP / COGS
+Check stock value.
+Check average cost.
+Check purchase cost impact if supported.
+Confirm financial report does not fake profit/sales if unsupported.
 Part 14: Documentation
 
-Update or create:
+Create or update:
 
-docs/v3-phase-4a-raw-material-hardening.md
+docs/v3-phase-4b-raw-material-persistence.md
 
 Include:
 
-Raw Material current scope
-supported Raw Material modules
-planned/unsupported modules
+what became real
+what remains planned
+Prisma decisions
+backend/API contracts
 shared dashboard wiring decisions
-Prisma/backend decisions
-folder structure changes
-helpers/components created
+procurement cashflow behavior
+supplier invoice hold behavior
+HPP/costing behavior
+workflow write delegates
 commands run
-remaining risks
+known limitations
 manual QA checklist
 
-Update existing docs if they become outdated.
-
-Docs must not claim Raw Material supports a dashboard or backend feature that does not exist.
+Docs must not overclaim.
 
 Strict Rules
-Work only on Raw Material mode unless shared infrastructure is required.
-Do not globally refactor Restaurant/Retail.
-Do not implement full Custom Business / Service.
-Do not reintroduce warehouse as active runtime mode.
+Work only on Raw Material unless shared infrastructure is required.
+Do not implement Restaurant/Retail changes.
+Do not implement full Custom Business/Service.
+Do not fake persisted data.
+Do not show preview data as real.
+Do not add Prisma models unless needed.
+Do not create destructive migrations.
+Do not change database schema broadly.
+Do not accept warehouse as active runtime mode.
+Do not accept service as active runtime mode.
 Do not reintroduce fnb.
-Do not treat service as active mode.
 Do not use any, as any, as unknown as, @ts-ignore, or @ts-expect-error.
 Do not create fake compatibility bridges.
-Do not add Prisma schema unless Raw Material genuinely needs it.
-Do not create destructive database migrations.
-Do not make shared dashboards show fake Raw Material data.
-Do not show unsupported dashboards as active features.
-Do not leave placeholder naming on active Raw Material runtime files.
-Do not leave fat Raw Material files untouched without a clear reason.
 Do not create giant utils.ts.
-Do not move Raw Material-specific code into shared.
-Do not let shared code import from Raw Material.
-Do not centralize one-off values.
-Do not delete useful logic.
-Do not silently skip checks.
+Do not leave active write buttons unwired.
+Do not leave unsupported dashboards active.
+Do not leak Restaurant/Retail copy into Raw Material.
 Do not claim checks passed unless they passed.
-Do not push, commit, branch, or PR.
+Do not push, branch, commit, or open PR.
 Final Report Format
 
 Return this exact report:
 
-Phase 4A Raw Material Report
+Phase 4B Raw Material Persistence Report
 1. Summary
 2. Docs read
-3. Raw Material audit
-files inspected
-routes inspected
-backend/API inspected
-shared dashboards inspected
-Prisma inspected
-4. Flow fixes
-mode selection
-route guard
-sidebar/navigation
-data loading
-edge cases
-5. Shared dashboard wiring
+3. Surface classification
+
+For each Raw Material/shared surface:
+
+real / read-only / preview / planned / unsupported
+reason
+4. Prisma/database decisions
+changed or not changed
+models touched/added
+migration/generate status
+risks
+5. Backend/API changes
+endpoints changed/added
+validation
+response envelope
+permission/guarding
+remaining risks
+6. Frontend workflow changes
+materials
+suppliers
+stock movement
+procurement cashflow
+supplier invoice hold
+HPP/costing
+planned/unsupported states
+7. Shared dashboard wiring
 
 For each shared dashboard:
 
-supported / unsupported / planned
+supported/planned/unsupported
 behavior
 files changed
 reason
-6. Prisma/database changes
-changed or not changed
+8. Workflow write delegates
+
+For each visible write action:
+
+wired / disabled / removed / planned
 reason
-migration/generate status
-risks
-7. Backend/API changes
-files changed
-validation changes
-response/error handling
-security/ownership/role checks
-remaining risks
-8. Frontend/UI changes
-files changed
-components split
-polish made
-loading/empty/error states
-remaining risks
 9. Structure and naming changes
 
 For each moved/renamed file:
@@ -789,24 +767,17 @@ file path
 purpose
 where used
 11. Hardcoded/duplicate cleanup
-what was removed
-what was centralized
-why
-12. Files deleted
-
-For each:
-
-path
-why safe to delete
-13. Commands run
+12. Commands run
 
 For each:
 
 command
 passed/failed/blocked/timed out
 notes
-14. Manual QA checklist
-15. Remaining risks
-16. Next recommended task
+13. Manual QA checklist
+14. Remaining risks
+15. Next recommended task
 
 Give only one next task.
+
+This phase is incomplete if Raw Material still shows procurement cashflow, supplier invoice, or HPP/costing as real UI while backed only by preview/sample data.

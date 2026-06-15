@@ -71,7 +71,7 @@ const RetailGrowthWorkspace = lazy(() =>
     default: module.RetailGrowthWorkspace,
   })),
 );
-const RawMaterialPlaceholderWorkspace = lazy(() => import("@/app/workspace/raw-material/raw-material-placeholder-workspace"));
+const RawMaterialWorkspace = lazy(() => import("@/app/workspace/raw-material/raw-material-workspace"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -320,13 +320,13 @@ function ProtectedAppRoutes() {
           <Route path="/v3/retail/omnichannel"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="omnichannel" /></ModeProtectedRoute></Route>
           <Route path="/v3/retail/forecasting"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="forecasting" /></ModeProtectedRoute></Route>
           <Route path="/v3/retail/audit-controls"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="audit-controls" /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.V3_RAW_MATERIAL_INTAKE}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="intake" /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.V3_RAW_MATERIAL_WEIGHING}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="weighing" /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.V3_RAW_MATERIAL_BATCHES}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="batches" /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.V3_RAW_MATERIAL_STORAGE}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="storage" /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.V3_RAW_MATERIAL_PROCESSING}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="processing" /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.V3_RAW_MATERIAL_KANDANG}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="kandang" /></ModeProtectedRoute></Route>
-          <Route path={ROUTES.V3_RAW_MATERIAL_SUPPLIERS}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialPlaceholderWorkspace moduleId="suppliers" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_INTAKE}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialWorkspace moduleId="intake" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_WEIGHING}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialWorkspace moduleId="weighing" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_BATCHES}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialWorkspace moduleId="batches" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_STORAGE}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialWorkspace moduleId="storage" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_PROCESSING}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialWorkspace moduleId="processing" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_KANDANG}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialWorkspace moduleId="kandang" /></ModeProtectedRoute></Route>
+          <Route path={ROUTES.V3_RAW_MATERIAL_SUPPLIERS}><ModeProtectedRoute requiredMode="raw-material"><RawMaterialWorkspace moduleId="suppliers" /></ModeProtectedRoute></Route>
           <Route path={ROUTES.PAYMENTS_SUCCESS}><PaymentSuccessPage /></Route>
           <Route path={ROUTES.PAYMENTS_ERROR}><PaymentErrorPage /></Route>
           <Route path="/dashboard/payments"><ModeProtectedRoute requiredMode="restaurant"><Redirect to={ROUTES.PAYMENTS} /></ModeProtectedRoute></Route>

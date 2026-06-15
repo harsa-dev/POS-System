@@ -73,10 +73,10 @@ const monitoringPens = rawMaterialKandangPens.filter((pen) => pen.healthStatus !
 const futureProductionFeatures = rawMaterialScaleFeatures.filter(
   (feature) => feature.scale === "factory",
 );
-const newDummyFeatures = rawMaterialScaleFeatures.filter((feature) => feature.status === "new-dummy");
-const dummyProcurementSpend = 18_750_000;
-const dummyRejectedLoss = Math.round(rejectedKg * 5_250);
-const dummyAcceptedUnitCost = acceptedKg > 0 ? Math.round(dummyProcurementSpend / acceptedKg) : 0;
+const planningPreviewFeatures = rawMaterialScaleFeatures.filter((feature) => feature.status === "planning-preview");
+const projectedProcurementSpend = 18_750_000;
+const projectedRejectedLoss = Math.round(rejectedKg * 5_250);
+const projectedAcceptedUnitCost = acceptedKg > 0 ? Math.round(projectedProcurementSpend / acceptedKg) : 0;
 
 function getStatusFromFeatureStatus(status: RawMaterialScaleFeatureStatus): RawMaterialSharedRow["status"] {
   if (status === "available") return "healthy";
@@ -145,7 +145,7 @@ function getKandangRows(): readonly RawMaterialSharedRow[] {
 function getScaleFeatureRows(): readonly RawMaterialSharedRow[] {
   return rawMaterialScaleFeatures.map((feature) => ({
     title: feature.title,
-    primary: `${feature.dashboardArea} · ${feature.dummyMetric}`,
+    primary: `${feature.dashboardArea} · ${feature.previewMetric}`,
     secondary: `${feature.scale} scale · ${feature.purpose}`,
     status: getStatusFromFeatureStatus(feature.status),
   }));
@@ -156,7 +156,7 @@ function getHppRows(): readonly RawMaterialSharedRow[] {
     ...rawMaterialBatches.map((batch) => ({
       title: batch.lotCode,
       primary: `${batch.materialName} · available ${formatRawMaterialWeight(batch.remainingKg)}`,
-      secondary: `Dummy unit cost ${formatRawMaterialCurrency(dummyAcceptedUnitCost)}/kg · quality ${batch.qualityStatus}`,
+      secondary: `Projected unit cost ${formatRawMaterialCurrency(projectedAcceptedUnitCost)}/kg · quality ${batch.qualityStatus}`,
       status: batch.qualityStatus === "inspection" ? "review" as const : "healthy" as const,
     })),
     ...rawMaterialProcessingRuns.map((run) => ({
@@ -174,8 +174,8 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
     title: "Raw material overview bridge",
     description: "Raw material mode injects intake, batch, storage, kandang, processing, and scale-readiness signals into the shared overview dashboard.",
     metrics: [
-      { label: "Accepted raw material", value: formatRawMaterialWeight(acceptedKg), helper: "Accepted kg from mock intake records" },
-      { label: "Remaining batch stock", value: formatRawMaterialWeight(totalRemainingKg), helper: "Mock remaining quantity across traceable lots" },
+      { label: "Accepted raw material", value: formatRawMaterialWeight(acceptedKg), helper: "Accepted kg from sample intake records" },
+      { label: "Remaining batch stock", value: formatRawMaterialWeight(totalRemainingKg), helper: "Sample remaining quantity across traceable lots" },
       { label: "Scale roadmap", value: String(rawMaterialScaleProfiles.length), helper: "Small, medium, and factory profiles" },
     ],
     rows: [...getIntakeRows(), ...getBatchRows(), ...getKandangRows()].slice(0, 8),
@@ -198,7 +198,7 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
     title: "Raw material partners bridge",
     description: "Supplier and partner signals are mapped into the shared customers and partners dashboard.",
     metrics: [
-      { label: "Suppliers", value: String(rawMaterialSuppliers.length), helper: "Mock supplier records" },
+      { label: "Suppliers", value: String(rawMaterialSuppliers.length), helper: "Sample supplier records" },
       { label: "Avg lead time", value: `${Math.round(rawMaterialSuppliers.reduce((total, supplier) => total + supplier.leadTimeDays, 0) / rawMaterialSuppliers.length)} days`, helper: "Supplier planning signal" },
       { label: "Reliability watch", value: String(rawMaterialSuppliers.filter((supplier) => supplier.reliabilityScore < 90).length), helper: "Suppliers below 90%" },
     ],
@@ -210,9 +210,9 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
     title: "Raw material inventory bridge",
     description: "Raw material batches, storage capacity, quality state, and FEFO-ready lot data are mapped into the shared inventory dashboard.",
     metrics: [
-      { label: "Active lots", value: String(rawMaterialBatches.length), helper: "Traceable mock batches" },
+      { label: "Active lots", value: String(rawMaterialBatches.length), helper: "Traceable sample batches" },
       { label: "Inspection lots", value: String(inspectionBatches.length), helper: "Quality status needs review" },
-      { label: "Storage usage", value: `${averageStorageUsage}%`, helper: "Average mock storage usage" },
+      { label: "Storage usage", value: `${averageStorageUsage}%`, helper: "Average sample storage usage" },
     ],
     rows: [...getBatchRows(), ...getStorageRows()],
     bridgeNote: "Inventory dashboard now has raw-material lot, storage, and quality context without stock mutation.",
@@ -222,19 +222,19 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
     title: "Raw material cashflow bridge",
     description: "Raw material procurement pressure, intake volume, and future reorder planning are surfaced beside the shared cashflow dashboard.",
     metrics: [
-      { label: "Procurement preview", value: formatRawMaterialCurrency(dummyProcurementSpend), helper: "Dummy planned raw-material spend" },
+      { label: "Procurement preview", value: formatRawMaterialCurrency(projectedProcurementSpend), helper: "Projected planned raw-material spend" },
       { label: "Open intake", value: String(rawMaterialIntakes.filter((intake) => intake.qualityStatus === "inspection").length), helper: "Inspection can delay payable readiness" },
-      { label: "Reorder signals", value: String(newDummyFeatures.length), helper: "Scale features still dummy" },
+      { label: "Reorder signals", value: String(planningPreviewFeatures.length), helper: "Scale features still in planning preview" },
     ],
     rows: [...getSupplierRows(), ...getScaleFeatureRows().slice(0, 3)],
-    bridgeNote: "Cashflow remains mock-only; no supplier payable or purchase order record is created.",
+    bridgeNote: "Cashflow remains preview-only; no supplier payable or purchase order record is created.",
   },
   "financial-reports": {
     id: "financial-reports",
     title: "Raw material financial report bridge",
     description: "Raw material mode exposes cost planning, rejection loss, storage pressure, and processing yield as financial-report context.",
     metrics: [
-      { label: "Planned spend", value: formatRawMaterialCurrency(dummyProcurementSpend), helper: "Dummy procurement estimate" },
+      { label: "Planned spend", value: formatRawMaterialCurrency(projectedProcurementSpend), helper: "Projected procurement estimate" },
       { label: "Quality loss", value: formatRawMaterialWeight(rejectedKg), helper: "Rejected intake quantity" },
       { label: "Yield watch", value: `${rawMaterialProcessingRuns.length} runs`, helper: "Processing output preview" },
     ],
@@ -244,7 +244,7 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
   "invoice-generator": {
     id: "invoice-generator",
     title: "Raw material invoice bridge",
-    description: "Supplier deliveries, receiving references, and batch acceptance data are mapped as invoice-ready mock context.",
+    description: "Supplier deliveries, receiving references, and batch acceptance data are mapped as invoice-ready preview context.",
     metrics: [
       { label: "Receiving refs", value: String(rawMaterialIntakes.length), helper: "Supplier intake references" },
       { label: "Supplier candidates", value: String(rawMaterialSuppliers.length), helper: "Potential billing parties" },
@@ -259,7 +259,7 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
     description: "Weighing operators, receiving activity, and processing runs are exposed to the shared shift reporting concept.",
     metrics: [
       { label: "Weighing records", value: String(rawMaterialWeighings.length), helper: "Scale station entries" },
-      { label: "Operators", value: String(new Set(rawMaterialWeighings.map((item) => item.operatorName)).size), helper: "Mock weighing staff" },
+      { label: "Operators", value: String(new Set(rawMaterialWeighings.map((item) => item.operatorName)).size), helper: "Sample weighing staff" },
       { label: "Process runs", value: String(rawMaterialProcessingRuns.length), helper: "Production support handoff" },
     ],
     rows: [...rawMaterialWeighings.map((weighing) => ({
@@ -268,14 +268,14 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
       secondary: `Net ${formatRawMaterialWeight(weighing.netKg)} · intake ${weighing.intakeId}`,
       status: "healthy" as const,
     })), ...getProcessingRows()],
-    bridgeNote: "Shift reporting stays operational and mock-only; no attendance or payroll write exists.",
+    bridgeNote: "Shift reporting stays operational and preview-only; no attendance or payroll write exists.",
   },
   "team-management": {
     id: "team-management",
     title: "Raw material team bridge",
     description: "Raw material operators, supplier ownership, and kandang monitoring responsibilities are surfaced in shared team management.",
     metrics: [
-      { label: "Operators", value: String(new Set(rawMaterialWeighings.map((item) => item.operatorName)).size), helper: "Mock scale operators" },
+      { label: "Operators", value: String(new Set(rawMaterialWeighings.map((item) => item.operatorName)).size), helper: "Sample scale operators" },
       { label: "Supplier contacts", value: String(rawMaterialSuppliers.length), helper: "External responsibility map" },
       { label: "Kandang watch", value: String(monitoringPens.length), helper: "Pens needing review" },
     ],
@@ -289,10 +289,10 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
     metrics: [
       { label: "Measured net", value: formatRawMaterialWeight(rawMaterialWeighings.reduce((total, item) => total + item.netKg, 0)), helper: "Total net weighing" },
       { label: "Review rows", value: String(inspectionBatches.length + monitoringPens.length), helper: "Operational attention items" },
-      { label: "Completed runs", value: String(rawMaterialProcessingRuns.filter((run) => run.status === "completed").length), helper: "Mock processing completion" },
+      { label: "Completed runs", value: String(rawMaterialProcessingRuns.filter((run) => run.status === "completed").length), helper: "Sample processing completion" },
     ],
     rows: [...getProcessingRows(), ...getKandangRows()],
-    bridgeNote: "Performance remains operational mock context and must not become payroll logic yet.",
+    bridgeNote: "Performance remains operational preview context and must not become payroll logic yet.",
   },
   approvals: {
     id: "approvals",
@@ -311,8 +311,8 @@ const contexts: Record<RawMaterialSharedDashboardId, RawMaterialSharedDashboardC
     title: "Raw material HPP bridge",
     description: "Raw material mode turns HPP into a material-cost, rejection-loss, and processing-yield preview instead of a restaurant recipe costing screen.",
     metrics: [
-      { label: "Dummy unit cost", value: `${formatRawMaterialCurrency(dummyAcceptedUnitCost)}/kg`, helper: "Planned spend divided by accepted kg" },
-      { label: "Rejected loss", value: formatRawMaterialCurrency(dummyRejectedLoss), helper: "Rejected kg multiplied by dummy material rate" },
+      { label: "Projected unit cost", value: `${formatRawMaterialCurrency(projectedAcceptedUnitCost)}/kg`, helper: "Planned spend divided by accepted kg" },
+      { label: "Rejected loss", value: formatRawMaterialCurrency(projectedRejectedLoss), helper: "Rejected kg multiplied by projected material rate" },
       { label: "Yield inputs", value: String(rawMaterialProcessingRuns.length), helper: "Processing runs available for costing preview" },
     ],
     rows: getHppRows(),

@@ -79,7 +79,7 @@ export function RawMaterialReadinessCard({
   readiness,
   source,
   schemaTouched,
-  apiStatusLabel = "Mock fallback retained.",
+  apiStatusLabel = "Sample fallback retained.",
 }: RawMaterialReadinessCardProps) {
   return (
     <Card className="rounded-xl bg-white">
@@ -103,7 +103,7 @@ export function RawMaterialReadinessCard({
           </div>
           <div className="rounded-lg border border-neutral-100 p-3">
             <p className="text-lg font-bold text-neutral-950">{readiness.mockOnlyContracts}</p>
-            <p className="text-xs text-neutral-500">mock</p>
+            <p className="text-xs text-neutral-500">sample</p>
           </div>
           <div className="rounded-lg border border-neutral-100 p-3">
             <p className="text-lg font-bold text-neutral-950">{readiness.futureDbContracts}</p>

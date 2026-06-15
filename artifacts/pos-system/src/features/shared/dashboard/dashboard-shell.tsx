@@ -7,6 +7,10 @@ import {
   type ServiceBusinessSharedSurface,
 } from "@/features/shared/service-business/service-business-shared-dashboard-bridge";
 import {
+  RawMaterialSharedDashboardBridge,
+} from "@/features/shared/raw-material-bridge";
+import type { RawMaterialSharedDashboardId } from "@/features/raw-material/core-system";
+import {
   shouldCallServiceBusinessSharedSurface,
   shouldHideSharedDashboardForServiceMode,
 } from "@/features/shared/service-business/service-business-shared-dashboard-config";
@@ -38,6 +42,22 @@ const serviceBusinessSurfaceByTitle: Record<string, ServiceBusinessSharedSurface
   "Employee Attendance": "attendance",
   Payroll: "payroll",
   "Developer Monitoring": "platform-monitoring",
+};
+
+const rawMaterialDashboardBySurface: Partial<Record<SharedDashboardSurfaceId, RawMaterialSharedDashboardId>> = {
+  "business-overview": "overview",
+  sales: "sales",
+  customers: "customers",
+  inventory: "inventory",
+  cashflow: "cashflow",
+  "financial-reports": "financial-reports",
+  invoice: "invoice-generator",
+  "cashier-shift-reports": "shift-reports",
+  hpp: "hpp-calculator",
+  "operation-reports": "shift-reports",
+  "team-management": "team-management",
+  "employee-performance": "employee-performance",
+  approvals: "approvals",
 };
 
 function isServiceBusinessPreviewModeActive(): boolean {
@@ -93,6 +113,22 @@ export function DashboardShell({
       serviceBusinessSurface &&
       shouldHideSharedDashboardForServiceMode(serviceBusinessSurface),
   );
+  const shouldShowModeContextUnavailable = Boolean(
+    sharedDashboardModeContext?.emptyStateMessage && !isServicePreview,
+  );
+  const rawMaterialDashboardId = serviceBusinessSurface
+    ? rawMaterialDashboardBySurface[serviceBusinessSurface as SharedDashboardSurfaceId]
+    : undefined;
+  const dashboardContent = shouldHideChildrenForService && serviceBusinessSurface ? (
+    <ServiceBusinessSharedDashboardHiddenNotice surface={serviceBusinessSurface} />
+  ) : (
+    children
+  );
+  const bridgedDashboardContent = rawMaterialDashboardId ? (
+    <RawMaterialSharedDashboardBridge dashboardId={rawMaterialDashboardId}>
+      {dashboardContent}
+    </RawMaterialSharedDashboardBridge>
+  ) : dashboardContent;
 
   return (
     <section className="flex min-h-0 flex-col gap-5">
@@ -107,11 +143,7 @@ export function DashboardShell({
       {serviceBusinessSurface && shouldCallServiceBridge ? (
         <ServiceBusinessSharedDashboardBridge surface={serviceBusinessSurface} />
       ) : null}
-      {shouldHideChildrenForService && serviceBusinessSurface ? (
-        <ServiceBusinessSharedDashboardHiddenNotice surface={serviceBusinessSurface} />
-      ) : (
-        children
-      )}
+      {shouldShowModeContextUnavailable ? null : bridgedDashboardContent}
     </section>
   );
 }

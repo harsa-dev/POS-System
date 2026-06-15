@@ -31,13 +31,13 @@ const scaleTone: Record<RawMaterialBusinessScale, string> = {
 
 const statusLabel: Record<RawMaterialScaleFeatureStatus, string> = {
   available: "already covered",
-  "new-dummy": "new dummy dashboard",
+  "planning-preview": "planning preview",
   "future-production": "future production",
 };
 
 const statusTone: Record<RawMaterialScaleFeatureStatus, string> = {
   available: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  "new-dummy": "border-amber-200 bg-amber-50 text-amber-700",
+  "planning-preview": "border-amber-200 bg-amber-50 text-amber-700",
   "future-production": "border-blue-200 bg-blue-50 text-blue-700",
 };
 
@@ -57,8 +57,8 @@ const displayStatusOverride: Record<string, RawMaterialScaleFeatureStatus> = {
 };
 
 const statusReason: Record<RawMaterialScaleFeatureStatus, string> = {
-  available: "Covered by the current mock workspace, but still needs production-grade persistence later.",
-  "new-dummy": "Safe to show now as frontend-only portfolio scope without database commitment.",
+  available: "Covered by the current sample workspace, but still needs production-grade persistence later.",
+  "planning-preview": "Safe to show now as frontend-only portfolio scope without database commitment.",
   "future-production": "Needs real schema, API, permission, audit, or background-job design before implementation.",
 };
 
@@ -99,7 +99,7 @@ export function RawMaterialScaleDashboard({
   const visibleProfiles = filterProfilesByScale(profiles, scaleFilter);
   const visibleFeatures = filterFeaturesByScale(features, scaleFilter);
   const availableCount = countFeaturesByStatus(visibleFeatures, "available");
-  const newDummyCount = countFeaturesByStatus(visibleFeatures, "new-dummy");
+  const planningPreviewCount = countFeaturesByStatus(visibleFeatures, "planning-preview");
   const futureProductionCount = countFeaturesByStatus(visibleFeatures, "future-production");
 
   return (
@@ -109,11 +109,11 @@ export function RawMaterialScaleDashboard({
           <div>
             <CardTitle>Scale-based feature dashboard</CardTitle>
             <CardDescription>
-              Dummy roadmap for raw material and kandang needs across small, medium, and factory-scale operations.
+              Planning roadmap for raw material and kandang needs across small, medium, and factory-scale operations.
             </CardDescription>
           </div>
           <Badge variant="outline" className="border-blue-200 text-blue-700">
-            dummy only
+            planning preview
           </Badge>
         </div>
       </CardHeader>
@@ -143,8 +143,8 @@ export function RawMaterialScaleDashboard({
             <p className="mt-1 text-xs leading-5 text-neutral-500">Existing workspace capabilities that already cover selected scale needs.</p>
           </div>
           <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
-            <p className="text-sm text-amber-700">New dummy dashboards</p>
-            <p className="mt-1 text-2xl font-bold text-amber-900">{newDummyCount}</p>
+            <p className="text-sm text-amber-700">Planning previews</p>
+            <p className="mt-1 text-2xl font-bold text-amber-900">{planningPreviewCount}</p>
             <p className="mt-1 text-xs leading-5 text-amber-800">Safe frontend-only feature panels added before schema work.</p>
           </div>
           <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
@@ -213,7 +213,7 @@ export function RawMaterialScaleDashboard({
                         <p className="mt-2 rounded-lg border border-neutral-100 bg-white p-2 text-xs leading-5 text-neutral-600">
                           {statusReason[displayStatus]}
                         </p>
-                        <p className="mt-2 text-xs font-semibold text-neutral-700">Mock metric: {feature.dummyMetric}</p>
+                        <p className="mt-2 text-xs font-semibold text-neutral-700">Preview metric: {feature.previewMetric}</p>
                       </div>
                     );
                   })}

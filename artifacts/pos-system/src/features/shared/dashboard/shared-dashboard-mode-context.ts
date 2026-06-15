@@ -49,6 +49,9 @@ export type SharedDashboardModeContext = {
 const allSelectableModes = businessModeRegistry
   .filter((mode) => mode.isSelectable)
   .map((mode) => mode.id);
+const selectableModesWithoutRawMaterial = allSelectableModes.filter(
+  (mode) => mode !== "raw-material",
+);
 
 const sharedDashboardSupportedModes: Record<SharedDashboardSurfaceId, BusinessModeId[]> = {
   "business-overview": allSelectableModes,
@@ -57,18 +60,18 @@ const sharedDashboardSupportedModes: Record<SharedDashboardSurfaceId, BusinessMo
   inventory: allSelectableModes,
   cashflow: allSelectableModes,
   "financial-reports": allSelectableModes,
-  invoice: ["restaurant", "retail", "custom-business"],
-  "cashier-shift-reports": ["restaurant", "retail"],
+  invoice: ["restaurant", "retail", "raw-material", "custom-business"],
+  "cashier-shift-reports": ["restaurant", "retail", "raw-material"],
   hpp: ["restaurant", "raw-material"],
   "operation-reports": allSelectableModes,
   "team-management": allSelectableModes,
-  "roster-overview": allSelectableModes,
+  "roster-overview": selectableModesWithoutRawMaterial,
   "employee-performance": allSelectableModes,
-  "audit-log": allSelectableModes,
+  "audit-log": selectableModesWithoutRawMaterial,
   approvals: allSelectableModes,
-  contracts: allSelectableModes,
-  attendance: allSelectableModes,
-  payroll: allSelectableModes,
+  contracts: selectableModesWithoutRawMaterial,
+  attendance: selectableModesWithoutRawMaterial,
+  payroll: selectableModesWithoutRawMaterial,
   "platform-monitoring": ["restaurant"],
 };
 

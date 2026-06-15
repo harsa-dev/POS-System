@@ -162,7 +162,7 @@ export function RawMaterialWorkflowStatusActions({ onNoticeChange }: RawMaterial
 
   async function runStatusAction(action: WorkflowStatusAction, work: () => Promise<unknown>, successMessage: string) {
     if (!canSubmit) {
-      onNoticeChange("Workflow status actions need backend workflow data. Mock fallback cannot be submitted.");
+      onNoticeChange("Workflow status actions need backend workflow data. Sample fallback cannot be submitted.");
       return;
     }
 

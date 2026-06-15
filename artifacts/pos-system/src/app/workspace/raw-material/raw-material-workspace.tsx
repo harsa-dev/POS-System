@@ -66,7 +66,7 @@ import {
   toRawMaterialPositiveNumber,
 } from "./raw-material-workspace.utils";
 
-type RawMaterialPlaceholderWorkspaceProps = {
+type RawMaterialWorkspaceProps = {
   moduleId: RawMaterialWorkspaceModuleId;
 };
 
@@ -176,17 +176,17 @@ function filterBatches(
 
 function getWorkflowSourceBadgeLabel(source: RawMaterialApiSource) {
   if (source === "api") return "Backend workflow reads";
-  if (source === "api-with-mock-fallback") return "Workflow API fallback";
-  return "Mock workflow reads";
+  if (source === "api-with-mock-fallback") return "Workflow API sample fallback";
+  return "Sample workflow reads";
 }
 
 function formatWorkflowStatusSummary(data: RawMaterialWorkflowReadData) {
   return `${data.suppliers.length} suppliers · ${data.intakes.length} intakes · ${data.batches.length} batches · ${data.stockMovements.length} stock movements`;
 }
 
-export default function RawMaterialPlaceholderWorkspace({
+export default function RawMaterialWorkspace({
   moduleId,
-}: RawMaterialPlaceholderWorkspaceProps) {
+}: RawMaterialWorkspaceProps) {
   const workspace = rawMaterialWorkspaceModules[moduleId];
   const Icon = rawMaterialModuleIcons[moduleId];
   const moduleContracts = rawMaterialApiContracts.filter(
@@ -200,12 +200,12 @@ export default function RawMaterialPlaceholderWorkspace({
   const [summaryMetrics, setSummaryMetrics] = useState<readonly RawMaterialMetric[] | null>(null);
   const [summarySource, setSummarySource] = useState<RawMaterialApiSource>("mock");
   const [summaryStatus, setSummaryStatus] = useState(
-    "Loading backend summary. Mock fallback is ready if the API refuses to participate.",
+    "Loading backend summary. Sample fallback is ready if the API is unavailable.",
   );
   const [workflowReads, setWorkflowReads] = useState<RawMaterialWorkflowReadData>(() => createMockWorkflowReads());
   const [workflowSource, setWorkflowSource] = useState<RawMaterialApiSource>("mock");
   const [workflowStatus, setWorkflowStatus] = useState(
-    "Loading backend workflow reads. Mock lists are ready if the API refuses to participate.",
+    "Loading backend workflow reads. Sample lists are ready if the API is unavailable.",
   );
   const [intakeFilters, setIntakeFilters] = useState<IntakeFilters>({
     supplierId: "all",
@@ -340,7 +340,7 @@ export default function RawMaterialPlaceholderWorkspace({
     event.preventDefault();
     setDraftNotice(
       transferIsValid
-        ? "Storage transfer preview generated locally from current workflow read data. Backend write UX stays disabled until preview delegates exist. Civilization limps forward."
+        ? "Storage transfer preview generated locally from current workflow read data. Backend write UX stays disabled until preview delegates exist."
         : "Transfer preview needs different source/target storage and quantity within remaining batch stock.",
     );
   }
@@ -360,7 +360,7 @@ export default function RawMaterialPlaceholderWorkspace({
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="border-amber-300 text-amber-700">Raw Material mode</Badge>
           <Badge variant="outline" className="border-emerald-300 text-emerald-700">{sourceBadgeLabel}</Badge>
-          <Badge variant="outline" className="border-neutral-300 text-neutral-600">Mock fallback retained</Badge>
+          <Badge variant="outline" className="border-neutral-300 text-neutral-600">Sample fallback retained</Badge>
           <Badge variant="outline" className="border-blue-300 text-blue-700">Workflow reads API-first</Badge>
         </div>
 
@@ -478,7 +478,7 @@ export default function RawMaterialPlaceholderWorkspace({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle>Supplier intake queue</CardTitle>
-                <CardDescription>API-backed read delegate with mock fallback retained.</CardDescription>
+                <CardDescription>API-backed read delegate with sample fallback retained.</CardDescription>
               </div>
               <Badge variant="outline">{filteredIntakes.length} intakes</Badge>
             </div>
@@ -607,7 +607,7 @@ export default function RawMaterialPlaceholderWorkspace({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle>Supplier filter preview</CardTitle>
-                <CardDescription>Supplier list now uses workflow read API with mock fallback.</CardDescription>
+                <CardDescription>Supplier list now uses workflow read API with sample fallback.</CardDescription>
               </div>
               <Badge variant="outline">{filteredSuppliers.length} suppliers</Badge>
             </div>

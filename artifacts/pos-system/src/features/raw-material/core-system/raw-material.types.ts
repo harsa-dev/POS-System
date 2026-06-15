@@ -196,7 +196,7 @@ export type RawMaterialContractReadiness = Readonly<{
 
 export type RawMaterialBusinessScale = "small" | "medium" | "factory";
 
-export type RawMaterialScaleFeatureStatus = "available" | "new-dummy" | "future-production";
+export type RawMaterialScaleFeatureStatus = "available" | "planning-preview" | "future-production";
 
 export type RawMaterialScaleProfile = Readonly<{
   scale: RawMaterialBusinessScale;
@@ -215,5 +215,5 @@ export type RawMaterialScaleFeature = Readonly<{
   purpose: string;
   whyItMatters: string;
   status: RawMaterialScaleFeatureStatus;
-  dummyMetric: string;
+  previewMetric: string;
 }>;
