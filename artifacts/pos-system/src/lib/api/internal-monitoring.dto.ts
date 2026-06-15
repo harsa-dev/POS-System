@@ -2,6 +2,34 @@ export type InternalMonitoringSource = "api" | "mock" | "fallback";
 
 export type InternalMonitoringTone = "blue" | "green" | "amber" | "rose" | "slate";
 
+export type InternalMonitoringApiMetaDto = {
+  generatedAt: string;
+  source: InternalMonitoringSource;
+  mock: boolean;
+  mode: "read-only";
+  capability: "platform-admin.internal-monitoring.read";
+  readOnly: true;
+  mutationMode?: "design-only" | "disabled";
+};
+
+export type InternalMonitoringApiSuccessEnvelopeDto<TData> = {
+  success: true;
+  data: TData;
+  meta: InternalMonitoringApiMetaDto;
+};
+
+export type InternalMonitoringApiErrorEnvelopeDto = {
+  success: false;
+  message: string;
+  code: string;
+  details?: unknown;
+  requestId?: string;
+};
+
+export type InternalMonitoringApiEnvelopeDto<TData> =
+  | InternalMonitoringApiSuccessEnvelopeDto<TData>
+  | InternalMonitoringApiErrorEnvelopeDto;
+
 export type InternalMonitoringControlRoomCardDto = {
   id: string;
   label: string;
@@ -101,10 +129,4 @@ export type InternalMonitoringMutationReadinessContractDto = {
   rateLimit: string;
   blockedReason: string;
   requiredProof: string[];
-};
-
-export type InternalMonitoringApiMetaDto = {
-  generatedAt?: string;
-  source?: InternalMonitoringSource;
-  mock?: boolean;
 };
