@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Ban, CheckCircle2, ChevronLeft, ChevronRight, Download, FileInput, RefreshCw, Search, Send } from "lucide-react";
 
 import {
@@ -114,7 +114,7 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
 
   const query = useMemo(() => buildQuery(appliedFilters, page), [appliedFilters, page]);
 
-  async function loadHistory(nextQuery = query) {
+  const loadHistory = useCallback(async (nextQuery: InvoiceHistoryQuery) => {
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -131,11 +131,11 @@ export function InvoiceHistoryPanel({ capabilities, canLoadToEditor = false }: I
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void loadHistory(query);
-  }, [query]);
+  }, [loadHistory, query]);
 
   useEffect(() => {
     function handleFilterHistory(event: Event) {
