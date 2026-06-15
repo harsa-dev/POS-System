@@ -74,6 +74,10 @@ function isOrderCountedInShiftSales(order: ApiShiftOrderDto) {
   return order.status !== "CANCELLED" && order.status !== "PENDING_PAYMENT";
 }
 
+function getReportCashStatus(shift: ApiShiftDto, cashDifference: number): CashierShift["cashStatus"] {
+  return (shift.report?.cashStatus as CashierShift["cashStatus"] | undefined) ?? getCashStatus(cashDifference);
+}
+
 function mapApiShiftToCashierShift(shift: ApiShiftDto, failedSyncIds: Set<string>): CashierShift {
   const orders = shift.orders ?? [];
   const countedOrders = orders.filter(isOrderCountedInShiftSales);
@@ -95,7 +99,7 @@ function mapApiShiftToCashierShift(shift: ApiShiftDto, failedSyncIds: Set<string
     startingCash: shift.openingCash,
     endingCash: shift.report?.endingCash ?? shift.closingCash ?? shift.expectedCash,
     cashDifference,
-    cashStatus: shift.report?.cashStatus as CashierShift["cashStatus"] | undefined ?? getCashStatus(cashDifference),
+    cashStatus: getReportCashStatus(shift, cashDifference),
     syncStatus: failedSyncIds.has(shift.id)
       ? "Sync Failed"
       : shift.cashflowSynced
