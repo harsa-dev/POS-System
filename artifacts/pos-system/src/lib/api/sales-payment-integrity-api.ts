@@ -9,6 +9,31 @@ export type SalesPaymentIntegrityIssue =
   | "payment_total_mismatch"
   | "all";
 
+export type SalesPaymentIntegrityReviewStatus = "REVIEWED" | "IGNORED" | "RESOLVED";
+
+export type SalesPaymentIntegrityReviewDto = {
+  id: string;
+  businessId: string;
+  issueType: Exclude<SalesPaymentIntegrityIssue, "all">;
+  orderId: string;
+  status: SalesPaymentIntegrityReviewStatus;
+  note: string;
+  reviewedById: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SalesPaymentIntegrityReviewsDto = {
+  rows: SalesPaymentIntegrityReviewDto[];
+};
+
+export type SaveSalesPaymentIntegrityReviewPayload = {
+  issueType: Exclude<SalesPaymentIntegrityIssue, "all">;
+  orderId: string;
+  status: SalesPaymentIntegrityReviewStatus;
+  note: string;
+};
+
 export type SalesPaymentIntegrityRowDto = {
   id: string;
   issueType: Exclude<SalesPaymentIntegrityIssue, "all">;
@@ -91,6 +116,19 @@ export const salesPaymentIntegrityApi = {
   getWorkbench(params?: SalesPaymentIntegrityQuery) {
     return apiClient.get<ApiEnvelope<SalesPaymentIntegrityDto>>(
       `/api/sales-analytics/payment-integrity${buildPaymentIntegrityQueryString(params)}`,
+    );
+  },
+
+  listReviews() {
+    return apiClient.get<ApiEnvelope<SalesPaymentIntegrityReviewsDto>>(
+      "/api/sales-analytics/payment-integrity/reviews",
+    );
+  },
+
+  saveReview(payload: SaveSalesPaymentIntegrityReviewPayload) {
+    return apiClient.post<ApiEnvelope<SalesPaymentIntegrityReviewDto>>(
+      "/api/sales-analytics/payment-integrity/reviews",
+      payload,
     );
   },
 
