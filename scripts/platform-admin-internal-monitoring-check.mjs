@@ -235,6 +235,36 @@ const checks = [
     expected: "Fallback Mock",
   }),
   () => assertContains({
+    label: "internal monitoring read-only safety banner",
+    content: files.controlRoom,
+    expected: "Read-only internal monitoring",
+  }),
+  () => assertContains({
+    label: "internal monitoring mutation warning copy",
+    content: files.controlRoom,
+    expected: "Dashboard ini hanya observability, bukan mutation console.",
+  }),
+  () => assertContains({
+    label: "internal monitoring source health summary",
+    content: files.controlRoom,
+    expected: "Source Health",
+  }),
+  () => assertContains({
+    label: "internal monitoring quick nav",
+    content: files.controlRoom,
+    expected: "Internal Monitoring sections",
+  }),
+  () => assertContains({
+    label: "internal monitoring loading/fallback live region",
+    content: files.controlRoom,
+    expected: "aria-live=\"polite\"",
+  }),
+  () => assertContains({
+    label: "internal monitoring observability-only checklist",
+    content: files.controlRoom,
+    expected: "Observability only",
+  }),
+  () => assertContains({
     label: "internal monitoring control room route inventory section",
     content: files.controlRoom,
     expected: "Route Inventory",
