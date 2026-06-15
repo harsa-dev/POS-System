@@ -15,6 +15,7 @@ import {
 } from "@/lib/api/sales-analytics-api";
 
 import { SalesAnalyticsDashboard } from "./sales-analytics-dashboard";
+import { SalesAnalyticsReconciliationDrilldownPanel } from "./sales-analytics-reconciliation-drilldown-panel";
 
 function getGuardMessage(capabilities: SalesAnalyticsCapabilitiesDto | null) {
   if (!capabilities) return "Loading sales analytics permissions...";
@@ -75,7 +76,12 @@ export function SalesAnalyticsWorkspace() {
   );
 
   if (capabilities && canOpenDashboard) {
-    return <SalesAnalyticsDashboard />;
+    return (
+      <div className="grid gap-4">
+        <SalesAnalyticsReconciliationDrilldownPanel />
+        <SalesAnalyticsDashboard />
+      </div>
+    );
   }
 
   return (
