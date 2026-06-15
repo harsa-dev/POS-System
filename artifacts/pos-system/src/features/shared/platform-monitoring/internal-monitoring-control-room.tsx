@@ -1,7 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Activity, AlertTriangle, ClipboardList, Database, GitBranch, RefreshCw, Route, ServerCog, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  ClipboardList,
+  Database,
+  Eye,
+  GitBranch,
+  LockKeyhole,
+  RefreshCw,
+  Route,
+  ServerCog,
+  ShieldCheck,
+} from "lucide-react";
 
 import { StatCard, StatusPill } from "@/features/shared/cards";
 import { DashboardActionButton, DashboardActions, DashboardPanel } from "@/features/shared/dashboard";
@@ -53,6 +65,16 @@ const toneMap: Record<string, DashboardTone> = {
   fallback: "amber",
 };
 
+const sectionLinks = [
+  { id: "runtime-signals", label: "Runtime Signals" },
+  { id: "route-inventory", label: "Route Inventory" },
+  { id: "api-contracts", label: "API Contracts" },
+  { id: "data-integrity", label: "Data Integrity" },
+  { id: "schema-decisions", label: "Schema Risk" },
+  { id: "dev-actions", label: "Dev Queue" },
+  { id: "promotion-checklist", label: "Promotion Checklist" },
+] as const;
+
 function tone(value: string): DashboardTone {
   return toneMap[value] ?? "slate";
 }
@@ -68,6 +90,98 @@ function formatGeneratedAt(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function ReadOnlySafetyBanner({ source }: { source: InternalMonitoringSource }) {
+  return (
+    <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-950">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex gap-3">
+          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700 shadow-sm">
+            <LockKeyhole className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.24em] text-blue-700">
+              Read-only internal monitoring
+            </p>
+            <h2 className="mt-1 text-xl font-bold tracking-tight">
+              Dashboard ini hanya observability, bukan mutation console.
+            </h2>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-blue-900">
+              Semua endpoint Internal Monitoring fase ini wajib GET-only. POST, PATCH, DELETE,
+              alert acknowledgement, role elevation, billing mutation, dan tenant action tetap diblokir
+              sampai ada RBAC, audit event, approval policy, rollback note, rate limit, dan dry-run mode.
+            </p>
+          </div>
+        </div>
+        <StatusPill tone={tone(source)}>{sourceLabel(source)}</StatusPill>
+      </div>
+    </div>
+  );
+}
+
+function QuickSectionNavigation() {
+  return (
+    <nav
+      aria-label="Internal Monitoring sections"
+      className="rounded-xl border border-border bg-card p-3 text-card-foreground shadow-sm"
+    >
+      <div className="flex flex-wrap gap-2">
+        {sectionLinks.map((section) => (
+          <a
+            key={section.id}
+            href={`#${section.id}`}
+            className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+          >
+            {section.label}
+          </a>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+function SourceHealthSummary({
+  data,
+  isLoading,
+}: {
+  data: InternalMonitoringDataSourceResult;
+  isLoading: boolean;
+}) {
+  const fallbackCount = data.sectionFallbacks.length;
+  const statusText = isLoading
+    ? "Refreshing internal monitoring source..."
+    : fallbackCount > 0
+      ? `${fallbackCount} fallback section active.`
+      : "All visible sections loaded from the current source.";
+
+  return (
+    <div
+      className="rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm"
+      aria-live="polite"
+    >
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-muted-foreground">Source Health</p>
+          <h3 className="mt-1 text-lg font-bold tracking-tight">{statusText}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Generated {formatGeneratedAt(data.generatedAt)} · {data.routeInventory.length} routes · {data.contractReadiness.length} contracts · {data.dataIntegrityChecks.length} integrity checks.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs font-semibold">
+          <span className="rounded-full bg-muted px-3 py-1 text-muted-foreground">
+            Source: {sourceLabel(data.source)}
+          </span>
+          <span className="rounded-full bg-muted px-3 py-1 text-muted-foreground">
+            Capability: platform-admin.internal-monitoring.read
+          </span>
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+            GET-only
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const signalColumns: DataTableColumn<InternalMonitoringControlRoomSignalDto>[] = [
@@ -137,9 +251,20 @@ export function InternalMonitoringControlRoom() {
   }, []);
 
   const summary = controlRoomData.summary;
+  const fallbackSummary = useMemo(() => {
+    if (controlRoomData.sectionFallbacks.length === 0) {
+      return "No section fallback active.";
+    }
+
+    return `${controlRoomData.sectionFallbacks.length} section fallback active.`;
+  }, [controlRoomData.sectionFallbacks.length]);
 
   return (
     <>
+      <ReadOnlySafetyBanner source={controlRoomData.source} />
+      <SourceHealthSummary data={controlRoomData} isLoading={isLoading} />
+      <QuickSectionNavigation />
+
       <DashboardPanel
         title="Control Room Readiness"
         description="Layer operasional untuk ngelihat mana yang siap naik API, mana yang masih mock, dan mana yang harus dikunci dulu."
@@ -153,12 +278,15 @@ export function InternalMonitoringControlRoom() {
         }
       >
         <div className="space-y-4 p-4">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted-foreground" aria-live="polite">
             <span className="rounded-full bg-muted px-3 py-1">
               Generated: {formatGeneratedAt(controlRoomData.generatedAt)}
             </span>
             <span className="rounded-full bg-muted px-3 py-1">
               Endpoints: 4 GET-only internal monitoring APIs
+            </span>
+            <span className="rounded-full bg-muted px-3 py-1">
+              {fallbackSummary}
             </span>
             {controlRoomData.fallbackReason ? (
               <span className="rounded-full bg-chart-3/15 px-3 py-1 text-foreground">
@@ -167,7 +295,7 @@ export function InternalMonitoringControlRoom() {
             ) : null}
           </div>
           {controlRoomData.sectionFallbacks.length > 0 ? (
-            <div className="rounded-lg border border-chart-3/30 bg-chart-3/10 p-3 text-sm text-foreground">
+            <div className="rounded-lg border border-chart-3/30 bg-chart-3/10 p-3 text-sm text-foreground" role="status">
               <p className="font-semibold">Section fallback active</p>
               <ul className="mt-2 list-disc space-y-1 pl-5">
                 {controlRoomData.sectionFallbacks.map((item) => (
@@ -185,36 +313,43 @@ export function InternalMonitoringControlRoom() {
       </DashboardPanel>
 
       <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-        <DashboardPanel title="Runtime Signals" description="Sinyal utama dari route, mock data, API contract, dan schema guard.">
+        <DashboardPanel title="Runtime Signals" description="Sinyal utama dari route, mock data, API contract, dan schema guard." className="scroll-mt-24">
+          <div id="runtime-signals" className="sr-only">Runtime Signals</div>
           <DataTable columns={signalColumns} data={controlRoomData.signals} getRowKey={(row) => row.id} minWidth={1180} pagination={false} />
         </DashboardPanel>
 
-        <DashboardPanel title="Route Inventory" description="Route internal yang sudah terlihat dari endpoint read-only. Guard dedicated masih fase berikutnya.">
+        <DashboardPanel title="Route Inventory" description="Route internal yang sudah terlihat dari endpoint read-only. Guard dedicated masih fase berikutnya." className="scroll-mt-24">
+          <div id="route-inventory" className="sr-only">Route Inventory</div>
           <DataTable columns={routeInventoryColumns} data={controlRoomData.routeInventory} getRowKey={(row) => row.id} minWidth={1250} pagination={false} />
         </DashboardPanel>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <DashboardPanel title="API Implementation Blueprint" description="Blueprint teknis per endpoint: dari mock source, contract status, rule implementasi, sampai test plan.">
+        <DashboardPanel title="API Implementation Blueprint" description="Blueprint teknis per endpoint: dari mock source, contract status, rule implementasi, sampai test plan." className="scroll-mt-24">
+          <div id="api-contracts" className="sr-only">API Contracts</div>
           <DataTable columns={apiColumns} data={controlRoomData.contractReadiness} getRowKey={(row) => row.id} minWidth={1700} pagination={false} />
         </DashboardPanel>
 
-        <DashboardPanel title="Data Integrity Checks" description="Read-only checks yang memastikan dashboard internal tidak diam-diam berubah jadi mutation surface.">
+        <DashboardPanel title="Data Integrity Checks" description="Read-only checks yang memastikan dashboard internal tidak diam-diam berubah jadi mutation surface." className="scroll-mt-24">
+          <div id="data-integrity" className="sr-only">Data Integrity Checks</div>
           <DataTable columns={integrityColumns} data={controlRoomData.dataIntegrityChecks} getRowKey={(row) => row.id} minWidth={1200} pagination={false} />
         </DashboardPanel>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-        <DashboardPanel title="Schema Decision Records" description="Keputusan sementara untuk kandidat schema. Prisma tetap tidak disentuh sampai proof-nya cukup.">
+        <DashboardPanel title="Schema Decision Records" description="Keputusan sementara untuk kandidat schema. Prisma tetap tidak disentuh sampai proof-nya cukup." className="scroll-mt-24">
+          <div id="schema-decisions" className="sr-only">Schema Decisions</div>
           <DataTable columns={schemaColumns} data={controlRoomData.schemaDecisionRecords} getRowKey={(row) => row.id} minWidth={1350} pagination={false} />
         </DashboardPanel>
 
-        <DashboardPanel title="Dev Action Queue" description="Action item paling penting sebelum dashboard ini naik dari mock ke endpoint asli.">
+        <DashboardPanel title="Dev Action Queue" description="Action item paling penting sebelum dashboard ini naik dari mock ke endpoint asli." className="scroll-mt-24">
+          <div id="dev-actions" className="sr-only">Dev Action Queue</div>
           <DataTable columns={actionColumns} data={controlRoomData.devActionItems} getRowKey={(row) => row.id} minWidth={1100} pagination={false} />
         </DashboardPanel>
       </div>
 
-      <DashboardPanel title="Next Promotion Checklist" description="Checklist keras sebelum fase mutation. Ini bukan ritual, ini pertahanan hidup dari migration yang sembrono.">
+      <DashboardPanel title="Next Promotion Checklist" description="Checklist keras sebelum fase mutation. Ini bukan ritual, ini pertahanan hidup dari migration yang sembrono." className="scroll-mt-24">
+        <div id="promotion-checklist" className="sr-only">Promotion Checklist</div>
         <div className="grid gap-3 p-4 md:grid-cols-3">
           {[
             [GitBranch, "Route wired", `P0 actions: ${summary.p0Actions}. Route harus render dulu.`],
@@ -224,6 +359,7 @@ export function InternalMonitoringControlRoom() {
             [ShieldCheck, "Integrity checked", `${controlRoomData.dataIntegrityChecks.length} checks loaded from API/fallback.`],
             [Route, "Routes inventoried", `${controlRoomData.routeInventory.length} internal routes visible.`],
             [AlertTriangle, "Mutation guarded", "PATCH/POST internal harus nunggu audit + permission."],
+            [Eye, "Observability only", "No destructive actions are available in this dashboard."],
             [Activity, "Fallback ready", `${sourceLabel(controlRoomData.source)} source keeps UI alive while backend catches up.`],
           ].map(([Icon, title, note]) => {
             const TypedIcon = Icon as typeof Activity;
