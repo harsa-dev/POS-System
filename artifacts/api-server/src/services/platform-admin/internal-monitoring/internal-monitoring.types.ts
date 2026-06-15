@@ -30,6 +30,16 @@ export type InternalMonitoringApiEnvelopeDto<TData> =
   | InternalMonitoringApiSuccessEnvelopeDto<TData>
   | InternalMonitoringApiErrorEnvelopeDto;
 
+export type InternalMonitoringRuntimeProbeDto = {
+  id: string;
+  label: string;
+  status: "pass" | "watch" | "fail";
+  latencyMs: number | null;
+  checkedAt: string;
+  source: string;
+  detail: string;
+};
+
 export type InternalMonitoringControlRoomCardDto = {
   id: string;
   label: string;
@@ -79,6 +89,8 @@ export type InternalMonitoringControlRoomSummaryDto = {
   blockedSignals: number;
   readyContracts: number;
   p0Actions: number;
+  runtimeProbes: number;
+  failingRuntimeProbes: number;
 };
 
 export type InternalMonitoringControlRoomDto = {
@@ -86,6 +98,7 @@ export type InternalMonitoringControlRoomDto = {
   generatedAt: string;
   summary: InternalMonitoringControlRoomSummaryDto;
   cards: InternalMonitoringControlRoomCardDto[];
+  runtimeProbes: InternalMonitoringRuntimeProbeDto[];
   signals: InternalMonitoringControlRoomSignalDto[];
   apiImplementationSteps: InternalMonitoringApiImplementationStepDto[];
   schemaDecisionRecords: InternalMonitoringSchemaDecisionRecordDto[];
