@@ -18,6 +18,7 @@ import {
   type InvoiceGeneratorLoadInvoiceEventDetail,
   type InvoiceGeneratorOpenFollowUpEventDetail,
 } from "./invoice-generator-events";
+import { InvoiceFollowUpHistoryTimeline } from "./invoice-follow-up-history-timeline";
 
 type InvoiceFollowUpPanelProps = {
   canManage: boolean;
@@ -72,6 +73,7 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
   const [form, setForm] = useState<InvoiceFollowUpPayload>({ status: "CONTACTED", note: "", nextFollowUpAt: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [historyReloadKey, setHistoryReloadKey] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -161,6 +163,7 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
 
       setMessage("Follow-up saved.");
       await loadFollowUps(selectedItem.invoice.id);
+      setHistoryReloadKey((current) => current + 1);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to save follow-up.");
     } finally {
@@ -218,7 +221,7 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
             />
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_440px]">
             <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
               <table className="min-w-full divide-y divide-neutral-100 text-sm">
                 <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
@@ -275,76 +278,84 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
               </table>
             </div>
 
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-              {selectedItem ? (
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Selected invoice</p>
-                    <p className="text-lg font-bold text-neutral-950">{selectedItem.invoice.invoiceNumber}</p>
-                    <p className="text-sm text-neutral-600">
-                      {selectedItem.invoice.customerName} · {formatCurrency(selectedItem.invoice.grandTotal)} · {selectedItem.invoice.daysOverdue} day(s) overdue
-                    </p>
+            <div className="space-y-4">
+              <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+                {selectedItem ? (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Selected invoice</p>
+                      <p className="text-lg font-bold text-neutral-950">{selectedItem.invoice.invoiceNumber}</p>
+                      <p className="text-sm text-neutral-600">
+                        {selectedItem.invoice.customerName} · {formatCurrency(selectedItem.invoice.grandTotal)} · {selectedItem.invoice.daysOverdue} day(s) overdue
+                      </p>
+                    </div>
+
+                    <label className="block text-sm font-semibold text-neutral-700">
+                      Status
+                      <select
+                        value={form.status}
+                        onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as InvoiceFollowUpStatus }))}
+                        disabled={!canManage || isSaving}
+                        className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+                      >
+                        {FOLLOW_UP_STATUS_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="block text-sm font-semibold text-neutral-700">
+                      Next follow-up
+                      <input
+                        type="datetime-local"
+                        value={form.nextFollowUpAt ?? ""}
+                        onChange={(event) => setForm((current) => ({ ...current, nextFollowUpAt: event.target.value }))}
+                        disabled={!canManage || isSaving}
+                        className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+                      />
+                    </label>
+
+                    <label className="block text-sm font-semibold text-neutral-700">
+                      Note
+                      <textarea
+                        value={form.note}
+                        onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
+                        disabled={!canManage || isSaving}
+                        rows={5}
+                        placeholder="Example: contacted customer by WhatsApp, payment promised Friday."
+                        className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+                      />
+                    </label>
+
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <DashboardActionButton icon={FileInput} onClick={() => loadInvoiceToEditor(selectedItem.invoice)}>
+                        Load Invoice
+                      </DashboardActionButton>
+                      <DashboardActionButton
+                        icon={CheckCircle2}
+                        onClick={() => void handleSaveFollowUp()}
+                        disabled={!canManage || isSaving}
+                      >
+                        {isSaving ? "Saving..." : selectedItem.latestFollowUp ? "Update Follow-Up" : "Save Follow-Up"}
+                      </DashboardActionButton>
+                    </div>
+
+                    {!canManage && (
+                      <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">
+                        You can view follow-ups, but creating or updating notes requires a management role.
+                      </p>
+                    )}
                   </div>
+                ) : (
+                  <p className="text-sm text-neutral-500">Select an overdue invoice to manage its follow-up.</p>
+                )}
+              </div>
 
-                  <label className="block text-sm font-semibold text-neutral-700">
-                    Status
-                    <select
-                      value={form.status}
-                      onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as InvoiceFollowUpStatus }))}
-                      disabled={!canManage || isSaving}
-                      className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-                    >
-                      {FOLLOW_UP_STATUS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="block text-sm font-semibold text-neutral-700">
-                    Next follow-up
-                    <input
-                      type="datetime-local"
-                      value={form.nextFollowUpAt ?? ""}
-                      onChange={(event) => setForm((current) => ({ ...current, nextFollowUpAt: event.target.value }))}
-                      disabled={!canManage || isSaving}
-                      className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-                    />
-                  </label>
-
-                  <label className="block text-sm font-semibold text-neutral-700">
-                    Note
-                    <textarea
-                      value={form.note}
-                      onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
-                      disabled={!canManage || isSaving}
-                      rows={5}
-                      placeholder="Example: contacted customer by WhatsApp, payment promised Friday."
-                      className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-                    />
-                  </label>
-
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <DashboardActionButton icon={FileInput} onClick={() => loadInvoiceToEditor(selectedItem.invoice)}>
-                      Load Invoice
-                    </DashboardActionButton>
-                    <DashboardActionButton
-                      icon={CheckCircle2}
-                      onClick={() => void handleSaveFollowUp()}
-                      disabled={!canManage || isSaving}
-                    >
-                      {isSaving ? "Saving..." : selectedItem.latestFollowUp ? "Update Follow-Up" : "Save Follow-Up"}
-                    </DashboardActionButton>
-                  </div>
-
-                  {!canManage && (
-                    <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">
-                      You can view follow-ups, but creating or updating notes requires a management role.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-neutral-500">Select an overdue invoice to manage its follow-up.</p>
-              )}
+              <InvoiceFollowUpHistoryTimeline
+                invoiceId={selectedItem?.invoice.id ?? null}
+                invoiceNumber={selectedItem?.invoice.invoiceNumber ?? null}
+                reloadSignal={historyReloadKey}
+              />
             </div>
           </div>
         </div>
