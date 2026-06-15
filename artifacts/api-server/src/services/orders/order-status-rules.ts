@@ -17,13 +17,13 @@ export const businessOrderStatusTransitions: Record<OrderStatus, readonly OrderS
 };
 
 export const businessOrderStatusPermissions: Record<OrderStatus, PermissionKey> = {
-  PENDING_PAYMENT: permissionKeys.business.orders.approve,
-  PAID: permissionKeys.business.payments.create,
-  PREPARING: permissionKeys.business.operations.update,
-  READY: permissionKeys.business.operations.update,
-  SERVED: permissionKeys.business.operations.update,
-  COMPLETED: permissionKeys.business.operations.update,
-  CANCELLED: permissionKeys.business.orders.cancel,
+  PENDING_PAYMENT: permissionKeys.restaurant.orders.approve,
+  PAID: permissionKeys.restaurant.payments.create,
+  PREPARING: permissionKeys.restaurant.kitchen.update,
+  READY: permissionKeys.restaurant.kitchen.update,
+  SERVED: permissionKeys.restaurant.serving.update,
+  COMPLETED: permissionKeys.restaurant.serving.update,
+  CANCELLED: permissionKeys.restaurant.orders.cancel,
 };
 
 export type OrderStatusDecision =
