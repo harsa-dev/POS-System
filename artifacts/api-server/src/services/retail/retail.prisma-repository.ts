@@ -20,82 +20,6 @@ type RetailProductDelegateRow = Omit<RetailProductDto, "price" | "cost" | "taxRa
   taxRatePercent: DecimalLike;
 };
 
-type RetailSupplierDelegateRow = RetailSupplierDto;
-
-type RetailReceivingDelegateRow = {
-  id: string;
-  supplierId: string;
-  status: string;
-  expectedDate: Date;
-  totalCost: DecimalLike;
-  supplier: {
-    name: string;
-  };
-  items: Array<{
-    productId: string;
-    orderedQty: number;
-    receivedQty: number;
-    product: {
-      sku: string;
-    };
-  }>;
-};
-
-type DelegateWriteCount = {
-  count: number;
-};
-
-type RetailProductDelegate = {
-  findMany(args: Record<string, unknown>): Promise<RetailProductDelegateRow[]>;
-  findFirst(args: Record<string, unknown>): Promise<RetailProductDelegateRow | null>;
-  updateMany(args: Record<string, unknown>): Promise<DelegateWriteCount>;
-};
-
-type RetailSupplierDelegate = {
-  findMany(args: Record<string, unknown>): Promise<RetailSupplierDelegateRow[]>;
-};
-
-type RetailReceivingDelegate = {
-  findMany(args: Record<string, unknown>): Promise<RetailReceivingDelegateRow[]>;
-};
-
-type RetailSaleDelegate = {
-  create(args: Record<string, unknown>): Promise<unknown>;
-};
-
-type RetailSaleItemDelegate = {
-  createMany(args: Record<string, unknown>): Promise<DelegateWriteCount>;
-};
-
-type RetailPaymentDelegate = {
-  create(args: Record<string, unknown>): Promise<unknown>;
-};
-
-type RetailStockMovementDelegate = {
-  create(args: Record<string, unknown>): Promise<unknown>;
-};
-
-type RetailDelegateClient = typeof prisma & {
-  retailProduct: RetailProductDelegate;
-  retailSupplier: RetailSupplierDelegate;
-  retailReceiving: RetailReceivingDelegate;
-  retailSale: RetailSaleDelegate;
-  retailSaleItem: RetailSaleItemDelegate;
-  retailPayment: RetailPaymentDelegate;
-  retailStockMovement: RetailStockMovementDelegate;
-};
-
-type RetailTransactionDelegateClient = {
-  retailProduct: RetailProductDelegate;
-  retailSale: RetailSaleDelegate;
-  retailSaleItem: RetailSaleItemDelegate;
-  retailPayment: RetailPaymentDelegate;
-  retailStockMovement: RetailStockMovementDelegate;
-  $executeRaw(query: unknown): Promise<number>;
-};
-
-const retailDb = prisma as unknown as RetailDelegateClient;
-
 function createId() {
   return randomUUID();
 }
@@ -166,11 +90,11 @@ const productDtoSelect = {
   reorderPoint: true,
   shelfLocation: true,
   supplierId: true,
-};
+} as const satisfies Prisma.RetailProductSelect;
 
 export const retailPrismaRepository = {
   async listProducts(scope) {
-    const products = await retailDb.retailProduct.findMany({
+    const products = await prisma.retailProduct.findMany({
       where: {
         businessId: scope.businessId,
         isActive: true,
@@ -185,7 +109,7 @@ export const retailPrismaRepository = {
   },
 
   async listSuppliers(scope) {
-    return retailDb.retailSupplier.findMany({
+    return prisma.retailSupplier.findMany({
       where: {
         businessId: scope.businessId,
         isActive: true,
@@ -203,7 +127,7 @@ export const retailPrismaRepository = {
   },
 
   async listReceivingQueue(scope) {
-    const receivings = await retailDb.retailReceiving.findMany({
+    const receivings = await prisma.retailReceiving.findMany({
       where: {
         businessId: scope.businessId,
       },
@@ -256,7 +180,7 @@ export const retailPrismaRepository = {
   },
 
   async findProductById(scope, productId) {
-    const product = await retailDb.retailProduct.findFirst({
+    const product = await prisma.retailProduct.findFirst({
       where: {
         businessId: scope.businessId,
         id: productId,
@@ -275,7 +199,7 @@ export const retailPrismaRepository = {
       return null;
     }
 
-    const product = await retailDb.retailProduct.findFirst({
+    const product = await prisma.retailProduct.findFirst({
       where: {
         businessId: scope.businessId,
         isActive: true,
@@ -301,7 +225,7 @@ export const retailPrismaRepository = {
   },
 
   async getInventoryRisks(scope) {
-    const products = await retailDb.retailProduct.findMany({
+    const products = await prisma.retailProduct.findMany({
       where: {
         businessId: scope.businessId,
         isActive: true,
@@ -353,10 +277,9 @@ export const retailPrismaRepository = {
 
     return prisma.$transaction(
       async (tx) => {
-        const retailTx = tx as unknown as RetailTransactionDelegateClient;
         const stockMovementIds: string[] = [];
 
-        await retailTx.retailSale.create({
+        await tx.retailSale.create({
           data: {
             id: saleId,
             businessId: input.scope.businessId,
@@ -374,7 +297,7 @@ export const retailPrismaRepository = {
           },
         });
 
-        await retailTx.retailSaleItem.createMany({
+        await tx.retailSaleItem.createMany({
           data: input.preview.lines.map((line) => ({
             id: createId(),
             saleId,
@@ -393,7 +316,7 @@ export const retailPrismaRepository = {
         });
 
         for (const line of input.preview.lines) {
-          const product = await retailTx.retailProduct.findFirst({
+          const product = await tx.retailProduct.findFirst({
             where: {
               businessId: input.scope.businessId,
               id: line.productId,
@@ -412,7 +335,7 @@ export const retailPrismaRepository = {
 
           const beforeQuantity = product.currentStock;
           const afterQuantity = beforeQuantity - line.quantity;
-          const stockUpdate = await retailTx.retailProduct.updateMany({
+          const stockUpdate = await tx.retailProduct.updateMany({
             where: {
               businessId: input.scope.businessId,
               id: line.productId,
@@ -436,7 +359,7 @@ export const retailPrismaRepository = {
           const movementId = createId();
           stockMovementIds.push(movementId);
 
-          await retailTx.retailStockMovement.create({
+          await tx.retailStockMovement.create({
             data: {
               id: movementId,
               businessId: input.scope.businessId,
@@ -455,7 +378,7 @@ export const retailPrismaRepository = {
           });
         }
 
-        await retailTx.retailPayment.create({
+        await tx.retailPayment.create({
           data: {
             id: paymentId,
             saleId,
@@ -469,7 +392,7 @@ export const retailPrismaRepository = {
           },
         });
 
-        await retailTx.$executeRaw(Prisma.sql`
+        await tx.$executeRaw(Prisma.sql`
           INSERT INTO "CashflowEntry" (
             "id",
             "businessId",
@@ -505,7 +428,7 @@ export const retailPrismaRepository = {
           )
         `);
 
-        await retailTx.$executeRaw(Prisma.sql`
+        await tx.$executeRaw(Prisma.sql`
           INSERT INTO "AuditLog" (
             "id",
             "businessId",

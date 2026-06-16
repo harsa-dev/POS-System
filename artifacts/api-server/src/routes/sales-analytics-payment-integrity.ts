@@ -176,9 +176,9 @@ function buildScopedOrderFilters(query: SalesAnalyticsQuery) {
   return filters;
 }
 
-function buildBaseWhere(restaurantId: string, query: SalesAnalyticsQuery) {
+function buildBaseWhere(businessId: string, query: SalesAnalyticsQuery) {
   const filters = [
-    Prisma.sql`o."restaurantId" = ${restaurantId}`,
+    Prisma.sql`o."businessId" = ${businessId}`,
     Prisma.sql`o."createdAt" >= ${query.from}`,
     Prisma.sql`o."createdAt" <= ${query.to}`,
     Prisma.sql`o.status IN (${Prisma.join(PAID_ORDER_STATUSES)})`,
@@ -223,7 +223,6 @@ function countToDto(row: CountRow) {
 
 async function listPaymentIntegrityRows(params: {
   businessId: string;
-  restaurantId: string;
   query: SalesAnalyticsQuery;
   issue: PaymentIntegrityIssue;
   reviewStatus: PaymentIntegrityReviewFilter;
@@ -231,7 +230,7 @@ async function listPaymentIntegrityRows(params: {
 }) {
   await ensureSalesPaymentIntegrityReviewTable();
 
-  const baseWhere = buildBaseWhere(params.restaurantId, params.query);
+  const baseWhere = buildBaseWhere(params.businessId, params.query);
   const rowFilters: Prisma.Sql[] = [];
 
   if (params.issue === "orders_without_paid_payment") {
@@ -330,10 +329,10 @@ async function listPaymentIntegrityRows(params: {
 }
 
 async function summarizePaymentIntegrity(params: {
-  restaurantId: string;
+  businessId: string;
   query: SalesAnalyticsQuery;
 }) {
-  const baseWhere = buildBaseWhere(params.restaurantId, params.query);
+  const baseWhere = buildBaseWhere(params.businessId, params.query);
 
   const rows = await prisma.$queryRaw<CountRow[]>`
     WITH integrity_rows AS (
@@ -457,10 +456,9 @@ router.get("/sales-analytics/payment-integrity", async (req, res) => {
     void actor;
 
     const [summary, rows] = await Promise.all([
-      summarizePaymentIntegrity({ restaurantId: businessContext.restaurantId, query }),
+      summarizePaymentIntegrity({ businessId: businessContext.businessId, query }),
       listPaymentIntegrityRows({
         businessId: businessContext.businessId,
-        restaurantId: businessContext.restaurantId,
         query,
         issue,
         reviewStatus,
@@ -503,7 +501,6 @@ router.get("/sales-analytics/payment-integrity/export", async (req, res) => {
 
     const rows = await listPaymentIntegrityRows({
       businessId: businessContext.businessId,
-      restaurantId: businessContext.restaurantId,
       query,
       issue,
       reviewStatus,

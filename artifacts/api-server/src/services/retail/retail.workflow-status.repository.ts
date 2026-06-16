@@ -8,26 +8,12 @@ import type { RetailActor, RetailBusinessScope, RetailReceivingQueueDto } from "
 
 type RetailReceivingStatus = RetailReceivingQueueDto["status"];
 
-type DelegateWriteCount = {
-  count: number;
-};
-
 type RetailReceivingStatusRow = {
   id: string;
   businessId: string;
   referenceNumber: string;
   status: string;
   updatedAt: Date;
-};
-
-type RetailReceivingStatusDelegate = {
-  findFirst(args: Record<string, unknown>): Promise<RetailReceivingStatusRow | null>;
-  updateMany(args: Record<string, unknown>): Promise<DelegateWriteCount>;
-};
-
-type RetailWorkflowStatusTransactionClient = {
-  retailReceiving: RetailReceivingStatusDelegate;
-  $executeRaw(query: unknown): Promise<number>;
 };
 
 export type RetailReceivingStatusUpdateInput = {
@@ -69,8 +55,7 @@ export async function updateRetailReceivingStatusWithDelegate(
 
   return prisma.$transaction(
     async (tx) => {
-      const retailTx = tx as unknown as RetailWorkflowStatusTransactionClient;
-      const current = await retailTx.retailReceiving.findFirst({
+      const current = await tx.retailReceiving.findFirst({
         where: {
           businessId: input.scope.businessId,
           id: input.receivingId,
@@ -116,7 +101,7 @@ export async function updateRetailReceivingStatusWithDelegate(
         };
       }
 
-      const update = await retailTx.retailReceiving.updateMany({
+      const update = await tx.retailReceiving.updateMany({
         where: {
           businessId: input.scope.businessId,
           id: input.receivingId,
@@ -133,7 +118,7 @@ export async function updateRetailReceivingStatusWithDelegate(
         throw new Error(`Retail receiving ${current.id} changed before status update could be completed.`);
       }
 
-      await retailTx.$executeRaw(Prisma.sql`
+      await tx.$executeRaw(Prisma.sql`
         INSERT INTO "AuditLog" (
           "id",
           "businessId",

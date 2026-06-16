@@ -93,18 +93,18 @@ function analyticsFilters(query: SalesAnalyticsQuery) {
   return filters;
 }
 
-function paidOrderWhere(restaurantId: string, query: SalesAnalyticsQuery) {
+function paidOrderWhere(businessId: string, query: SalesAnalyticsQuery) {
   return Prisma.sql`
-    o."restaurantId" = ${restaurantId}
+    o."businessId" = ${businessId}
     AND o."createdAt" >= ${query.from}
     AND o."createdAt" <= ${query.to}
     AND o.status IN (${Prisma.join(PAID_ORDER_STATUSES)})
   `;
 }
 
-function orderItemWhere(restaurantId: string, query: SalesAnalyticsQuery) {
+function orderItemWhere(businessId: string, query: SalesAnalyticsQuery) {
   const filters = [
-    Prisma.sql`o."restaurantId" = ${restaurantId}`,
+    Prisma.sql`o."businessId" = ${businessId}`,
     Prisma.sql`o."createdAt" >= ${query.from}`,
     Prisma.sql`o."createdAt" <= ${query.to}`,
     Prisma.sql`o.status IN (${Prisma.join(PAID_ORDER_STATUSES)})`,
@@ -116,7 +116,7 @@ function orderItemWhere(restaurantId: string, query: SalesAnalyticsQuery) {
 
 async function countOrdersWithoutPaidPayment(
   db: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const rows = await db.$queryRaw<CountRow[]>`
@@ -125,7 +125,7 @@ async function countOrdersWithoutPaidPayment(
     LEFT JOIN "Payment" p
       ON p."orderId" = o.id
       AND p.status = ${PaymentStatus.PAID}
-    WHERE ${paidOrderWhere(restaurantId, query)}
+    WHERE ${paidOrderWhere(businessId, query)}
       AND p.id IS NULL;
   `;
 
@@ -134,7 +134,7 @@ async function countOrdersWithoutPaidPayment(
 
 async function countPaymentTotalMismatches(
   db: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const rows = await db.$queryRaw<CountRow[]>`
@@ -143,7 +143,7 @@ async function countPaymentTotalMismatches(
     INNER JOIN "Payment" p
       ON p."orderId" = o.id
       AND p.status = ${PaymentStatus.PAID}
-    WHERE ${paidOrderWhere(restaurantId, query)}
+    WHERE ${paidOrderWhere(businessId, query)}
       AND o."amountPaid" <> o.total;
   `;
 
@@ -152,20 +152,18 @@ async function countPaymentTotalMismatches(
 
 async function countMissingCostSnapshots(
   db: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const rows = await db.$queryRaw<CountRow[]>`
     SELECT COUNT(sm.id)::int AS "count"
     FROM "StockMovement" sm
-    WHERE sm."restaurantId" = ${restaurantId}
+    LEFT JOIN "InventoryItem" ii ON ii.id = sm."inventoryItemId"
+    WHERE sm."businessId" = ${businessId}
       AND sm."createdAt" >= ${query.from}
       AND sm."createdAt" <= ${query.to}
       AND sm.reason = ${StockMovementReason.RECIPE_USAGE}
-      AND (
-        sm."unitCostSnapshot" IS NULL
-        OR sm."unitCostSnapshot" <= 0
-      );
+      AND (ii.id IS NULL OR ii."costPerUnit" <= 0);
   `;
 
   return toCount(rows);
@@ -173,7 +171,7 @@ async function countMissingCostSnapshots(
 
 async function countZeroRevenueRows(
   db: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const rows = await db.$queryRaw<CountRow[]>`
@@ -181,7 +179,7 @@ async function countZeroRevenueRows(
     FROM "OrderItem" oi
     INNER JOIN "Order" o ON o.id = oi."orderId"
     INNER JOIN "MenuItem" mi ON mi.id = oi."menuItemId"
-    WHERE ${orderItemWhere(restaurantId, query)}
+    WHERE ${orderItemWhere(businessId, query)}
       AND (
         oi.subtotal <= 0
         OR oi.price <= 0
@@ -194,13 +192,13 @@ async function countZeroRevenueRows(
 
 async function countCancelledOrders(
   db: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const rows = await db.$queryRaw<CountRow[]>`
     SELECT COUNT(o.id)::int AS "count"
     FROM "Order" o
-    WHERE o."restaurantId" = ${restaurantId}
+    WHERE o."businessId" = ${businessId}
       AND o."createdAt" >= ${query.from}
       AND o."createdAt" <= ${query.to}
       AND o.status = ${OrderStatus.CANCELLED};
@@ -211,7 +209,7 @@ async function countCancelledOrders(
 
 async function listOrdersWithoutPaidPayment(
   db: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const rows = await db.$queryRaw<DetailRow[]>`
@@ -227,7 +225,7 @@ async function listOrdersWithoutPaidPayment(
     LEFT JOIN "Payment" p
       ON p."orderId" = o.id
       AND p.status = ${PaymentStatus.PAID}
-    WHERE ${paidOrderWhere(restaurantId, query)}
+    WHERE ${paidOrderWhere(businessId, query)}
       AND p.id IS NULL
     ORDER BY o."createdAt" DESC
     LIMIT ${DETAIL_LIMIT};
@@ -238,7 +236,7 @@ async function listOrdersWithoutPaidPayment(
 
 async function listPaymentTotalMismatches(
   db: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const rows = await db.$queryRaw<DetailRow[]>`
@@ -254,7 +252,7 @@ async function listPaymentTotalMismatches(
     INNER JOIN "Payment" p
       ON p."orderId" = o.id
       AND p.status = ${PaymentStatus.PAID}
-    WHERE ${paidOrderWhere(restaurantId, query)}
+    WHERE ${paidOrderWhere(businessId, query)}
       AND o."amountPaid" <> o.total
     ORDER BY o."createdAt" DESC
     LIMIT ${DETAIL_LIMIT};
@@ -265,7 +263,7 @@ async function listPaymentTotalMismatches(
 
 async function listMissingCostSnapshots(
   db: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const rows = await db.$queryRaw<DetailRow[]>`
@@ -274,19 +272,16 @@ async function listMissingCostSnapshots(
       sm."createdAt" AS date,
       COALESCE(sm."sourceType"::text, 'STOCK_MOVEMENT') AS "sourceType",
       COALESCE(ii.name, sm."inventoryItemId") AS reference,
-      COALESCE(sm.note, 'Recipe usage stock movement without unitCostSnapshot') AS description,
+      COALESCE(sm.note, 'Recipe usage stock movement without usable inventory cost') AS description,
       ROUND(ABS(sm.quantity) * COALESCE(ii."costPerUnit", 0))::bigint AS amount,
       COALESCE(sm.reason::text, sm.type::text) AS status
     FROM "StockMovement" sm
     LEFT JOIN "InventoryItem" ii ON ii.id = sm."inventoryItemId"
-    WHERE sm."restaurantId" = ${restaurantId}
+    WHERE sm."businessId" = ${businessId}
       AND sm."createdAt" >= ${query.from}
       AND sm."createdAt" <= ${query.to}
       AND sm.reason = ${StockMovementReason.RECIPE_USAGE}
-      AND (
-        sm."unitCostSnapshot" IS NULL
-        OR sm."unitCostSnapshot" <= 0
-      )
+      AND (ii.id IS NULL OR ii."costPerUnit" <= 0)
     ORDER BY sm."createdAt" DESC
     LIMIT ${DETAIL_LIMIT};
   `;
@@ -296,7 +291,7 @@ async function listMissingCostSnapshots(
 
 async function listZeroRevenueRows(
   db: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const rows = await db.$queryRaw<DetailRow[]>`
@@ -311,7 +306,7 @@ async function listZeroRevenueRows(
     FROM "OrderItem" oi
     INNER JOIN "Order" o ON o.id = oi."orderId"
     INNER JOIN "MenuItem" mi ON mi.id = oi."menuItemId"
-    WHERE ${orderItemWhere(restaurantId, query)}
+    WHERE ${orderItemWhere(businessId, query)}
       AND (
         oi.subtotal <= 0
         OR oi.price <= 0
@@ -326,7 +321,7 @@ async function listZeroRevenueRows(
 
 async function listCancelledOrders(
   db: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const rows = await db.$queryRaw<DetailRow[]>`
@@ -339,7 +334,7 @@ async function listCancelledOrders(
       o.total::bigint AS amount,
       o.status::text AS status
     FROM "Order" o
-    WHERE o."restaurantId" = ${restaurantId}
+    WHERE o."businessId" = ${businessId}
       AND o."createdAt" >= ${query.from}
       AND o."createdAt" <= ${query.to}
       AND o.status = ${OrderStatus.CANCELLED}
@@ -395,9 +390,9 @@ function buildIssues(input: {
   if (input.missingCostSnapshotCount > 0) {
     issues.push({
       key: "missing_cost_snapshots",
-      title: "COGS movements missing unit cost snapshot",
+      title: "COGS movements missing usable inventory cost",
       description:
-        "Some recipe usage stock movements do not have a usable unitCostSnapshot.",
+        "Some recipe usage stock movements do not have a linked inventory item with usable cost.",
       severity: "warning",
       count: input.missingCostSnapshotCount,
     });
@@ -446,7 +441,7 @@ export async function getSalesAnalyticsReconciliation(params: {
 }): Promise<SalesAnalyticsReconciliationDto> {
   requireSalesAnalyticsView(params.actor.role);
 
-  const restaurantId = params.businessContext.restaurantId;
+  const businessId = params.businessContext.businessId;
 
   const [
     ordersWithoutPaidPaymentCount,
@@ -460,16 +455,16 @@ export async function getSalesAnalyticsReconciliation(params: {
     zeroRevenueRows,
     cancelledOrdersInPeriod,
   ] = await Promise.all([
-    countOrdersWithoutPaidPayment(prisma, restaurantId, params.query),
-    countPaymentTotalMismatches(prisma, restaurantId, params.query),
-    countMissingCostSnapshots(prisma, restaurantId, params.query),
-    countZeroRevenueRows(prisma, restaurantId, params.query),
-    countCancelledOrders(prisma, restaurantId, params.query),
-    listOrdersWithoutPaidPayment(prisma, restaurantId, params.query),
-    listPaymentTotalMismatches(prisma, restaurantId, params.query),
-    listMissingCostSnapshots(prisma, restaurantId, params.query),
-    listZeroRevenueRows(prisma, restaurantId, params.query),
-    listCancelledOrders(prisma, restaurantId, params.query),
+    countOrdersWithoutPaidPayment(prisma, businessId, params.query),
+    countPaymentTotalMismatches(prisma, businessId, params.query),
+    countMissingCostSnapshots(prisma, businessId, params.query),
+    countZeroRevenueRows(prisma, businessId, params.query),
+    countCancelledOrders(prisma, businessId, params.query),
+    listOrdersWithoutPaidPayment(prisma, businessId, params.query),
+    listPaymentTotalMismatches(prisma, businessId, params.query),
+    listMissingCostSnapshots(prisma, businessId, params.query),
+    listZeroRevenueRows(prisma, businessId, params.query),
+    listCancelledOrders(prisma, businessId, params.query),
   ]);
 
   return {

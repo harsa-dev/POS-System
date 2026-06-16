@@ -108,6 +108,46 @@ function isServiceBusinessPreviewModeActive(): boolean {
   return rawMode === "custom-business";
 }
 
+function renderActiveModeDashboardAdapter({
+  context,
+  rawMaterialDashboardId,
+  restaurantDashboardId,
+  retailDashboardId,
+  children,
+}: {
+  context?: SharedDashboardModeContext;
+  rawMaterialDashboardId?: RawMaterialSharedDashboardId;
+  restaurantDashboardId?: RestaurantSharedDashboardId;
+  retailDashboardId?: RetailSharedDashboardId;
+  children: ReactNode;
+}) {
+  if (context?.activeMode === "raw-material" && rawMaterialDashboardId) {
+    return (
+      <RawMaterialSharedDashboardBridge dashboardId={rawMaterialDashboardId}>
+        {children}
+      </RawMaterialSharedDashboardBridge>
+    );
+  }
+
+  if (context?.activeMode === "restaurant" && restaurantDashboardId) {
+    return (
+      <RestaurantSharedDashboardBridge dashboardId={restaurantDashboardId}>
+        {children}
+      </RestaurantSharedDashboardBridge>
+    );
+  }
+
+  if (context?.activeMode === "retail" && retailDashboardId) {
+    return (
+      <RetailSharedDashboardBridge dashboardId={retailDashboardId}>
+        {children}
+      </RetailSharedDashboardBridge>
+    );
+  }
+
+  return children;
+}
+
 function SharedDashboardModeBadge({ context }: { context?: SharedDashboardModeContext }) {
   if (!context) return null;
 
@@ -172,31 +212,13 @@ export function DashboardShell({
   ) : (
     children
   );
-  let bridgedDashboardContent = dashboardContent;
-
-  if (rawMaterialDashboardId) {
-    bridgedDashboardContent = (
-      <RawMaterialSharedDashboardBridge dashboardId={rawMaterialDashboardId}>
-        {bridgedDashboardContent}
-      </RawMaterialSharedDashboardBridge>
-    );
-  }
-
-  if (restaurantDashboardId) {
-    bridgedDashboardContent = (
-      <RestaurantSharedDashboardBridge dashboardId={restaurantDashboardId}>
-        {bridgedDashboardContent}
-      </RestaurantSharedDashboardBridge>
-    );
-  }
-
-  if (retailDashboardId) {
-    bridgedDashboardContent = (
-      <RetailSharedDashboardBridge dashboardId={retailDashboardId}>
-        {bridgedDashboardContent}
-      </RetailSharedDashboardBridge>
-    );
-  }
+  const bridgedDashboardContent = renderActiveModeDashboardAdapter({
+    context: sharedDashboardModeContext,
+    rawMaterialDashboardId,
+    restaurantDashboardId,
+    retailDashboardId,
+    children: dashboardContent,
+  });
 
   return (
     <section className="flex min-h-0 flex-col gap-5">

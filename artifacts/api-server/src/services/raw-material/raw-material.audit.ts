@@ -45,16 +45,7 @@ export type RawMaterialAuditInput = {
 
 type RawMaterialAuditClient = {
   auditLog: {
-    create(args: {
-      data: {
-        businessId: string;
-        userId: string;
-        action: RawMaterialAuditAction;
-        entityType: string;
-        entityId: string;
-        changes: Prisma.InputJsonValue;
-      };
-    }): Promise<unknown>;
+    create(args: Prisma.AuditLogCreateArgs): Promise<unknown>;
   };
 };
 
@@ -64,7 +55,7 @@ export function toRawMaterialAuditChanges(value: unknown): Prisma.InputJsonValue
 
 export async function writeRawMaterialAuditLog(
   input: RawMaterialAuditInput,
-  client: RawMaterialAuditClient = prisma as unknown as RawMaterialAuditClient,
+  client: RawMaterialAuditClient = prisma,
 ) {
   await client.auditLog.create({
     data: {

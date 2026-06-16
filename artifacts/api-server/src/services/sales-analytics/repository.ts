@@ -108,9 +108,9 @@ function analyticsFilters(query: SalesAnalyticsQuery) {
   return filters;
 }
 
-function orderItemWhere(restaurantId: string, query: SalesAnalyticsQuery) {
+function orderItemWhere(businessId: string, query: SalesAnalyticsQuery) {
   const filters = [
-    Prisma.sql`o."restaurantId" = ${restaurantId}`,
+    Prisma.sql`o."businessId" = ${businessId}`,
     Prisma.sql`o."createdAt" >= ${query.from}`,
     Prisma.sql`o."createdAt" <= ${query.to}`,
     orderStatusFilter(query),
@@ -120,15 +120,16 @@ function orderItemWhere(restaurantId: string, query: SalesAnalyticsQuery) {
   return Prisma.sql`${Prisma.join(filters, " AND ")}`;
 }
 
-function orderCogsCte(restaurantId: string) {
+function orderCogsCte(businessId: string) {
   return Prisma.sql`
     SELECT
       sm."sourceId" AS "orderId",
-      COALESCE(SUM(ABS(sm.quantity) * sm."unitCostSnapshot"), 0)::double precision AS cogs
+      COALESCE(SUM(ABS(sm.quantity) * ii."costPerUnit"), 0)::double precision AS cogs
     FROM "StockMovement" sm
-    WHERE sm."restaurantId" = ${restaurantId}
+    INNER JOIN "InventoryItem" ii ON ii.id = sm."inventoryItemId"
+    WHERE sm."businessId" = ${businessId}
       AND sm."sourceId" IS NOT NULL
-      AND sm."unitCostSnapshot" IS NOT NULL
+      AND ii."costPerUnit" > 0
       AND sm.reason = ${StockMovementReason.RECIPE_USAGE}
     GROUP BY sm."sourceId"
   `;
@@ -168,9 +169,9 @@ function paginationOffset(query: SalesAnalyticsQuery) {
   return (query.page - 1) * query.pageSize;
 }
 
-function stockMovementWhere(restaurantId: string, query: SalesAnalyticsQuery) {
+function stockMovementWhere(businessId: string, query: SalesAnalyticsQuery) {
   const filters = [
-    Prisma.sql`sm."restaurantId" = ${restaurantId}`,
+    Prisma.sql`sm."businessId" = ${businessId}`,
     Prisma.sql`sm."createdAt" >= ${query.from}`,
     Prisma.sql`sm."createdAt" <= ${query.to}`,
     Prisma.sql`sm.reason = ${StockMovementReason.RECIPE_USAGE}`,
@@ -181,7 +182,7 @@ function stockMovementWhere(restaurantId: string, query: SalesAnalyticsQuery) {
 
 export async function getSalesRevenueSummary(
   prisma: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const [row] = await prisma.$queryRaw<SalesRevenueSummaryRow[]>`
@@ -194,7 +195,7 @@ export async function getSalesRevenueSummary(
     FROM "OrderItem" oi
     INNER JOIN "Order" o ON o.id = oi."orderId"
     INNER JOIN "MenuItem" mi ON mi.id = oi."menuItemId"
-    WHERE ${orderItemWhere(restaurantId, query)}
+    WHERE ${orderItemWhere(businessId, query)}
   `;
 
   return row;
@@ -202,18 +203,18 @@ export async function getSalesRevenueSummary(
 
 export async function getSalesCogsSummary(
   prisma: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const [row] = await prisma.$queryRaw<SalesCogsSummaryRow[]>`
-    WITH order_cogs AS (${orderCogsCte(restaurantId)})
+    WITH order_cogs AS (${orderCogsCte(businessId)})
     SELECT
       COALESCE(SUM(${allocatedItemCogsExpression()}), 0)::double precision AS cogs
     FROM "OrderItem" oi
     INNER JOIN "Order" o ON o.id = oi."orderId"
     INNER JOIN "MenuItem" mi ON mi.id = oi."menuItemId"
     LEFT JOIN order_cogs oc ON oc."orderId" = o.id
-    WHERE ${orderItemWhere(restaurantId, query)}
+    WHERE ${orderItemWhere(businessId, query)}
   `;
 
   return row;
@@ -221,7 +222,7 @@ export async function getSalesCogsSummary(
 
 export async function getSalesDailyTrend(
   prisma: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   return prisma.$queryRaw<SalesTrendRow[]>`
@@ -233,7 +234,7 @@ export async function getSalesDailyTrend(
     FROM "OrderItem" oi
     INNER JOIN "Order" o ON o.id = oi."orderId"
     INNER JOIN "MenuItem" mi ON mi.id = oi."menuItemId"
-    WHERE ${orderItemWhere(restaurantId, query)}
+    WHERE ${orderItemWhere(businessId, query)}
     GROUP BY date_trunc('day', o."createdAt")
     ORDER BY date_trunc('day', o."createdAt") ASC
   `;
@@ -241,7 +242,7 @@ export async function getSalesDailyTrend(
 
 export async function getSalesBusyHours(
   prisma: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   return prisma.$queryRaw<SalesTrendRow[]>`
@@ -253,7 +254,7 @@ export async function getSalesBusyHours(
     FROM "OrderItem" oi
     INNER JOIN "Order" o ON o.id = oi."orderId"
     INNER JOIN "MenuItem" mi ON mi.id = oi."menuItemId"
-    WHERE ${orderItemWhere(restaurantId, query)}
+    WHERE ${orderItemWhere(businessId, query)}
     GROUP BY EXTRACT(HOUR FROM o."createdAt")
     ORDER BY EXTRACT(HOUR FROM o."createdAt") ASC
   `;
@@ -261,7 +262,7 @@ export async function getSalesBusyHours(
 
 export async function getSalesBestSellingProducts(
   prisma: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   return prisma.$queryRaw<SalesBestSellerRow[]>`
@@ -273,7 +274,7 @@ export async function getSalesBestSellingProducts(
     FROM "OrderItem" oi
     INNER JOIN "Order" o ON o.id = oi."orderId"
     INNER JOIN "MenuItem" mi ON mi.id = oi."menuItemId"
-    WHERE ${orderItemWhere(restaurantId, query)}
+    WHERE ${orderItemWhere(businessId, query)}
     GROUP BY mi.id, mi.name
     ORDER BY COALESCE(SUM(oi.quantity), 0) DESC, COALESCE(SUM(oi.subtotal), 0) DESC
     LIMIT 10
@@ -282,7 +283,7 @@ export async function getSalesBestSellingProducts(
 
 export async function countSalesTransactionRows(
   prisma: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const [row] = await prisma.$queryRaw<SalesTransactionRowCount[]>`
@@ -290,7 +291,7 @@ export async function countSalesTransactionRows(
     FROM "OrderItem" oi
     INNER JOIN "Order" o ON o.id = oi."orderId"
     INNER JOIN "MenuItem" mi ON mi.id = oi."menuItemId"
-    WHERE ${orderItemWhere(restaurantId, query)}
+    WHERE ${orderItemWhere(businessId, query)}
   `;
 
   return row;
@@ -298,11 +299,11 @@ export async function countSalesTransactionRows(
 
 export async function listSalesTransactionRows(
   prisma: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   return prisma.$queryRaw<SalesTransactionRow[]>`
-    WITH order_cogs AS (${orderCogsCte(restaurantId)})
+    WITH order_cogs AS (${orderCogsCte(businessId)})
     SELECT
       oi.id,
       o.id AS "orderId",
@@ -325,7 +326,7 @@ export async function listSalesTransactionRows(
     LEFT JOIN "Category" c ON c.id = mi."categoryId"
     LEFT JOIN "Payment" p ON p."orderId" = o.id
     LEFT JOIN order_cogs oc ON oc."orderId" = o.id
-    WHERE ${orderItemWhere(restaurantId, query)}
+    WHERE ${orderItemWhere(businessId, query)}
     ORDER BY ${salesTransactionOrderBy(query)}
     LIMIT ${query.pageSize}
     OFFSET ${paginationOffset(query)}
@@ -334,7 +335,7 @@ export async function listSalesTransactionRows(
 
 export async function getCogsByOrderIds(
   prisma: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   orderIds: string[],
 ) {
   if (orderIds.length === 0) return [];
@@ -342,11 +343,12 @@ export async function getCogsByOrderIds(
   return prisma.$queryRaw<SalesCogsByOrderRow[]>`
     SELECT
       sm."sourceId" AS "orderId",
-      COALESCE(SUM(ABS(sm.quantity) * sm."unitCostSnapshot"), 0)::double precision AS cogs
+      COALESCE(SUM(ABS(sm.quantity) * ii."costPerUnit"), 0)::double precision AS cogs
     FROM "StockMovement" sm
-    WHERE sm."restaurantId" = ${restaurantId}
+    INNER JOIN "InventoryItem" ii ON ii.id = sm."inventoryItemId"
+    WHERE sm."businessId" = ${businessId}
       AND sm."sourceId" IN (${Prisma.join(orderIds)})
-      AND sm."unitCostSnapshot" IS NOT NULL
+      AND ii."costPerUnit" > 0
       AND sm.reason = ${StockMovementReason.RECIPE_USAGE}
     GROUP BY sm."sourceId"
   `;
@@ -354,7 +356,7 @@ export async function getCogsByOrderIds(
 
 export async function getSalesSourceHealth(
   prisma: PrismaClient,
-  restaurantId: string,
+  businessId: string,
   query: SalesAnalyticsQuery,
 ) {
   const [row] = await prisma.$queryRaw<SalesSourceHealthRow[]>`
@@ -365,26 +367,27 @@ export async function getSalesSourceHealth(
       (
         SELECT COUNT(sm.id)::int
         FROM "StockMovement" sm
-        WHERE ${stockMovementWhere(restaurantId, query)}
+        WHERE ${stockMovementWhere(businessId, query)}
       ) AS "stockMovements",
       COUNT(DISTINCT o.id) FILTER (WHERE p.id IS NULL OR p.status <> ${PaymentStatus.PAID})::int AS "ordersWithoutPayment",
       (
-        SELECT COUNT(sm_missing.id)::int
-        FROM "StockMovement" sm_missing
-        WHERE ${stockMovementWhere(restaurantId, query)}
-          AND sm_missing."unitCostSnapshot" IS NULL
+        SELECT COUNT(sm.id)::int
+        FROM "StockMovement" sm
+        LEFT JOIN "InventoryItem" ii ON ii.id = sm."inventoryItemId"
+        WHERE ${stockMovementWhere(businessId, query)}
+          AND (ii.id IS NULL OR ii."costPerUnit" <= 0)
       ) AS "stockMovementsMissingCostSnapshot",
       (
-        SELECT COUNT(sm_unlinked.id)::int
-        FROM "StockMovement" sm_unlinked
-        WHERE ${stockMovementWhere(restaurantId, query)}
-          AND sm_unlinked."sourceId" IS NULL
+        SELECT COUNT(sm.id)::int
+        FROM "StockMovement" sm
+        WHERE ${stockMovementWhere(businessId, query)}
+          AND sm."sourceId" IS NULL
       ) AS "stockMovementsWithoutOrderSource"
     FROM "OrderItem" oi
     INNER JOIN "Order" o ON o.id = oi."orderId"
     INNER JOIN "MenuItem" mi ON mi.id = oi."menuItemId"
     LEFT JOIN "Payment" p ON p."orderId" = o.id
-    WHERE ${orderItemWhere(restaurantId, query)}
+    WHERE ${orderItemWhere(businessId, query)}
   `;
 
   return row;
@@ -392,26 +395,26 @@ export async function getSalesSourceHealth(
 
 export async function listSalesAnalyticsFilterOptions(
   prisma: PrismaClient,
-  restaurantId: string,
+  businessId: string,
 ): Promise<SalesAnalyticsFilterOptionsDto> {
   const [products, categories, paymentMethods] = await Promise.all([
     prisma.$queryRaw<FilterOptionRow[]>`
       SELECT mi.id AS value, mi.name AS label
       FROM "MenuItem" mi
-      WHERE mi."restaurantId" = ${restaurantId}
+      WHERE mi."businessId" = ${businessId}
         AND mi."isAvailable" = true
       ORDER BY mi.name ASC
     `,
     prisma.$queryRaw<FilterOptionRow[]>`
       SELECT c.id AS value, c.name AS label
       FROM "Category" c
-      WHERE c."restaurantId" = ${restaurantId}
+      WHERE c."businessId" = ${businessId}
       ORDER BY c.name ASC
     `,
     prisma.$queryRaw<FilterOptionRow[]>`
       SELECT DISTINCT o."paymentMethod" AS value, o."paymentMethod" AS label
       FROM "Order" o
-      WHERE o."restaurantId" = ${restaurantId}
+      WHERE o."businessId" = ${businessId}
         AND o."paymentMethod" IS NOT NULL
         AND o."paymentMethod" <> ''
       ORDER BY o."paymentMethod" ASC

@@ -52,7 +52,7 @@ function getInitialPayload(): FinancialReportInventoryRepairPayload | null {
   if (hasRepairHash()) {
     return {
       sourceIssue: "missing_cost_snapshots",
-      message: "Manual cost snapshot repair preview.",
+      message: "Manual inventory cost quality preview.",
     };
   }
 
@@ -71,7 +71,7 @@ function buildRepairFeedbackPayload(
     repairedValue: result.repairedValue,
     repairedMovementIds: result.repairedMovementIds,
     completedAt: new Date().toISOString(),
-    message: `${formatNumber(result.repairedCount)} movement(s) repaired from Inventory cost snapshot repair.`,
+    message: `${formatNumber(result.repairedCount)} movement(s) reviewed from Inventory cost quality review.`,
   };
 }
 
@@ -117,7 +117,7 @@ export function InventoryCostSnapshotRepairPanel() {
     } catch (error) {
       setPreview(null);
       setErrorMessage(
-        getApiErrorMessage(error, "Unable to load cost snapshot repair preview."),
+        getApiErrorMessage(error, "Unable to load inventory cost quality preview."),
       );
     } finally {
       setIsLoading(false);
@@ -147,12 +147,12 @@ export function InventoryCostSnapshotRepairPanel() {
       const feedbackPayload = buildRepairFeedbackPayload(payload, response.data);
       setLastRepairFeedback(feedbackPayload);
       setSuccessMessage(
-        `${formatNumber(response.data.repairedCount)} movement(s) repaired · ${formatCurrency(response.data.repairedValue)} COGS value restored. Review Financial Reports reconciliation to confirm the issue count changed.`,
+        `${formatNumber(response.data.repairedCount)} movement(s) reviewed · ${formatCurrency(response.data.repairedValue)} COGS value restored. Review Financial Reports reconciliation after updating item costs.`,
       );
       await loadPreview();
     } catch (error) {
       setErrorMessage(
-        getApiErrorMessage(error, "Unable to repair cost snapshots."),
+        getApiErrorMessage(error, "Unable to review inventory cost quality."),
       );
     } finally {
       setIsRepairing(false);
@@ -215,10 +215,10 @@ export function InventoryCostSnapshotRepairPanel() {
       },
       {
         key: "repairStatus",
-        header: "Repair Status",
+        header: "Cost Status",
         cell: (row) => (
           <StatusPill tone={row.repairStatus === "REPAIRABLE" ? "green" : "amber"}>
-            {row.repairStatus === "REPAIRABLE" ? "Repairable" : "Needs item cost"}
+            {row.repairStatus === "REPAIRABLE" ? "Has item cost" : "Needs item cost"}
           </StatusPill>
         ),
       },
@@ -231,8 +231,8 @@ export function InventoryCostSnapshotRepairPanel() {
   return (
     <div id="inventory-cost-snapshot-repair">
       <DashboardPanel
-        title="Financial Report Cost Snapshot Repair"
-        description="Backfill missing COGS unit cost snapshots from inventory item costs for the financial reporting period."
+        title="Financial Report Inventory Cost Review"
+        description="Find COGS stock movements whose linked inventory items do not have usable costs for the financial reporting period."
         action={
           <DashboardActions>
             {lastRepairFeedback && (
@@ -257,7 +257,7 @@ export function InventoryCostSnapshotRepairPanel() {
               onClick={() => void handleBackfill()}
               disabled={isLoading || isRepairing || repairableRows.length === 0}
             >
-              {isRepairing ? "Repairing..." : "Backfill Repairable"}
+              {isRepairing ? "Reviewing..." : "Review Selected"}
             </DashboardActionButton>
           </DashboardActions>
         }
@@ -296,14 +296,14 @@ export function InventoryCostSnapshotRepairPanel() {
 
           <div className="grid gap-3 md:grid-cols-4">
             <StatCard
-              label="Missing Snapshots"
+              label="Missing Costs"
               value={isLoading ? "..." : formatNumber(preview?.summary.totalRows ?? 0)}
               note="Rows detected in selected period"
               icon={AlertTriangle}
               tone="amber"
             />
             <StatCard
-              label="Repairable"
+              label="Has Item Cost"
               value={isLoading ? "..." : formatNumber(preview?.summary.repairableRows ?? 0)}
               note="Inventory item has cost"
               icon={Wrench}
@@ -317,7 +317,7 @@ export function InventoryCostSnapshotRepairPanel() {
               tone="rose"
             />
             <StatCard
-              label="Repair Value"
+              label="Estimated Cost"
               value={isLoading ? "..." : formatCurrency(preview?.summary.estimatedRepairValue ?? 0)}
               note="Estimated COGS restored"
               icon={ShieldCheck}
@@ -326,7 +326,7 @@ export function InventoryCostSnapshotRepairPanel() {
           </div>
 
           <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-            Period: {preview?.period.from ? formatDateTime(preview.period.from) : payload.from ? formatDateTime(payload.from) : "All available"} → {preview?.period.to ? formatDateTime(preview.period.to) : payload.to ? formatDateTime(payload.to) : "Now"}. Backfill only updates missing/zero unit cost snapshots using the current inventory item cost. Rows marked "Needs item cost" are intentionally skipped.
+            Period: {preview?.period.from ? formatDateTime(preview.period.from) : payload.from ? formatDateTime(payload.from) : "All available"} → {preview?.period.to ? formatDateTime(preview.period.to) : payload.to ? formatDateTime(payload.to) : "Now"}. Update inventory item costs for rows marked "Needs item cost", then rerun the report.
           </div>
 
           <DataTable
@@ -334,12 +334,12 @@ export function InventoryCostSnapshotRepairPanel() {
             data={preview?.rows ?? []}
             getRowKey={(row) => row.movementId}
             minWidth={1080}
-            emptyMessage={isLoading ? "Loading repair preview..." : "No missing cost snapshot rows found for this period."}
+            emptyMessage={isLoading ? "Loading cost quality preview..." : "No missing inventory cost rows found for this period."}
           />
 
           {needsItemCostRows.length > 0 && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              {formatNumber(needsItemCostRows.length)} row(s) cannot be repaired until their inventory item cost is set above zero. Update the item cost in the inventory table, then refresh this preview.
+              {formatNumber(needsItemCostRows.length)} row(s) need inventory item cost set above zero. Update the item cost in the inventory table, then refresh this preview.
             </div>
           )}
         </div>

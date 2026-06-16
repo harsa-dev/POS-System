@@ -126,7 +126,7 @@ function toRepairDto(row: CostSnapshotRepairRow) {
 }
 
 async function listMissingCostSnapshots(params: {
-  restaurantId: string;
+  businessId: string;
   from?: Date;
   to?: Date;
   movementIds?: string[];
@@ -136,7 +136,7 @@ async function listMissingCostSnapshots(params: {
   const periodFilter = buildPeriodFilter(params.from, params.to);
   const idFilter = buildIdFilter(params.movementIds);
   const repairableFilter = params.repairableOnly
-    ? Prisma.sql`AND COALESCE(ii."costPerUnit", 0) > 0`
+    ? Prisma.sql`AND false`
     : Prisma.empty;
   const limit = params.limit ?? DEFAULT_LIMIT;
 
@@ -150,16 +150,13 @@ async function listMissingCostSnapshots(params: {
       sm."sourceType"::text AS "sourceType",
       sm."sourceId" AS "sourceId",
       sm."reason"::text AS "reason",
-      sm."unitCostSnapshot" AS "currentSnapshot",
+      NULL::integer AS "currentSnapshot",
       ii."costPerUnit" AS "itemCost",
       ROUND(ABS(sm."quantity") * COALESCE(ii."costPerUnit", 0)) AS "estimatedCost",
-      CASE
-        WHEN COALESCE(ii."costPerUnit", 0) > 0 THEN 'REPAIRABLE'
-        ELSE 'NEEDS_ITEM_COST'
-      END AS "repairStatus"
+      'NEEDS_ITEM_COST' AS "repairStatus"
     FROM "StockMovement" sm
     LEFT JOIN "InventoryItem" ii ON ii."id" = sm."inventoryItemId"
-    WHERE COALESCE(sm."restaurantId", ii."restaurantId") = ${params.restaurantId}
+    WHERE sm."businessId" = ${params.businessId}
       ${periodFilter}
       ${idFilter}
       ${repairableFilter}
@@ -168,10 +165,7 @@ async function listMissingCostSnapshots(params: {
         sm."reason"::text = 'RECIPE_USAGE'
         OR sm."sourceType"::text IN ('ORDER', 'RECIPE')
       )
-      AND (
-        sm."unitCostSnapshot" IS NULL
-        OR sm."unitCostSnapshot" <= 0
-      )
+      AND (ii."id" IS NULL OR ii."costPerUnit" <= 0)
     ORDER BY sm."createdAt" DESC
     LIMIT ${limit};
   `;
@@ -203,7 +197,7 @@ router.get("/inventory-cost-snapshot-repairs", async (req, res) => {
     const to = parseDate(req.query.to, "to");
     const limit = parseLimit(req.query.limit);
     const rows = await listMissingCostSnapshots({
-      restaurantId: businessContext.restaurantId,
+      businessId: businessContext.businessId,
       from,
       to,
       limit,
@@ -240,7 +234,7 @@ router.post("/inventory-cost-snapshot-repairs/backfill", async (req, res) => {
     const limit = parseLimit(req.body?.limit);
 
     const candidates = await listMissingCostSnapshots({
-      restaurantId: businessContext.restaurantId,
+      businessId: businessContext.businessId,
       from,
       to,
       movementIds,
@@ -248,64 +242,14 @@ router.post("/inventory-cost-snapshot-repairs/backfill", async (req, res) => {
       limit,
     });
 
-    if (candidates.length === 0) {
-      return successResponse(res, {
-        data: {
-          repairedCount: 0,
-          repairedValue: 0,
-          repairedMovementIds: [],
-        },
-        message: "No repairable cost snapshot rows found.",
-      });
-    }
-
-    const repaired = await prisma.$transaction(async (tx) => {
-      const repairedRows = [] as typeof candidates;
-
-      for (const row of candidates) {
-        await tx.$executeRaw`
-          UPDATE "StockMovement"
-          SET "unitCostSnapshot" = ${Math.round(row.itemCost)}
-          WHERE "id" = ${row.movementId}
-            AND (
-              "unitCostSnapshot" IS NULL
-              OR "unitCostSnapshot" <= 0
-            );
-        `;
-
-        await tx.auditLog.create({
-          data: {
-            businessId: businessContext.businessId,
-            restaurantId: businessContext.restaurantId,
-            userId: user.id,
-            action: "UPDATE",
-            entityType: "StockMovement",
-            entityId: row.movementId,
-            changes: {
-              repairType: "BACKFILL_UNIT_COST_SNAPSHOT",
-              inventoryItemId: row.inventoryItemId,
-              itemName: row.itemName,
-              unitCostSnapshot: Math.round(row.itemCost),
-              estimatedCost: row.estimatedCost,
-              sourceType: row.sourceType,
-              sourceId: row.sourceId,
-            },
-          },
-        });
-
-        repairedRows.push(row);
-      }
-
-      return repairedRows;
-    });
-
     return successResponse(res, {
       data: {
-        repairedCount: repaired.length,
-        repairedValue: repaired.reduce((sum, row) => sum + row.estimatedCost, 0),
-        repairedMovementIds: repaired.map((row) => row.movementId),
+        repairedCount: 0,
+        repairedValue: 0,
+        repairedMovementIds: [],
+        skippedMovementIds: candidates.map((row) => row.movementId),
       },
-      message: `${repaired.length} stock movement cost snapshot(s) repaired.`,
+      message: "No cost snapshot column exists in the current V3 schema; update inventory item costs instead.",
     });
   } catch (error) {
     return handleApiError(res, error);

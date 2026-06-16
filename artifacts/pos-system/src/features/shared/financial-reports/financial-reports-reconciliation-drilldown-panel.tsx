@@ -58,8 +58,8 @@ const issueTargets: Record<string, ReconciliationTarget> = {
   },
   missing_cost_snapshots: {
     sectionId: "financial-reconciliation-missing-cost-snapshots",
-    label: "Missing cost snapshots",
-    helper: "Repair COGS stock movements by backfilling unit cost snapshots from inventory item costs.",
+    label: "Missing usable inventory cost",
+    helper: "Fix COGS stock movements by updating linked inventory item costs.",
   },
   pending_cashflow_entries: {
     sectionId: "financial-reconciliation-pending-cashflow",
@@ -137,7 +137,7 @@ function openIssueTarget(
       from: periodContext.from,
       to: periodContext.to,
       sourceIssue: "missing_cost_snapshots",
-      message: `Financial reconciliation repair: missing COGS cost snapshots (${periodContext.label}).`,
+      message: `Financial reconciliation review: missing usable COGS inventory cost (${periodContext.label}).`,
     });
     return;
   }
@@ -267,7 +267,7 @@ export function FinancialReportsReconciliationDrilldownPanel() {
       {
         ...issueTargets.missing_cost_snapshots,
         rows: reconciliation.missingCostSnapshots,
-        emptyMessage: "No COGS movements missing unit cost snapshots.",
+        emptyMessage: "No COGS movements missing usable inventory cost.",
       },
       {
         ...issueTargets.pending_cashflow_entries,

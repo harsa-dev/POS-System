@@ -73,7 +73,7 @@ function buildWarnings(
   const warnings: string[] = [];
   if (health.paidOrders > 0 && health.cashflowEntries === 0) warnings.push("Paid orders exist without ledger entries.");
   if (health.ordersWithoutCashflow > 0) warnings.push("Some paid orders are not synced into cashflow.");
-  if (health.stockMovementsMissingCostSnapshot > 0) warnings.push("Some COGS movements are missing cost snapshots.");
+  if (health.stockMovementsMissingCostSnapshot > 0) warnings.push("Some COGS movements are missing usable inventory cost.");
   if (health.pendingCashflowEntries > 0) warnings.push("Pending cashflow entries are excluded from posted totals.");
   if (health.voidedCashflowEntries > 0) warnings.push("Voided cashflow entries exist in this period.");
   if (receivables > 0) warnings.push("Open invoice receivables exist in this period.");
@@ -86,20 +86,20 @@ export function parseFinancialReportRequest(rawQuery: Record<string, unknown>) {
 
 export async function getFinancialReport(params: { actor: FinancialReportActor; businessContext: BusinessContext; query: FinancialReportQuery }): Promise<FinancialReportDto> {
   requireFinancialReportView(params.actor.role);
-  const restaurantId = params.businessContext.restaurantId;
+  const businessId = params.businessContext.businessId;
   const [revenue, flow, cogs, receivable, revenueTrend, cogsTrend, flowTrend, bestSellers, cashInRows, cashOutRows, receivables, healthBase] = await Promise.all([
-    getRevenueSummary(prisma, restaurantId, params.query),
-    getCashflowSummary(prisma, restaurantId, params.query),
-    getCogsSummary(prisma, restaurantId, params.query),
-    getReceivableSummary(prisma, restaurantId, params.query),
-    getRevenueTrend(prisma, restaurantId, params.query),
-    getCogsTrend(prisma, restaurantId, params.query),
-    getCashflowTrend(prisma, restaurantId, params.query),
-    getBestSellingProducts(prisma, restaurantId, params.query),
-    listCashflowRowsForReport(prisma, restaurantId, params.query, "in"),
-    listCashflowRowsForReport(prisma, restaurantId, params.query, "out"),
-    listReceivablesForReport(prisma, restaurantId, params.query),
-    getFinancialSourceHealth(prisma, restaurantId, params.query),
+    getRevenueSummary(prisma, businessId, params.query),
+    getCashflowSummary(prisma, businessId, params.query),
+    getCogsSummary(prisma, businessId, params.query),
+    getReceivableSummary(prisma, businessId, params.query),
+    getRevenueTrend(prisma, businessId, params.query),
+    getCogsTrend(prisma, businessId, params.query),
+    getCashflowTrend(prisma, businessId, params.query),
+    getBestSellingProducts(prisma, businessId, params.query),
+    listCashflowRowsForReport(prisma, businessId, params.query, "in"),
+    listCashflowRowsForReport(prisma, businessId, params.query, "out"),
+    listReceivablesForReport(prisma, businessId, params.query),
+    getFinancialSourceHealth(prisma, businessId, params.query),
   ]);
   const totalRevenue = params.query.basis === "cashflow" ? flow.cashIn : revenue.totalRevenue;
   const reportCogs = params.query.basis === "cashflow" ? 0 : cogs.cogs;

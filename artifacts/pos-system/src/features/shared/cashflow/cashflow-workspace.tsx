@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 
-import { RetailSharedDashboardBridge } from "@/features/shared/retail-bridge";
-
 import { CashflowAccountBalancesPanel } from "./cashflow-account-balances-panel";
 import { CashflowDashboard } from "./cashflow-dashboard";
 import { CashflowFinancialReportDrilldownPanel } from "./cashflow-financial-report-drilldown-panel";
@@ -18,23 +16,21 @@ export function CashflowWorkspace() {
   }
 
   return (
-    <RetailSharedDashboardBridge dashboardId="cashflow">
-      <div className="space-y-5">
-        <CashflowWorkspaceOverview />
-        <CashflowFinancialReportDrilldownPanel />
+    <div className="space-y-5">
+      <CashflowWorkspaceOverview />
+      <CashflowFinancialReportDrilldownPanel />
 
-        <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
-          <CashflowAccountBalancesPanel reloadSignal={dashboardReloadKey} />
-          <div
-            id="cashflow-source-sync"
-            className="space-y-4 scroll-mt-24 2xl:sticky 2xl:top-4 2xl:self-start"
-          >
-            <CashflowSourceSyncPanel onSynced={reloadCashflowWorkspace} />
-          </div>
+      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <CashflowAccountBalancesPanel reloadSignal={dashboardReloadKey} />
+        <div
+          id="cashflow-source-sync"
+          className="space-y-4 scroll-mt-24 2xl:sticky 2xl:top-4 2xl:self-start"
+        >
+          <CashflowSourceSyncPanel onSynced={reloadCashflowWorkspace} />
         </div>
-
-        <CashflowDashboard key={dashboardReloadKey} />
       </div>
-    </RetailSharedDashboardBridge>
+
+      <CashflowDashboard key={dashboardReloadKey} />
+    </div>
   );
 }

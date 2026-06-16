@@ -77,7 +77,7 @@ function buildReportCsv(report: FinancialReportDto) {
     report.sourceHealth.ordersWithoutCashflow,
   ]);
   rows.push([
-    "Stock Movements Missing Cost Snapshot",
+    "Stock Movements Missing Usable Inventory Cost",
     report.sourceHealth.stockMovementsMissingCostSnapshot,
   ]);
   rows.push([

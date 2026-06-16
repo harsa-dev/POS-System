@@ -11,10 +11,6 @@ import type {
   RetailReturnPreviewInput,
 } from "./retail.types.js";
 
-type DelegateWriteCount = {
-  count: number;
-};
-
 type SaleItemRow = {
   id: string;
   productId: string;
@@ -40,37 +36,6 @@ type ReturnItemQuantityRow = {
 type ProductStockRow = {
   id: string;
   currentStock: number;
-};
-
-type RetailSaleDelegate = {
-  findFirst(args: Record<string, unknown>): Promise<SaleRow | null>;
-};
-
-type RetailReturnDelegate = {
-  create(args: Record<string, unknown>): Promise<unknown>;
-};
-
-type RetailReturnItemDelegate = {
-  findMany(args: Record<string, unknown>): Promise<ReturnItemQuantityRow[]>;
-  createMany(args: Record<string, unknown>): Promise<DelegateWriteCount>;
-};
-
-type RetailProductDelegate = {
-  findFirst(args: Record<string, unknown>): Promise<ProductStockRow | null>;
-  updateMany(args: Record<string, unknown>): Promise<DelegateWriteCount>;
-};
-
-type RetailStockMovementDelegate = {
-  create(args: Record<string, unknown>): Promise<unknown>;
-};
-
-type RetailReturnTransactionClient = {
-  retailSale: RetailSaleDelegate;
-  retailReturn: RetailReturnDelegate;
-  retailReturnItem: RetailReturnItemDelegate;
-  retailProduct: RetailProductDelegate;
-  retailStockMovement: RetailStockMovementDelegate;
-  $executeRaw(query: unknown): Promise<number>;
 };
 
 export type PersistRetailReturnInput = {
@@ -131,8 +96,7 @@ export async function persistRetailReturnWithDelegate(input: PersistRetailReturn
 
   return prisma.$transaction(
     async (tx) => {
-      const retailTx = tx as unknown as RetailReturnTransactionClient;
-      const sale = await retailTx.retailSale.findFirst({
+      const sale = await tx.retailSale.findFirst({
         where: {
           businessId: input.scope.businessId,
           receiptNumber: originalReceiptNumber,
@@ -163,7 +127,7 @@ export async function persistRetailReturnWithDelegate(input: PersistRetailReturn
       const saleItemByProductId = new Map(sale.items.map((item) => [item.productId, item]));
       const saleItemIds = sale.items.map((item) => item.id);
       const previousReturns = saleItemIds.length > 0
-        ? await retailTx.retailReturnItem.findMany({
+        ? await tx.retailReturnItem.findMany({
           where: {
             saleItemId: {
               in: saleItemIds,
@@ -257,7 +221,7 @@ export async function persistRetailReturnWithDelegate(input: PersistRetailReturn
       const cashflowEntryId = createId();
       const stockMovementIds: string[] = [];
 
-      await retailTx.retailReturn.create({
+      await tx.retailReturn.create({
         data: {
           id: returnId,
           businessId: input.scope.businessId,
@@ -274,7 +238,7 @@ export async function persistRetailReturnWithDelegate(input: PersistRetailReturn
         },
       });
 
-      await retailTx.retailReturnItem.createMany({
+      await tx.retailReturnItem.createMany({
         data: returnItems.map((item) => ({
           id: item.id,
           returnId,
@@ -292,7 +256,7 @@ export async function persistRetailReturnWithDelegate(input: PersistRetailReturn
       });
 
       for (const item of returnItems.filter((candidate) => candidate.restockable && candidate.restockedQuantity > 0)) {
-        const product = await retailTx.retailProduct.findFirst({
+        const product = await tx.retailProduct.findFirst({
           where: {
             businessId: input.scope.businessId,
             id: item.productId,
@@ -310,7 +274,7 @@ export async function persistRetailReturnWithDelegate(input: PersistRetailReturn
 
         const beforeQuantity = product.currentStock;
         const afterQuantity = beforeQuantity + item.restockedQuantity;
-        const stockUpdate = await retailTx.retailProduct.updateMany({
+        const stockUpdate = await tx.retailProduct.updateMany({
           where: {
             businessId: input.scope.businessId,
             id: item.productId,
@@ -331,7 +295,7 @@ export async function persistRetailReturnWithDelegate(input: PersistRetailReturn
         const movementId = createId();
         stockMovementIds.push(movementId);
 
-        await retailTx.retailStockMovement.create({
+        await tx.retailStockMovement.create({
           data: {
             id: movementId,
             businessId: input.scope.businessId,
@@ -350,7 +314,7 @@ export async function persistRetailReturnWithDelegate(input: PersistRetailReturn
         });
       }
 
-      await retailTx.$executeRaw(Prisma.sql`
+      await tx.$executeRaw(Prisma.sql`
         INSERT INTO "CashflowEntry" (
           "id",
           "businessId",
@@ -386,7 +350,7 @@ export async function persistRetailReturnWithDelegate(input: PersistRetailReturn
         )
       `);
 
-      await retailTx.$executeRaw(Prisma.sql`
+      await tx.$executeRaw(Prisma.sql`
         INSERT INTO "AuditLog" (
           "id",
           "businessId",

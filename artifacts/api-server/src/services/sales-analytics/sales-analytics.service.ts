@@ -357,7 +357,7 @@ function buildSalesAnalyticsCsv(report: SalesAnalyticsDto) {
       ["Stock Movements", report.sourceHealth.stockMovements],
       ["Orders Without Payment", report.sourceHealth.ordersWithoutPayment],
       [
-        "Stock Movements Missing Cost Snapshot",
+        "Stock Movements Missing Usable Inventory Cost",
         report.sourceHealth.stockMovementsMissingCostSnapshot,
       ],
       [
@@ -388,7 +388,7 @@ export async function getSalesAnalytics(params: {
   requireSalesAnalyticsView(params.actor.role);
 
   const access = getSalesAnalyticsAccess(params.actor.role);
-  const restaurantId = params.businessContext.restaurantId;
+  const businessId = params.businessContext.businessId;
 
   const [
     revenue,
@@ -400,19 +400,19 @@ export async function getSalesAnalytics(params: {
     totalRows,
     sourceHealth,
   ] = await Promise.all([
-    getSalesRevenueSummary(prisma, restaurantId, params.query),
-    getSalesCogsSummary(prisma, restaurantId, params.query),
-    getSalesDailyTrend(prisma, restaurantId, params.query),
-    getSalesBusyHours(prisma, restaurantId, params.query),
-    getSalesBestSellingProducts(prisma, restaurantId, params.query),
-    listSalesTransactionRows(prisma, restaurantId, params.query),
-    countSalesTransactionRows(prisma, restaurantId, params.query),
-    getSalesSourceHealth(prisma, restaurantId, params.query),
+    getSalesRevenueSummary(prisma, businessId, params.query),
+    getSalesCogsSummary(prisma, businessId, params.query),
+    getSalesDailyTrend(prisma, businessId, params.query),
+    getSalesBusyHours(prisma, businessId, params.query),
+    getSalesBestSellingProducts(prisma, businessId, params.query),
+    listSalesTransactionRows(prisma, businessId, params.query),
+    countSalesTransactionRows(prisma, businessId, params.query),
+    getSalesSourceHealth(prisma, businessId, params.query),
   ]);
 
   const orderIds = Array.from(new Set(rows.map((row) => row.orderId)));
   const cogsByOrder = buildCogsByOrderMap(
-    await getCogsByOrderIds(prisma, restaurantId, orderIds),
+    await getCogsByOrderIds(prisma, businessId, orderIds),
   );
   const cogsValue = Number(cogs?.cogs ?? 0);
   const scopedCogsFilter = hasScopedCogsFilter(params.query);
@@ -420,13 +420,13 @@ export async function getSalesAnalytics(params: {
 
   if (cogsValue > 0) {
     sourceHealthDto.warnings.push(
-      "COGS is allocated from order-level stock movement snapshots by item revenue share until item-level cost snapshots are available.",
+      "COGS is allocated from order-level stock movements using linked inventory item cost by item revenue share.",
     );
   }
 
   if (scopedCogsFilter) {
     sourceHealthDto.warnings.push(
-      "COGS is estimated from order-level stock movement snapshots allocated by item revenue share for scoped filters.",
+      "COGS is estimated from order-level stock movements allocated by item revenue share for scoped filters.",
     );
   }
 
@@ -463,7 +463,7 @@ export async function getSalesAnalyticsFilterOptions(params: {
 
   return listSalesAnalyticsFilterOptions(
     prisma,
-    params.businessContext.restaurantId,
+    params.businessContext.businessId,
   );
 }
 

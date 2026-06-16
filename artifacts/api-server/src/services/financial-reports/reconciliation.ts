@@ -86,18 +86,18 @@ function toDetailRow(row: DetailRow): FinancialReconciliationDetailRowDto {
 
 async function countUnsyncedOrders(
   db: Db,
-  restaurantId: string,
+  businessId: string,
   query: FinancialReportQuery,
 ) {
   const rows = await db.$queryRaw<CountRow[]>`
     SELECT COUNT(*)::int AS "count"
     FROM "Order" o
     LEFT JOIN "CashflowEntry" cf
-      ON cf."restaurantId" = o."restaurantId"
+      ON cf."businessId" = o."businessId"
       AND cf."sourceType"::text = 'ORDER_PAYMENT'
       AND cf."sourceId" = o."id"
       AND cf."status" != 'VOIDED'
-    WHERE o."restaurantId" = ${restaurantId}
+    WHERE o."businessId" = ${businessId}
       AND o."createdAt" >= ${query.from}
       AND o."createdAt" <= ${query.to}
       AND o."status"::text IN ('PAID', 'PREPARING', 'READY', 'SERVED', 'COMPLETED')
@@ -109,14 +109,14 @@ async function countUnsyncedOrders(
 
 async function countMissingCostSnapshots(
   db: Db,
-  restaurantId: string,
+  businessId: string,
   query: FinancialReportQuery,
 ) {
   const rows = await db.$queryRaw<CountRow[]>`
     SELECT COUNT(*)::int AS "count"
     FROM "StockMovement" sm
     LEFT JOIN "InventoryItem" ii ON ii."id" = sm."inventoryItemId"
-    WHERE COALESCE(sm."restaurantId", ii."restaurantId") = ${restaurantId}
+    WHERE sm."businessId" = ${businessId}
       AND sm."createdAt" >= ${query.from}
       AND sm."createdAt" <= ${query.to}
       AND sm."type" = 'OUT'
@@ -124,10 +124,7 @@ async function countMissingCostSnapshots(
         sm."reason"::text = 'RECIPE_USAGE'
         OR sm."sourceType"::text IN ('ORDER', 'RECIPE')
       )
-      AND (
-        sm."unitCostSnapshot" IS NULL
-        OR sm."unitCostSnapshot" <= 0
-      );
+      AND (ii."id" IS NULL OR ii."costPerUnit" <= 0);
   `;
 
   return rows[0]?.count ?? 0;
@@ -135,14 +132,14 @@ async function countMissingCostSnapshots(
 
 async function countCashflowByStatus(
   db: Db,
-  restaurantId: string,
+  businessId: string,
   query: FinancialReportQuery,
   status: "PENDING" | "VOIDED",
 ) {
   const rows = await db.$queryRaw<CountRow[]>`
     SELECT COUNT(*)::int AS "count"
     FROM "CashflowEntry"
-    WHERE "restaurantId" = ${restaurantId}
+    WHERE "businessId" = ${businessId}
       AND "occurredAt" >= ${query.from}
       AND "occurredAt" <= ${query.to}
       AND "status"::text = ${status};
@@ -153,13 +150,13 @@ async function countCashflowByStatus(
 
 async function countOpenReceivables(
   db: Db,
-  restaurantId: string,
+  businessId: string,
   query: FinancialReportQuery,
 ) {
   const rows = await db.$queryRaw<CountRow[]>`
     SELECT COUNT(*)::int AS "count"
     FROM "Invoice"
-    WHERE "restaurantId" = ${restaurantId}
+    WHERE "businessId" = ${businessId}
       AND "invoiceDate" >= ${query.from}
       AND "invoiceDate" <= ${query.to}
       AND "status"::text IN ('DRAFT', 'SENT')
@@ -171,7 +168,7 @@ async function countOpenReceivables(
 
 async function countOverdueReceivables(
   db: Db,
-  restaurantId: string,
+  businessId: string,
   query: FinancialReportQuery,
 ) {
   const now = new Date();
@@ -179,7 +176,7 @@ async function countOverdueReceivables(
   const rows = await db.$queryRaw<CountRow[]>`
     SELECT COUNT(*)::int AS "count"
     FROM "Invoice"
-    WHERE "restaurantId" = ${restaurantId}
+    WHERE "businessId" = ${businessId}
       AND "invoiceDate" >= ${query.from}
       AND "invoiceDate" <= ${query.to}
       AND "status"::text IN ('DRAFT', 'SENT')
@@ -193,7 +190,7 @@ async function countOverdueReceivables(
 
 async function listUnsyncedOrders(
   db: Db,
-  restaurantId: string,
+  businessId: string,
   query: FinancialReportQuery,
 ) {
   const rows = await db.$queryRaw<DetailRow[]>`
@@ -207,11 +204,11 @@ async function listUnsyncedOrders(
       o."status"::text AS "status"
     FROM "Order" o
     LEFT JOIN "CashflowEntry" cf
-      ON cf."restaurantId" = o."restaurantId"
+      ON cf."businessId" = o."businessId"
       AND cf."sourceType"::text = 'ORDER_PAYMENT'
       AND cf."sourceId" = o."id"
       AND cf."status" != 'VOIDED'
-    WHERE o."restaurantId" = ${restaurantId}
+    WHERE o."businessId" = ${businessId}
       AND o."createdAt" >= ${query.from}
       AND o."createdAt" <= ${query.to}
       AND o."status"::text IN ('PAID', 'PREPARING', 'READY', 'SERVED', 'COMPLETED')
@@ -225,7 +222,7 @@ async function listUnsyncedOrders(
 
 async function listMissingCostSnapshots(
   db: Db,
-  restaurantId: string,
+  businessId: string,
   query: FinancialReportQuery,
 ) {
   const rows = await db.$queryRaw<DetailRow[]>`
@@ -234,12 +231,12 @@ async function listMissingCostSnapshots(
       sm."createdAt" AS "date",
       COALESCE(sm."sourceType"::text, 'STOCK_MOVEMENT') AS "sourceType",
       COALESCE(ii."name", sm."inventoryItemId") AS "reference",
-      COALESCE(sm."note", 'COGS stock movement without unit cost snapshot') AS "description",
+      COALESCE(sm."note", 'COGS stock movement without usable inventory cost') AS "description",
       ROUND(ABS(sm."quantity") * COALESCE(ii."costPerUnit", 0))::bigint AS "amount",
       COALESCE(sm."reason"::text, sm."type"::text) AS "status"
     FROM "StockMovement" sm
     LEFT JOIN "InventoryItem" ii ON ii."id" = sm."inventoryItemId"
-    WHERE COALESCE(sm."restaurantId", ii."restaurantId") = ${restaurantId}
+    WHERE sm."businessId" = ${businessId}
       AND sm."createdAt" >= ${query.from}
       AND sm."createdAt" <= ${query.to}
       AND sm."type" = 'OUT'
@@ -247,10 +244,7 @@ async function listMissingCostSnapshots(
         sm."reason"::text = 'RECIPE_USAGE'
         OR sm."sourceType"::text IN ('ORDER', 'RECIPE')
       )
-      AND (
-        sm."unitCostSnapshot" IS NULL
-        OR sm."unitCostSnapshot" <= 0
-      )
+      AND (ii."id" IS NULL OR ii."costPerUnit" <= 0)
     ORDER BY sm."createdAt" DESC
     LIMIT 50;
   `;
@@ -260,7 +254,7 @@ async function listMissingCostSnapshots(
 
 async function listCashflowByStatus(
   db: Db,
-  restaurantId: string,
+  businessId: string,
   query: FinancialReportQuery,
   status: "PENDING" | "VOIDED",
 ) {
@@ -274,7 +268,7 @@ async function listCashflowByStatus(
       "amount"::bigint AS "amount",
       "status"::text AS "status"
     FROM "CashflowEntry"
-    WHERE "restaurantId" = ${restaurantId}
+    WHERE "businessId" = ${businessId}
       AND "occurredAt" >= ${query.from}
       AND "occurredAt" <= ${query.to}
       AND "status"::text = ${status}
@@ -287,7 +281,7 @@ async function listCashflowByStatus(
 
 async function listOpenReceivables(
   db: Db,
-  restaurantId: string,
+  businessId: string,
   query: FinancialReportQuery,
 ) {
   const now = new Date();
@@ -306,7 +300,7 @@ async function listOpenReceivables(
       "grandTotal"::bigint AS "amount",
       "status"::text AS "status"
     FROM "Invoice"
-    WHERE "restaurantId" = ${restaurantId}
+    WHERE "businessId" = ${businessId}
       AND "invoiceDate" >= ${query.from}
       AND "invoiceDate" <= ${query.to}
       AND "status"::text IN ('DRAFT', 'SENT')
@@ -342,9 +336,9 @@ function buildIssues(input: {
   if (input.missingCostSnapshotCount > 0) {
     issues.push({
       key: "missing_cost_snapshots",
-      title: "COGS movements missing unit cost snapshot",
+      title: "COGS movements missing usable inventory cost",
       description:
-        "Some inventory movements used for COGS do not have unitCostSnapshot.",
+        "Some inventory movements used for COGS do not have linked inventory cost.",
       severity: "warning",
       count: input.missingCostSnapshotCount,
     });
@@ -404,7 +398,7 @@ export async function getFinancialReportReconciliation(params: {
 }): Promise<FinancialReconciliationDto> {
   requireFinancialReportView(params.actor.role);
 
-  const restaurantId = params.businessContext.restaurantId;
+  const businessId = params.businessContext.businessId;
 
   const [
     unsyncedOrderCount,
@@ -419,17 +413,17 @@ export async function getFinancialReportReconciliation(params: {
     voidedCashflowEntries,
     openReceivables,
   ] = await Promise.all([
-    countUnsyncedOrders(prisma, restaurantId, params.query),
-    countMissingCostSnapshots(prisma, restaurantId, params.query),
-    countCashflowByStatus(prisma, restaurantId, params.query, "PENDING"),
-    countCashflowByStatus(prisma, restaurantId, params.query, "VOIDED"),
-    countOpenReceivables(prisma, restaurantId, params.query),
-    countOverdueReceivables(prisma, restaurantId, params.query),
-    listUnsyncedOrders(prisma, restaurantId, params.query),
-    listMissingCostSnapshots(prisma, restaurantId, params.query),
-    listCashflowByStatus(prisma, restaurantId, params.query, "PENDING"),
-    listCashflowByStatus(prisma, restaurantId, params.query, "VOIDED"),
-    listOpenReceivables(prisma, restaurantId, params.query),
+    countUnsyncedOrders(prisma, businessId, params.query),
+    countMissingCostSnapshots(prisma, businessId, params.query),
+    countCashflowByStatus(prisma, businessId, params.query, "PENDING"),
+    countCashflowByStatus(prisma, businessId, params.query, "VOIDED"),
+    countOpenReceivables(prisma, businessId, params.query),
+    countOverdueReceivables(prisma, businessId, params.query),
+    listUnsyncedOrders(prisma, businessId, params.query),
+    listMissingCostSnapshots(prisma, businessId, params.query),
+    listCashflowByStatus(prisma, businessId, params.query, "PENDING"),
+    listCashflowByStatus(prisma, businessId, params.query, "VOIDED"),
+    listOpenReceivables(prisma, businessId, params.query),
   ]);
 
   return {

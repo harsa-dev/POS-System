@@ -9,10 +9,6 @@ import type {
   RetailSaleCancellationResultDto,
 } from "./retail.types.js";
 
-type DelegateWriteCount = {
-  count: number;
-};
-
 type SaleItemRow = {
   id: string;
   productId: string;
@@ -38,32 +34,6 @@ type SaleRow = {
 type ProductStockRow = {
   id: string;
   currentStock: number;
-};
-
-type RetailSaleDelegate = {
-  findFirst(args: Record<string, unknown>): Promise<SaleRow | null>;
-  updateMany(args: Record<string, unknown>): Promise<DelegateWriteCount>;
-};
-
-type RetailProductDelegate = {
-  findFirst(args: Record<string, unknown>): Promise<ProductStockRow | null>;
-  updateMany(args: Record<string, unknown>): Promise<DelegateWriteCount>;
-};
-
-type RetailPaymentDelegate = {
-  updateMany(args: Record<string, unknown>): Promise<DelegateWriteCount>;
-};
-
-type RetailStockMovementDelegate = {
-  create(args: Record<string, unknown>): Promise<unknown>;
-};
-
-type RetailCancellationTransactionClient = {
-  retailSale: RetailSaleDelegate;
-  retailProduct: RetailProductDelegate;
-  retailPayment: RetailPaymentDelegate;
-  retailStockMovement: RetailStockMovementDelegate;
-  $executeRaw(query: unknown): Promise<number>;
 };
 
 export type CancelRetailSaleInput = {
@@ -103,8 +73,7 @@ export async function cancelRetailSaleWithDelegate(input: CancelRetailSaleInput)
 
   return prisma.$transaction(
     async (tx) => {
-      const retailTx = tx as unknown as RetailCancellationTransactionClient;
-      const sale = await retailTx.retailSale.findFirst({
+      const sale = await tx.retailSale.findFirst({
         where: {
           businessId: input.scope.businessId,
           id: input.saleId,
@@ -160,7 +129,7 @@ export async function cancelRetailSaleWithDelegate(input: CancelRetailSaleInput)
       const cashflowEntryId = createId();
       let restockedQuantity = 0;
 
-      const saleUpdate = await retailTx.retailSale.updateMany({
+      const saleUpdate = await tx.retailSale.updateMany({
         where: {
           businessId: input.scope.businessId,
           id: sale.id,
@@ -180,7 +149,7 @@ export async function cancelRetailSaleWithDelegate(input: CancelRetailSaleInput)
         });
       }
 
-      await retailTx.retailPayment.updateMany({
+      await tx.retailPayment.updateMany({
         where: {
           saleId: sale.id,
           status: "paid",
@@ -194,7 +163,7 @@ export async function cancelRetailSaleWithDelegate(input: CancelRetailSaleInput)
       for (const item of sale.items) {
         if (item.quantity <= 0) continue;
 
-        const product = await retailTx.retailProduct.findFirst({
+        const product = await tx.retailProduct.findFirst({
           where: {
             businessId: input.scope.businessId,
             id: item.productId,
@@ -212,7 +181,7 @@ export async function cancelRetailSaleWithDelegate(input: CancelRetailSaleInput)
 
         const beforeQuantity = product.currentStock;
         const afterQuantity = beforeQuantity + item.quantity;
-        const stockUpdate = await retailTx.retailProduct.updateMany({
+        const stockUpdate = await tx.retailProduct.updateMany({
           where: {
             businessId: input.scope.businessId,
             id: item.productId,
@@ -234,7 +203,7 @@ export async function cancelRetailSaleWithDelegate(input: CancelRetailSaleInput)
         stockMovementIds.push(movementId);
         restockedQuantity += item.quantity;
 
-        await retailTx.retailStockMovement.create({
+        await tx.retailStockMovement.create({
           data: {
             id: movementId,
             businessId: input.scope.businessId,
@@ -253,7 +222,7 @@ export async function cancelRetailSaleWithDelegate(input: CancelRetailSaleInput)
         });
       }
 
-      await retailTx.$executeRaw(Prisma.sql`
+      await tx.$executeRaw(Prisma.sql`
         INSERT INTO "CashflowEntry" (
           "id",
           "businessId",
@@ -289,7 +258,7 @@ export async function cancelRetailSaleWithDelegate(input: CancelRetailSaleInput)
         )
       `);
 
-      await retailTx.$executeRaw(Prisma.sql`
+      await tx.$executeRaw(Prisma.sql`
         INSERT INTO "AuditLog" (
           "id",
           "businessId",
