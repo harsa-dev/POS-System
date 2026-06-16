@@ -167,7 +167,7 @@ export const coreModules: readonly V3ModuleMetadata[] = [
       {
         moduleId: "analytics",
         label: "Overview",
-        description: "Hardcoded shared business dashboard for cross-mode KPI and module navigation demos.",
+        description: "Static shared business dashboard for cross-mode KPI and module navigation previews.",
         routePath: ROUTES.BUSINESS_OVERVIEW,
         group: "Shared Business",
         supportedModes: allModes,
@@ -194,7 +194,7 @@ export const coreModules: readonly V3ModuleMetadata[] = [
       {
         moduleId: "audit",
         label: "Audit Log",
-        description: "Hardcoded audit event dashboard for important business actions and future append-only history.",
+        description: "Static audit event dashboard for important business actions and future append-only history.",
         routePath: ROUTES.AUDIT_LOG,
         group: "Shared Business",
         supportedModes: allModes,
@@ -205,7 +205,7 @@ export const coreModules: readonly V3ModuleMetadata[] = [
       {
         moduleId: "audit",
         label: "Approval Center",
-        description: "Hardcoded approval queue for purchase, payroll, contract, and operation exceptions.",
+        description: "Static approval queue for purchase, payroll, contract, and operation exceptions.",
         routePath: ROUTES.APPROVALS,
         group: "Shared Business",
         supportedModes: allModes,

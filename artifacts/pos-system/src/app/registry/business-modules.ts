@@ -29,7 +29,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
       {
         moduleId: "employees",
         label: "Team Management",
-        description: "Hardcoded employee directory, department, role, workload, and onboarding dashboard.",
+        description: "Static employee directory, department, role, workload, and onboarding dashboard.",
         routePath: ROUTES.TEAM_MANAGEMENT,
         group: "Shared Business",
         supportedModes: nonRetailModes,
@@ -40,7 +40,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
       {
         moduleId: "employees",
         label: "Employee Performance",
-        description: "Hardcoded performance scorecard and KPI planning dashboard.",
+        description: "Static performance scorecard and KPI planning dashboard.",
         routePath: ROUTES.EMPLOYEE_PERFORMANCE,
         group: "Shared Business",
         supportedModes: nonRetailModes,
@@ -51,7 +51,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
       {
         moduleId: "employees",
         label: "Employee Contracts",
-        description: "Hardcoded contract register and renewal readiness dashboard.",
+        description: "Static contract register and renewal readiness dashboard.",
         routePath: ROUTES.EMPLOYEE_CONTRACTS,
         group: "Shared Business",
         supportedModes: nonRetailNonRawMaterialModes,
@@ -62,7 +62,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
       {
         moduleId: "employees",
         label: "Payroll",
-        description: "Hardcoded payroll preview for salary, allowance, deduction, and approval readiness.",
+        description: "Static payroll preview for salary, allowance, deduction, and approval readiness.",
         routePath: ROUTES.PAYROLL,
         group: "Shared Business",
         supportedModes: nonRetailNonRawMaterialModes,
@@ -89,7 +89,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
       {
         moduleId: "attendance",
         label: "Employee Attendance",
-        description: "Hardcoded check-in, check-out, missing attendance, and workforce visibility dashboard.",
+        description: "Static check-in, check-out, missing attendance, and workforce visibility dashboard.",
         routePath: ROUTES.EMPLOYEE_ATTENDANCE,
         group: "Shared Business",
         supportedModes: nonRetailNonRawMaterialModes,
@@ -118,7 +118,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
       {
         moduleId: "shifts",
         label: "Shift Reports",
-        description: "Hardcoded shared closing summary for shift revenue, variance, and operations review.",
+        description: "Static shared closing summary for shift revenue, variance, and operations review.",
         routePath: ROUTES.OPERATION_REPORTS,
         group: "Shared Business",
         supportedModes: cashierShiftModes,
@@ -129,7 +129,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
       {
         moduleId: "shifts",
         label: "Shift Overview",
-        description: "Hardcoded roster coverage, open slot, and schedule risk dashboard.",
+        description: "Static roster coverage, open slot, and schedule risk dashboard.",
         routePath: ROUTES.ROSTER_OVERVIEW,
         group: "Shared Business",
         supportedModes: nonRetailNonRawMaterialModes,
@@ -158,7 +158,7 @@ export const businessModules: readonly V3ModuleMetadata[] = [
       {
         moduleId: "reports",
         label: "HPP Calculator",
-        description: "Hardcoded cost-of-goods calculator for unit cost, markup, and selling price planning.",
+        description: "Static cost-of-goods calculator for unit cost, markup, and selling price planning.",
         routePath: ROUTES.HPP_CALCULATOR,
         group: "Shared Business",
         supportedModes: nonRawMaterialModes,

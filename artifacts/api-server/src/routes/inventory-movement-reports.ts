@@ -1,8 +1,8 @@
-import type {
+import {
   Prisma,
-  StockMovementReason,
-  StockMovementSource,
-  StockMovementType,
+  type StockMovementReason,
+  type StockMovementSource,
+  type StockMovementType,
 } from "@prisma/client";
 import { Router } from "express";
 
@@ -29,7 +29,13 @@ const stockMovementReasonValues = new Set<string>(STOCK_MOVEMENT_REASONS);
 const stockMovementSourceValues = new Set<string>(STOCK_MOVEMENT_SOURCES);
 
 type InventoryMovementReportSort = "NEWEST" | "OLDEST" | "HIGHEST_QUANTITY" | "HIGHEST_VALUE";
-type StockMovementWithItem = Prisma.StockMovementGetPayload<{ include: { inventoryItem: true } }>;
+type StockMovementSnapshotFields = Readonly<{
+  previousStock?: number | null;
+  newStock?: number | null;
+  unitCostSnapshot?: number | null;
+}>;
+type StockMovementWithItem = Prisma.StockMovementGetPayload<{ include: { inventoryItem: true } }> &
+  StockMovementSnapshotFields;
 type InventoryMovementReportRow = ReturnType<typeof toMovementReportRow>;
 
 function parseFormat(value: unknown) {

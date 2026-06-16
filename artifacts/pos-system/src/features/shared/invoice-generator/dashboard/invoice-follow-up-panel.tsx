@@ -11,7 +11,8 @@ import {
   type InvoiceFollowUpStatus,
 } from "@/lib/api/invoice-api";
 import { formatCurrency } from "@/features/shared/format";
-import { DashboardActionButton, DashboardActions, DashboardPanel, StatCard } from "@/features/shared/dashboard";
+import { StatCard } from "@/features/shared/cards";
+import { DashboardActionButton, DashboardActions, DashboardPanel } from "@/features/shared/dashboard";
 import {
   INVOICE_GENERATOR_FILTER_FOLLOW_UP_EVENT,
   INVOICE_GENERATOR_LOAD_INVOICE_EVENT,

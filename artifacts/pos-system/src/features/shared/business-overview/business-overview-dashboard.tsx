@@ -145,7 +145,7 @@ const sharedModules: SharedModule[] = [
     description: "Income, expense, daily cash movement, and period comparison.",
     route: ROUTES.CASHFLOW,
     owner: "Finance",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "green",
   },
   {
@@ -154,7 +154,7 @@ const sharedModules: SharedModule[] = [
     description: "P&L summary, gross margin, expense ratio, and printable report view.",
     route: ROUTES.FINANCIAL_REPORTS,
     owner: "Finance",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "slate",
   },
   {
@@ -163,7 +163,7 @@ const sharedModules: SharedModule[] = [
     description: "Business identity, customer data, invoice line items, and preview.",
     route: ROUTES.INVOICE_GENERATOR,
     owner: "Billing",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "blue",
   },
   {
@@ -181,7 +181,7 @@ const sharedModules: SharedModule[] = [
     description: "Cost breakdown, unit cost, target markup, and selling price simulation.",
     route: ROUTES.HPP_CALCULATOR,
     owner: "Finance Ops",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "green",
   },
   {
@@ -190,7 +190,7 @@ const sharedModules: SharedModule[] = [
     description: "Shared operational closing summary for shift revenue, variance, and review.",
     route: ROUTES.OPERATION_REPORTS,
     owner: "Operations",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "amber",
   },
   {
@@ -199,7 +199,7 @@ const sharedModules: SharedModule[] = [
     description: "Employee directory, department, role, workload, and onboarding status.",
     route: ROUTES.TEAM_MANAGEMENT,
     owner: "HR Ops",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "blue",
   },
   {
@@ -208,7 +208,7 @@ const sharedModules: SharedModule[] = [
     description: "Weekly workforce coverage, open slots, and schedule risk preview.",
     route: ROUTES.ROSTER_OVERVIEW,
     owner: "HR Ops",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "slate",
   },
   {
@@ -217,7 +217,7 @@ const sharedModules: SharedModule[] = [
     description: "Performance scorecard, role output, coaching alerts, and KPI planning.",
     route: ROUTES.EMPLOYEE_PERFORMANCE,
     owner: "HR Ops",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "green",
   },
   {
@@ -226,7 +226,7 @@ const sharedModules: SharedModule[] = [
     description: "Important system events, actor tracking, severity, and future audit trail.",
     route: ROUTES.AUDIT_LOG,
     owner: "Control",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "slate",
   },
   {
@@ -235,7 +235,7 @@ const sharedModules: SharedModule[] = [
     description: "Purchase, payroll, contract, and operation exception approval queue.",
     route: ROUTES.APPROVALS,
     owner: "Management",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "amber",
   },
   {
@@ -244,7 +244,7 @@ const sharedModules: SharedModule[] = [
     description: "Contract type, validity, renewal alert, and document readiness preview.",
     route: ROUTES.EMPLOYEE_CONTRACTS,
     owner: "HR Ops",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "blue",
   },
   {
@@ -253,7 +253,7 @@ const sharedModules: SharedModule[] = [
     description: "Check-in, check-out, missing attendance, and shift attendance overview.",
     route: ROUTES.EMPLOYEE_ATTENDANCE,
     owner: "HR Ops",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "green",
   },
   {
@@ -262,7 +262,7 @@ const sharedModules: SharedModule[] = [
     description: "Salary preview, allowance, deduction, approval readiness, and payout draft.",
     route: ROUTES.PAYROLL,
     owner: "Finance HR",
-    readiness: "Hardcoded demo",
+    readiness: "Static preview",
     tone: "amber",
   },
 ];
@@ -410,15 +410,15 @@ export function BusinessOverviewDashboard() {
   return (
     <DashboardShell
       title="Shared Business Dashboard"
-      description="Hardcoded cross-mode overview for demoing shared business, workforce, finance, audit, and operations modules before every mode has real backend data."
+      description="Static cross-mode overview for previewing shared business, workforce, finance, audit, and operations modules before every mode has real backend data."
     >
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <div>
-            <p className="font-semibold">Demo-only shared dashboard</p>
+            <p className="font-semibold">Static preview shared dashboard</p>
             <p className="mt-1 leading-6">
-              Semua angka di halaman ini masih hardcoded. Dashboard ini dibuat sebagai
+              Semua angka di halaman ini masih static preview. Dashboard ini dibuat sebagai
               presentation layer lintas mode, bukan sumber data produksi, bukan schema baru,
               dan bukan pengganti business mode service.
             </p>
@@ -436,7 +436,7 @@ export function BusinessOverviewDashboard() {
 
       <DashboardPanel
         title="Mode Snapshot"
-        description="High-level hardcoded status for each business mode without changing the mode selector service."
+        description="High-level static status for each business mode without changing the mode selector service."
       >
         <div className="grid gap-4 p-4 lg:grid-cols-2">
           {modeSnapshots.map((snapshot) => (
@@ -451,7 +451,7 @@ export function BusinessOverviewDashboard() {
           description="Entry points for reusable dashboards that can work across restaurant, retail, raw material, and service modes."
           action={
             <DashboardActions>
-              <DashboardActionButton icon={RefreshCw} disabled title="Hardcoded dashboard has no backend refresh yet.">
+              <DashboardActionButton icon={RefreshCw} disabled title="Static preview dashboard has no backend refresh yet.">
                 Refresh
               </DashboardActionButton>
               <DashboardActionButton icon={Download} disabled title="Export is deferred until this overview has a backend source.">

@@ -7,10 +7,9 @@ import {
   DashboardActionButton,
   DashboardActions,
   DashboardPanel,
-  StatCard,
-  StatusPill,
 } from "@/features/shared/dashboard";
-import { formatNumber } from "@/features/shared/utils";
+import { StatCard, StatusPill } from "@/features/shared/cards";
+import { formatNumber } from "@/features/shared/format";
 import { getApiErrorMessage } from "@/lib/api/api-client";
 import {
   shiftsApi,

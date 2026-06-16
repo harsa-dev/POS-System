@@ -1,1083 +1,836 @@
-# POS System V3 Phase 6A: Retail Mode Deep Hardening, Flow Completion, Shared Dashboard Wiring, Prisma/API Alignment, and Structure Cleanup
+POS System V3 Phase 6B: API Contract Integrity, Shared Dashboard Architecture, Business Mode Generalization, Prisma Schema Alignment, and Anti-Spaghetti Cleanup
+Context
 
-## Context
+Do not return a success report if the work only makes typecheck/build pass. This phase is about correctness of contracts, schema, permissions, shared dashboard architecture, and business-mode relationships. Green checks are required, but green checks alone are not enough.
 
-Phase 1, Phase 2, Phase 3, Phase 4A, Phase 4B, Phase 5A, and Phase 5B have already been implemented locally.
+If a bridge exists only because the naming, API contract, or dashboard support contract is wrong, delete the bridge and fix the source contract. Do not decorate bad architecture with helper functions.
+
+Phase 1 through Phase 6A have already been implemented locally.
 
 Current business modes:
 
-* `restaurant`: active
-* `retail`: active
-* `raw-material`: active
-* `custom-business`: planned / guarded only
+restaurant: active
+retail: active
+raw-material: active
+custom-business: planned / guarded only
 
-Raw Material status:
+Recent state:
 
-* Phase 4A cleaned Raw Material naming, route wiring, shared dashboard restrictions, and planned/unsupported states.
-* Phase 4B wired Raw Material shared dashboards to prefer real `GET /raw-material/summary` backend API where applicable.
-* Procurement cashflow, supplier invoice hold, financial reports, HPP/COGS remain planned/unsupported for Raw Material because the schema does not exist yet.
-* Phase 4C will later focus only on Raw Material file cleanup and structure splitting.
+Backend TypeScript passed after fixing real errors in shared dashboard/customer/inventory/invoice files.
+Frontend scoped TypeScript passed for Restaurant, Retail, Raw Material, and Service.
+Frontend production build passed.
+pnpm workspace commands are still blocked by local environment permission: EPERM: operation not permitted, lstat 'C:\Users\LENOVO'.
+Some shared dashboard, permission, auth, mode, and registry logic has changed a lot.
+There may still be API contract drift, hardcoded logic, duplicate code, hidden bridge spaghetti, Prisma schema mismatch, and mode-to-mode relationship bugs.
 
-Restaurant status:
+This Phase 6B task is a strict architecture integrity pass.
 
-* Phase 5A added Restaurant shared dashboard bridge and cleaned sample/placeholder wording.
-* Phase 5B hardened Restaurant core POS flow.
-* Restaurant POS now uses canonical `restaurantClient` for order creation, tables, and open orders.
-* Dine-in table selection is guarded in frontend and backend.
-* Kitchen, serving, and order completion share centralized Restaurant action rules.
-* Phase 5C will later continue Restaurant fallback/core-system cleanup.
-
-This Phase 6A task is scoped to **Retail mode only**, plus shared infrastructure only when Retail needs it.
-
-Do not work broadly on Restaurant or Raw Material.
-Do not change Raw Material Phase 4A/4B behavior.
-Do not change Restaurant Phase 5A/5B behavior.
-Do not implement full Custom Business / Service.
-Do not push, branch, commit, or open PR.
+Do not create a branch.
+Do not commit.
+Do not push.
+Do not open PR.
 Work locally only.
 
----
+Main Goal
 
-## Main Goal
+Make the codebase structurally honest.
 
-Make Retail mode feel like a real, clean, guarded, maintainable, and testable business mode.
+This phase must find and fix:
 
-This includes:
+API contract drift.
+Hardcoded mode/dashboard/permission/API/status values.
+Repeated code.
+Spaghetti bridge/adapters that hide bad architecture.
+Shared dashboard to business-mode relationship bugs.
+Business-mode to business-mode relationship bugs.
+Auth/permission/role drift.
+Prisma schema/client/API mismatch.
+TypeScript errors that were hidden, avoided, or worked around.
+Duplicate features/files.
+Fake compatibility bridges.
+Over-specialized shared code.
+Mode-specific logic leaking into shared code.
+Shared code importing mode internals incorrectly.
+Runtime routes or dashboards that contradict the canonical business mode contract.
 
-1. Retail frontend flow hardening.
-2. Retail backend/API polish.
-3. Retail Prisma/database alignment if needed.
-4. Retail shared dashboard wiring.
-5. Retail route guard and access guard tightening.
-6. Retail feature limiting.
-7. Retail folder/file structure cleanup.
-8. Retail naming cleanup.
-9. Retail duplicate/hardcoded code cleanup.
-10. Retail fat file split.
-11. Retail edge case handling.
-12. Retail docs update.
-13. Retail verification.
+This phase is not done until the structure is actually clean, not merely green.
 
-This phase is incomplete if Retail still behaves like demo UI, uses fake production data, leaks Restaurant/Raw Material copy, has fat mixed-responsibility files, or shows unsupported dashboards as active.
+Non-Negotiable Principles
+Do not hide red code.
+Do not silence TypeScript.
+Do not use fake bridges just to pass checks.
+Do not create alias maps that normalize bad architecture.
+Do not keep spaghetti bridge chains.
+Do not let shared dashboard code depend on random mode-specific assumptions.
+Do not let mode-specific code leak into shared unless it is an intentional typed adapter boundary.
+Do not leave API response contracts implicit.
+Do not leave frontend and backend DTOs drifting.
+Do not make Prisma schema changes blindly.
+Do not create destructive migrations.
+Do not claim checks passed unless they actually passed.
 
----
+Forbidden unless there is absolutely no alternative and documented clearly:
 
-## Scope Boundary
+any
+as any
+as unknown as
+@ts-ignore
+@ts-expect-error
 
-Focus only on:
+Also forbidden:
 
-```txt
-artifacts/pos-system/src/features/retail
-artifacts/pos-system/src/app routes related to retail
-artifacts/pos-system/src/config related to retail mode/modules/routes
-artifacts/pos-system/src/lib helpers used by retail
-artifacts/pos-system/src/components used by retail
-artifacts/pos-system/src/features/shared only when Retail dashboard wiring needs it
-artifacts/api-server routes/services/controllers related to retail
-Prisma schema only if Retail requires real backend alignment
-docs related to Retail and V3 business modes
-scripts/checks related to Retail
-```
+const legacyModeMap = {
+  fnb: "restaurant",
+  warehouse: "raw-material",
+  service: "custom-business",
+};
 
-Do not modify unrelated Restaurant/Raw Material logic unless:
+Old mode handling may exist only at the single documented storage migration boundary.
 
-* Retail imports shared code that has a bug.
-* Shared dashboard wiring needs a reusable mode-aware helper.
-* Business mode contract needs a Retail correction.
-* Route guard logic must be corrected for Retail.
+Canonical Business Mode Contract
 
-If you touch shared files, explain why.
+Canonical mode IDs:
 
----
+restaurant
+retail
+raw-material
+custom-business
 
-## Required First Steps
+Rules:
+
+restaurant, retail, and raw-material are active.
+custom-business is planned/guarded only.
+fnb, warehouse, and service are not active runtime mode IDs.
+No API should accept old IDs as active mode IDs.
+No shared dashboard should treat old IDs as normal modes.
+No route should depend on old IDs.
+No permission config should include old IDs as active modes.
+No frontend state should silently normalize old IDs except the documented storage-boundary repair.
+Part 1: Full Documentation and Source Audit
 
 Before editing:
 
-1. Read all docs related to V3, Retail, business modes, shared dashboards, API, database, and phase notes.
-2. Inspect the Retail feature folder.
-3. Inspect Retail routes.
-4. Inspect Retail navigation/sidebar/module registry.
-5. Inspect Retail API clients.
-6. Inspect Retail backend/API routes and services.
-7. Inspect Prisma schema for retail/product/inventory/sales/order/payment/customer/stock-related models.
-8. Inspect shared dashboards and how they should receive Retail context.
-9. Inspect business mode guard logic for Retail.
-10. Inspect scripts/checks related to Retail.
-11. Write a short audit plan before changing code.
+Read all V3 docs.
+Read Phase 4A, 4B, 5A, 5B, and 6A docs.
+Inspect all business mode contracts/configs.
+Inspect all API clients.
+Inspect all backend DTOs/mappers/services/routes.
+Inspect Prisma schema.
+Inspect shared dashboard shell/bridge/adapter files.
+Inspect auth/session/permission files.
+Inspect route guards.
+Inspect sidebar/module registry.
+Inspect shared helpers.
+Inspect all mode-specific shared-dashboard integrations.
 
-Search terms:
+Search globally for:
 
-```txt
+restaurant
 retail
-retail mode
-retail workspace
-retail-interactive-workspace
-product
-products
-sku
-barcode
-category
-customer
-customers
-cart
-checkout
-cashier
-sales
-sale
-transaction
-order
-orders
-payment
-payments
-invoice
-receipt
-inventory
-stock
-stock movement
-discount
-tax
-refund
-return
-supplier
-variant
-unit
-price
-cost
-margin
-low stock
-out of stock
+raw-material
+custom-business
+fnb
+FNB
+FnB
+warehouse
+service
 businessMode
 currentBusinessMode
-shared dashboard
 dashboard
-cashflow
-analytics
-financial report
-invoice generator
-sidebar
-module
-registry
-guard
-role
+shared dashboard
+bridge
+adapter
+contract
+DTO
+dto
+mapper
+schema
+zod
+api
+client
+response
+envelope
 permission
-restaurant
-raw-material
-warehouse
-fnb
-service
-custom-business
-sample
+role
+auth
+session
+guard
+route
+sidebar
+registry
+module
+hardcoded
 mock
+sample
 placeholder
-```
-
-If old names like `warehouse`, `fnb`, `service`, or Restaurant/Raw Material copy still appear in active Retail runtime code, fix them.
-Historical docs can mention old names only if they clearly say they are legacy.
-
----
-
-## Retail Product Definition
-
-Retail mode should represent an operational retail POS / store management workflow.
-
-Expected domain areas:
-
-1. Product list
-2. Product categories
-3. Stock level
-4. Stock movement
-5. Cart / checkout
-6. Sales transactions
-7. Payment handling
-8. Receipt/invoice
-9. Customer context if already present
-10. Discount/tax if already present
-11. Return/refund if already present
-12. Inventory low-stock/out-of-stock status
-13. Shared dashboard analytics/reporting if already supported
-
-Do not invent a massive retail ERP.
-Complete and harden what already exists.
-
-If a feature does not exist yet, do not build it fully unless it is a small guard/state/helper needed to make the current flow coherent.
-
----
-
-# Part 1: Retail Flow Audit
-
-Audit current Retail flow end-to-end.
-
-Check:
-
-## Entry Flow
-
-* User selects Retail from `/select-mode`.
-* Correct mode ID is stored: `retail`.
-* User is redirected to correct Retail dashboard/workspace.
-* Refresh keeps valid mode.
-* Invalid mode redirects safely.
-* Old `warehouse` value does not become active runtime mode.
-* Old `fnb` value does not affect Retail.
-* Old `service` value does not affect Retail.
-* `custom-business` planned mode does not reuse Retail UI.
-
-## Route Flow
-
-* Direct Retail route works when selected mode is `retail`.
-* Direct Retail route redirects safely when no mode is selected.
-* Direct Retail route redirects safely when selected mode is `restaurant`.
-* Direct Retail route redirects safely when selected mode is `raw-material`.
-* Direct Retail route redirects safely when selected mode is `custom-business`.
-* `next` param behavior is safe and predictable if used.
-* No active route should use old/legacy mode naming.
-
-## Navigation Flow
-
-* Sidebar shows only Retail-relevant modules.
-* Sidebar order matches canonical registry.
-* Sidebar role permissions match actual access.
-* No Restaurant/Raw Material/Custom Business modules leak into Retail.
-* No FNB/Warehouse/Service active labels appear.
-* Unsupported Retail features are hidden, disabled, or marked planned.
-
-## Data Flow
-
-* Product data loads safely.
-* Product category data loads safely if present.
-* Stock data loads safely.
-* Sales/order data loads safely if present.
-* Payment data loads safely if present.
-* Customer data loads safely if present.
-* Empty states are handled.
-* API error states are handled.
-* Malformed API envelope is handled.
-* Slow loading state is handled if applicable.
-* Duplicate submit is prevented where there are forms/actions.
-
----
-
-# Part 2: Retail Edge Cases
-
-Add guards, states, and validation for these edge cases where the current app supports the flow:
-
-1. No products.
-2. No categories.
-3. No customers.
-4. No transactions/orders.
-5. Product out of stock.
-6. Product below minimum stock.
-7. Product deleted/unavailable while selected.
-8. Category deleted/unavailable.
-9. Invalid quantity.
-10. Quantity is zero.
-11. Quantity exceeds stock.
-12. Invalid price.
-13. Invalid discount/tax if supported.
-14. Empty cart checkout.
-15. Duplicate checkout submit.
-16. Payment missing.
-17. Payment failed.
-18. Payment already paid.
-19. Unsupported payment method.
-20. Refund/return unsupported but visible.
-21. API returns empty array.
-22. API returns error envelope.
-23. API returns malformed envelope.
-24. User opens Retail route with wrong selected mode.
-25. User refreshes after selecting Retail.
-26. User manually sets `currentBusinessMode` to `warehouse`.
-27. User manually sets `currentBusinessMode` to `retail`.
-28. User manually sets `currentBusinessMode` to invalid random string.
-29. Planned Custom Business must not reuse Retail UI.
-30. Retail shared dashboard must not show Restaurant/Raw Material copy.
-
-Do not create fake UI just to claim edge cases are handled.
-Use real guards, empty states, validation, and safe fallbacks.
-
----
-
-# Part 3: Retail Prisma / Database Alignment
-
-Inspect Prisma schema and backend models related to Retail.
-
-Check whether Retail currently has proper persistence for:
-
-* retail business/store entity if separate from generic business
-* products
-* product categories
-* SKUs/barcodes if present
-* product variants if present
-* stock level
-* stock movement
-* sales transactions/orders
-* cart/checkout if persisted
-* payments
-* customers
-* discounts/tax/settings
-* refunds/returns if present
-* audit logs
-* ownership/tenant/business scope
-
-If Prisma models already exist:
-
-* verify API/services use them correctly
-* verify frontend types match backend response
-* verify request schemas match database constraints
-* verify nullable fields are handled
-* verify ownership/tenant filtering exists if applicable
-* verify role checks match operations
-
-If Prisma models do not exist but Retail frontend pretends data is real:
-
-* do not add a massive schema blindly
-* document the mismatch
-* add Prisma only if necessary to make Retail mode coherent and testable
-* keep schema changes minimal and scoped
-* explain every Prisma change
-
-Allowed Prisma alignment only if needed:
-
-* product/category relation correction
-* stock movement relation correction
-* order/payment status enum correction
-* missing relation needed by existing Retail flow
-* nullable field correction if current API already depends on it
-* minimal retail transaction model only if current active Retail UI claims persisted transaction support and no equivalent exists
-
-Rules:
-
-* Do not break Restaurant or Raw Material schema.
-* Do not rename broad shared models without strong reason.
-* Do not create destructive migrations.
-* Do not add nullable chaos just to make things pass.
-* Do not add schema fields that are not used by current Retail flow.
-* If migration is required, document exact command and risk.
-* If environment cannot run Prisma generate/migrate, report it honestly.
-
----
-
-# Part 4: Retail Backend/API Hardening
-
-Audit and improve backend/API only for Retail-related flow.
-
-Check:
-
-## API Design
-
-* endpoints match frontend calls
-* endpoint names match behavior
-* request payload matches frontend
-* response shape matches frontend
-* response envelope is consistent
-* status codes are correct
-* errors are safe
-
-## Validation
-
-* route params validated
-* body validated
-* product ID validated
-* category ID validated
-* quantity validated
-* price validated
-* stock movement type validated
-* payment method/status validated
-* discount/tax validated if present
-* customer ID validated if present
-
-## Security / Guarding
-
-* no invalid mode accepted
-* no old `warehouse` or `service` mode accepted as active API mode
-* no client mode trusted blindly
-* ownership/tenant filter exists if architecture has owner/business/store IDs
-* role permission checks exist where role system applies
-* unsafe internal errors are not leaked
-
-## Service Structure
-
-* route handler should not contain too much business logic
-* repeated mapper logic should be extracted
-* repeated response/error logic should use shared helper if already available
-* checkout/sale creation should be consistent
-* stock movement writes should be consistent
-* payment update logic should be consistent
-* audit log write should be consistent if used
-
-Do not rewrite all backend.
-Only harden Retail-related backend/API.
-
----
-
-# Part 5: Retail Shared Dashboard Wiring
-
-Wire Retail mode into shared dashboards according to existing shared dashboard context.
-
-Inspect shared dashboards such as:
-
-* Sales Analytics
-* Customers & Partners
-* Inventory Management
-* Cashflow
-* Financial Reports
-* Invoice Generator
-* Shift Cashier Reports
-* Team Management
-* Employee Performance
-* Approvals
-* Audit Log
-* Platform Monitoring
-* Any shared dashboard registry/module system
-
-For each shared dashboard, decide Retail behavior:
-
-1. Supported and useful for Retail
-2. Supported but with Retail-specific labels/data mapping
-3. Not supported and should be hidden/disabled for Retail
-4. Planned only and should show clear state
-
-Expected examples:
-
-## Sales Analytics
-
-Retail should likely be supported if sales/order data exists.
-It should show:
-
-* sales revenue
-* transaction count
-* average transaction value
-* top products
-* product/category performance
-* payment totals if available
-
-## Inventory Management
-
-Retail should likely be supported.
-It should show:
-
-* product stock
-* low stock
-* out of stock
-* stock movement
-* SKU/barcode/product context if available
-
-## Cashflow
-
-Retail may be supported if payment/sales data exists.
-It should show:
-
-* cash/card/QRIS/transfer revenue
-* refunds if available
-* daily sales cashflow
-* not Restaurant table/order copy
-
-## Financial Reports
-
-Retail may be supported if revenue/cost/margin data exists.
-It should not fake profit if cost/margin data is missing.
-If only revenue exists, label it clearly as revenue summary.
-
-## Invoice Generator
-
-Retail may support receipt/invoice generation if sales/payment data exists.
-Do not show Restaurant table copy or Raw Material supplier invoice copy.
-
-## Shift Cashier Reports
-
-Retail may be supported if cashier shift exists.
-If not wired, hide or mark planned.
-
-## Customers & Partners
-
-Retail may map to customers/loyalty/buyers if customer entity exists.
-If no customer entity, hide or show limited context.
-
-Rules:
-
-* Do not show Restaurant/Raw Material dashboard copy in Retail.
-* Do not fake data.
-* Do not wire unsupported dashboards just to make sidebar full.
-* Shared dashboard visibility must be mode-aware.
-* Shared dashboard labels must be context-aware.
-* Shared dashboard empty states must be context-aware.
-* Retail should only see dashboards that make business sense.
-
-If a shared dashboard needs mode-specific adapter:
-
-* create a clean adapter/helper
-* keep adapter config typed
-* do not hardcode mode checks everywhere
-* avoid giant switch statements inside UI components
-
----
-
-# Part 6: Retail Guarding, Limiting, and Permissions
-
-Tighten access control for Retail.
+preview
+legacy
+TODO
+FIXME
+any
+as any
+as unknown as
+@ts-ignore
+@ts-expect-error
+
+Do not edit before you understand the current architecture.
+
+Part 2: API Contract Audit
+
+Audit every frontend API client and matching backend endpoint.
+
+Scope includes:
+
+Restaurant API clients and backend routes.
+Retail API clients and backend routes.
+Raw Material API clients and backend routes.
+Shared dashboard API clients and backend routes.
+Auth/session/user endpoints.
+Permission/role-related endpoints.
+Invoice/payment/order/inventory/customer/shared surfaces if used by dashboards.
+
+For each API pair, check:
+
+Frontend Client
+endpoint path
+HTTP method
+request payload type
+response type
+error handling
+envelope parsing
+null/empty behavior
+mode ID usage
+auth/session dependency
+Backend Endpoint
+route path
+route params
+request body schema
+response DTO
+response envelope
+status codes
+permission guard
+business mode guard
+ownership/tenant filtering
+error handling
+mapper output
+Contract Drift Checks
+frontend expects field backend does not return
+backend returns field frontend ignores but should use
+frontend sends field backend rejects
+backend accepts unsafe fields frontend should not send
+response envelope mismatch
+nullable mismatch
+enum mismatch
+status mismatch
+mode ID mismatch
+DTO name does not match behavior
+mapper output does not match client type
+API path hardcoded in multiple places
+
+Required fixes:
+
+create/align typed API contracts where useful
+centralize repeated response envelope parsing
+align frontend types with backend DTOs
+align backend DTOs with real Prisma data
+remove duplicate mappers
+remove fake client-side fallbacks pretending to be real
+ensure error responses are safe and predictable
+
+Do not loosen types just to pass.
+
+Part 3: Shared Dashboard Architecture Audit
+
+The shared dashboard relationship with business modes must be clean.
 
 Audit:
 
-* route guard
-* sidebar visibility
-* feature visibility
-* role permissions
-* planned/unsupported dashboard visibility
-* direct URL access
-* API access if backend has auth/roles
+dashboard shell
+dashboard registry
+shared dashboard adapters
+Restaurant bridge
+Retail bridge if present
+Raw Material bridge
+Custom Business planned behavior
+dashboard support matrices
+unavailable/planned states
+sample fallback states
+mode-specific context builders
 
-Expected role examples if shared role system exists:
+Goal:
 
-* OWNER: broad access
-* MANAGER: broad operational access, maybe limited settings
-* CASHIER: cashier/checkout/payment access
-* STAFF: inventory/product access if present
-* ADMIN-like roles only if already present
+one clear architecture
+no bridge spaghetti
+no nested bridges that shadow each other
+no generic fallback overriding a mode-specific adapter
+no mode-specific copy in the wrong mode
+no unsupported dashboard displayed as active
+no planned dashboard pretending to be real
+no fake sample data pretending to be backend-backed
+
+Preferred architecture:
+
+central dashboard ID contract
+central mode support matrix
+typed mode adapter registry
+one dashboard shell resolution flow
+mode adapters that return context/support state
+shared unavailable/planned state renderer
+explicit sample fallback badge if fallback is used
+
+Example contract shape if useful:
+
+type SharedDashboardSupport =
+  | "supported"
+  | "read-only"
+  | "sample-fallback"
+  | "preview"
+  | "planned"
+  | "unsupported";
+
+type BusinessModeDashboardAdapter = {
+  mode: BusinessModeId;
+  getSupport(dashboardId: SharedDashboardId): SharedDashboardSupport;
+  getContext(dashboardId: SharedDashboardId): DashboardContext | null;
+  getUnavailableReason(dashboardId: SharedDashboardId): string | null;
+};
+
+Do not force this exact design if the repo has a better existing structure.
+
+Required:
+
+simplify bridge chains
+remove unnecessary bridge layers
+replace bridge spaghetti with typed registry/config
+avoid direct mode checks scattered across UI
+avoid giant untyped switch statements
+keep mode-specific logic behind typed adapter boundaries
+document intentional differences per mode
+Part 4: Business Mode Relationship Audit
+
+Compare all 4 modes:
+
+Restaurant
+Retail
+Raw Material
+Custom Business planned
+
+For each mode compare:
+
+Mode Identity
+canonical ID
+label
+route base
+default route
+storage behavior
+guard behavior
+active/planned status
+Feature Support
+POS/cashier
+order/transaction
+inventory
+payment
+customer/partner
+invoice
+cashflow
+financial report
+analytics
+staff/team
+audit
+monitoring
+procurement
+HPP/COGS
+Shared Dashboard Support
+
+Classify every shared dashboard as:
+
+supported
+read-only
+sample-fallback
+preview
+planned
+unsupported
+Runtime Relationship
+
+Check:
+
+mode switching
+wrong-mode direct route
+shared dashboard direct route
+old storage values
+mode-specific sidebar
+permissions
+API mode guard
+planned mode access
+
+Required:
+
+make relationship rules explicit
+remove inconsistent behavior
+generalize common behavior
+keep real business differences mode-specific
+do not make every mode support every dashboard just because shared code can render it
+Part 5: Auth and Permission Audit
+
+Audit auth and permission deeply.
+
+Check:
+
+auth session shape
+current user type
+role union/enum
+role labels
+permission matrix
+sidebar permission config
+route guard permission config
+API middleware permission config
+business mode access permission
+shared dashboard permission
+planned feature permission
+direct URL bypass
+unauthenticated behavior
+unauthorized behavior
+forbidden behavior
+
+Required:
+
+UI permission and backend permission must not contradict each other
+hidden sidebar item must not be accessible through direct route if unsupported
+direct route must not bypass planned/unsupported gating
+auth/session null must not crash
+old mode IDs must not bypass permissions
+permission denied UI should be clear
+API forbidden/unauthorized responses should be safe and consistent
+duplicate role arrays should be centralized
+
+Do not create fake “allow all” permissions just to make UI work.
+
+Part 6: Prisma Schema and Migration Safety Audit
+
+Audit Prisma schema carefully.
+
+Check:
+
+schema validity
+model names vs API/domain names
+enum values vs frontend/backend unions
+nullable fields vs API contracts
+relation fields vs service queries
+tenant/business/restaurant/store scoping
+migration history
+generated client expectations
+seed/sample data assumptions
+schema fields used by code but not existing
+schema fields existing but wrongly typed in code
+migration deploy blockers
+
+Classify each DB issue:
+
+Environment permission issue
+Missing env var
+Database unavailable
+Prisma schema invalid
+Prisma client not generated
+Migration history drift
+Real schema/code mismatch
+Destructive migration risk
+Existing planned-schema gap
 
 Rules:
 
-* unsupported Retail features should not appear as active.
-* role-limited modules should be hidden or disabled consistently.
-* direct route access should not bypass UI guard.
-* backend should still validate mutations.
-* shared dashboards must check whether Retail supports them.
-* planned features should be clearly marked, not broken.
-* do not copy Restaurant/Raw Material permission assumptions into Retail.
+Do not change schema just because migrate fails.
+Do not make destructive migrations.
+Do not add unused fields.
+Do not add nullable fields as a lazy escape hatch.
+Do not break Restaurant/Retail/Raw Material.
+If schema changes are required, keep them minimal and explain exactly why.
+Run prisma validate and prisma generate if possible.
+If migration cannot run, report exact blocker and safe next command.
+Part 7: Hardcode Audit
 
-If role system exists:
+Search and remove hardcoded values where they create drift.
 
-* define which roles can access Retail modules.
-* align sidebar role permissions with backend role permissions where possible.
-* if uncertain, use conservative access and document it.
+Hardcode categories:
 
----
+business mode IDs
+dashboard IDs
+route paths
+API endpoint paths
+localStorage keys
+role names
+permission names
+status labels
+badge variants
+module IDs
+sidebar labels
+feature support flags
+sample/preview labels
+error messages repeated across files
+response envelope keys
+Prisma enum strings duplicated outside typed contracts
 
-# Part 7: Retail File Structure Cleanup
+Centralize only repeated or contract-critical values.
 
-Clean Retail folder structure.
+Do not centralize one-off UI text.
 
-Preferred structure:
+Bad:
 
-```txt
-features/retail/
-  components/
-    dashboard/
-    products/
-    inventory/
-    checkout/
-    transactions/
-    payments/
-    customers/
-    shared/
-  hooks/
-  services/
-  schemas/
-  types/
-  utils/
-  constants/
-  config/
-```
+mode === "restaurant"
+dashboardId === "cashflow"
+localStorage.getItem("currentBusinessMode")
+fetch("/api/restaurant/shared-dashboard/overview")
+role === "OWNER"
 
-Only create folders that are actually used.
+Better:
 
-Move files if needed:
+BUSINESS_MODE_IDS.restaurant
+SHARED_DASHBOARD_IDS.cashflow
+BUSINESS_MODE_STORAGE_KEY
+getRestaurantSharedDashboardPath(SHARED_DASHBOARD_IDS.overview)
+ROLE_IDS.owner
 
-* components into `components`
-* local hooks into `hooks`
-* API clients/services into `services`
-* Zod/form schemas into `schemas`
-* domain types into `types`
-* formatting/domain helpers into `utils`
-* labels/status/routes/config into `config` or `constants`
+But do not create helper noise for values used once.
 
-Rules:
+Part 8: Duplicate Code Audit
 
-* no giant dumping file
-* no vague `utils.ts` if domain-specific
-* no `warehouse` naming in active Retail runtime
-* no `placeholder` naming if file is active production route
-* no Restaurant/Raw Material logic inside Retail
-* no Retail-specific logic inside global shared unless truly shared
+Find repeated code.
 
-If `retail-interactive-workspace.tsx` is active runtime and still large:
+Look for duplication in:
 
-* rename it if the name is misleading
-* split it into smaller files
-* remove demo/interactive wording unless it is truly preview/demo-only
-* preserve behavior
+API clients
+API envelope parsing
+error parsing
+dashboard support maps
+bridge context builders
+role arrays
+permission checks
+route guards
+localStorage mode repair
+sidebar item generation
+status badge logic
+sample fallback badges
+unavailable/planned dashboard state
+frontend loading/error/empty states
+backend mapper functions
+backend DTO builders
+Prisma query filters
+ownership guards
 
----
+Required:
 
-# Part 8: Retail Fat File Split
+extract reusable helper/config only when duplication is real
+keep helpers domain-specific
+avoid global dumping grounds
+avoid over-generalizing mode-specific business rules
+remove duplicate files only when confirmed unused
+if unsure, document as risk instead of deleting
+Part 9: Anti-Bridge-Spaghetti Cleanup
 
-Identify and split Retail fat files.
+Audit all bridge/adapter files.
 
-Known candidate:
+Search:
 
-* `retail-interactive-workspace.tsx`
+bridge
+adapter
+compat
+legacy
+fallback
+normalize
+mapMode
+legacyMode
+modeMap
 
-Also search for other large Retail files.
+For every bridge:
 
-For each fat file:
+identify why it exists
+identify whether it is still needed
+identify whether it hides bad naming/contract drift
+identify whether it creates nested resolution chains
+identify whether it shadows another adapter
+identify whether it imports too much
+identify whether it can be replaced by a typed registry/config
 
-1. identify responsibilities
-2. extract constants
-3. extract helper functions
-4. extract child components
-5. extract hooks if stateful logic is reusable
-6. extract schemas/types if useful
-7. update imports
-8. preserve visible behavior
-9. run Retail typecheck
+Allowed bridges:
 
-Extraction examples:
+one storage-boundary migration bridge for old localStorage mode values
+one typed adapter registry per shared dashboard/domain if needed
+one API mapper when converting backend DTO to frontend view model
 
-* `retail-workspace.tsx`
-* `retail-dashboard-header.tsx`
-* `retail-metric-cards.tsx`
-* `retail-product-grid.tsx`
-* `retail-product-table.tsx`
-* `retail-cart-panel.tsx`
-* `retail-checkout-summary.tsx`
-* `retail-inventory-table.tsx`
-* `retail-low-stock-alerts.tsx`
-* `retail-payment-panel.tsx`
-* `retail-empty-state.tsx`
-* `retail-status-badge.tsx`
-* `retail-stock.helpers.ts`
-* `retail-price.helpers.ts`
-* `retail-dashboard-metrics.ts`
-* `retail-routes.config.ts`
+Forbidden bridges:
 
-Do not over-split into tiny useless files.
+old mode alias compatibility in normal runtime
+bridge that only exists because names are wrong
+bridge that returns fake data as real
+bridge that hides unsupported dashboard as supported
+bridge chain with multiple fallbacks where nobody knows source of truth
+bridge that imports unrelated mode internals
 
----
+Required:
 
-# Part 9: Retail Naming Cleanup
+remove unnecessary bridges
+replace spaghetti with typed contract/config
+document remaining intentional adapter boundaries
+Part 10: Red Code and Hidden Error Audit
 
-Canonical naming:
+Search for hidden or suspicious error suppression:
 
-* Mode ID: `retail`
-* User label: `Retail`
-* Folder: `features/retail`
-* Route slug: keep existing canonical route if docs define it, otherwise use consistent V3 route
-* Type name examples:
+any
+as any
+as unknown as
+@ts-ignore
+@ts-expect-error
+eslint-disable
+TODO fix type
+temporary
+hack
+workaround
+quick fix
+fallback because type
 
-  * `RetailMode`
-  * `RetailProduct`
-  * `RetailCategory`
-  * `RetailCartItem`
-  * `RetailTransaction`
-  * `RetailPayment`
-  * `RetailStockMovement`
+For each:
 
-Avoid:
+remove it if possible
+replace with proper type/schema/contract
+document if truly unavoidable
 
-* `warehouse` as active name
-* `service`
-* `fnb`
-* `restaurant` naming in Retail files unless comparing mode boundaries
-* `raw-material` naming in Retail files unless comparing mode boundaries
-* `placeholder` for active workspace
-* `interactive` if file is active production route and not demo-specific
-* `data.ts`
-* `helper.ts`
-* `utils.ts`
-* `temp`
-* `old`
-* `final`
+No task is complete if type errors are just hidden.
 
-Rename misleading files/functions/variables.
+Part 11: File-by-File Review Requirement
 
-After renaming:
+Perform a structured file-by-file review in the affected areas.
 
-* update imports
-* update docs
-* run Retail typecheck
+At minimum review:
 
----
+features/shared
+config
+lib
+components/core
+components/shared
+auth-related files
+permission-related files
+business-mode-related files
+route guard files
+shared dashboard files
+backend shared-dashboard/auth/permission/mode files
+Prisma schema
 
-# Part 10: Retail Hardcode and Duplicate Cleanup
+For each reviewed area, classify:
 
-Remove Retail hardcodes and repeated logic.
+clean
+fixed
+needs later dedicated mode cleanup
+deprecated/unused candidate
+risky but unchanged
 
-Centralize repeated:
+Do not claim the whole repo is clean unless you actually inspected it.
 
-* Retail route paths
-* Retail module IDs
-* Retail dashboard labels
-* product status labels
-* stock status labels
-* stock movement labels
-* payment method labels
-* payment status labels
-* transaction status labels if present
-* low-stock threshold logic
-* price/currency formatting
-* empty state copy if repeated
-* API endpoints if repeated
-* table column configs if repeated
-* card metric configs if repeated
+Part 12: Testing and Verification
 
-Do not centralize one-off text.
+Run checks after changes.
 
-Avoid scattered checks like:
+Try pnpm first:
 
-```ts
-mode === "retail"
-path.includes("retail")
-status === "LOW_STOCK"
-paymentStatus === "PAID"
-quantity <= 0
-```
-
-Prefer typed helpers/configs when repeated:
-
-```ts
-isRetailMode(mode)
-RETAIL_ROUTES
-RETAIL_STOCK_STATUS_CONFIG
-getRetailStockStatus()
-formatRetailPrice()
-canRetailRoleAccessModule()
-```
-
----
-
-# Part 11: Frontend Polish for Retail
-
-Polish Retail UI.
-
-Focus:
-
-* dashboard clarity
-* product list/table readability
-* product category/filter/search clarity
-* cart clarity
-* checkout summary clarity
-* payment state clarity
-* inventory stock visibility
-* low-stock/out-of-stock visibility
-* transaction history clarity
-* empty states
-* loading states
-* error states
-* form validation messages
-* disabled states
-* duplicate submit prevention
-* responsive layout
-* consistent badges
-* consistent buttons
-* context-aware shared dashboard copy
-
-Do not redesign the whole app.
-Polish existing UI so Retail feels intentional and operational.
-
----
-
-# Part 12: Tests and Verification
-
-Run Retail-specific checks first.
-
-Try pnpm if available:
-
-```bash
+pnpm --filter @workspace/pos-system run typecheck:restaurant
 pnpm --filter @workspace/pos-system run typecheck:retail
-pnpm retail:check
+pnpm --filter @workspace/pos-system run typecheck:raw-material
+pnpm --filter @workspace/pos-system run typecheck:service
+pnpm --filter @workspace/pos-system run build
+pnpm typecheck
 pnpm business-mode:check
-```
+pnpm restaurant:check
+pnpm retail:check
+pnpm raw-material:check
 
-If pnpm is blocked by `EPERM lstat C:\Users\LENOVO`, use local commands:
+If pnpm is blocked by EPERM lstat C:\Users\LENOVO, use local commands:
 
-```bash
+tsc -p artifacts/pos-system/tsconfig.restaurant.json --noEmit
 tsc -p artifacts/pos-system/tsconfig.retail.json --noEmit
-```
+tsc -p artifacts/pos-system/tsconfig.raw-material.json --noEmit
+tsc -p artifacts/pos-system/tsconfig.service.json --noEmit
+tsc -p artifacts/api-server/tsconfig.json --noEmit
 
-Also run:
+Run frontend build:
 
-```bash
 cd artifacts/pos-system
 vite build
-```
 
-Run backend check if backend touched:
+Run business mode script:
 
-```bash
-tsc -p artifacts/api-server/tsconfig.json --noEmit
-```
+node scripts/business-mode-switch-check.mjs
 
-Run Prisma checks only if Prisma touched:
+Run sidebar parity script if available.
 
-```bash
+Run Prisma only if schema/client/migration touched:
+
 npx prisma validate
 npx prisma generate
-```
+npx prisma migrate status
 
-If Prisma commands are blocked by environment:
+If migration/deploy cannot run:
 
-* report the exact issue
-* do not claim they passed
-
-Run business mode switch check:
-
-```bash
-node scripts/business-mode-switch-check.mjs
-```
-
-Run sidebar parity if Retail navigation/sidebar/module registry was touched.
+report exact command
+report exact failure
+classify blocker
+do not claim success
 
 Important:
 
-* do not claim full frontend typecheck passed if it times out
-* separate passed/failed/blocked/timed-out checks
-* separate pre-existing issues from issues caused by this phase
+do not claim full frontend typecheck passed if it timed out
+do not claim migration passed if blocked
+separate passed/failed/blocked/timed-out checks
+separate pre-existing issues from introduced issues
+Part 13: Documentation
 
----
+Create or update:
 
-# Part 13: Manual QA Checklist
-
-Provide exact manual QA steps for Retail.
-
-Must include:
-
-## Mode selection
-
-1. Open `/select-mode`.
-2. Select Retail.
-3. Confirm selected mode is stored as `retail`.
-4. Confirm app redirects to Retail dashboard/workspace.
-5. Refresh and confirm Retail stays active.
-
-## Invalid mode
-
-1. Clear `currentBusinessMode`.
-2. Open Retail route directly.
-3. Confirm safe redirect.
-4. Set `currentBusinessMode` to `warehouse`.
-5. Refresh and confirm it does not become active runtime mode.
-6. Set `currentBusinessMode` to `retail`.
-7. Refresh and confirm it works.
-8. Set random invalid value.
-9. Confirm safe redirect.
-
-## Retail workspace
-
-1. Open Retail dashboard/workspace.
-2. Check product list.
-3. Check category/filter/search if present.
-4. Check inventory/stock section.
-5. Check cart/checkout section if present.
-6. Check payment section if present.
-7. Check transaction/order section if present.
-8. Check empty states.
-9. Check loading/error state if possible.
-10. Try invalid quantity if form exists.
-11. Try duplicate submit if form exists.
-12. Confirm no Restaurant/Raw Material copy appears.
-13. Confirm no FNB/Warehouse/Service active label appears.
-
-## Product/stock flow
-
-1. Open product list.
-2. Check available products.
-3. Check out-of-stock product.
-4. Check low-stock state if present.
-5. Try quantity greater than stock if checkout exists.
-6. Confirm stock labels are clear.
-
-## Checkout/payment flow
-
-1. Add product to cart if supported.
-2. Change quantity.
-3. Remove product.
-4. Try empty checkout.
-5. Select payment method if supported.
-6. Submit checkout if supported.
-7. Try duplicate submit.
-8. Confirm success/error behavior.
-
-## Shared dashboards
-
-1. Open each shared dashboard visible in Retail.
-2. Confirm dashboard is relevant to Retail.
-3. Confirm unsupported dashboards are hidden, disabled, or show not-applicable/planned state.
-4. Confirm copy uses product/sales/inventory/payment context where appropriate.
-5. Confirm no Restaurant/Raw Material-only metric appears as Retail data.
-
----
-
-# Part 14: Documentation
-
-Update or create:
-
-```txt
-docs/v3-phase-6a-retail-hardening.md
-```
+docs/v3-phase-6b-contract-architecture-integrity.md
 
 Include:
 
-* Retail current scope
-* supported Retail modules
-* planned/unsupported modules
-* shared dashboard wiring decisions
-* Prisma/backend decisions
-* folder structure changes
-* helpers/components created
-* commands run
-* remaining risks
-* manual QA checklist
+API contract findings
+shared dashboard architecture decision
+business mode relationship matrix
+permission/auth decisions
+Prisma/schema decisions
+hardcode cleanup
+duplicate cleanup
+bridge cleanup
+checks run
+remaining risks
+manual QA checklist
 
-Update existing docs if they become outdated.
+Docs must not overclaim.
 
-Docs must not claim Retail supports a dashboard or backend feature that does not exist.
+If no docs are changed, explain why clearly.
 
----
+Strict Rules
+Do not implement full new product features.
+Do not implement full Custom Business / Service.
+Do not reintroduce fnb, warehouse, or service as active runtime IDs.
+Do not create fake compatibility bridges.
+Do not hide type errors.
+Do not use any, cast hacks, or ignore comments.
+Do not loosen types just to pass checks.
+Do not create bridge spaghetti.
+Do not let shared dashboard bridge chains shadow each other.
+Do not show fake/sample data as real.
+Do not leave unsupported dashboards active.
+Do not let UI permission and backend permission contradict each other.
+Do not change Prisma schema blindly.
+Do not create destructive migrations.
+Do not add unused Prisma fields.
+Do not centralize one-off values.
+Do not create giant utils.ts.
+Do not delete useful code without confirming unused.
+Do not claim checks passed unless they passed.
+Do not push, branch, commit, or open PR.
+Do not stop after fixing typecheck if architecture is still wrong.
+Do not declare completion if API contracts, hardcodes, duplicates, bridges, permissions, shared dashboards, and Prisma were not inspected.
+Completion Gate
 
-## Strict Rules
+This phase is not complete unless all of these are true:
 
-1. Work only on Retail mode unless shared infrastructure is required.
-2. Do not globally refactor Restaurant/Raw Material.
-3. Do not change Raw Material Phase 4B persistence decisions.
-4. Do not change Restaurant Phase 5B operational decisions.
-5. Do not implement full Custom Business / Service.
-6. Do not reintroduce `warehouse` as active runtime mode.
-7. Do not reintroduce `fnb`.
-8. Do not treat `service` as active mode.
-9. Do not use `any`, `as any`, `as unknown as`, `@ts-ignore`, or `@ts-expect-error`.
-10. Do not create fake compatibility bridges.
-11. Do not add Prisma schema unless Retail genuinely needs it.
-12. Do not create destructive database migrations.
-13. Do not make shared dashboards show fake Retail data.
-14. Do not show unsupported dashboards as active features.
-15. Do not leave placeholder/demo/interactive naming on active Retail runtime files unless honestly documented.
-16. Do not leave fat Retail files untouched without a clear reason.
-17. Do not create giant `utils.ts`.
-18. Do not move Retail-specific code into shared unless truly shared.
-19. Do not let shared code import from Retail.
-20. Do not centralize one-off values.
-21. Do not delete useful logic.
-22. Do not silently skip checks.
-23. Do not claim checks passed unless they passed.
-24. Do not push, commit, branch, or PR.
-
----
-
-# Final Report Format
+Scoped TypeScript checks pass or blockers are honestly classified.
+Backend TypeScript passes or blockers are honestly classified.
+Frontend production build passes or blockers are honestly classified.
+API contracts were audited and drift was fixed or documented.
+Shared dashboard to business-mode relationship is explicit and typed.
+Business-mode to business-mode behavior is compared and documented.
+Hardcoded contract-critical values are removed or justified.
+Duplicate cross-mode logic is removed or justified.
+Bridge/adapters are simplified and intentional.
+Prisma schema/client/API relationship is audited.
+No red code is hidden with casts/ignore comments.
+Remaining risks are specific, not vague.
+Final Report Format
 
 Return this exact report:
 
-# Phase 6A Retail Report
+Phase 6B Contract & Architecture Integrity Report
+1. Summary
+2. Docs read
+3. API contract audit
 
-## 1. Summary
+For each domain:
 
-## 2. Docs read
+frontend client inspected
+backend endpoint inspected
+contract drift found
+files changed
+remaining risks
+4. Shared dashboard architecture
+files inspected
+bridge/adapters removed
+bridge/adapters kept
+support matrix changes
+mode-context behavior
+remaining risks
+5. Business mode relationship matrix
 
-## 3. Retail audit
+For each mode:
 
-* files inspected
-* routes inspected
-* backend/API inspected
-* shared dashboards inspected
-* Prisma inspected
-
-## 4. Flow fixes
-
-* mode selection
-* route guard
-* sidebar/navigation
-* data loading
-* product flow
-* stock flow
-* checkout/payment flow
-* transaction/order flow
-* edge cases
-
-## 5. Shared dashboard wiring
-
-For each shared dashboard:
-
-* supported / unsupported / planned
-* behavior
-* files changed
-* reason
-
-## 6. Prisma/database changes
-
-* changed or not changed
-* reason
-* migration/generate status
-* risks
-
-## 7. Backend/API changes
-
-* files changed
-* validation changes
-* response/error handling
-* security/ownership/role checks
-* product/stock/checkout/payment handling
-* remaining risks
-
-## 8. Frontend/UI changes
-
-* files changed
-* components split
-* polish made
-* loading/empty/error states
-* remaining risks
-
-## 9. Structure and naming changes
-
-For each moved/renamed file:
-
-* old path
-* new path
-* reason
-
-## 10. Helpers/configs/components created
+active/planned status
+default route
+dashboard support
+permission behavior
+data source behavior
+known risks
+6. Auth and permission audit
+files inspected
+bugs fixed
+permission mismatches fixed
+remaining risks
+7. Route guard and mode switching audit
+files inspected
+edge cases handled
+remaining risks
+8. Prisma/schema audit
+schema changed or not changed
+schema/client drift found
+migration/generate status
+deploy blocker classification
+remaining risks
+9. Hardcode cleanup
+hardcodes found
+hardcodes removed
+hardcodes intentionally kept and why
+10. Duplicate code cleanup
+duplicates found
+duplicates removed/generalized
+duplicates intentionally kept and why
+11. Bridge/spaghetti cleanup
+bridge files inspected
+removed bridges
+kept adapters and why
+remaining risks
+12. Red code / hidden error audit
+casts/ignore comments found
+fixed
+intentionally kept and why
+13. Files changed
 
 For each:
 
-* file path
-* purpose
-* where used
-
-## 11. Hardcoded/duplicate cleanup
-
-* what was removed
-* what was centralized
-* why
-
-## 12. Files deleted
+path
+what changed
+why
+14. Files moved/renamed/deleted
 
 For each:
 
-* path
-* why safe to delete
-
-## 13. Commands run
+old path
+new path if applicable
+reason
+15. Commands run
 
 For each:
 
-* command
-* passed/failed/blocked/timed out
-* notes
-
-## 14. Manual QA checklist
-
-## 15. Remaining risks
-
-## 16. Next recommended task
+command
+passed/failed/blocked/timed out
+notes
+16. Manual QA checklist
+17. Remaining risks
+18. Next recommended task
 
 Give only one next task.
 
-Tambahan galak di paling atas prompt:
-
-```txt
-This phase is incomplete if the final report does not prove Retail-specific inspection across products, stock, checkout/payment, shared dashboards, backend/API, Prisma, route guards, and file structure.
-```
-
-Dan ini buat mencegah kerja kosmetik doang:
-
-```txt
-Do not return a successful Phase 6A report if Retail fat files, demo/interactive runtime naming, product/stock edge cases, checkout/payment flow, and shared dashboard relevance were only mentioned but not actually inspected.
-```

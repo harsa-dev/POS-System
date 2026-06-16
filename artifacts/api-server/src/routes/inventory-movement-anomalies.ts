@@ -1,7 +1,7 @@
-import type {
+import {
   Prisma,
-  StockMovementReason,
-  StockMovementSource,
+  type StockMovementReason,
+  type StockMovementSource,
 } from "@prisma/client";
 import { Router } from "express";
 
@@ -40,7 +40,13 @@ type InventoryMovementAnomalyType = (typeof anomalyTypes)[number];
 type InventoryMovementAnomalySeverity = (typeof severityValues)[number];
 type InventoryMovementAnomalyReviewStatus = (typeof reviewStatuses)[number];
 type InventoryMovementAnomalyReviewFilter = "UNREVIEWED" | InventoryMovementAnomalyReviewStatus;
-type StockMovementWithItem = Prisma.StockMovementGetPayload<{ include: { inventoryItem: true } }>;
+type StockMovementSnapshotFields = Readonly<{
+  previousStock?: number | null;
+  newStock?: number | null;
+  unitCostSnapshot?: number | null;
+}>;
+type StockMovementWithItem = Prisma.StockMovementGetPayload<{ include: { inventoryItem: true } }> &
+  StockMovementSnapshotFields;
 type InventoryMovementAnomalyRow = ReturnType<typeof toAnomalyRow> & {
   reviewStatus: InventoryMovementAnomalyReviewStatus | null;
   reviewNote: string | null;
@@ -196,9 +202,11 @@ function isSuspiciousAdjustment(movement: StockMovementWithItem, adjustmentThres
   const reason = movement.reason;
   const suspiciousReason =
     reason === "MANUAL_ADJUSTMENT" || reason === "CORRECTION" || reason === "STOCK_COUNT";
+  const previousStock = movement.previousStock ?? null;
+  const newStock = movement.newStock ?? null;
   const stockDelta =
-    movement.previousStock !== null && movement.newStock !== null
-      ? Math.abs(movement.newStock - movement.previousStock)
+    previousStock !== null && newStock !== null
+      ? Math.abs(newStock - previousStock)
       : Math.abs(movement.quantity);
 
   return suspiciousReason && Math.max(Math.abs(movement.quantity), stockDelta) >= adjustmentThreshold;

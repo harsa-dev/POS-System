@@ -20,7 +20,8 @@ import {
   type InvoiceFollowUpReminderScope,
 } from "@/lib/api/invoice-api";
 import { formatCurrency } from "@/features/shared/format";
-import { DashboardActionButton, DashboardActions, DashboardPanel, StatCard } from "@/features/shared/dashboard";
+import { StatCard } from "@/features/shared/cards";
+import { DashboardActionButton, DashboardActions, DashboardPanel } from "@/features/shared/dashboard";
 import {
   INVOICE_GENERATOR_LOAD_INVOICE_EVENT,
   INVOICE_GENERATOR_OPEN_FOLLOW_UP_EVENT,

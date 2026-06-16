@@ -13,7 +13,11 @@ import type { RawMaterialSharedDashboardId } from "@/features/raw-material/core-
 import {
   RestaurantSharedDashboardBridge,
 } from "@/features/shared/restaurant-bridge";
+import {
+  RetailSharedDashboardBridge,
+} from "@/features/shared/retail-bridge";
 import type { RestaurantSharedDashboardId } from "@/lib/api";
+import type { RetailSharedDashboardId } from "@/features/retail/core-system";
 import {
   shouldCallServiceBusinessSharedSurface,
   shouldHideSharedDashboardForServiceMode,
@@ -80,6 +84,24 @@ const restaurantDashboardBySurface: Partial<Record<SharedDashboardSurfaceId, Res
   payroll: "payroll",
 };
 
+const retailDashboardBySurface: Partial<Record<SharedDashboardSurfaceId, RetailSharedDashboardId>> = {
+  "business-overview": "overview",
+  sales: "sales",
+  customers: "customers",
+  inventory: "inventory",
+  "financial-reports": "financial-reports",
+  invoice: "invoice-generator",
+  "cashier-shift-reports": "shift-reports",
+  "team-management": "team-management",
+  "roster-overview": "roster-overview",
+  "employee-performance": "employee-performance",
+  "audit-log": "audit-controls",
+  approvals: "approvals",
+  contracts: "employee-contracts",
+  attendance: "employee-attendance",
+  payroll: "payroll",
+};
+
 function isServiceBusinessPreviewModeActive(): boolean {
   const rawMode = getRawBusinessModeStorageValue();
 
@@ -99,11 +121,11 @@ function SharedDashboardModeBadge({ context }: { context?: SharedDashboardModeCo
       </span>
       {context.isSupported ? (
         <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
-          Mode supported
+          {context.supportStatusLabel}
         </span>
       ) : (
         <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700">
-          Mode unsupported
+          {context.supportStatusLabel}
         </span>
       )}
     </div>
@@ -142,6 +164,9 @@ export function DashboardShell({
   const restaurantDashboardId = serviceBusinessSurface
     ? restaurantDashboardBySurface[serviceBusinessSurface as SharedDashboardSurfaceId]
     : undefined;
+  const retailDashboardId = serviceBusinessSurface
+    ? retailDashboardBySurface[serviceBusinessSurface as SharedDashboardSurfaceId]
+    : undefined;
   const dashboardContent = shouldHideChildrenForService && serviceBusinessSurface ? (
     <ServiceBusinessSharedDashboardHiddenNotice surface={serviceBusinessSurface} />
   ) : (
@@ -162,6 +187,14 @@ export function DashboardShell({
       <RestaurantSharedDashboardBridge dashboardId={restaurantDashboardId}>
         {bridgedDashboardContent}
       </RestaurantSharedDashboardBridge>
+    );
+  }
+
+  if (retailDashboardId) {
+    bridgedDashboardContent = (
+      <RetailSharedDashboardBridge dashboardId={retailDashboardId}>
+        {bridgedDashboardContent}
+      </RetailSharedDashboardBridge>
     );
   }
 

@@ -58,7 +58,7 @@ router.get("/invoice-capabilities", async (req, res) => {
 
 router.use("/invoices", async (req, res, next) => {
   if (!["POST", "PATCH", "DELETE"].includes(req.method.toUpperCase())) {
-    next();
+    return next();
     return;
   }
 

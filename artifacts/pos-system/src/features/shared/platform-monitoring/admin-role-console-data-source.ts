@@ -45,7 +45,7 @@ export type AdminRoleConsoleDataSourceResult = {
   blockedWriteItems: number;
 };
 
-const ADMIN_ROLE_CONSOLE_ID: InternalAdminConsoleId = "admin-role-console";
+const ADMIN_ROLE_CONSOLE_ID = "admin-role-console" as const satisfies InternalAdminConsoleId;
 
 export const adminRoleConsoleSectionLabels: Record<AdminRoleConsoleSectionKey, string> = {
   "console-card": "Console card",

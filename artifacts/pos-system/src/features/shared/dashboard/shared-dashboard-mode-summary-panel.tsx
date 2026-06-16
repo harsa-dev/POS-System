@@ -33,6 +33,7 @@ export function SharedDashboardModeSummaryPanel({
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Query Scope</p>
           <p className="mt-2 break-all text-sm font-semibold text-foreground">{context.queryScopeKey}</p>
           <p className="mt-2 text-xs text-muted-foreground">API mode header: {context.apiModeHeader}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Support status: {context.supportStatusLabel}</p>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-4 text-card-foreground">

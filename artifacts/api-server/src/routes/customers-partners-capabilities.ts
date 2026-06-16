@@ -20,14 +20,17 @@ function canManage(role: Role) {
   return MANAGEMENT_ROLES.includes(role);
 }
 
-router.get("/customers-partners-capabilities", requireRole(ALL_ROLES), async (req, res) => {
+router.get("/customers-partners-capabilities", async (req, res) => {
   try {
-    const businessContext = await requireBusinessContextForUser(req.user!);
-    const planned = isPlannedMode(businessContext.businessMode);
-    const manage = canManage(req.user!.role) && !planned;
+    const user = await requireRole(req, res, ALL_ROLES);
+    if (!user) return;
 
-    return res.json(
-      successResponse({
+    const businessContext = await requireBusinessContextForUser(user);
+    const planned = isPlannedMode(businessContext.businessMode);
+    const manage = canManage(user.role) && !planned;
+
+    return successResponse(res, {
+      data: {
         businessId: businessContext.businessId,
         businessMode: businessContext.businessMode,
         canView: !planned,
@@ -39,10 +42,10 @@ router.get("/customers-partners-capabilities", requireRole(ALL_ROLES), async (re
         canSyncFromSales: manage,
         isPlannedMode: planned,
         plannedReason: planned ? PLANNED_MODE_REASON : null,
-      }),
-    );
+      },
+    });
   } catch (error) {
-    return handleApiError(error, req, res);
+    return handleApiError(res, error);
   }
 });
 

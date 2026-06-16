@@ -31,12 +31,21 @@ export type SharedDashboardSurfaceId =
   | "payroll"
   | "platform-monitoring";
 
+export type SharedDashboardSupportStatus =
+  | "supported"
+  | "read-only"
+  | "preview"
+  | "planned"
+  | "unsupported";
+
 export type SharedDashboardModeContext = {
   surfaceId: SharedDashboardSurfaceId;
   activeMode: BusinessModeId;
   activeModeLabel: string;
   activeModeShortLabel: string;
   activeModeRoute: string;
+  supportStatus: SharedDashboardSupportStatus;
+  supportStatusLabel: string;
   supportedModes: BusinessModeId[];
   supportedModeLabels: string[];
   isSupported: boolean;
@@ -49,30 +58,135 @@ export type SharedDashboardModeContext = {
 const allSelectableModes = businessModeRegistry
   .filter((mode) => mode.isSelectable)
   .map((mode) => mode.id);
-const selectableModesWithoutRawMaterial = allSelectableModes.filter(
-  (mode) => mode !== "raw-material",
-);
 
-const sharedDashboardSupportedModes: Record<SharedDashboardSurfaceId, BusinessModeId[]> = {
-  "business-overview": allSelectableModes,
-  sales: ["restaurant", "retail"],
-  customers: allSelectableModes,
-  inventory: allSelectableModes,
-  cashflow: selectableModesWithoutRawMaterial,
-  "financial-reports": selectableModesWithoutRawMaterial,
-  invoice: ["restaurant", "retail", "custom-business"],
-  "cashier-shift-reports": ["restaurant", "retail", "raw-material"],
-  hpp: ["restaurant"],
-  "operation-reports": allSelectableModes,
-  "team-management": allSelectableModes,
-  "roster-overview": selectableModesWithoutRawMaterial,
-  "employee-performance": allSelectableModes,
-  "audit-log": selectableModesWithoutRawMaterial,
-  approvals: allSelectableModes,
-  contracts: selectableModesWithoutRawMaterial,
-  attendance: selectableModesWithoutRawMaterial,
-  payroll: selectableModesWithoutRawMaterial,
-  "platform-monitoring": ["restaurant"],
+const allBusinessModes = businessModeRegistry.map((mode) => mode.id);
+
+const supportStatusLabels: Record<SharedDashboardSupportStatus, string> = {
+  supported: "Supported",
+  "read-only": "Read-only",
+  preview: "Preview",
+  planned: "Planned",
+  unsupported: "Unsupported",
+};
+
+const sharedDashboardModeSupport: Record<
+  SharedDashboardSurfaceId,
+  Record<BusinessModeId, SharedDashboardSupportStatus>
+> = {
+  "business-overview": {
+    restaurant: "read-only",
+    retail: "read-only",
+    "raw-material": "read-only",
+    "custom-business": "planned",
+  },
+  sales: {
+    restaurant: "read-only",
+    retail: "read-only",
+    "raw-material": "read-only",
+    "custom-business": "planned",
+  },
+  customers: {
+    restaurant: "read-only",
+    retail: "read-only",
+    "raw-material": "read-only",
+    "custom-business": "planned",
+  },
+  inventory: {
+    restaurant: "read-only",
+    retail: "read-only",
+    "raw-material": "read-only",
+    "custom-business": "planned",
+  },
+  cashflow: {
+    restaurant: "read-only",
+    retail: "read-only",
+    "raw-material": "unsupported",
+    "custom-business": "planned",
+  },
+  "financial-reports": {
+    restaurant: "read-only",
+    retail: "read-only",
+    "raw-material": "unsupported",
+    "custom-business": "planned",
+  },
+  invoice: {
+    restaurant: "read-only",
+    retail: "read-only",
+    "raw-material": "unsupported",
+    "custom-business": "planned",
+  },
+  "cashier-shift-reports": {
+    restaurant: "read-only",
+    retail: "read-only",
+    "raw-material": "read-only",
+    "custom-business": "unsupported",
+  },
+  hpp: {
+    restaurant: "preview",
+    retail: "preview",
+    "raw-material": "unsupported",
+    "custom-business": "planned",
+  },
+  "operation-reports": {
+    restaurant: "read-only",
+    retail: "read-only",
+    "raw-material": "read-only",
+    "custom-business": "planned",
+  },
+  "team-management": {
+    restaurant: "read-only",
+    retail: "read-only",
+    "raw-material": "read-only",
+    "custom-business": "planned",
+  },
+  "roster-overview": {
+    restaurant: "planned",
+    retail: "preview",
+    "raw-material": "unsupported",
+    "custom-business": "unsupported",
+  },
+  "employee-performance": {
+    restaurant: "planned",
+    retail: "read-only",
+    "raw-material": "read-only",
+    "custom-business": "planned",
+  },
+  "audit-log": {
+    restaurant: "read-only",
+    retail: "read-only",
+    "raw-material": "unsupported",
+    "custom-business": "planned",
+  },
+  approvals: {
+    restaurant: "read-only",
+    retail: "read-only",
+    "raw-material": "read-only",
+    "custom-business": "planned",
+  },
+  contracts: {
+    restaurant: "planned",
+    retail: "preview",
+    "raw-material": "unsupported",
+    "custom-business": "unsupported",
+  },
+  attendance: {
+    restaurant: "planned",
+    retail: "preview",
+    "raw-material": "unsupported",
+    "custom-business": "unsupported",
+  },
+  payroll: {
+    restaurant: "planned",
+    retail: "preview",
+    "raw-material": "unsupported",
+    "custom-business": "unsupported",
+  },
+  "platform-monitoring": {
+    restaurant: "read-only",
+    retail: "unsupported",
+    "raw-material": "unsupported",
+    "custom-business": "unsupported",
+  },
 };
 
 function getModeLabel(mode: BusinessModeId) {
@@ -84,18 +198,45 @@ function getModeShortLabel(config: BusinessModeConfig) {
   return config.shortLabel ?? config.label;
 }
 
+export function getSharedDashboardSupportStatus(
+  surfaceId: SharedDashboardSurfaceId,
+  mode: BusinessModeId,
+): SharedDashboardSupportStatus {
+  return sharedDashboardModeSupport[surfaceId]?.[mode] ?? "unsupported";
+}
+
+function isDashboardStatusAvailable(status: SharedDashboardSupportStatus) {
+  return status !== "unsupported";
+}
+
+function getModeLabelWithSupport(surfaceId: SharedDashboardSurfaceId, mode: BusinessModeId) {
+  const status = getSharedDashboardSupportStatus(surfaceId, mode);
+  return `${getModeLabel(mode)} (${supportStatusLabels[status]})`;
+}
+
 export function getSharedDashboardSupportedModes(surfaceId: SharedDashboardSurfaceId) {
-  return sharedDashboardSupportedModes[surfaceId] ?? allSelectableModes;
+  return allBusinessModes.filter((mode) =>
+    isDashboardStatusAvailable(getSharedDashboardSupportStatus(surfaceId, mode)),
+  );
 }
 
 export function getSharedDashboardModeContext(surfaceId: SharedDashboardSurfaceId): SharedDashboardModeContext {
   const rawMode = getCurrentBusinessMode();
   const activeMode = isBusinessModeId(rawMode) ? rawMode : "restaurant";
   const activeModeConfig = getBusinessModeConfig(activeMode);
+  const supportStatus = getSharedDashboardSupportStatus(surfaceId, activeMode);
   const supportedModes = getSharedDashboardSupportedModes(surfaceId);
-  const isSupported = supportedModes.includes(activeMode);
+  const isSupported = isDashboardStatusAvailable(supportStatus);
   const isSelectable = isBusinessModeSelectable(activeMode);
-  const supportedModeLabels = supportedModes.map(getModeLabel);
+  const supportedModeLabels = supportedModes.map((mode) =>
+    getModeLabelWithSupport(surfaceId, mode),
+  );
+  const emptyStateMessage =
+    isSupported && isSelectable
+      ? null
+      : isSupported
+        ? `${activeModeConfig.label} is planned or guarded for this shared dashboard. Supported modes: ${supportedModeLabels.join(", ")}.`
+        : `${activeModeConfig.label} is not available for this shared dashboard. Supported modes: ${supportedModeLabels.join(", ")}.`;
 
   return {
     surfaceId,
@@ -103,15 +244,14 @@ export function getSharedDashboardModeContext(surfaceId: SharedDashboardSurfaceI
     activeModeLabel: activeModeConfig.label,
     activeModeShortLabel: getModeShortLabel(activeModeConfig),
     activeModeRoute: activeModeConfig.route,
+    supportStatus,
+    supportStatusLabel: supportStatusLabels[supportStatus],
     supportedModes,
     supportedModeLabels,
     isSupported,
     isSelectable,
     queryScopeKey: `${surfaceId}:${activeMode}`,
     apiModeHeader: activeMode,
-    emptyStateMessage:
-      isSupported && isSelectable
-        ? null
-        : `${activeModeConfig.label} is not available for this shared dashboard. Supported modes: ${supportedModeLabels.join(", ")}.`,
+    emptyStateMessage,
   };
 }
