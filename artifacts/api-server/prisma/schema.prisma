@@ -86,6 +86,7 @@ model Business {
   retailSales                 RetailSale[]
   retailStockMovements        RetailStockMovement[]
   retailReturns               RetailReturn[]
+  hppBatches                  HppBatch[]
 
 
 
@@ -1151,6 +1152,41 @@ model AuditLog {
   @@index([action])
   @@index([entityType])
   @@index([createdAt])
+}
+
+model HppBatch {
+  id           String   @id @default(cuid())
+  businessId   String
+  name         String
+  batchDate    DateTime
+  outputUnits  Int
+  targetMargin Float    @default(0.65)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business   Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  components HppCostComponent[]
+
+  @@index([businessId])
+  @@index([batchDate])
+}
+
+model HppCostComponent {
+  id        String   @id @default(cuid())
+  batchId   String
+  name      String
+  category  String
+  unitCost  Int
+  quantity  Float
+  unit      String
+  totalCost Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  batch HppBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
 }
 
 enum Role {
