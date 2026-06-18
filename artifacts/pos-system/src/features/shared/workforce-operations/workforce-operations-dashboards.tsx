@@ -2,707 +2,836 @@
 
 import {
   AlertTriangle,
-  Banknote,
   BarChart3,
-  Calculator,
+  CalendarDays,
   CheckCircle2,
-  ClipboardList,
-  Clock3,
-  Download,
+  Clock,
   FileText,
+  Hash,
   RefreshCw,
-  ShieldCheck,
+  Shield,
+  TrendingUp,
+  UserCheck,
   Users,
-  WalletCards,
-  type LucideIcon,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import { StatCard, StatusPill } from "@/features/shared/cards";
-import {
-  DashboardActionButton,
-  DashboardActions,
-  DashboardPanel,
-  DashboardShell,
-} from "@/features/shared/dashboard";
-import { formatCurrency, formatNumber } from "@/features/shared/format";
-import { DataTable, type DataTableColumn } from "@/features/shared/table";
+import { DashboardPanel, DashboardShell } from "@/features/shared/dashboard";
+import { formatCurrency } from "@/features/shared/format";
 import type { DashboardTone } from "@/features/shared/types";
+import { DataTable, type DataTableColumn } from "@/features/shared/table";
+import { getApiErrorMessage } from "@/lib/api/api-client";
+import {
+  type AttendanceRecord,
+  type AuditLogRow,
+  type ContractRow,
+  type PayrollPreviewEmployee,
+  type PerformanceEmployee,
+  type RosterDay,
+  type ShiftRow,
+  type WorkforceEmployee,
+  workforceApi,
+} from "@/lib/api/workforce-api";
+import { hppApi, type HppCostComponent } from "@/lib/api/hpp-api";
 
-type Metric = {
-  label: string;
-  value: string;
-  note: string;
-  icon: LucideIcon;
-  tone: DashboardTone;
-};
+// ─── Shared helpers ───────────────────────────────────────────────────────────
 
-type SummaryItem = {
-  label: string;
-  value: string;
-  tone: DashboardTone;
-};
-
-type DemoDashboardProps<TData> = {
-  title: string;
-  description: string;
-  notice: string;
-  metrics: Metric[];
-  panelTitle: string;
-  panelDescription: string;
-  columns: DataTableColumn<TData>[];
-  data: TData[];
-  getRowKey: (row: TData) => string;
-  minWidth?: number;
-  sideTitle: string;
-  sideDescription: string;
-  sideItems: SummaryItem[];
-};
-
-const statusTone: Record<string, DashboardTone> = {
-  Active: "green",
-  Completed: "green",
-  Approved: "green",
-  Ready: "green",
-  Draft: "slate",
-  Pending: "amber",
-  Review: "amber",
-  Warning: "amber",
-  Rejected: "rose",
-  Overdue: "rose",
-  Hold: "slate",
-};
-
-function getStatusTone(status: string): DashboardTone {
-  return statusTone[status] ?? "slate";
+function fmtDuration(minutes: number): string {
+  if (!minutes) return "0h";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
 }
 
-function DemoNotice({ children }: { children: string }) {
-  return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        <p className="leading-6">{children}</p>
-      </div>
-    </div>
-  );
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-function SummaryPanel({
-  title,
-  description,
-  items,
-}: {
-  title: string;
-  description: string;
-  items: SummaryItem[];
-}) {
-  return (
-    <DashboardPanel title={title} description={description}>
-      <div className="grid gap-3 p-4">
-        {items.map((item) => (
-          <div
-            key={`${item.label}-${item.value}`}
-            className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3"
-          >
-            <span className="text-sm text-muted-foreground">{item.label}</span>
-            <StatusPill tone={item.tone}>{item.value}</StatusPill>
-          </div>
-        ))}
-      </div>
-    </DashboardPanel>
-  );
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-function DemoDashboard<TData>({
-  title,
-  description,
-  notice,
-  metrics,
-  panelTitle,
-  panelDescription,
-  columns,
-  data,
-  getRowKey,
-  minWidth = 960,
-  sideTitle,
-  sideDescription,
-  sideItems,
-}: DemoDashboardProps<TData>) {
+function LoadingShell({ title, description }: { title: string; description: string }) {
   return (
     <DashboardShell title={title} description={description}>
-      <DemoNotice>{notice}</DemoNotice>
-
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric) => (
-          <StatCard
-            key={metric.label}
-            label={metric.label}
-            value={metric.value}
-            note={metric.note}
-            icon={metric.icon}
-            tone={metric.tone}
-          />
-        ))}
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
-        <DashboardPanel
-          title={panelTitle}
-          description={panelDescription}
-          action={
-            <DashboardActions>
-              <DashboardActionButton icon={RefreshCw} disabled title="Dummy dashboard belum punya backend refresh.">
-                Refresh
-              </DashboardActionButton>
-              <DashboardActionButton icon={Download} disabled title="Export ditunda sampai data source asli tersedia.">
-                Export
-              </DashboardActionButton>
-            </DashboardActions>
-          }
-        >
-          <DataTable columns={columns} data={data} getRowKey={getRowKey} minWidth={minWidth} pagination={false} />
-        </DashboardPanel>
-
-        <SummaryPanel title={sideTitle} description={sideDescription} items={sideItems} />
+      <div className="flex h-48 items-center justify-center">
+        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     </DashboardShell>
   );
 }
 
-type HppRow = {
-  id: string;
-  component: string;
-  category: string;
-  cost: number;
-  note: string;
-};
+function ErrorShell({
+  title,
+  description,
+  error,
+}: {
+  title: string;
+  description: string;
+  error: unknown;
+}) {
+  return (
+    <DashboardShell title={title} description={description}>
+      <div className="flex h-48 flex-col items-center justify-center gap-2 text-center">
+        <AlertTriangle className="h-6 w-6 text-destructive" />
+        <p className="text-sm text-muted-foreground">
+          {getApiErrorMessage(error, "Failed to load data. Please try again.")}
+        </p>
+      </div>
+    </DashboardShell>
+  );
+}
 
-const hppRows: HppRow[] = [
-  { id: "hpp-raw", component: "Raw Material", category: "COGS", cost: 6_850_000, note: "Bahan utama minggu berjalan" },
-  { id: "hpp-packaging", component: "Packaging", category: "COGS", cost: 1_120_000, note: "Box, cup, label, plastik" },
-  { id: "hpp-labor", component: "Direct Labor", category: "Direct Cost", cost: 2_400_000, note: "Jam kerja produksi langsung" },
-  { id: "hpp-overhead", component: "Kitchen Overhead", category: "Overhead", cost: 1_680_000, note: "Gas, listrik, air, penyusutan kecil" },
-];
+function EmptyShell({
+  title,
+  description,
+  message,
+}: {
+  title: string;
+  description: string;
+  message: string;
+}) {
+  return (
+    <DashboardShell title={title} description={description}>
+      <div className="flex h-48 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+        <p className="text-sm">{message}</p>
+      </div>
+    </DashboardShell>
+  );
+}
 
-const totalHpp = hppRows.reduce((total, row) => total + row.cost, 0);
-const hppOutputUnits = 840;
-const hppPerUnit = totalHpp / hppOutputUnits;
-const suggestedPrice = hppPerUnit * 1.65;
+function InfoPanel({ label, items }: { label: string; items: { key: string; value: string }[] }) {
+  return (
+    <DashboardPanel title={label} description="">
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <li key={item.key} className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{item.key}</span>
+            <span className="font-medium">{item.value}</span>
+          </li>
+        ))}
+      </ul>
+    </DashboardPanel>
+  );
+}
 
-const hppColumns: DataTableColumn<HppRow>[] = [
-  { key: "component", header: "Component", cell: (row) => <span className="font-medium text-foreground">{row.component}</span> },
-  { key: "category", header: "Category", cell: (row) => row.category },
-  { key: "cost", header: "Cost", cell: (row) => formatCurrency(row.cost) },
-  { key: "note", header: "Note", cell: (row) => row.note },
+// ─── HPP Calculator ───────────────────────────────────────────────────────────
+
+const hppColumns: DataTableColumn<HppCostComponent>[] = [
+  { key: "name", header: "Ingredient / Item", cell: (r) => r.name },
+  { key: "category", header: "Category", cell: (r) => r.category },
+  { key: "unitCost", header: "Unit Cost", cell: (r) => formatCurrency(r.unitCost) },
+  { key: "quantity", header: "Qty", cell: (r) => String(r.quantity) },
+  { key: "unit", header: "Unit", cell: (r) => r.unit },
+  { key: "totalCost", header: "Total Cost", cell: (r) => formatCurrency(r.totalCost) },
+  { key: "note", header: "Note", cell: (r) => r.note ?? "-" },
 ];
 
 export function HppCalculatorDashboard() {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["hpp-summary"],
+    queryFn: () => hppApi.summary(),
+    staleTime: 60_000,
+  });
+
+  if (isLoading)
+    return (
+      <LoadingShell title="HPP / COGS Calculator" description="Loading latest batch cost analysis…" />
+    );
+  if (isError)
+    return (
+      <ErrorShell
+        title="HPP / COGS Calculator"
+        description="Cost-of-goods analysis per production batch"
+        error={error}
+      />
+    );
+  if (!data)
+    return (
+      <EmptyShell
+        title="HPP / COGS Calculator"
+        description="Cost-of-goods analysis per production batch"
+        message="No batches found. Create your first HPP batch to start tracking production costs."
+      />
+    );
+
+  const { batch, components, stats } = data;
+
   return (
-    <DemoDashboard
-      title="HPP Calculator"
-      description="Dummy cost-of-goods calculator for estimating unit cost, target margin, and selling price before a real costing engine exists."
-      notice="Semua angka HPP masih hardcoded. Ini hanya layout dan planning UI, belum nyambung ke inventory, recipe, purchase, payroll, atau schema Prisma."
-      metrics={[
-        { label: "Total HPP", value: formatCurrency(totalHpp), note: "Raw material + labor + overhead", icon: Calculator, tone: "green" },
-        { label: "Output Units", value: formatNumber(hppOutputUnits), note: "Dummy finished units", icon: ClipboardList, tone: "blue" },
-        { label: "HPP / Unit", value: formatCurrency(hppPerUnit), note: "Estimated cost per product", icon: Banknote, tone: "amber" },
-        { label: "Suggested Price", value: formatCurrency(suggestedPrice), note: "Target markup 65%", icon: BarChart3, tone: "slate" },
-      ]}
-      panelTitle="Cost Breakdown"
-      panelDescription="Prepared columns for future recipe, purchase, inventory, and payroll integration."
-      columns={hppColumns}
-      data={hppRows}
-      getRowKey={(row) => row.id}
-      sideTitle="Future Data Source"
-      sideDescription="Schema/API yang perlu disiapkan nanti, bukan sekarang."
-      sideItems={[
-        { label: "Recipe cost link", value: "Planned", tone: "amber" },
-        { label: "Purchase price history", value: "Planned", tone: "amber" },
-        { label: "Direct labor allocation", value: "Draft", tone: "slate" },
-        { label: "Margin simulation", value: "Ready UI", tone: "green" },
-      ]}
-    />
+    <DashboardShell
+      title="HPP / COGS Calculator"
+      description={`Batch: ${batch.name} — ${fmtDate(batch.batchDate)}`}
+    >
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Cost" value={formatCurrency(stats.totalCost)} icon={BarChart3} tone="blue" />
+        <StatCard label="HPP / Unit" value={formatCurrency(stats.hppPerUnit)} icon={TrendingUp} tone="green" />
+        <StatCard label="Suggested Price" value={formatCurrency(stats.suggestedPrice)} icon={FileText} tone="amber" />
+        <StatCard label="Output Units" value={String(batch.outputUnits)} icon={Hash} tone="rose" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
+        <DashboardPanel title="Cost Components" description="Ingredients and materials for this batch">
+          <DataTable columns={hppColumns} data={components} getRowKey={(r) => r.id} />
+        </DashboardPanel>
+
+        <InfoPanel
+          label="Batch Details"
+          items={[
+            { key: "Batch Name", value: batch.name },
+            { key: "Date", value: fmtDate(batch.batchDate) },
+            { key: "Target Margin", value: `${batch.targetMargin}%` },
+            { key: "Output Units", value: String(batch.outputUnits) },
+            { key: "Notes", value: batch.notes ?? "—" },
+            ...Object.entries(stats.byCategory).map(([cat, total]) => ({
+              key: cat,
+              value: formatCurrency(total as number),
+            })),
+          ]}
+        />
+      </div>
+    </DashboardShell>
   );
 }
 
-type ShiftReportRow = {
-  id: string;
-  shift: string;
-  scope: string;
-  pic: string;
-  revenue: number;
-  variance: number;
-  status: string;
-};
+// ─── Shift Reports ────────────────────────────────────────────────────────────
 
-const shiftReportRows: ShiftReportRow[] = [
-  { id: "sr-001", shift: "Morning Shift", scope: "Restaurant", pic: "Nadia", revenue: 12_450_000, variance: 0, status: "Completed" },
-  { id: "sr-002", shift: "Afternoon Shift", scope: "Restaurant", pic: "Raka", revenue: 18_900_000, variance: -85_000, status: "Review" },
-  { id: "sr-003", shift: "Warehouse Intake", scope: "Raw Material", pic: "Dimas", revenue: 0, variance: 120_000, status: "Pending" },
-];
+function shiftStatusTone(status: string): DashboardTone {
+  return status === "CLOSED" ? "green" : "blue";
+}
 
-const shiftReportColumns: DataTableColumn<ShiftReportRow>[] = [
-  { key: "shift", header: "Shift", cell: (row) => <span className="font-medium text-foreground">{row.shift}</span> },
-  { key: "scope", header: "Business Scope", cell: (row) => row.scope },
-  { key: "pic", header: "PIC", cell: (row) => row.pic },
-  { key: "revenue", header: "Revenue", cell: (row) => (row.revenue > 0 ? formatCurrency(row.revenue) : "-") },
-  { key: "variance", header: "Variance", cell: (row) => formatCurrency(row.variance) },
-  { key: "status", header: "Status", cell: (row) => <StatusPill tone={getStatusTone(row.status)}>{row.status}</StatusPill> },
+const shiftColumns: DataTableColumn<ShiftRow>[] = [
+  { key: "pic", header: "PIC", cell: (r) => r.pic },
+  { key: "role", header: "Role", cell: (r) => r.role },
+  {
+    key: "openedAt",
+    header: "Opened",
+    cell: (r) => fmtTime(r.openedAt),
+  },
+  {
+    key: "status",
+    header: "Status",
+    cell: (r) => <StatusPill tone={shiftStatusTone(r.status)}>{r.status}</StatusPill>,
+  },
+  {
+    key: "revenue",
+    header: "Revenue",
+    cell: (r) => formatCurrency(r.revenue),
+  },
+  {
+    key: "variance",
+    header: "Variance",
+    cell: (r) => (
+      <span className={r.variance !== 0 ? "text-destructive" : "text-green-600"}>
+        {r.variance !== 0 ? formatCurrency(Math.abs(r.variance)) : "—"}
+      </span>
+    ),
+  },
+  {
+    key: "orderCount",
+    header: "Orders",
+    cell: (r) => String(r.orderCount),
+  },
 ];
 
 export function ShiftReportsDashboard() {
-  const totalRevenue = shiftReportRows.reduce((total, row) => total + row.revenue, 0);
-  const totalVariance = shiftReportRows.reduce((total, row) => total + row.variance, 0);
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["workforce-shift-summary"],
+    queryFn: () => workforceApi.shiftSummary(),
+    staleTime: 60_000,
+  });
+
+  if (isLoading) return <LoadingShell title="Shift Reports" description="Loading shift data…" />;
+  if (isError)
+    return (
+      <ErrorShell title="Shift Reports" description="Cash shift reconciliation overview" error={error} />
+    );
+
+  const { shifts, stats } = data!;
 
   return (
-    <DemoDashboard
-      title="Shift Reports"
-      description="Hardcoded shared shift reporting screen for operations, finance review, and cross-mode closing summaries."
-      notice="Laporan shift ini dummy. Existing cashier shift API tetap tidak diubah, dan dashboard ini tidak menulis data ke cashflow."
-      metrics={[
-        { label: "Shift Revenue", value: formatCurrency(totalRevenue), note: "Dummy total from visible rows", icon: Banknote, tone: "green" },
-        { label: "Net Variance", value: formatCurrency(totalVariance), note: "Cash over/short mock", icon: AlertTriangle, tone: "amber" },
-        { label: "Closed Shifts", value: "1/3", note: "Completed report sample", icon: CheckCircle2, tone: "blue" },
-        { label: "Needs Review", value: "2", note: "Pending finance check", icon: ClipboardList, tone: "rose" },
-      ]}
-      panelTitle="Shift Closing Summary"
-      panelDescription="Prepared for cashier, warehouse, and service shift summaries later."
-      columns={shiftReportColumns}
-      data={shiftReportRows}
-      getRowKey={(row) => row.id}
-      sideTitle="Closing Checklist"
-      sideDescription="Operations checks before finance locks the day."
-      sideItems={[
-        { label: "Cash reconciliation", value: "Review", tone: "amber" },
-        { label: "Cashflow sync", value: "Draft", tone: "slate" },
-        { label: "Supervisor sign-off", value: "Pending", tone: "amber" },
-        { label: "PDF closing report", value: "Planned", tone: "slate" },
-      ]}
-    />
+    <DashboardShell title="Shift Reports" description="Cash shift reconciliation overview">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Revenue" value={formatCurrency(stats.totalRevenue)} icon={TrendingUp} tone="green" />
+        <StatCard
+          label="Cash Variance"
+          value={formatCurrency(Math.abs(stats.totalVariance))}
+          icon={AlertTriangle}
+          tone={stats.totalVariance !== 0 ? "red" : "green"}
+        />
+        <StatCard label="Closed Shifts" value={String(stats.closed)} icon={CheckCircle2} tone="blue" />
+        <StatCard
+          label="Needs Review"
+          value={String(stats.needsReview)}
+          icon={Shield}
+          tone={stats.needsReview > 0 ? "amber" : "green"}
+        />
+      </div>
+
+      <DashboardPanel title="Shift Log" description="Most recent shifts">
+        <DataTable columns={shiftColumns} data={shifts} getRowKey={(r) => r.id} />
+      </DashboardPanel>
+    </DashboardShell>
   );
 }
 
-type TeamRow = {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-  status: string;
-  workload: string;
-};
+// ─── Team Management (employee overview) ─────────────────────────────────────
 
-const teamRows: TeamRow[] = [
-  { id: "tm-001", name: "Nadia Putri", role: "Cashier Lead", department: "Front Office", status: "Active", workload: "36h / week" },
-  { id: "tm-002", name: "Raka Pratama", role: "Server", department: "Service", status: "Active", workload: "32h / week" },
-  { id: "tm-003", name: "Dimas Arga", role: "Inventory Staff", department: "Warehouse", status: "Pending", workload: "Onboarding" },
-  { id: "tm-004", name: "Maya Sari", role: "Finance Admin", department: "Back Office", status: "Active", workload: "40h / week" },
-];
+function employeeStatusTone(status: string): DashboardTone {
+  return status === "Active" ? "green" : "slate";
+}
 
-const teamColumns: DataTableColumn<TeamRow>[] = [
-  { key: "name", header: "Name", cell: (row) => <span className="font-medium text-foreground">{row.name}</span> },
-  { key: "role", header: "Role", cell: (row) => row.role },
-  { key: "department", header: "Department", cell: (row) => row.department },
-  { key: "status", header: "Status", cell: (row) => <StatusPill tone={getStatusTone(row.status)}>{row.status}</StatusPill> },
-  { key: "workload", header: "Workload", cell: (row) => row.workload },
+function attendanceTone(status: string | null): DashboardTone {
+  if (status === "PRESENT") return "green";
+  if (status === "LATE") return "amber";
+  if (status === "ABSENT") return "red";
+  return "slate";
+}
+
+const employeeColumns: DataTableColumn<WorkforceEmployee>[] = [
+  { key: "name", header: "Name", cell: (r) => r.name },
+  { key: "email", header: "Email", cell: (r) => r.email },
+  { key: "role", header: "Role", cell: (r) => r.role },
+  {
+    key: "status",
+    header: "Status",
+    cell: (r) => (
+      <StatusPill tone={employeeStatusTone(r.status)}>{r.status}</StatusPill>
+    ),
+  },
+  {
+    key: "attendanceStatus",
+    header: "Today",
+    cell: (r) =>
+      r.attendanceStatus ? (
+        <StatusPill tone={attendanceTone(r.attendanceStatus)}>{r.attendanceStatus}</StatusPill>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      ),
+  },
+  {
+    key: "clockInAt",
+    header: "Clock-in",
+    cell: (r) => (r.clockInAt ? fmtTime(r.clockInAt) : "—"),
+  },
+  {
+    key: "joinedAt",
+    header: "Joined",
+    cell: (r) => fmtDate(r.joinedAt),
+  },
 ];
 
 export function TeamManagementDashboard() {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["workforce-employees"],
+    queryFn: () => workforceApi.employees(),
+    staleTime: 60_000,
+  });
+
+  if (isLoading) return <LoadingShell title="Team Management" description="Loading team data…" />;
+  if (isError)
+    return (
+      <ErrorShell
+        title="Team Management"
+        description="Active employees and today's attendance"
+        error={error}
+      />
+    );
+
+  const { employees, stats } = data!;
+
   return (
-    <DemoDashboard
-      title="Team Management"
-      description="Shared employee and role management dashboard for owner/manager visibility across business modes."
-      notice="Data team masih dummy. Belum ada employee schema baru, kontrak, payroll, atau attendance relation yang ditulis ke database."
-      metrics={[
-        { label: "Active Employees", value: "3", note: "From dummy team list", icon: Users, tone: "green" },
-        { label: "Departments", value: "4", note: "FOH, Service, Warehouse, Finance", icon: ClipboardList, tone: "blue" },
-        { label: "Pending Onboarding", value: "1", note: "Need account and contract", icon: Clock3, tone: "amber" },
-        { label: "Role Coverage", value: "82%", note: "Dummy schedule coverage", icon: BarChart3, tone: "slate" },
-      ]}
-      panelTitle="Team Directory"
-      panelDescription="Prepared for employee profiles, roles, access, and department assignment."
-      columns={teamColumns}
-      data={teamRows}
-      getRowKey={(row) => row.id}
-      sideTitle="Setup Readiness"
-      sideDescription="Workforce modules that can be wired after schema planning."
-      sideItems={[
-        { label: "Role and permission mapping", value: "Ready UI", tone: "green" },
-        { label: "Employee profile schema", value: "Planned", tone: "amber" },
-        { label: "Invite employee flow", value: "Draft", tone: "slate" },
-        { label: "Department management", value: "Planned", tone: "amber" },
-      ]}
-    />
+    <DashboardShell title="Team Management" description="Active employees and today's attendance">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Employees" value={String(stats.total)} icon={Users} tone="blue" />
+        <StatCard label="Active" value={String(stats.active)} icon={UserCheck} tone="green" />
+        <StatCard label="Present Today" value={String(stats.presentToday)} icon={CheckCircle2} tone="amber" />
+        <StatCard label="Clocked Out" value={String(stats.clockedOut)} icon={Clock} tone="slate" />
+      </div>
+
+      <DashboardPanel title="Employee Directory" description="All team members with today's attendance">
+        <DataTable columns={employeeColumns} data={employees} getRowKey={(r) => r.id} />
+      </DashboardPanel>
+    </DashboardShell>
   );
 }
 
-type ShiftOverviewRow = {
-  id: string;
-  day: string;
-  coverage: string;
-  employees: number;
-  openSlots: number;
-  risk: string;
-};
+// ─── Shift Overview / Roster ──────────────────────────────────────────────────
 
-const shiftOverviewRows: ShiftOverviewRow[] = [
-  { id: "so-mon", day: "Monday", coverage: "Morning + Afternoon", employees: 8, openSlots: 1, risk: "Warning" },
-  { id: "so-tue", day: "Tuesday", coverage: "Morning + Afternoon", employees: 9, openSlots: 0, risk: "Ready" },
-  { id: "so-wed", day: "Wednesday", coverage: "Morning + Night", employees: 7, openSlots: 2, risk: "Review" },
-];
-
-const shiftOverviewColumns: DataTableColumn<ShiftOverviewRow>[] = [
-  { key: "day", header: "Day", cell: (row) => <span className="font-medium text-foreground">{row.day}</span> },
-  { key: "coverage", header: "Coverage", cell: (row) => row.coverage },
-  { key: "employees", header: "Employees", cell: (row) => formatNumber(row.employees) },
-  { key: "openSlots", header: "Open Slots", cell: (row) => formatNumber(row.openSlots) },
-  { key: "risk", header: "Risk", cell: (row) => <StatusPill tone={getStatusTone(row.risk)}>{row.risk}</StatusPill> },
+const rosterColumns: DataTableColumn<RosterDay>[] = [
+  { key: "date", header: "Date", cell: (r) => r.date },
+  { key: "staffCount", header: "Staff", cell: (r) => String(r.staffCount) },
+  { key: "closedShifts", header: "Closed Shifts", cell: (r) => String(r.closedShifts) },
+  {
+    key: "openShifts",
+    header: "Open Shifts",
+    cell: (r) =>
+      r.openShifts > 0 ? (
+        <span className="font-medium text-amber-600">{r.openShifts}</span>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      ),
+  },
+  {
+    key: "revenue",
+    header: "Revenue",
+    cell: (r) => (r.revenue > 0 ? formatCurrency(r.revenue) : "—"),
+  },
 ];
 
 export function ShiftOverviewDashboard() {
-  const openSlots = shiftOverviewRows.reduce((total, row) => total + row.openSlots, 0);
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["workforce-roster-summary"],
+    queryFn: () => workforceApi.rosterSummary(),
+    staleTime: 60_000,
+  });
+
+  if (isLoading)
+    return <LoadingShell title="Shift Overview" description="Loading roster data…" />;
+  if (isError)
+    return (
+      <ErrorShell title="Shift Overview" description="Shift roster for the last 14 days" error={error} />
+    );
+
+  const { days, stats } = data!;
 
   return (
-    <DemoDashboard
-      title="Shift Overview"
-      description="Dummy weekly shift coverage dashboard for scheduling visibility before a real roster module is built."
-      notice="Shift overview ini belum scheduler asli. Belum ada recurring shifts, attendance lock, atau employee availability table."
-      metrics={[
-        { label: "Scheduled Employees", value: "24", note: "Sum of dummy coverage rows", icon: Users, tone: "green" },
-        { label: "Open Slots", value: formatNumber(openSlots), note: "Need manager assignment", icon: Clock3, tone: "amber" },
-        { label: "Coverage Rate", value: "88%", note: "Dummy weekly coverage", icon: BarChart3, tone: "blue" },
-        { label: "Risk Days", value: "2", note: "Warning or review status", icon: AlertTriangle, tone: "rose" },
-      ]}
-      panelTitle="Weekly Coverage Preview"
-      panelDescription="Prepared for roster, leave requests, and department coverage later."
-      columns={shiftOverviewColumns}
-      data={shiftOverviewRows}
-      getRowKey={(row) => row.id}
-      sideTitle="Future Scheduling Rules"
-      sideDescription="Business rules to add after foundation is stable."
-      sideItems={[
-        { label: "Max weekly hours", value: "Planned", tone: "amber" },
-        { label: "Leave conflict check", value: "Draft", tone: "slate" },
-        { label: "Auto assignment", value: "Not now", tone: "slate" },
-        { label: "Manager approval", value: "Planned", tone: "amber" },
-      ]}
-    />
+    <DashboardShell title="Shift Overview" description="Shift roster for the last 14 days">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Days Tracked" value={String(stats.totalDays)} icon={CalendarDays} tone="blue" />
+        <StatCard label="Avg Staff / Day" value={String(stats.avgStaff)} icon={Users} tone="slate" />
+        <StatCard label="Total Revenue" value={formatCurrency(stats.totalRevenue)} icon={TrendingUp} tone="green" />
+        <StatCard
+          label="Open Shifts"
+          value={String(stats.openShifts)}
+          icon={AlertTriangle}
+          tone={stats.openShifts > 0 ? "amber" : "green"}
+        />
+      </div>
+
+      <DashboardPanel title="Daily Roster" description="Shift breakdown by day">
+        <DataTable columns={rosterColumns} data={days} getRowKey={(r) => r.date} />
+      </DashboardPanel>
+    </DashboardShell>
   );
 }
 
-type PerformanceRow = {
-  id: string;
-  employee: string;
-  role: string;
-  score: number;
-  metric: string;
-  status: string;
-};
+// ─── Employee Performance ─────────────────────────────────────────────────────
 
-const performanceRows: PerformanceRow[] = [
-  { id: "pf-001", employee: "Nadia Putri", role: "Cashier Lead", score: 94, metric: "Cash variance 0%, high throughput", status: "Ready" },
-  { id: "pf-002", employee: "Raka Pratama", role: "Server", score: 87, metric: "Fast table turnover", status: "Active" },
-  { id: "pf-003", employee: "Dimas Arga", role: "Inventory Staff", score: 72, metric: "Stock correction needs review", status: "Review" },
-];
+function scoreTone(score: number): DashboardTone {
+  if (score >= 80) return "green";
+  if (score >= 60) return "amber";
+  return "red";
+}
 
-const performanceColumns: DataTableColumn<PerformanceRow>[] = [
-  { key: "employee", header: "Employee", cell: (row) => <span className="font-medium text-foreground">{row.employee}</span> },
-  { key: "role", header: "Role", cell: (row) => row.role },
-  { key: "score", header: "Score", cell: (row) => `${row.score}/100` },
-  { key: "metric", header: "Metric", cell: (row) => row.metric },
-  { key: "status", header: "Status", cell: (row) => <StatusPill tone={getStatusTone(row.status)}>{row.status}</StatusPill> },
+const performanceColumns: DataTableColumn<PerformanceEmployee>[] = [
+  { key: "name", header: "Employee", cell: (r) => r.name },
+  { key: "role", header: "Role", cell: (r) => r.role },
+  {
+    key: "score",
+    header: "Score",
+    cell: (r) => (
+      <StatusPill tone={scoreTone(r.score)}>{`${r.score} / 100`}</StatusPill>
+    ),
+  },
+  {
+    key: "attendanceRate",
+    header: "Attendance",
+    cell: (r) => `${r.attendanceRate}%`,
+  },
+  { key: "presentDays", header: "Present", cell: (r) => String(r.presentDays) },
+  {
+    key: "lateDays",
+    header: "Late",
+    cell: (r) =>
+      r.lateDays > 0 ? (
+        <span className="text-amber-600">{r.lateDays}</span>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      ),
+  },
+  {
+    key: "totalWorkMinutes",
+    header: "Work Hours",
+    cell: (r) => fmtDuration(r.totalWorkMinutes),
+  },
+  {
+    key: "overtimeMinutes",
+    header: "Overtime",
+    cell: (r) => (r.overtimeMinutes > 0 ? fmtDuration(r.overtimeMinutes) : "—"),
+  },
 ];
 
 export function EmployeePerformanceDashboard() {
-  const averageScore = Math.round(performanceRows.reduce((total, row) => total + row.score, 0) / performanceRows.length);
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["workforce-performance"],
+    queryFn: () => workforceApi.performanceSummary(),
+    staleTime: 60_000,
+  });
+
+  if (isLoading)
+    return <LoadingShell title="Employee Performance" description="Computing performance metrics…" />;
+  if (isError)
+    return (
+      <ErrorShell
+        title="Employee Performance"
+        description="Attendance-based performance scores"
+        error={error}
+      />
+    );
+
+  const { employees, stats, periodDays } = data!;
+  const top = employees[0];
 
   return (
-    <DemoDashboard
+    <DashboardShell
       title="Employee Performance"
-      description="Shared workforce performance dashboard for comparing employee output, quality, and operational consistency."
-      notice="Performance karyawan masih dummy. Jangan dijadikan evaluasi manusia beneran, karena menilai orang pakai angka asal adalah tradisi buruk yang tidak perlu dibantu komputer."
-      metrics={[
-        { label: "Average Score", value: `${averageScore}/100`, note: "Dummy weighted score", icon: BarChart3, tone: "green" },
-        { label: "Top Performer", value: "Nadia", note: "Highest dummy score", icon: CheckCircle2, tone: "blue" },
-        { label: "Needs Coaching", value: "1", note: "Review status", icon: ClipboardList, tone: "amber" },
-        { label: "Tracked Roles", value: "3", note: "Cashier, server, warehouse", icon: Users, tone: "slate" },
-      ]}
-      panelTitle="Performance Scorecard"
-      panelDescription="Prepared for KPI formulas, task completion, attendance, and shift accuracy later."
-      columns={performanceColumns}
-      data={performanceRows}
-      getRowKey={(row) => row.id}
-      sideTitle="KPI Formula Plan"
-      sideDescription="Candidate scoring components for future backend rules."
-      sideItems={[
-        { label: "Attendance reliability", value: "25%", tone: "blue" },
-        { label: "Cash/stock accuracy", value: "30%", tone: "green" },
-        { label: "Task completion", value: "25%", tone: "amber" },
-        { label: "Manager review", value: "20%", tone: "slate" },
-      ]}
-    />
+      description={`Attendance-based scores — last ${periodDays} days`}
+    >
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Avg Score" value={`${stats.avgScore} / 100`} icon={TrendingUp} tone="blue" />
+        <StatCard label="Avg Attendance" value={`${stats.avgAttendanceRate}%`} icon={UserCheck} tone="green" />
+        <StatCard label="Top Performer" value={top?.name ?? "—"} icon={CheckCircle2} tone="amber" />
+        <StatCard label="Employees" value={String(stats.totalEmployees)} icon={Users} tone="slate" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
+        <DashboardPanel title="Performance Ranking" description="Sorted by score — higher is better">
+          <DataTable columns={performanceColumns} data={employees} getRowKey={(r) => r.userId} />
+        </DashboardPanel>
+
+        <InfoPanel
+          label="Score Methodology"
+          items={[
+            { key: "Attendance weight", value: "85%" },
+            { key: "Late-arrival penalty", value: "−15 pts / rate" },
+            { key: "Overtime bonus", value: "+0.5 pt / hr (max 5)" },
+            { key: "Working days estimate", value: String(stats.workingDays) },
+            { key: "Period", value: `${periodDays} days` },
+          ]}
+        />
+      </div>
+    </DashboardShell>
   );
 }
 
-type AuditRow = {
-  id: string;
-  event: string;
-  actor: string;
-  module: string;
-  time: string;
-  severity: string;
-};
+// ─── Audit Log ────────────────────────────────────────────────────────────────
 
-const auditRows: AuditRow[] = [
-  { id: "au-001", event: "Updated menu price", actor: "Owner", module: "Menu", time: "Today 09:12", severity: "Active" },
-  { id: "au-002", event: "Payroll draft exported", actor: "Finance", module: "Payroll", time: "Today 11:40", severity: "Review" },
-  { id: "au-003", event: "Changed inventory correction", actor: "Manager", module: "Inventory", time: "Yesterday 20:05", severity: "Warning" },
-];
-
-const auditColumns: DataTableColumn<AuditRow>[] = [
-  { key: "event", header: "Event", cell: (row) => <span className="font-medium text-foreground">{row.event}</span> },
-  { key: "actor", header: "Actor", cell: (row) => row.actor },
-  { key: "module", header: "Module", cell: (row) => row.module },
-  { key: "time", header: "Time", cell: (row) => row.time },
-  { key: "severity", header: "Severity", cell: (row) => <StatusPill tone={getStatusTone(row.severity)}>{row.severity}</StatusPill> },
+const auditColumns: DataTableColumn<AuditLogRow>[] = [
+  { key: "event", header: "Event", cell: (r) => r.event },
+  { key: "actor", header: "Actor", cell: (r) => r.actor },
+  { key: "actorRole", header: "Role", cell: (r) => r.actorRole },
+  { key: "module", header: "Module", cell: (r) => r.module },
+  { key: "entityId", header: "Entity ID", cell: (r) => r.entityId.slice(0, 8) + "…" },
+  {
+    key: "createdAt",
+    header: "Time",
+    cell: (r) => (
+      <span title={r.createdAt}>
+        {fmtDate(r.createdAt)} {fmtTime(r.createdAt)}
+      </span>
+    ),
+  },
 ];
 
 export function AuditLogDashboard() {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["workforce-audit-log"],
+    queryFn: () => workforceApi.auditLog(),
+    staleTime: 30_000,
+  });
+
+  if (isLoading) return <LoadingShell title="Audit Log" description="Loading system events…" />;
+  if (isError)
+    return <ErrorShell title="Audit Log" description="System-wide activity trail" error={error} />;
+
+  const { logs, stats } = data!;
+
   return (
-    <DemoDashboard
-      title="Audit Log"
-      description="Dummy audit trail dashboard for tracking important actions across shared business modules."
-      notice="Audit log ini display dummy. Belum ada append-only audit table, actor metadata, IP/device metadata, atau retention policy."
-      metrics={[
-        { label: "Events Today", value: "18", note: "Mock audit events", icon: ShieldCheck, tone: "blue" },
-        { label: "High Risk", value: "1", note: "Inventory correction review", icon: AlertTriangle, tone: "rose" },
-        { label: "Modules Tracked", value: "6", note: "Menu, payroll, inventory, etc", icon: ClipboardList, tone: "green" },
-        { label: "Retention", value: "Planned", note: "Future audit policy", icon: FileText, tone: "slate" },
-      ]}
-      panelTitle="Recent Audit Events"
-      panelDescription="Prepared for immutable audit history after schema and backend are ready."
-      columns={auditColumns}
-      data={auditRows}
-      getRowKey={(row) => row.id}
-      sideTitle="Audit Engine Plan"
-      sideDescription="Rules to protect business-critical history later."
-      sideItems={[
-        { label: "Append-only writes", value: "Planned", tone: "amber" },
-        { label: "Actor and role snapshot", value: "Planned", tone: "amber" },
-        { label: "Before/after diff", value: "Draft", tone: "slate" },
-        { label: "Export log", value: "Ready UI", tone: "green" },
-      ]}
-    />
+    <DashboardShell title="Audit Log" description="System-wide activity trail">
+      <div className="grid gap-3 md:grid-cols-3">
+        <StatCard label="Events Today" value={String(stats.eventsToday)} icon={CalendarDays} tone="blue" />
+        <StatCard label="Records Loaded" value={String(stats.totalRecords)} icon={FileText} tone="slate" />
+        <StatCard label="Modules Active" value={String(stats.uniqueModules)} icon={BarChart3} tone="green" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
+        <DashboardPanel title="Recent Events" description="Latest 30 system actions">
+          <DataTable columns={auditColumns} data={logs} getRowKey={(r) => r.id} />
+        </DashboardPanel>
+
+        <InfoPanel
+          label="Active Modules"
+          items={stats.moduleList.map((m) => ({ key: m, value: "✓" }))}
+        />
+      </div>
+    </DashboardShell>
   );
 }
 
-type ApprovalRow = {
-  id: string;
-  request: string;
-  requester: string;
-  amount: number;
-  approver: string;
-  status: string;
-};
-
-const approvalRows: ApprovalRow[] = [
-  { id: "ap-001", request: "Stock purchase above limit", requester: "Inventory", amount: 8_400_000, approver: "Owner", status: "Pending" },
-  { id: "ap-002", request: "Payroll adjustment", requester: "Finance", amount: 650_000, approver: "Manager", status: "Review" },
-  { id: "ap-003", request: "Supplier contract renewal", requester: "Ops", amount: 0, approver: "Owner", status: "Approved" },
-];
-
-const approvalColumns: DataTableColumn<ApprovalRow>[] = [
-  { key: "request", header: "Request", cell: (row) => <span className="font-medium text-foreground">{row.request}</span> },
-  { key: "requester", header: "Requester", cell: (row) => row.requester },
-  { key: "amount", header: "Amount", cell: (row) => (row.amount > 0 ? formatCurrency(row.amount) : "-") },
-  { key: "approver", header: "Approver", cell: (row) => row.approver },
-  { key: "status", header: "Status", cell: (row) => <StatusPill tone={getStatusTone(row.status)}>{row.status}</StatusPill> },
-];
+// ─── Approvals (no schema yet — informational) ────────────────────────────────
 
 export function ApprovalDashboard() {
   return (
-    <DemoDashboard
-      title="Approval Center"
-      description="Dummy approval dashboard for purchase, payroll, contract, and operational exception workflows."
-      notice="Approval center ini belum workflow engine. Tidak ada approve/reject mutation, notification, atau permission enforcement baru."
-      metrics={[
-        { label: "Pending Requests", value: "2", note: "Waiting approval", icon: Clock3, tone: "amber" },
-        { label: "Approved Today", value: "1", note: "Dummy approval", icon: CheckCircle2, tone: "green" },
-        { label: "Approval Value", value: formatCurrency(9_050_000), note: "Requests with amount", icon: Banknote, tone: "blue" },
-        { label: "SLA Risk", value: "1", note: "Needs owner review", icon: AlertTriangle, tone: "rose" },
-      ]}
-      panelTitle="Approval Queue"
-      panelDescription="Prepared for approval policy, delegation, and audit trail later."
-      columns={approvalColumns}
-      data={approvalRows}
-      getRowKey={(row) => row.id}
-      sideTitle="Approval Rules Draft"
-      sideDescription="Policy ideas to wire after permissions are stable."
-      sideItems={[
-        { label: "Purchase > threshold", value: "Owner", tone: "blue" },
-        { label: "Payroll correction", value: "Manager", tone: "amber" },
-        { label: "Contract renewal", value: "Owner", tone: "green" },
-        { label: "Auto approval", value: "Not now", tone: "slate" },
-      ]}
-    />
+    <DashboardShell title="Approvals" description="Workflow approval queue — not yet configured">
+      <div className="flex h-48 flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+        <Shield className="h-8 w-8 opacity-40" />
+        <p className="max-w-sm text-sm">
+          The approvals workflow engine is not yet set up. To enable this feature, configure approval
+          rules in Settings → Workflow.
+        </p>
+      </div>
+    </DashboardShell>
   );
 }
 
-type ContractRow = {
-  id: string;
-  employee: string;
-  type: string;
-  startDate: string;
-  endDate: string;
-  status: string;
-};
+// ─── Employee Contracts ───────────────────────────────────────────────────────
 
-const contractRows: ContractRow[] = [
-  { id: "ct-001", employee: "Nadia Putri", type: "Full-time", startDate: "2026-01-01", endDate: "2026-12-31", status: "Active" },
-  { id: "ct-002", employee: "Raka Pratama", type: "Part-time", startDate: "2026-03-01", endDate: "2026-08-31", status: "Review" },
-  { id: "ct-003", employee: "Dimas Arga", type: "Probation", startDate: "2026-06-01", endDate: "2026-08-31", status: "Pending" },
-];
+function contractTypeTone(contractType: string): DashboardTone {
+  if (contractType === "Permanent") return "blue";
+  if (contractType === "Regular") return "green";
+  if (contractType === "Back Office") return "rose";
+  return "slate";
+}
 
 const contractColumns: DataTableColumn<ContractRow>[] = [
-  { key: "employee", header: "Employee", cell: (row) => <span className="font-medium text-foreground">{row.employee}</span> },
-  { key: "type", header: "Type", cell: (row) => row.type },
-  { key: "startDate", header: "Start", cell: (row) => row.startDate },
-  { key: "endDate", header: "End", cell: (row) => row.endDate },
-  { key: "status", header: "Status", cell: (row) => <StatusPill tone={getStatusTone(row.status)}>{row.status}</StatusPill> },
+  { key: "name", header: "Employee", cell: (r) => r.name },
+  { key: "email", header: "Email", cell: (r) => r.email },
+  { key: "role", header: "Role", cell: (r) => r.role },
+  {
+    key: "contractType",
+    header: "Contract Type",
+    cell: (r) => (
+      <StatusPill tone={contractTypeTone(r.contractType)}>{r.contractType}</StatusPill>
+    ),
+  },
+  {
+    key: "status",
+    header: "Status",
+    cell: (r) => (
+      <StatusPill tone={r.status === "Active" ? "green" : "red"}>{r.status}</StatusPill>
+    ),
+  },
+  {
+    key: "startDate",
+    header: "Since",
+    cell: (r) => fmtDate(r.startDate),
+  },
 ];
 
 export function EmployeeContractsDashboard() {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["workforce-contracts"],
+    queryFn: () => workforceApi.contracts(),
+    staleTime: 120_000,
+  });
+
+  if (isLoading)
+    return <LoadingShell title="Employee Contracts" description="Loading contract records…" />;
+  if (isError)
+    return (
+      <ErrorShell title="Employee Contracts" description="Contract overview by employee" error={error} />
+    );
+
+  const { contracts, stats, note } = data!;
+
   return (
-    <DemoDashboard
-      title="Employee Contracts"
-      description="Dummy employee contract dashboard for employment type, contract validity, and document readiness."
-      notice="Kontrak karyawan masih dummy. Belum upload file, belum e-signature, belum relation ke employee profile."
-      metrics={[
-        { label: "Active Contracts", value: "1", note: "Current valid contracts", icon: FileText, tone: "green" },
-        { label: "Needs Review", value: "1", note: "Expiring or incomplete", icon: AlertTriangle, tone: "amber" },
-        { label: "Pending Sign", value: "1", note: "Dummy onboarding", icon: Clock3, tone: "rose" },
-        { label: "Contract Types", value: "3", note: "Full-time, part-time, probation", icon: ClipboardList, tone: "blue" },
-      ]}
-      panelTitle="Contract Register"
-      panelDescription="Prepared for document metadata, employment terms, and renewal alerts later."
-      columns={contractColumns}
-      data={contractRows}
-      getRowKey={(row) => row.id}
-      sideTitle="Contract Data Plan"
-      sideDescription="Candidate fields for future schema."
-      sideItems={[
-        { label: "Document URL", value: "Planned", tone: "amber" },
-        { label: "Salary term link", value: "Draft", tone: "slate" },
-        { label: "Renewal reminder", value: "Planned", tone: "amber" },
-        { label: "Approval trail", value: "Needed", tone: "rose" },
-      ]}
-    />
+    <DashboardShell title="Employee Contracts" description="Contract overview by employee">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total" value={String(stats.total)} icon={Users} tone="blue" />
+        <StatCard label="Active" value={String(stats.active)} icon={UserCheck} tone="green" />
+        {Object.entries(stats.byType).map(([type, count]) => (
+          <StatCard key={type} label={type} value={String(count)} icon={FileText} tone="slate" />
+        ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
+        <DashboardPanel title="Contract List" description="All employees with derived contract info">
+          <DataTable columns={contractColumns} data={contracts} getRowKey={(r) => r.userId} />
+        </DashboardPanel>
+
+        <div className="flex flex-col gap-4">
+          <InfoPanel
+            label="By Contract Type"
+            items={Object.entries(stats.byType).map(([type, count]) => ({
+              key: type,
+              value: String(count),
+            }))}
+          />
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+            {note}
+          </div>
+        </div>
+      </div>
+    </DashboardShell>
   );
 }
 
-type AttendanceRow = {
-  id: string;
-  employee: string;
-  date: string;
-  checkIn: string;
-  checkOut: string;
-  status: string;
-};
+// ─── Employee Attendance ──────────────────────────────────────────────────────
 
-const attendanceRows: AttendanceRow[] = [
-  { id: "at-001", employee: "Nadia Putri", date: "2026-06-13", checkIn: "08:01", checkOut: "16:05", status: "Completed" },
-  { id: "at-002", employee: "Raka Pratama", date: "2026-06-13", checkIn: "10:10", checkOut: "-", status: "Active" },
-  { id: "at-003", employee: "Dimas Arga", date: "2026-06-13", checkIn: "-", checkOut: "-", status: "Pending" },
-];
-
-const attendanceColumns: DataTableColumn<AttendanceRow>[] = [
-  { key: "employee", header: "Employee", cell: (row) => <span className="font-medium text-foreground">{row.employee}</span> },
-  { key: "date", header: "Date", cell: (row) => row.date },
-  { key: "checkIn", header: "Check In", cell: (row) => row.checkIn },
-  { key: "checkOut", header: "Check Out", cell: (row) => row.checkOut },
-  { key: "status", header: "Status", cell: (row) => <StatusPill tone={getStatusTone(row.status)}>{row.status}</StatusPill> },
+const attendanceColumns: DataTableColumn<AttendanceRecord>[] = [
+  { key: "employeeName", header: "Employee", cell: (r) => r.employeeName },
+  { key: "employeeRole", header: "Role", cell: (r) => r.employeeRole },
+  { key: "date", header: "Date", cell: (r) => r.date },
+  { key: "clockInAt", header: "Clock-in", cell: (r) => fmtTime(r.clockInAt) },
+  {
+    key: "clockOutAt",
+    header: "Clock-out",
+    cell: (r) => (r.clockOutAt ? fmtTime(r.clockOutAt) : "—"),
+  },
+  {
+    key: "status",
+    header: "Status",
+    cell: (r) => (
+      <StatusPill tone={attendanceTone(r.status)}>{r.status}</StatusPill>
+    ),
+  },
+  {
+    key: "workDurationMinutes",
+    header: "Duration",
+    cell: (r) => fmtDuration(r.workDurationMinutes),
+  },
+  {
+    key: "overtimeMinutes",
+    header: "Overtime",
+    cell: (r) => (r.overtimeMinutes > 0 ? fmtDuration(r.overtimeMinutes) : "—"),
+  },
 ];
 
 export function EmployeeAttendanceDashboard() {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["workforce-attendance"],
+    queryFn: () => workforceApi.attendance(),
+    staleTime: 30_000,
+  });
+
+  if (isLoading)
+    return <LoadingShell title="Employee Attendance" description="Loading attendance records…" />;
+  if (isError)
+    return (
+      <ErrorShell
+        title="Employee Attendance"
+        description="Daily clock-in/out records"
+        error={error}
+      />
+    );
+
+  const { records, stats } = data!;
+
   return (
-    <DemoDashboard
-      title="Employee Attendance"
-      description="Dummy attendance dashboard for check-in, check-out, late arrival, and daily workforce visibility."
-      notice="Absensi ini belum real-time dan belum pakai device/location. Jangan update schema dulu, cukup siapkan UI dan data contract."
-      metrics={[
-        { label: "Present Today", value: "2", note: "Checked in dummy rows", icon: Users, tone: "green" },
-        { label: "Active Shift", value: "1", note: "Not checked out yet", icon: Clock3, tone: "blue" },
-        { label: "Missing Check-in", value: "1", note: "Needs supervisor check", icon: AlertTriangle, tone: "amber" },
-        { label: "Attendance Rate", value: "67%", note: "Dummy today rate", icon: BarChart3, tone: "slate" },
-      ]}
-      panelTitle="Today Attendance"
-      panelDescription="Prepared for attendance records, shift matching, and payroll calculation later."
-      columns={attendanceColumns}
-      data={attendanceRows}
-      getRowKey={(row) => row.id}
-      sideTitle="Attendance Integration Plan"
-      sideDescription="Where attendance should connect after schema exists."
-      sideItems={[
-        { label: "Shift matching", value: "Planned", tone: "amber" },
-        { label: "Late deduction", value: "Draft", tone: "slate" },
-        { label: "Payroll input", value: "Planned", tone: "amber" },
-        { label: "Manual correction approval", value: "Needed", tone: "rose" },
-      ]}
-    />
+    <DashboardShell title="Employee Attendance" description="Daily clock-in/out records">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Present Today" value={String(stats.presentToday)} icon={CheckCircle2} tone="green" />
+        <StatCard
+          label="Late Today"
+          value={String(stats.lateToday)}
+          icon={AlertTriangle}
+          tone={stats.lateToday > 0 ? "amber" : "green"}
+        />
+        <StatCard label="Active Shift" value={String(stats.activeShift)} icon={Clock} tone="blue" />
+        <StatCard label="Records Loaded" value={String(stats.totalRecords)} icon={FileText} tone="slate" />
+      </div>
+
+      <DashboardPanel title="Attendance Log" description="Latest 50 clock-in records">
+        <DataTable columns={attendanceColumns} data={records} getRowKey={(r) => r.id} />
+      </DashboardPanel>
+    </DashboardShell>
   );
 }
 
-type PayrollRow = {
-  id: string;
-  employee: string;
-  basePay: number;
-  allowance: number;
-  deduction: number;
-  status: string;
-};
+// ─── Payroll Preview ──────────────────────────────────────────────────────────
 
-const payrollRows: PayrollRow[] = [
-  { id: "py-001", employee: "Nadia Putri", basePay: 4_200_000, allowance: 450_000, deduction: 0, status: "Ready" },
-  { id: "py-002", employee: "Raka Pratama", basePay: 2_800_000, allowance: 250_000, deduction: 50_000, status: "Review" },
-  { id: "py-003", employee: "Dimas Arga", basePay: 1_900_000, allowance: 150_000, deduction: 0, status: "Pending" },
-];
-
-const payrollColumns: DataTableColumn<PayrollRow>[] = [
-  { key: "employee", header: "Employee", cell: (row) => <span className="font-medium text-foreground">{row.employee}</span> },
-  { key: "basePay", header: "Base Pay", cell: (row) => formatCurrency(row.basePay) },
-  { key: "allowance", header: "Allowance", cell: (row) => formatCurrency(row.allowance) },
-  { key: "deduction", header: "Deduction", cell: (row) => formatCurrency(row.deduction) },
-  { key: "status", header: "Status", cell: (row) => <StatusPill tone={getStatusTone(row.status)}>{row.status}</StatusPill> },
+const payrollColumns: DataTableColumn<PayrollPreviewEmployee>[] = [
+  { key: "name", header: "Employee", cell: (r) => r.name },
+  { key: "role", header: "Role", cell: (r) => r.role },
+  { key: "presentDays", header: "Present", cell: (r) => String(r.presentDays) },
+  {
+    key: "lateDays",
+    header: "Late",
+    cell: (r) =>
+      r.lateDays > 0 ? (
+        <span className="text-amber-600">{r.lateDays}</span>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      ),
+  },
+  { key: "attendanceDays", header: "Recorded", cell: (r) => String(r.attendanceDays) },
+  { key: "totalWorkMinutes", header: "Work Hours", cell: (r) => fmtDuration(r.totalWorkMinutes) },
+  {
+    key: "overtimeMinutes",
+    header: "Overtime",
+    cell: (r) => (r.overtimeMinutes > 0 ? fmtDuration(r.overtimeMinutes) : "—"),
+  },
 ];
 
 export function PayrollDashboard() {
-  const grossPay = payrollRows.reduce((total, row) => total + row.basePay + row.allowance, 0);
-  const deductions = payrollRows.reduce((total, row) => total + row.deduction, 0);
-  const netPay = grossPay - deductions;
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["workforce-payroll-preview"],
+    queryFn: () => workforceApi.payrollPreview(),
+    staleTime: 60_000,
+  });
+
+  if (isLoading)
+    return <LoadingShell title="Payroll Preview" description="Computing attendance metrics…" />;
+  if (isError)
+    return (
+      <ErrorShell
+        title="Payroll Preview"
+        description="Monthly attendance summary for payroll"
+        error={error}
+      />
+    );
+
+  const { employees, stats, period } = data!;
 
   return (
-    <DemoDashboard
-      title="Payroll"
-      description="Dummy payroll dashboard for salary preview, allowances, deductions, and approval readiness."
-      notice="Payroll ini belum payroll engine. Tidak ada tax, BPJS, transfer bank, payslip, atau financial journal yang dibuat. Semua angka masih contoh."
-      metrics={[
-        { label: "Gross Payroll", value: formatCurrency(grossPay), note: "Base pay + allowance", icon: WalletCards, tone: "green" },
-        { label: "Deductions", value: formatCurrency(deductions), note: "Dummy deduction", icon: AlertTriangle, tone: "amber" },
-        { label: "Net Payroll", value: formatCurrency(netPay), note: "Estimated payout", icon: Banknote, tone: "blue" },
-        { label: "Ready Payslips", value: "1/3", note: "Dummy status", icon: FileText, tone: "slate" },
-      ]}
-      panelTitle="Payroll Preview"
-      panelDescription="Prepared for attendance, contract salary, approval, and cashflow journal integration later."
-      columns={payrollColumns}
-      data={payrollRows}
-      getRowKey={(row) => row.id}
-      sideTitle="Payroll Flow Draft"
-      sideDescription="Execution steps before payout becomes real."
-      sideItems={[
-        { label: "Attendance lock", value: "Needed", tone: "rose" },
-        { label: "Manager approval", value: "Planned", tone: "amber" },
-        { label: "Payslip generate", value: "Draft", tone: "slate" },
-        { label: "Cashflow journal", value: "Planned", tone: "amber" },
-      ]}
-    />
+    <DashboardShell
+      title="Payroll Preview"
+      description={`Attendance metrics for payroll preparation — ${period}`}
+    >
+      <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+        Base salary is not configured in this system. This view shows attendance-based metrics to
+        support payroll preparation. Configure employee base salaries to enable full payroll
+        calculation.
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Employees" value={String(stats.totalEmployees)} icon={Users} tone="blue" />
+        <StatCard
+          label="Avg Present Rate"
+          value={`${Math.round(stats.avgPresentRate * 100)}%`}
+          icon={UserCheck}
+          tone="green"
+        />
+        <StatCard
+          label="Attendance Days"
+          value={String(stats.totalAttendanceDays)}
+          icon={CalendarDays}
+          tone="slate"
+        />
+        <StatCard
+          label="Total Overtime"
+          value={fmtDuration(stats.totalOvertimeMinutes)}
+          icon={Clock}
+          tone="amber"
+        />
+      </div>
+
+      <DashboardPanel
+        title="Attendance Summary"
+        description={`Period: ${period} — all active employees`}
+      >
+        <DataTable columns={payrollColumns} data={employees} getRowKey={(r) => r.userId} />
+      </DashboardPanel>
+    </DashboardShell>
   );
 }

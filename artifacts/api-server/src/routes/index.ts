@@ -53,6 +53,8 @@ import serviceBusinessRouter from "./service-business.js";
 import miscBusinessRouter from "./misc-business.js";
 import miscRouter from "./misc.js";
 import eventsRouter from "./events.js";
+import workforceRouter from "./workforce.js";
+import hppRouter from "./hpp.js";
 
 const router: IRouter = Router();
 
@@ -109,5 +111,7 @@ router.use(serviceBusinessRouter);
 router.use(miscBusinessRouter);
 router.use(miscRouter);
 router.use(eventsRouter);
+router.use(workforceRouter);
+router.use(hppRouter);
 
 export default router;

@@ -16,6 +16,34 @@ function getTodayRange() {
   return { start, end };
 }
 
+function getMonthRange(monthParam: string | null) {
+  const now = new Date();
+  let year = now.getFullYear();
+  let month = now.getMonth();
+
+  if (monthParam) {
+    const parts = monthParam.split("-").map(Number);
+    const y = parts[0];
+    const m = parts[1];
+    if (y && m && !isNaN(y) && !isNaN(m) && m >= 1 && m <= 12) {
+      year = y;
+      month = m - 1;
+    }
+  }
+
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 1);
+  const label = `${year}-${String(month + 1).padStart(2, "0")}`;
+  return { start, end, label };
+}
+
+function deriveContractType(role: string): string {
+  if (role === "OWNER" || role === "MANAGER") return "Permanent";
+  if (role === "ADMIN") return "Back Office";
+  if (role === "OPERATOR" || role === "STAFF") return "Regular";
+  return "Observer";
+}
+
 router.get("/workforce/employees", async (req, res) => {
   try {
     const user = await requireRole(req, res, MANAGEMENT_ROLES);
@@ -68,12 +96,7 @@ router.get("/workforce/employees", async (req, res) => {
     return successResponse(res, {
       data: {
         employees,
-        stats: {
-          total: employees.length,
-          active: activeCount,
-          presentToday,
-          clockedOut,
-        },
+        stats: { total: employees.length, active: activeCount, presentToday, clockedOut },
       },
     });
   } catch (error) {
@@ -107,19 +130,13 @@ router.get("/workforce/attendance", async (req, res) => {
         businessId: businessContext.businessId,
         ...(clockInFilter ? { clockInAt: clockInFilter } : {}),
       },
-      include: {
-        user: { select: { id: true, name: true, email: true, role: true } },
-      },
+      include: { user: { select: { id: true, name: true, email: true, role: true } } },
       orderBy: { clockInAt: "desc" },
       take: limit,
     });
 
     const { start: todayStart, end: todayEnd } = getTodayRange();
-
-    const todayRecords = records.filter(
-      (r) => r.clockInAt >= todayStart && r.clockInAt < todayEnd,
-    );
-
+    const todayRecords = records.filter((r) => r.clockInAt >= todayStart && r.clockInAt < todayEnd);
     const presentToday = todayRecords.filter((r) => r.status === "PRESENT" || r.status === "LATE").length;
     const lateToday = todayRecords.filter((r) => r.status === "LATE").length;
     const activeShift = todayRecords.filter((r) => !r.clockOutAt).length;
@@ -139,12 +156,7 @@ router.get("/workforce/attendance", async (req, res) => {
           status: r.status,
           note: r.note ?? null,
         })),
-        stats: {
-          presentToday,
-          lateToday,
-          activeShift,
-          totalRecords: records.length,
-        },
+        stats: { presentToday, lateToday, activeShift, totalRecords: records.length },
       },
     });
   } catch (error) {
@@ -166,10 +178,7 @@ router.get("/workforce/shift-summary", async (req, res) => {
       where: { businessId: businessContext.businessId },
       include: {
         user: { select: { id: true, name: true, role: true } },
-        orders: {
-          where: { status: "PAID" },
-          select: { total: true },
-        },
+        orders: { where: { status: "PAID" }, select: { total: true } },
       },
       orderBy: { openedAt: "desc" },
       take: limit,
@@ -231,9 +240,7 @@ router.get("/workforce/audit-log", async (req, res) => {
     const [logs, eventsToday] = await Promise.all([
       prisma.auditLog.findMany({
         where: { businessId: businessContext.businessId },
-        include: {
-          user: { select: { id: true, name: true, email: true, role: true } },
-        },
+        include: { user: { select: { id: true, name: true, email: true, role: true } } },
         orderBy: { createdAt: "desc" },
         take: limit,
       }),
@@ -283,6 +290,314 @@ router.get("/workforce/audit-log", async (req, res) => {
           uniqueModules: uniqueModules.length,
           moduleList: uniqueModules,
         },
+      },
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/workforce/payroll-preview", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+
+    const monthParam = typeof req.query.month === "string" ? req.query.month : null;
+    const { start: periodStart, end: periodEnd, label: period } = getMonthRange(monthParam);
+
+    const [users, attendances] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          OR: [
+            { businessId: businessContext.businessId },
+            { ownedBusinesses: { some: { id: businessContext.businessId } } },
+          ],
+          isActive: true,
+        },
+        select: { id: true, name: true, role: true },
+        orderBy: [{ role: "asc" }, { name: "asc" }],
+      }),
+      prisma.attendance.findMany({
+        where: {
+          businessId: businessContext.businessId,
+          clockInAt: { gte: periodStart, lt: periodEnd },
+        },
+        select: { userId: true, status: true, workDurationMinutes: true, overtimeMinutes: true },
+      }),
+    ]);
+
+    const byUser = new Map<string, {
+      attendanceDays: number;
+      presentDays: number;
+      lateDays: number;
+      workMinutes: number;
+      overtimeMinutes: number;
+    }>();
+
+    for (const a of attendances) {
+      const prev = byUser.get(a.userId) ?? {
+        attendanceDays: 0, presentDays: 0, lateDays: 0, workMinutes: 0, overtimeMinutes: 0,
+      };
+      prev.attendanceDays += 1;
+      if (a.status === "PRESENT" || a.status === "LATE") prev.presentDays += 1;
+      if (a.status === "LATE") prev.lateDays += 1;
+      prev.workMinutes += a.workDurationMinutes;
+      prev.overtimeMinutes += a.overtimeMinutes;
+      byUser.set(a.userId, prev);
+    }
+
+    const employees = users.map((u) => {
+      const agg = byUser.get(u.id) ?? {
+        attendanceDays: 0, presentDays: 0, lateDays: 0, workMinutes: 0, overtimeMinutes: 0,
+      };
+      return {
+        userId: u.id,
+        name: u.name,
+        role: u.role,
+        attendanceDays: agg.attendanceDays,
+        presentDays: agg.presentDays,
+        lateDays: agg.lateDays,
+        totalWorkMinutes: agg.workMinutes,
+        overtimeMinutes: agg.overtimeMinutes,
+      };
+    });
+
+    const totalAttendanceDays = employees.reduce((s, e) => s + e.attendanceDays, 0);
+    const totalOvertimeMinutes = employees.reduce((s, e) => s + e.overtimeMinutes, 0);
+    const withRecords = employees.filter((e) => e.attendanceDays > 0);
+    const avgPresentRate =
+      withRecords.length > 0
+        ? Math.round(
+            (withRecords.reduce((s, e) => s + e.presentDays / e.attendanceDays, 0) /
+              withRecords.length) *
+              100,
+          ) / 100
+        : 0;
+
+    return successResponse(res, {
+      data: {
+        period,
+        employees,
+        stats: { totalEmployees: employees.length, totalAttendanceDays, avgPresentRate, totalOvertimeMinutes },
+      },
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/workforce/roster-summary", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+
+    const daysParam = typeof req.query.days === "string" ? parseInt(req.query.days, 10) : 14;
+    const days = isNaN(daysParam) || daysParam < 1 ? 14 : Math.min(daysParam, 60);
+
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    since.setHours(0, 0, 0, 0);
+
+    const shifts = await prisma.shift.findMany({
+      where: { businessId: businessContext.businessId, openedAt: { gte: since } },
+      include: { orders: { where: { status: "PAID" }, select: { total: true } } },
+      orderBy: { openedAt: "desc" },
+    });
+
+    const byDate = new Map<string, {
+      staffIds: Set<string>;
+      openShifts: number;
+      closedShifts: number;
+      revenue: number;
+    }>();
+
+    for (const shift of shifts) {
+      const dateKey = shift.openedAt.toISOString().split("T")[0];
+      const prev = byDate.get(dateKey) ?? {
+        staffIds: new Set<string>(), openShifts: 0, closedShifts: 0, revenue: 0,
+      };
+      prev.staffIds.add(shift.userId);
+      if (shift.status === "CLOSED") prev.closedShifts += 1;
+      else prev.openShifts += 1;
+      prev.revenue += shift.orders.reduce((s, o) => s + o.total, 0);
+      byDate.set(dateKey, prev);
+    }
+
+    const dayRows = Array.from(byDate.entries())
+      .map(([date, d]) => ({
+        date,
+        staffCount: d.staffIds.size,
+        openShifts: d.openShifts,
+        closedShifts: d.closedShifts,
+        revenue: d.revenue,
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    const totalRevenue = dayRows.reduce((s, d) => s + d.revenue, 0);
+    const totalOpenShifts = dayRows.reduce((s, d) => s + d.openShifts, 0);
+    const avgStaff =
+      dayRows.length > 0
+        ? Math.round((dayRows.reduce((s, d) => s + d.staffCount, 0) / dayRows.length) * 10) / 10
+        : 0;
+
+    return successResponse(res, {
+      data: {
+        days: dayRows,
+        stats: { totalDays: dayRows.length, avgStaff, totalRevenue, openShifts: totalOpenShifts },
+      },
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/workforce/performance-summary", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+
+    const periodDays = 30;
+    const since = new Date();
+    since.setDate(since.getDate() - periodDays);
+    since.setHours(0, 0, 0, 0);
+    const workingDays = Math.round(periodDays * (5 / 7));
+
+    const [users, attendances] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          OR: [
+            { businessId: businessContext.businessId },
+            { ownedBusinesses: { some: { id: businessContext.businessId } } },
+          ],
+          isActive: true,
+        },
+        select: { id: true, name: true, role: true },
+        orderBy: [{ role: "asc" }, { name: "asc" }],
+      }),
+      prisma.attendance.findMany({
+        where: {
+          businessId: businessContext.businessId,
+          clockInAt: { gte: since },
+        },
+        select: { userId: true, status: true, workDurationMinutes: true, overtimeMinutes: true },
+      }),
+    ]);
+
+    const byUser = new Map<string, {
+      presentDays: number;
+      lateDays: number;
+      workMinutes: number;
+      overtimeMinutes: number;
+    }>();
+
+    for (const a of attendances) {
+      const prev = byUser.get(a.userId) ?? {
+        presentDays: 0, lateDays: 0, workMinutes: 0, overtimeMinutes: 0,
+      };
+      if (a.status === "PRESENT" || a.status === "LATE") prev.presentDays += 1;
+      if (a.status === "LATE") prev.lateDays += 1;
+      prev.workMinutes += a.workDurationMinutes;
+      prev.overtimeMinutes += a.overtimeMinutes;
+      byUser.set(a.userId, prev);
+    }
+
+    const employees = users
+      .map((u) => {
+        const agg = byUser.get(u.id) ?? {
+          presentDays: 0, lateDays: 0, workMinutes: 0, overtimeMinutes: 0,
+        };
+        const attendanceRate =
+          workingDays > 0 ? Math.min(Math.round((agg.presentDays / workingDays) * 100), 100) : 0;
+        const lateRatio = agg.presentDays > 0 ? agg.lateDays / agg.presentDays : 0;
+        const overtimeBonus = Math.min(Math.floor(agg.overtimeMinutes / 60), 10) * 0.5;
+        const score = Math.max(
+          0,
+          Math.min(
+            100,
+            Math.round(Math.min(attendanceRate * 0.85, 85) - lateRatio * 15 + overtimeBonus),
+          ),
+        );
+        return {
+          userId: u.id,
+          name: u.name,
+          role: u.role,
+          presentDays: agg.presentDays,
+          lateDays: agg.lateDays,
+          totalWorkMinutes: agg.workMinutes,
+          overtimeMinutes: agg.overtimeMinutes,
+          attendanceRate,
+          score,
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    const avgScore =
+      employees.length > 0
+        ? Math.round(employees.reduce((s, e) => s + e.score, 0) / employees.length)
+        : 0;
+    const avgAttendanceRate =
+      employees.length > 0
+        ? Math.round(employees.reduce((s, e) => s + e.attendanceRate, 0) / employees.length)
+        : 0;
+
+    return successResponse(res, {
+      data: {
+        periodDays,
+        employees,
+        stats: { totalEmployees: employees.length, avgScore, avgAttendanceRate, workingDays },
+      },
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/workforce/contracts", async (req, res) => {
+  try {
+    const user = await requireRole(req, res, MANAGEMENT_ROLES);
+    if (!user) return;
+
+    const businessContext = await requireBusinessContextForUser(user);
+
+    const users = await prisma.user.findMany({
+      where: {
+        OR: [
+          { businessId: businessContext.businessId },
+          { ownedBusinesses: { some: { id: businessContext.businessId } } },
+        ],
+      },
+      select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
+      orderBy: [{ role: "asc" }, { name: "asc" }],
+    });
+
+    const contracts = users.map((u) => ({
+      userId: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      contractType: deriveContractType(u.role),
+      status: u.isActive ? "Active" : "Suspended",
+      startDate: u.createdAt.toISOString(),
+      endDate: null as string | null,
+    }));
+
+    const active = contracts.filter((c) => c.status === "Active").length;
+    const byType: Record<string, number> = {};
+    for (const c of contracts) {
+      byType[c.contractType] = (byType[c.contractType] ?? 0) + 1;
+    }
+
+    return successResponse(res, {
+      data: {
+        contracts,
+        stats: { total: contracts.length, active, byType },
+        note: "Contract start date is derived from account creation. Formal contract records are not yet tracked.",
       },
     });
   } catch (error) {
