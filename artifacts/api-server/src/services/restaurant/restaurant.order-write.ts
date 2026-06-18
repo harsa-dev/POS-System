@@ -251,18 +251,30 @@ async function deductRecipeStock(
     const beforeStock = requirement.inventoryItem.currentStock;
     const afterStock = beforeStock - requirement.quantity;
 
-    if (afterStock < 0) {
-      throw new RestaurantWriteError(`${requirement.inventoryItem.name} does not have enough stock for this paid Restaurant order.`);
-    }
-
-    await tx.inventoryItem.update({
-      where: { id: inventoryItemId },
+    // Atomic check-and-decrement: the WHERE clause acts as a floor guard.
+    // Even under concurrent transactions this prevents negative stock because
+    // the condition and the decrement are a single database operation.
+    const updateResult = await tx.inventoryItem.updateMany({
+      where: {
+        id: inventoryItemId,
+        currentStock: { gte: requirement.quantity },
+      },
       data: {
-        currentStock: {
-          decrement: requirement.quantity,
-        },
+        currentStock: { decrement: requirement.quantity },
       },
     });
+
+    if (updateResult.count === 0) {
+      // Re-read fresh stock for an accurate error message.
+      const fresh = await tx.inventoryItem.findUnique({
+        where: { id: inventoryItemId },
+        select: { currentStock: true },
+      });
+      throw new RestaurantWriteError(
+        `${requirement.inventoryItem.name} does not have enough stock. ` +
+          `Available: ${fresh?.currentStock ?? 0}, needed: ${requirement.quantity}.`,
+      );
+    }
 
     await tx.stockMovement.create({
       data: {
@@ -386,10 +398,6 @@ export class RestaurantOrderWriteService {
         throw new RestaurantWriteError("Dine-in order requires an active table in this Restaurant business.");
       }
 
-      if (table && table.status !== "AVAILABLE") {
-        throw new RestaurantWriteError(`${table.name} is currently ${table.status} and cannot be assigned to a new dine-in order.`, 409);
-      }
-
       if (orderType === "TAKEAWAY" && input.tableId) {
         throw new RestaurantWriteError("Takeaway order must not include a tableId.");
       }
@@ -471,10 +479,18 @@ export class RestaurantOrderWriteService {
       }
 
       if (table) {
-        await tx.diningTable.update({
-          where: { id: table.id },
+        // Atomic claim: only succeeds if the table is still AVAILABLE.
+        // Prevents double-booking under concurrent checkout requests.
+        const claimed = await tx.diningTable.updateMany({
+          where: { id: table.id, status: "AVAILABLE" },
           data: { status: "OCCUPIED" },
         });
+        if (claimed.count === 0) {
+          throw new RestaurantWriteError(
+            `${table.name} is no longer available. Refresh the table list and try again.`,
+            409,
+          );
+        }
       }
 
       await tx.auditLog.create({

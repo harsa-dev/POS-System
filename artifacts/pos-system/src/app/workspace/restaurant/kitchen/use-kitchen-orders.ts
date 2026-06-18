@@ -30,6 +30,7 @@ type KitchenOrdersState = "loading" | "ready" | "error";
 
 type KitchenOrdersResult = {
   orders: KitchenOrder[];
+  pendingPaymentCount: number;
   status: KitchenOrdersState;
   errorMessage: string | null;
   isRefreshing: boolean;
@@ -81,6 +82,7 @@ function getErrorMessage(error: unknown) {
 
 export function useKitchenOrders(): KitchenOrdersResult {
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
+  const [pendingPaymentCount, setPendingPaymentCount] = useState(0);
   const [status, setStatus] = useState<KitchenOrdersState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -96,13 +98,18 @@ export function useKitchenOrders(): KitchenOrdersResult {
     setErrorMessage(null);
 
     try {
-      const response = await restaurantClient.listKitchenQueue();
+      // Fetch kitchen queue and all active orders in parallel.
+      // Active orders let us count PENDING_PAYMENT for kitchen awareness.
+      const [kitchenResponse, activeResponse] = await Promise.all([
+        restaurantClient.listKitchenQueue(),
+        restaurantClient.listActiveOrders(),
+      ]);
 
-      if (!response.success) {
-        throw new Error(response.message ?? "Failed to load kitchen orders");
+      if (!kitchenResponse.success) {
+        throw new Error(kitchenResponse.message ?? "Failed to load kitchen orders");
       }
 
-      const mappedOrders = (response.data ?? [])
+      const mappedOrders = (kitchenResponse.data ?? [])
         .filter(isKitchenOrderResponse)
         .map(mapOrderToKitchenOrder)
         .sort(
@@ -111,7 +118,14 @@ export function useKitchenOrders(): KitchenOrdersResult {
             new Date(right.createdAt).getTime(),
         );
 
+      const pending = activeResponse.success
+        ? (activeResponse.data ?? []).filter(
+            (o) => o.status === "PENDING_PAYMENT",
+          ).length
+        : 0;
+
       setOrders(mappedOrders);
+      setPendingPaymentCount(pending);
       hasLoadedOnceRef.current = true;
       setStatus("ready");
     } catch (error) {
@@ -134,11 +148,12 @@ export function useKitchenOrders(): KitchenOrdersResult {
   return useMemo(
     () => ({
       orders,
+      pendingPaymentCount,
       status,
       errorMessage,
       isRefreshing,
       reload: loadOrders,
     }),
-    [errorMessage, isRefreshing, loadOrders, orders, status],
+    [errorMessage, isRefreshing, loadOrders, orders, pendingPaymentCount, status],
   );
 }

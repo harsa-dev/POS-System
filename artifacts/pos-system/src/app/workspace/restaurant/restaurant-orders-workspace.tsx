@@ -15,20 +15,20 @@ export default function RestaurantOrdersWorkspace() {
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const updatingOrderIdRef = useRef<string | null>(null);
 
+  function lockUpdate(orderId: string): boolean {
+    if (updatingOrderIdRef.current !== null) return false;
+    updatingOrderIdRef.current = orderId;
+    setUpdatingOrderId(orderId);
+    return true;
+  }
+
+  function unlockUpdate() {
+    updatingOrderIdRef.current = null;
+    setUpdatingOrderId(null);
+  }
+
   async function handleCompleteOrder(order: OrdersWorkspaceOrder) {
-    if (updatingOrderIdRef.current !== null) {
-      if (import.meta.env.DEV) {
-        console.debug("[restaurant-orders] duplicate completion blocked", {
-          activeOrderId: updatingOrderIdRef.current,
-          orderId: order.id,
-        });
-      }
-
-      return;
-    }
-
-    updatingOrderIdRef.current = order.id;
-    setUpdatingOrderId(order.id);
+    if (!lockUpdate(order.id)) return;
 
     try {
       const response = await restaurantClient.updateOrderStatus(order.id, {
@@ -50,8 +50,49 @@ export default function RestaurantOrdersWorkspace() {
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Failed to complete order"));
     } finally {
-      updatingOrderIdRef.current = null;
-      setUpdatingOrderId(null);
+      unlockUpdate();
+    }
+  }
+
+  async function handleCancelOrder(order: OrdersWorkspaceOrder, reason: string) {
+    if (!lockUpdate(order.id)) return;
+
+    try {
+      const response = await restaurantClient.cancelOrder(order.id, { reason });
+
+      if (!response.success) {
+        toast.error(response.message || "Failed to cancel order");
+        return;
+      }
+
+      await orders.reload();
+      toast.success("Order cancelled.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to cancel order"));
+    } finally {
+      unlockUpdate();
+    }
+  }
+
+  async function handleReversePayment(order: OrdersWorkspaceOrder) {
+    if (!lockUpdate(order.id)) return;
+
+    try {
+      const response = await restaurantClient.reversePayment(order.id, {
+        reason: "Payment voided from Orders Workspace",
+      });
+
+      if (!response.success) {
+        toast.error(response.message || "Failed to void payment");
+        return;
+      }
+
+      await orders.reload();
+      toast.success("Payment voided. Order returned to pending payment.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to void payment"));
+    } finally {
+      unlockUpdate();
     }
   }
 
@@ -65,7 +106,9 @@ export default function RestaurantOrdersWorkspace() {
       <OrdersWorkspaceBoard
         errorMessage={orders.errorMessage}
         isRefreshing={orders.isRefreshing}
+        onCancelOrder={handleCancelOrder}
         onCompleteOrder={handleCompleteOrder}
+        onReversePayment={handleReversePayment}
         orders={orders.orders}
         status={orders.status}
         updatingOrderId={updatingOrderId}

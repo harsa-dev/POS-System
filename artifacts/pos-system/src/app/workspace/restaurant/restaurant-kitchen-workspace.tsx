@@ -71,6 +71,7 @@ export default function RestaurantKitchenWorkspace() {
         isRefreshing={kitchenOrders.isRefreshing}
         onUpdateStatus={handleUpdateStatus}
         orders={kitchenOrders.orders}
+        pendingPaymentCount={kitchenOrders.pendingPaymentCount}
         status={kitchenOrders.status}
         updatingOrderId={updatingOrderId}
       />

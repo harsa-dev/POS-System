@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ChefHat,
   Clock,
+  Hourglass,
   Loader2,
   PackageCheck,
   UtensilsCrossed,
@@ -25,6 +26,7 @@ import {
 
 type KitchenOrdersBoardProps = {
   orders: KitchenOrder[];
+  pendingPaymentCount: number;
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
   isRefreshing: boolean;
@@ -72,7 +74,13 @@ function KitchenOrdersSkeleton() {
   );
 }
 
-function KitchenSummary({ orders }: { orders: KitchenOrder[] }) {
+function KitchenSummary({
+  orders,
+  pendingPaymentCount,
+}: {
+  orders: KitchenOrder[];
+  pendingPaymentCount: number;
+}) {
   const queuedCount = orders.filter((order) => order.status === "PAID").length;
   const cookingCount = orders.filter(
     (order) => order.status === "PREPARING",
@@ -80,8 +88,18 @@ function KitchenSummary({ orders }: { orders: KitchenOrder[] }) {
   const itemCount = orders.reduce((total, order) => total + order.itemCount, 0);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+    <div className="grid gap-3 sm:grid-cols-4">
+      {pendingPaymentCount > 0 && (
+        <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase text-yellow-700">
+            Awaiting Payment
+          </p>
+          <p className="mt-2 text-2xl font-bold text-yellow-800">
+            {pendingPaymentCount}
+          </p>
+        </div>
+      )}
+      <div className={`rounded-2xl border bg-white p-4 shadow-sm ${pendingPaymentCount > 0 ? "" : "sm:col-span-1"}`}>
         <p className="text-xs font-semibold uppercase text-neutral-500">
           Queued
         </p>
@@ -199,6 +217,7 @@ function KitchenOrderCard({
 
 export function KitchenOrdersBoard({
   orders,
+  pendingPaymentCount,
   status,
   errorMessage,
   isRefreshing,
@@ -219,7 +238,7 @@ export function KitchenOrdersBoard({
     );
   }
 
-  if (orders.length === 0) {
+  if (orders.length === 0 && pendingPaymentCount === 0) {
     return (
       <EmptyState
         description="Paid and preparing orders will appear here."
@@ -231,7 +250,19 @@ export function KitchenOrdersBoard({
 
   return (
     <div className="space-y-4">
-      <KitchenSummary orders={orders} />
+      <KitchenSummary orders={orders} pendingPaymentCount={pendingPaymentCount} />
+
+      {pendingPaymentCount > 0 && (
+        <div className="flex items-center gap-2 rounded-2xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 shadow-sm">
+          <Hourglass className="h-4 w-4 shrink-0 text-yellow-600" aria-hidden="true" />
+          <span>
+            <strong>{pendingPaymentCount}</strong>{" "}
+            {pendingPaymentCount === 1 ? "order is" : "orders are"} awaiting
+            payment confirmation and will enter the kitchen queue once paid.
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
         <span>Kitchen actions update order status after backend confirmation.</span>
@@ -242,16 +273,25 @@ export function KitchenOrdersBoard({
       {errorMessage ? (
         <InlineErrorNotice>{errorMessage}</InlineErrorNotice>
       ) : null}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {orders.map((order) => (
-          <KitchenOrderCard
-            isUpdating={updatingOrderId === order.id}
-            key={order.id}
-            onUpdateStatus={onUpdateStatus}
-            order={order}
-          />
-        ))}
-      </div>
+
+      {orders.length === 0 ? (
+        <EmptyState
+          description="Orders will appear here once payment is confirmed."
+          icon={ChefHat}
+          title="No active kitchen orders"
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {orders.map((order) => (
+            <KitchenOrderCard
+              isUpdating={updatingOrderId === order.id}
+              key={order.id}
+              onUpdateStatus={onUpdateStatus}
+              order={order}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -41,6 +41,8 @@ type OrdersWorkspaceBoardProps = {
   isRefreshing: boolean;
   updatingOrderId: string | null;
   onCompleteOrder: (order: OrdersWorkspaceOrder) => Promise<void>;
+  onCancelOrder: (order: OrdersWorkspaceOrder, reason: string) => Promise<void>;
+  onReversePayment: (order: OrdersWorkspaceOrder) => Promise<void>;
 };
 
 const filters: Array<{ id: OrdersWorkspaceFilter; label: string }> = [
@@ -71,6 +73,21 @@ function matchesFilter(
   if (filter === "served") return order.status === "SERVED";
   return ["COMPLETED", "CANCELLED"].includes(order.status);
 }
+
+const CANCELLABLE_STATUSES = new Set([
+  "PENDING_PAYMENT",
+  "PAID",
+  "PREPARING",
+  "READY",
+  "SERVED",
+]);
+
+const PAYMENT_REVERSIBLE_STATUSES = new Set([
+  "PAID",
+  "PREPARING",
+  "READY",
+  "SERVED",
+]);
 
 function OrdersWorkspaceSkeleton() {
   return (
@@ -148,127 +165,283 @@ function OrdersSummary({ orders }: { orders: OrdersWorkspaceOrder[] }) {
   );
 }
 
+function CancelDialog({
+  orderCode,
+  onConfirm,
+  onClose,
+  isLoading,
+}: {
+  orderCode: string;
+  onConfirm: (reason: string) => void;
+  onClose: () => void;
+  isLoading: boolean;
+}) {
+  const [reason, setReason] = useState("");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <h2 className="text-lg font-bold text-neutral-950">Cancel Order</h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          {orderCode} — provide a reason for cancellation. Stock and cashflow
+          will be automatically reversed.
+        </p>
+        <textarea
+          autoFocus
+          className="mt-4 w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-red-200"
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Enter cancellation reason..."
+          rows={3}
+          value={reason}
+        />
+        <div className="mt-4 flex gap-3">
+          <button
+            className="flex-1 rounded-xl border py-2.5 text-sm font-semibold transition hover:bg-neutral-50"
+            disabled={isLoading}
+            onClick={onClose}
+            type="button"
+          >
+            Keep Order
+          </button>
+          <button
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+            disabled={isLoading || !reason.trim()}
+            onClick={() => onConfirm(reason.trim())}
+            type="button"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              "Confirm Cancel"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReversePaymentDialog({
+  orderCode,
+  onConfirm,
+  onClose,
+  isLoading,
+}: {
+  orderCode: string;
+  onConfirm: () => void;
+  onClose: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <h2 className="text-lg font-bold text-neutral-950">Void Payment</h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          {orderCode} — this will void the payment and return the order to
+          Pending Payment status. The order itself will remain active.
+        </p>
+        <div className="mt-4 flex gap-3">
+          <button
+            className="flex-1 rounded-xl border py-2.5 text-sm font-semibold transition hover:bg-neutral-50"
+            disabled={isLoading}
+            onClick={onClose}
+            type="button"
+          >
+            Keep Payment
+          </button>
+          <button
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-orange-600 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:opacity-60"
+            disabled={isLoading}
+            onClick={onConfirm}
+            type="button"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              "Void Payment"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OrdersWorkspaceCard({
   order,
   isUpdating,
   onCompleteOrder,
+  onCancelOrder,
+  onReversePayment,
 }: {
   order: OrdersWorkspaceOrder;
   isUpdating: boolean;
   onCompleteOrder: (order: OrdersWorkspaceOrder) => Promise<void>;
+  onCancelOrder: (order: OrdersWorkspaceOrder, reason: string) => Promise<void>;
+  onReversePayment: (order: OrdersWorkspaceOrder) => Promise<void>;
 }) {
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showReverseDialog, setShowReverseDialog] = useState(false);
+
   const visibleItems = order.items.slice(0, 3);
   const hiddenItemCount = Math.max(0, order.items.length - visibleItems.length);
   const canComplete = canCompleteRestaurantOrder(order.status);
+  const canCancel = CANCELLABLE_STATUSES.has(order.status);
+  const canReversePayment = PAYMENT_REVERSIBLE_STATUSES.has(order.status);
 
   return (
-    <article className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-300">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-neutral-950">
-                {order.orderCode}
-              </h2>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-                <span className="inline-flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                  {order.createdAtLabel}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
-                  {order.destination}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />
-                  {order.orderTypeLabel}
-                </span>
+    <>
+      <article className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-300">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-neutral-950">
+                  {order.orderCode}
+                </h2>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                    {order.createdAtLabel}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
+                    {order.destination}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />
+                    {order.orderTypeLabel}
+                  </span>
+                </div>
               </div>
+              <StatusBadge
+                className="px-3"
+                tone={restaurantOrderStatusTones[order.status]}
+              >
+                {order.statusLabel}
+              </StatusBadge>
             </div>
-            <StatusBadge
-              className="px-3"
-              tone={restaurantOrderStatusTones[order.status]}
-            >
-              {order.statusLabel}
-            </StatusBadge>
+
+            <div className="mt-4 grid gap-2 md:grid-cols-3">
+              {visibleItems.map((item) => (
+                <div className="rounded-xl bg-neutral-50 p-3" key={item.id}>
+                  <p className="truncate text-sm font-semibold text-neutral-800">
+                    {item.name}
+                  </p>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    {item.quantity} x {item.priceLabel}
+                  </p>
+                  <p className="mt-2 text-sm font-bold text-neutral-950">
+                    {item.subtotalLabel}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {hiddenItemCount > 0 ? (
+              <p className="mt-3 text-xs text-neutral-500">
+                +{hiddenItemCount} more item{hiddenItemCount > 1 ? "s" : ""}
+              </p>
+            ) : null}
           </div>
 
-          <div className="mt-4 grid gap-2 md:grid-cols-3">
-            {visibleItems.map((item) => (
-              <div className="rounded-xl bg-neutral-50 p-3" key={item.id}>
-                <p className="truncate text-sm font-semibold text-neutral-800">
-                  {item.name}
-                </p>
-                <p className="mt-1 text-xs text-neutral-500">
-                  {item.quantity} x {item.priceLabel}
-                </p>
-                <p className="mt-2 text-sm font-bold text-neutral-950">
-                  {item.subtotalLabel}
-                </p>
-              </div>
-            ))}
-          </div>
+          <aside className="grid gap-2 text-sm lg:w-56">
+            <div className="rounded-xl border bg-neutral-50 p-3">
+              <p className="text-xs font-semibold uppercase text-neutral-500">
+                Total
+              </p>
+              <p className="mt-1 text-xl font-bold text-neutral-950">
+                {order.totalLabel}
+              </p>
+            </div>
+            <div className="rounded-xl border bg-neutral-50 p-3">
+              <p className="text-xs font-semibold uppercase text-neutral-500">
+                Payment
+              </p>
+              <p className="mt-1 font-bold text-neutral-800">
+                {order.paymentStatus}
+              </p>
+            </div>
+            <div className="rounded-xl border bg-neutral-50 p-3">
+              <p className="text-xs font-semibold uppercase text-neutral-500">
+                Items
+              </p>
+              <p className="mt-1 font-bold text-neutral-800">
+                {order.itemCount}
+              </p>
+            </div>
 
-          {hiddenItemCount > 0 ? (
-            <p className="mt-3 text-xs text-neutral-500">
-              +{hiddenItemCount} more item{hiddenItemCount > 1 ? "s" : ""}
-            </p>
-          ) : null}
-        </div>
+            {canComplete ? (
+              <button
+                className="mt-1 flex h-10 items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isUpdating}
+                onClick={() => void onCompleteOrder(order)}
+                type="button"
+              >
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    Completing...
+                  </>
+                ) : (
+                  "Complete Order"
+                )}
+              </button>
+            ) : null}
 
-        <aside className="grid gap-2 text-sm lg:w-56">
-          <div className="rounded-xl border bg-neutral-50 p-3">
-            <p className="text-xs font-semibold uppercase text-neutral-500">
-              Total
-            </p>
-            <p className="mt-1 text-xl font-bold text-neutral-950">
-              {order.totalLabel}
-            </p>
-          </div>
-          <div className="rounded-xl border bg-neutral-50 p-3">
-            <p className="text-xs font-semibold uppercase text-neutral-500">
-              Payment
-            </p>
-            <p className="mt-1 font-bold text-neutral-800">
-              {order.paymentStatus}
-            </p>
-          </div>
-          <div className="rounded-xl border bg-neutral-50 p-3">
-            <p className="text-xs font-semibold uppercase text-neutral-500">
-              Items
-            </p>
-            <p className="mt-1 font-bold text-neutral-800">
-              {order.itemCount}
-            </p>
-          </div>
-          {canComplete ? (
-            <button
-              className="mt-1 flex h-10 items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isUpdating}
-              onClick={() => void onCompleteOrder(order)}
-              type="button"
-            >
-              {isUpdating ? (
-                <>
+            {canCancel ? (
+              <button
+                className="flex h-10 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 text-sm font-semibold text-red-700 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isUpdating}
+                onClick={() => setShowCancelDialog(true)}
+                type="button"
+              >
+                {isUpdating ? (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  Completing...
-                </>
-              ) : (
-                "Complete Order"
-              )}
-            </button>
-          ) : (
-            <button
-              className="mt-1 h-10 rounded-xl border border-neutral-200 bg-neutral-100 text-sm font-semibold text-neutral-500 disabled:cursor-not-allowed disabled:opacity-80"
-              disabled
-              type="button"
-            >
-              Lifecycle action - not wired yet
-            </button>
-          )}
-        </aside>
-      </div>
-    </article>
+                ) : (
+                  "Cancel Order"
+                )}
+              </button>
+            ) : null}
+
+            {canReversePayment ? (
+              <button
+                className="flex h-9 items-center justify-center gap-2 rounded-xl border border-orange-200 bg-orange-50 text-xs font-semibold text-orange-700 transition hover:bg-orange-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isUpdating}
+                onClick={() => setShowReverseDialog(true)}
+                type="button"
+              >
+                Void Payment
+              </button>
+            ) : null}
+          </aside>
+        </div>
+      </article>
+
+      {showCancelDialog ? (
+        <CancelDialog
+          isLoading={isUpdating}
+          onClose={() => setShowCancelDialog(false)}
+          onConfirm={(reason) => {
+            setShowCancelDialog(false);
+            void onCancelOrder(order, reason);
+          }}
+          orderCode={order.orderCode}
+        />
+      ) : null}
+
+      {showReverseDialog ? (
+        <ReversePaymentDialog
+          isLoading={isUpdating}
+          onClose={() => setShowReverseDialog(false)}
+          onConfirm={() => {
+            setShowReverseDialog(false);
+            void onReversePayment(order);
+          }}
+          orderCode={order.orderCode}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -279,6 +452,8 @@ export function OrdersWorkspaceBoard({
   isRefreshing,
   updatingOrderId,
   onCompleteOrder,
+  onCancelOrder,
+  onReversePayment,
 }: OrdersWorkspaceBoardProps) {
   const [activeFilter, setActiveFilter] =
     useState<OrdersWorkspaceFilter>("all");
@@ -336,8 +511,8 @@ export function OrdersWorkspaceBoard({
             </h2>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-neutral-500">
               <span>
-                Read-only V3 order visibility across POS, kitchen, serving, and
-                closure states.
+                Full lifecycle management — complete served orders, cancel active
+                orders, or void payments.
               </span>
               {isRefreshing ? (
                 <RefreshingIndicator />
@@ -347,7 +522,7 @@ export function OrdersWorkspaceBoard({
           <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-500 lg:w-72">
             <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
             <input
-              aria-label="Search V3 orders"
+              aria-label="Search orders"
               className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-neutral-400"
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search orders..."
@@ -376,15 +551,15 @@ export function OrdersWorkspaceBoard({
 
       <div className="flex items-center gap-2 rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
         <PackageCheck className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-        Completion is enabled only for served orders. Dine-in completion moves
-        the table to cleaning.
+        Complete is for served orders. Cancel reverses stock and cashflow
+        automatically. Void Payment resets payment without cancelling.
       </div>
 
       {filteredOrders.length === 0 ? (
         <EmptyState
           description={
             orders.length === 0
-              ? "Orders created from POS V3 will appear here."
+              ? "Orders created from POS will appear here."
               : "Try changing the lifecycle filter or search term."
           }
           icon={orders.length === 0 ? ReceiptText : CheckCheck}
@@ -396,7 +571,9 @@ export function OrdersWorkspaceBoard({
             <OrdersWorkspaceCard
               isUpdating={updatingOrderId === order.id}
               key={order.id}
+              onCancelOrder={onCancelOrder}
               onCompleteOrder={onCompleteOrder}
+              onReversePayment={onReversePayment}
               order={order}
             />
           ))}
