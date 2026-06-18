@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "-NfO88T5zKRa6CO7N-H16"
+uri = "file://.local/PHASE_A_CHANGELOG.md"
+type = "text"
+title = "Phase A — TypeScript Fix Changelog"

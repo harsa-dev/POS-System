@@ -14,7 +14,7 @@ import {
 import { InvoiceForm } from "../components/invoice-form";
 import { InvoicePreview } from "../components/invoice-preview";
 import { InvoiceStatus } from "../components/invoice-status";
-import { createInitialInvoice } from "../data/invoice-mock";
+import { createInitialInvoice } from "../data/invoice-initial-state";
 import {
   clearInvoiceDraft,
   loadInvoiceDraft,

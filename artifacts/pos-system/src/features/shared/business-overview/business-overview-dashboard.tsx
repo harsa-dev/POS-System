@@ -1,487 +1,246 @@
 "use client";
 
 import {
-  AlertTriangle,
-  Banknote,
   BarChart3,
-  Clock3,
-  Download,
+  Banknote,
+  Box,
+  ChevronRight,
   FileText,
   Handshake,
-  Package,
-  ReceiptText,
-  RefreshCw,
-  WalletCards,
+  Receipt,
+  ShoppingCart,
+  Users,
+  Warehouse,
+  Wrench,
+  UtensilsCrossed,
+  type LucideIcon,
 } from "lucide-react";
+import { Link } from "wouter";
 
-import { ROUTES } from "@/constants/routes";
-import { StatCard, StatusPill } from "@/features/shared/cards";
+import { businessModeRegistry } from "@/components/core/business-mode/business-mode-registry";
+import { StatusPill } from "@/features/shared/cards";
 import {
-  DashboardActionButton,
-  DashboardActions,
   DashboardPanel,
   DashboardShell,
 } from "@/features/shared/dashboard";
-import { formatCurrency, formatNumber } from "@/features/shared/format";
-import { DataTable, type DataTableColumn } from "@/features/shared/table";
+import { ROUTES } from "@/constants/routes";
+import type { BusinessModeConfig } from "@/config/business-modes";
 import type { DashboardTone } from "@/features/shared/types";
 
-type ModeStatus = "Live" | "Preview" | "Planned";
-type QueueItemStatus = "Ready" | "In Progress" | "Needs Review" | "Waiting";
+// ─── Mode status helpers ────────────────────────────────────────────────────
 
-type ModeSnapshot = {
-  id: string;
-  name: string;
-  status: ModeStatus;
-  summary: string;
-  revenue: number;
-  activeWork: number;
-  alertCount: number;
+const modeToneMap: Record<string, DashboardTone> = {
+  available: "green",
+  planned: "slate",
+  disabled: "rose",
 };
 
-type SharedModule = {
+const modeBadgeMap: Record<string, string> = {
+  available: "Available",
+  planned: "Planned",
+  disabled: "Disabled",
+};
+
+const modeIconMap: Record<string, LucideIcon> = {
+  restaurant: UtensilsCrossed,
+  retail: ShoppingCart,
+  "raw-material": Warehouse,
+  "custom-business": Wrench,
+};
+
+// ─── Shared module directory ─────────────────────────────────────────────────
+// These are real navigation entries — each route exists and is registered in
+// the module registry. This list is a curated navigation index, not mock data.
+
+type SharedModuleEntry = {
   id: string;
   name: string;
   description: string;
   route: string;
-  owner: string;
-  readiness: string;
-  tone: DashboardTone;
+  icon: LucideIcon;
 };
 
-type QueueItem = {
-  id: string;
-  sourceMode: string;
-  title: string;
-  owner: string;
-  amount: number;
-  status: QueueItemStatus;
-  eta: string;
-};
-
-const modeStatusTone: Record<ModeStatus, DashboardTone> = {
-  Live: "green",
-  Preview: "amber",
-  Planned: "slate",
-};
-
-const queueStatusTone: Record<QueueItemStatus, DashboardTone> = {
-  Ready: "green",
-  "In Progress": "blue",
-  "Needs Review": "amber",
-  Waiting: "slate",
-};
-
-const modeSnapshots: ModeSnapshot[] = [
+const SHARED_MODULE_DIRECTORY: SharedModuleEntry[] = [
   {
-    id: "restaurant",
-    name: "Restaurant",
-    status: "Live",
-    summary: "POS, kitchen, serving, table, menu, payment, and operational reports.",
-    revenue: 128_450_000,
-    activeWork: 184,
-    alertCount: 7,
-  },
-  {
-    id: "raw-material",
-    name: "Raw Material / Livestock",
-    status: "Preview",
-    summary: "Intake, weighing, batches, storage, processing, kandang, and supplier flow.",
-    revenue: 74_250_000,
-    activeWork: 42,
-    alertCount: 11,
-  },
-  {
-    id: "retail",
-    name: "Retail / Supermarket",
-    status: "Planned",
-    summary: "Barcode checkout, stock opname, receiving, shelf management, and promotions.",
-    revenue: 0,
-    activeWork: 0,
-    alertCount: 3,
-  },
-  {
-    id: "custom-business",
-    name: "Service / Custom Business",
-    status: "Planned",
-    summary: "Requests, jobs, clients, assignments, invoices, payments, and service reports.",
-    revenue: 0,
-    activeWork: 0,
-    alertCount: 4,
-  },
-];
-
-const sharedModules: SharedModule[] = [
-  {
-    id: "sales",
+    id: "analytics",
     name: "Sales Analytics",
-    description: "Revenue, order trend, product performance, and profit visibility.",
+    description: "Revenue trend, order volume, product performance, and profit margin.",
     route: ROUTES.ANALYTICS,
-    owner: "Analytics",
-    readiness: "Backend-backed",
-    tone: "green",
+    icon: BarChart3,
   },
   {
     id: "customers",
     name: "Customers & Partners",
-    description: "Reusable customer, partner, and contact workspace for every mode.",
+    description: "Customer CRM, supplier contacts, loyalty tiers, and sales sync.",
     route: ROUTES.CUSTOMERS,
-    owner: "CRM",
-    readiness: "Dummy-ready",
-    tone: "blue",
+    icon: Handshake,
   },
   {
     id: "inventory",
-    name: "Inventory Management",
-    description: "Stock level, movement, reorder warning, and inventory health overview.",
+    name: "Inventory",
+    description: "Stock levels, movement history, cost snapshots, and anomaly review.",
     route: ROUTES.INVENTORY,
-    owner: "Operations",
-    readiness: "Mixed data",
-    tone: "amber",
+    icon: Box,
   },
   {
     id: "cashflow",
     name: "Cashflow",
-    description: "Income, expense, daily cash movement, and period comparison.",
+    description: "Income, expenses, account balances, and daily cash movement.",
     route: ROUTES.CASHFLOW,
-    owner: "Finance",
-    readiness: "Static preview",
-    tone: "green",
+    icon: Banknote,
   },
   {
     id: "reports",
     name: "Financial Reports",
-    description: "P&L summary, gross margin, expense ratio, and printable report view.",
+    description: "P&L, gross margin, receivables, cashflow summary, and PDF export.",
     route: ROUTES.FINANCIAL_REPORTS,
-    owner: "Finance",
-    readiness: "Static preview",
-    tone: "slate",
+    icon: FileText,
   },
   {
     id: "invoice",
     name: "Invoice Generator",
-    description: "Business identity, customer data, invoice line items, and preview.",
+    description: "Draft, save, and track invoices with follow-up analytics.",
     route: ROUTES.INVOICE_GENERATOR,
-    owner: "Billing",
-    readiness: "Static preview",
-    tone: "blue",
+    icon: Receipt,
   },
   {
     id: "cashier-shifts",
     name: "Cashier Shift Reports",
-    description: "Cashier performance, expected cash, variance, and shift sync summary.",
+    description: "Shift performance, expected vs actual cash, and sync status.",
     route: ROUTES.CASHIER_SHIFT_REPORTS,
-    owner: "Cashier Ops",
-    readiness: "Restaurant/Retail",
-    tone: "amber",
+    icon: Receipt,
   },
   {
-    id: "hpp",
-    name: "HPP Calculator",
-    description: "Cost breakdown, unit cost, target markup, and selling price simulation.",
-    route: ROUTES.HPP_CALCULATOR,
-    owner: "Finance Ops",
-    readiness: "Static preview",
-    tone: "green",
-  },
-  {
-    id: "operation-reports",
-    name: "Shift Reports",
-    description: "Shared operational closing summary for shift revenue, variance, and review.",
-    route: ROUTES.OPERATION_REPORTS,
-    owner: "Operations",
-    readiness: "Static preview",
-    tone: "amber",
-  },
-  {
-    id: "team-management",
+    id: "team",
     name: "Team Management",
-    description: "Employee directory, department, role, workload, and onboarding status.",
+    description: "Roles, permissions, and member status across the business.",
     route: ROUTES.TEAM_MANAGEMENT,
-    owner: "HR Ops",
-    readiness: "Static preview",
-    tone: "blue",
-  },
-  {
-    id: "roster-overview",
-    name: "Shift Overview",
-    description: "Weekly workforce coverage, open slots, and schedule risk preview.",
-    route: ROUTES.ROSTER_OVERVIEW,
-    owner: "HR Ops",
-    readiness: "Static preview",
-    tone: "slate",
-  },
-  {
-    id: "employee-performance",
-    name: "Employee Performance",
-    description: "Performance scorecard, role output, coaching alerts, and KPI planning.",
-    route: ROUTES.EMPLOYEE_PERFORMANCE,
-    owner: "HR Ops",
-    readiness: "Static preview",
-    tone: "green",
-  },
-  {
-    id: "audit-log",
-    name: "Audit Log",
-    description: "Important system events, actor tracking, severity, and future audit trail.",
-    route: ROUTES.AUDIT_LOG,
-    owner: "Control",
-    readiness: "Static preview",
-    tone: "slate",
-  },
-  {
-    id: "approvals",
-    name: "Approval Center",
-    description: "Purchase, payroll, contract, and operation exception approval queue.",
-    route: ROUTES.APPROVALS,
-    owner: "Management",
-    readiness: "Static preview",
-    tone: "amber",
-  },
-  {
-    id: "contracts",
-    name: "Employee Contracts",
-    description: "Contract type, validity, renewal alert, and document readiness preview.",
-    route: ROUTES.EMPLOYEE_CONTRACTS,
-    owner: "HR Ops",
-    readiness: "Static preview",
-    tone: "blue",
-  },
-  {
-    id: "attendance",
-    name: "Employee Attendance",
-    description: "Check-in, check-out, missing attendance, and shift attendance overview.",
-    route: ROUTES.EMPLOYEE_ATTENDANCE,
-    owner: "HR Ops",
-    readiness: "Static preview",
-    tone: "green",
-  },
-  {
-    id: "payroll",
-    name: "Payroll",
-    description: "Salary preview, allowance, deduction, approval readiness, and payout draft.",
-    route: ROUTES.PAYROLL,
-    owner: "Finance HR",
-    readiness: "Static preview",
-    tone: "amber",
+    icon: Users,
   },
 ];
 
-const operationQueue: QueueItem[] = [
-  {
-    id: "Q-1001",
-    sourceMode: "Restaurant",
-    title: "Daily closing reconciliation",
-    owner: "Finance",
-    amount: 18_750_000,
-    status: "Needs Review",
-    eta: "Today, 21:30",
-  },
-  {
-    id: "Q-1002",
-    sourceMode: "Restaurant",
-    title: "Kitchen stock threshold alert",
-    owner: "Inventory",
-    amount: 3_450_000,
-    status: "In Progress",
-    eta: "Today, 18:00",
-  },
-  {
-    id: "Q-1003",
-    sourceMode: "Raw Material / Livestock",
-    title: "Batch intake cost validation",
-    owner: "Operations",
-    amount: 22_900_000,
-    status: "Ready",
-    eta: "Tomorrow, 09:00",
-  },
-  {
-    id: "Q-1004",
-    sourceMode: "Shared Workforce",
-    title: "Payroll draft approval",
-    owner: "Finance HR",
-    amount: 13_700_000,
-    status: "Needs Review",
-    eta: "Today, 17:00",
-  },
-  {
-    id: "Q-1005",
-    sourceMode: "Service / Custom Business",
-    title: "Client invoice workflow draft",
-    owner: "Billing",
-    amount: 0,
-    status: "Waiting",
-    eta: "Design phase",
-  },
-];
+// ─── Components ──────────────────────────────────────────────────────────────
 
-const queueColumns: DataTableColumn<QueueItem>[] = [
-  {
-    key: "id",
-    header: "Queue ID",
-    cell: (row) => <span className="font-semibold text-foreground">{row.id}</span>,
-  },
-  { key: "sourceMode", header: "Mode", cell: (row) => row.sourceMode },
-  {
-    key: "title",
-    header: "Work Item",
-    cell: (row) => <span className="font-medium text-foreground">{row.title}</span>,
-  },
-  { key: "owner", header: "Owner", cell: (row) => row.owner },
-  {
-    key: "amount",
-    header: "Amount",
-    cell: (row) => (row.amount > 0 ? formatCurrency(row.amount) : "-"),
-  },
-  {
-    key: "status",
-    header: "Status",
-    cell: (row) => <StatusPill tone={queueStatusTone[row.status]}>{row.status}</StatusPill>,
-  },
-  { key: "eta", header: "ETA", cell: (row) => row.eta },
-];
+function ModeCard({ mode }: { mode: BusinessModeConfig }) {
+  const Icon = modeIconMap[mode.id] ?? Wrench;
+  const tone = modeToneMap[mode.status] ?? "slate";
+  const badge = modeBadgeMap[mode.status] ?? mode.status;
 
-function ModuleLinkCard({ module }: { module: SharedModule }) {
-  return (
-    <a
-      href={module.route}
-      className="group rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm transition hover:border-primary/40 hover:bg-muted/40"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="font-semibold text-foreground group-hover:text-primary">
-            {module.name}
-          </h3>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">
-            {module.description}
-          </p>
-        </div>
-        <StatusPill tone={module.tone}>{module.readiness}</StatusPill>
-      </div>
-      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        Owner: {module.owner}
-      </p>
-    </a>
-  );
-}
-
-function ModeSnapshotCard({ snapshot }: { snapshot: ModeSnapshot }) {
   return (
     <article className="rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-semibold text-foreground">{snapshot.name}</h3>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">
-            {snapshot.summary}
-          </p>
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-foreground">{mode.label}</h3>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">{mode.description}</p>
+          </div>
         </div>
-        <StatusPill tone={modeStatusTone[snapshot.status]}>{snapshot.status}</StatusPill>
+        <StatusPill tone={tone}>{badge}</StatusPill>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4 text-sm">
-        <div>
-          <p className="text-xs text-muted-foreground">Revenue</p>
-          <p className="mt-1 font-semibold text-foreground">
-            {snapshot.revenue > 0 ? formatCurrency(snapshot.revenue) : "-"}
+
+      {mode.primaryModules.length > 0 && (
+        <div className="mt-4 border-t border-border pt-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            Modules
           </p>
+          <div className="flex flex-wrap gap-1.5">
+            {mode.primaryModules.map((mod) => (
+              <span
+                key={mod}
+                className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground"
+              >
+                {mod}
+              </span>
+            ))}
+            {mode.plannedModules.length > 0 &&
+              mode.plannedModules.map((mod) => (
+                <span
+                  key={mod}
+                  className="rounded-md border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground/60"
+                >
+                  {mod}
+                </span>
+              ))}
+          </div>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Work</p>
-          <p className="mt-1 font-semibold text-foreground">
-            {formatNumber(snapshot.activeWork)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Alerts</p>
-          <p className="mt-1 font-semibold text-foreground">
-            {formatNumber(snapshot.alertCount)}
-          </p>
-        </div>
-      </div>
+      )}
     </article>
   );
 }
 
+function SharedModuleCard({ entry }: { entry: SharedModuleEntry }) {
+  const Icon = entry.icon;
+  return (
+    <Link
+      href={entry.route}
+      className="group flex items-start gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm transition hover:border-primary/40 hover:bg-muted/40"
+    >
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted transition group-hover:bg-primary/10">
+        <Icon className="h-4 w-4 text-muted-foreground transition group-hover:text-primary" aria-hidden="true" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-foreground group-hover:text-primary">{entry.name}</h3>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition group-hover:text-primary" aria-hidden="true" />
+        </div>
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">{entry.description}</p>
+      </div>
+    </Link>
+  );
+}
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+
 export function BusinessOverviewDashboard() {
-  const activeRevenue = modeSnapshots.reduce((total, item) => total + item.revenue, 0);
-  const totalWork = modeSnapshots.reduce((total, item) => total + item.activeWork, 0);
-  const totalAlerts = modeSnapshots.reduce((total, item) => total + item.alertCount, 0);
-  const liveModes = modeSnapshots.filter((item) => item.status !== "Planned").length;
+  const availableModes = businessModeRegistry.filter((m) => m.status === "available");
+  const plannedModes = businessModeRegistry.filter((m) => m.status === "planned");
 
   return (
     <DashboardShell
       title="Shared Business Dashboard"
-      description="Static cross-mode overview for previewing shared business, workforce, finance, audit, and operations modules before every mode has real backend data."
+      description="Cross-mode overview of active business workspaces and shared modules available across all modes."
     >
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <div>
-            <p className="font-semibold">Static preview shared dashboard</p>
-            <p className="mt-1 leading-6">
-              Semua angka di halaman ini masih static preview. Dashboard ini dibuat sebagai
-              presentation layer lintas mode, bukan sumber data produksi, bukan schema baru,
-              dan bukan pengganti business mode service.
-            </p>
-          </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-lg border border-border bg-card px-5 py-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Active Modes</p>
+          <p className="mt-1.5 text-3xl font-bold text-foreground">{availableModes.length}</p>
+          <p className="mt-1 text-sm text-muted-foreground">of {businessModeRegistry.length} total business modes</p>
+        </div>
+        <div className="rounded-lg border border-border bg-card px-5 py-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Shared Modules</p>
+          <p className="mt-1.5 text-3xl font-bold text-foreground">{SHARED_MODULE_DIRECTORY.length}</p>
+          <p className="mt-1 text-sm text-muted-foreground">reusable dashboards across all modes</p>
+        </div>
+        <div className="rounded-lg border border-border bg-card px-5 py-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Planned Modes</p>
+          <p className="mt-1.5 text-3xl font-bold text-foreground">{plannedModes.length}</p>
+          <p className="mt-1 text-sm text-muted-foreground">modes in development roadmap</p>
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Combined Revenue" value={formatCurrency(activeRevenue)} note="Restaurant + raw material dummy snapshot" icon={Banknote} tone="green" />
-        <StatCard label="Active Work Items" value={formatNumber(totalWork)} note="Orders, batches, tasks, and draft workflows" icon={Clock3} tone="blue" />
-        <StatCard label="Shared Modules" value={formatNumber(sharedModules.length)} note="Reusable dashboards across business modes" icon={BarChart3} tone="slate" />
-        <StatCard label="Mode Coverage" value={`${liveModes}/${modeSnapshots.length}`} note="Live or preview business modes" icon={Package} tone="amber" />
-        <StatCard label="Open Alerts" value={formatNumber(totalAlerts)} note="Dummy warnings across all modes" icon={AlertTriangle} tone="rose" />
-      </div>
-
       <DashboardPanel
-        title="Mode Snapshot"
-        description="High-level static status for each business mode without changing the mode selector service."
+        title="Business Modes"
+        description="Each mode is a fully isolated workspace. Shared modules below are available regardless of active mode."
       >
         <div className="grid gap-4 p-4 lg:grid-cols-2">
-          {modeSnapshots.map((snapshot) => (
-            <ModeSnapshotCard key={snapshot.id} snapshot={snapshot} />
+          {businessModeRegistry.map((mode) => (
+            <ModeCard key={mode.id} mode={mode} />
           ))}
         </div>
       </DashboardPanel>
 
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <DashboardPanel
-          title="Shared Modules"
-          description="Entry points for reusable dashboards that can work across restaurant, retail, raw material, and service modes."
-          action={
-            <DashboardActions>
-              <DashboardActionButton icon={RefreshCw} disabled title="Static preview dashboard has no backend refresh yet.">
-                Refresh
-              </DashboardActionButton>
-              <DashboardActionButton icon={Download} disabled title="Export is deferred until this overview has a backend source.">
-                Export
-              </DashboardActionButton>
-            </DashboardActions>
-          }
-        >
-          <div className="grid gap-3 p-4 md:grid-cols-2">
-            {sharedModules.map((module) => (
-              <ModuleLinkCard key={module.id} module={module} />
-            ))}
-          </div>
-        </DashboardPanel>
-
-        <DashboardPanel title="Shared Finance Snapshot" description="Dummy finance summary used for layout, KPI, workforce cost, and future API planning.">
-          <div className="grid gap-3 p-4">
-            <StatCard label="Cash Available" value={formatCurrency(37_950_000)} note="Cash + bank balance mock" icon={WalletCards} tone="green" />
-            <StatCard label="Pending Invoices" value={formatCurrency(16_500_000)} note="18 unpaid customer invoices" icon={ReceiptText} tone="amber" />
-            <StatCard label="Open Partners" value={formatNumber(126)} note="Customers, suppliers, and service clients" icon={Handshake} tone="blue" />
-            <StatCard label="Reports Ready" value={formatNumber(17)} note="Finance, workforce, audit, approval, and operation views" icon={FileText} tone="slate" />
-          </div>
-        </DashboardPanel>
-      </div>
-
       <DashboardPanel
-        title="Cross-Mode Operation Queue"
-        description="Mock queue data to preview how shared operations may look after restaurant, raw material, retail, service, and workforce modules are wired to real APIs."
+        title="Shared Modules"
+        description="These dashboards work across business modes. Select a module to open it."
       >
-        <DataTable columns={queueColumns} data={operationQueue} getRowKey={(row) => row.id} minWidth={1040} pagination={false} />
+        <div className="grid gap-3 p-4 md:grid-cols-2">
+          {SHARED_MODULE_DIRECTORY.map((entry) => (
+            <SharedModuleCard key={entry.id} entry={entry} />
+          ))}
+        </div>
       </DashboardPanel>
     </DashboardShell>
   );
