@@ -16,10 +16,10 @@ import {
   repairBusinessModeStorage,
   setCurrentBusinessMode,
   subscribeToBusinessModeChanges,
+  type BusinessModeChangeListener,
   type BusinessModeStorageState,
 } from "./business-mode-storage";
 import type {
-  BusinessModeChangeListener,
   BusinessModeChangeSource,
   BusinessModeConfig,
   BusinessModeId,
@@ -241,14 +241,14 @@ export function getBusinessModeNextRouteFromLocation(location: string) {
 export function getSelectModeRoute(nextRoute?: string | null) {
   if (!isSafeNextRoute(nextRoute)) return ROUTES.SELECT_MODE;
 
-  return `${ROUTES.SELECT_MODE}?next=${encodeURIComponent(nextRoute)}`;
+  return `${ROUTES.SELECT_MODE}?next=${encodeURIComponent(nextRoute!)}`;
 }
 
 export function isRouteSupportedByBusinessMode(mode: BusinessModeId, route: string | null | undefined) {
   if (!isSafeNextRoute(route)) return false;
   if (!isBusinessModeSelectable(mode)) return false;
 
-  const routeSupport = getBusinessModeRouteSupport(route);
+  const routeSupport = getBusinessModeRouteSupport(route!);
   return routeSupport.supportedModes.includes(mode);
 }
 

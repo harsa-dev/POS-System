@@ -27,6 +27,7 @@ function createRegisteredWorkspace(
     routePath: workspaceRoute,
     currentRoute: workspace.currentRoute ?? null,
     workspaceRoute,
+    order: workspace.order ?? Number.MAX_SAFE_INTEGER,
   };
 }
 

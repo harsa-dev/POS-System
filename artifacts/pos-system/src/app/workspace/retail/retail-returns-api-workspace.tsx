@@ -323,7 +323,7 @@ export default function RetailReturnsApiWorkspace() {
                   Review required for:
                 </p>
                 <ul className="mt-1 list-inside list-disc space-y-1">
-                  {preview.reviewReasons.map((reason, index) => (
+                  {preview.reviewReasons.map((reason: string, index: number) => (
                     <li key={index}>{reason}</li>
                   ))}
                 </ul>
@@ -339,7 +339,7 @@ export default function RetailReturnsApiWorkspace() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
-                {preview.restockableLines.map((line) => (
+                {preview.restockableLines.map((line: RetailReturnPreview["restockableLines"][number]) => (
                   <tr key={line.productId}>
                     <td className="py-3 pr-4 font-mono text-xs text-neutral-600">{line.sku}</td>
                     <td className="py-3 pr-4 text-neutral-700">{line.quantity}</td>

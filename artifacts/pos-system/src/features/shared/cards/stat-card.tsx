@@ -16,15 +16,21 @@ export function StatCard({
   label,
   value,
   note,
+  description,
+  helperText,
   icon: Icon,
   tone = "slate",
 }: {
   label: string;
-  value: string;
+  value: string | number;
   note?: string;
+  description?: string;
+  helperText?: string;
   icon: ElementType;
   tone?: DashboardTone;
 }) {
+  const footerText = note ?? description ?? helperText;
+
   return (
     <article className="rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">
       <div className="flex items-start justify-between gap-4">
@@ -45,16 +51,18 @@ export function StatCard({
           <Icon className="h-5 w-5" aria-hidden="true" />
         </div>
       </div>
-      {note && <p className="mt-3 text-xs text-muted-foreground">{note}</p>}
+      {footerText && <p className="mt-3 text-xs text-muted-foreground">{footerText}</p>}
     </article>
   );
 }
 
 export function StatusPill({
   children,
+  label,
   tone = "slate",
 }: {
-  children: ReactNode;
+  children?: ReactNode;
+  label?: ReactNode;
   tone?: DashboardTone;
 }) {
   return (
@@ -64,7 +72,7 @@ export function StatusPill({
         toneClasses[tone],
       )}
     >
-      {children}
+      {children ?? label}
     </span>
   );
 }

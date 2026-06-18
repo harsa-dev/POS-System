@@ -147,9 +147,9 @@ export default function RetailReceivingApiWorkspace() {
   }, [receivings, selectedReceivingId]);
 
   const statusActions = selectedReceiving ? nextStatuses[selectedReceiving.status] : [];
-  const totalMissingQty = selectedReceiving?.items.reduce((total: number, item) => total + item.missingQty, 0) ?? 0;
-  const totalOrderedQty = selectedReceiving?.items.reduce((total: number, item) => total + item.orderedQty, 0) ?? 0;
-  const totalReceivedQty = selectedReceiving?.items.reduce((total: number, item) => total + item.receivedQty, 0) ?? 0;
+  const totalMissingQty = selectedReceiving?.items.reduce((total: number, item: RetailReceivingQueueItem["items"][number]) => total + item.missingQty, 0) ?? 0;
+  const totalOrderedQty = selectedReceiving?.items.reduce((total: number, item: RetailReceivingQueueItem["items"][number]) => total + item.orderedQty, 0) ?? 0;
+  const totalReceivedQty = selectedReceiving?.items.reduce((total: number, item: RetailReceivingQueueItem["items"][number]) => total + item.receivedQty, 0) ?? 0;
 
   async function updateReceivingStatus(status: RetailReceivingStatus) {
     if (!selectedReceiving || source !== "api") return;
@@ -323,7 +323,7 @@ export default function RetailReceivingApiWorkspace() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
-                    {selectedReceiving.items.map((item) => (
+                    {selectedReceiving.items.map((item: RetailReceivingQueueItem["items"][number]) => (
                       <tr key={`${selectedReceiving.id}:${item.productId}`}>
                         <td className="py-3 pr-4 font-mono text-xs text-neutral-600">{item.sku}</td>
                         <td className="py-3 pr-4 text-neutral-700">{item.orderedQty}</td>

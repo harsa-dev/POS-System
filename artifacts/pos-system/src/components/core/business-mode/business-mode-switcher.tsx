@@ -124,7 +124,7 @@ export function BusinessModeSwitcher() {
                   className="flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left transition enabled:hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-70"
                   aria-current={isActive ? "page" : undefined}
                   aria-label={getModeButtonLabel(mode)}
-                  title={mode.unavailableReason ?? getModeButtonLabel(mode)}
+                  title={(mode as BusinessModeConfig).unavailableReason ?? getModeButtonLabel(mode)}
                 >
                   <span
                     className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${

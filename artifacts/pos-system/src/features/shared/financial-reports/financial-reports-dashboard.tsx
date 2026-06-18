@@ -669,10 +669,14 @@ export function FinancialReportsDashboard() {
   const exportCurrentViewCsv = () => {
     if (!report) return;
 
-    exportCsv(
-      `financial-report-${report.period.from}-${report.period.to}.csv`,
-      exportRows,
-    );
+    exportCsv<[string | number, string | number]>({
+      filename: `financial-report-${report.period.from}-${report.period.to}.csv`,
+      columns: [
+        { key: "metric", header: "Metric", value: (row) => row[0] },
+        { key: "value", header: "Value", value: (row) => row[1] },
+      ],
+      rows: exportRows as [string | number, string | number][],
+    });
   };
 
   const exportReportFile = async (format: "csv" | "json") => {
@@ -709,29 +713,9 @@ export function FinancialReportsDashboard() {
     }
   };
 
-  const exportPdf = () => {
+  const handleExportPdf = () => {
     if (!report) return;
-
-    exportPdfWindow(report);
-  };
-
-  const exportPdfWindow = (data: FinancialReportDto) => {
-    exportPdf(
-      `financial-report-${data.period.from}-${data.period.to}.pdf`,
-      "Financial Report",
-      [
-        ["Period", data.period.label],
-        ["Basis", data.basis],
-        ["Revenue", formatCurrency(data.summary.totalRevenue)],
-        ["COGS", formatCurrency(data.summary.cogs)],
-        ["Gross Profit", formatCurrency(data.summary.grossProfit)],
-        ["Net Profit", formatCurrency(data.summary.netProfit)],
-        ["Receivables", formatCurrency(data.summary.receivables)],
-        ["Cash In", formatCurrency(data.summary.cashIn)],
-        ["Cash Out", formatCurrency(data.summary.cashOut)],
-        ["Net Cashflow", formatCurrency(data.summary.netCashflow)],
-      ],
-    );
+    exportPdf();
   };
 
   return (

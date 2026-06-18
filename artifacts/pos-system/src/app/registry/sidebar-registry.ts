@@ -36,7 +36,7 @@ export const sidebarRegistry = moduleRegistry
         featureFlags: item.featureFlags,
         requiredRoles:
           item.requiredRoles ?? getRolesForPermissions(item.requiredPermissions),
-        order: item.order,
+        order: item.order ?? Number.MAX_SAFE_INTEGER,
       })) ?? [];
 
     if (!isRoutedSidebarModule(module)) {

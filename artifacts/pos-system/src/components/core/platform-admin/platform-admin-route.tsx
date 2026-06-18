@@ -61,6 +61,7 @@ export function PlatformAdminRoute({
   capability: PlatformAdminCapability;
   user: PlatformAdminRouteUser;
   isLoading: boolean;
+  label?: string;
 }) {
   if (isLoading) {
     return (

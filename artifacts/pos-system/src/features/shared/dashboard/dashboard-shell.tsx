@@ -180,6 +180,7 @@ export function DashboardShell({
   title: string;
   description: string;
   children: ReactNode;
+  icon?: unknown;
 }) {
   const serviceBusinessSurface = serviceBusinessSurfaceByTitle[title];
   const sharedDashboardModeContext = serviceBusinessSurface
@@ -264,12 +265,15 @@ export function DashboardPanel({
   title,
   description,
   action,
+  actions,
   children,
   className,
 }: {
   title?: string;
   description?: string;
   action?: ReactNode;
+  actions?: ReactNode;
+  icon?: unknown;
   children: ReactNode;
   className?: string;
 }) {
@@ -280,7 +284,7 @@ export function DashboardPanel({
         className,
       )}
     >
-      {(title || description || action) && (
+      {(title || description || action || actions) && (
         <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             {title && (
@@ -294,7 +298,7 @@ export function DashboardPanel({
               </p>
             )}
           </div>
-          {action}
+          {action ?? actions}
         </div>
       )}
       {children}

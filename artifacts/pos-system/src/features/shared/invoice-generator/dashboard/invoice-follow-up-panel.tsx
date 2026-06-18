@@ -108,13 +108,14 @@ export function InvoiceFollowUpPanel({ canManage, reloadSignal = 0 }: InvoiceFol
         return;
       }
 
-      setDashboard(response.data);
+      const loadedData = response.data;
+      setDashboard(loadedData);
       setSelectedInvoiceId((current) => {
-        if (preferredInvoiceId && response.data.items.some((item) => item.invoice.id === preferredInvoiceId)) {
+        if (preferredInvoiceId && loadedData.items.some((item) => item.invoice.id === preferredInvoiceId)) {
           return preferredInvoiceId;
         }
-        if (current && response.data.items.some((item) => item.invoice.id === current)) return current;
-        return response.data.items[0]?.invoice.id ?? null;
+        if (current && loadedData.items.some((item) => item.invoice.id === current)) return current;
+        return loadedData.items[0]?.invoice.id ?? null;
       });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to load invoice follow-ups.");

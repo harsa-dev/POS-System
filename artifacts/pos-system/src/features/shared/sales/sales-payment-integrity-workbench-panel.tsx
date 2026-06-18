@@ -456,18 +456,19 @@ export function SalesPaymentIntegrityWorkbenchPanel() {
         return;
       }
 
+      const savedReview = response.data;
       setReviewsByKey((current) => ({
         ...current,
-        [key]: response.data,
-      }));
+        [key]: savedReview,
+      }) as Record<string, typeof savedReview>);
       setReviewDrafts((current) => ({
         ...current,
         [key]: {
-          status: response.data.status,
-          note: response.data.note,
+          status: savedReview.status,
+          note: savedReview.note,
         },
       }));
-      setSuccessMessage(`Saved ${formatReviewStatus(response.data.status)} review for Order #${row.orderNumber}.`);
+      setSuccessMessage(`Saved ${formatReviewStatus(savedReview.status)} review for Order #${row.orderNumber}.`);
       void loadWorkbench();
     } catch (error) {
       setErrorMessage(
