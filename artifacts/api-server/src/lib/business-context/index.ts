@@ -11,6 +11,7 @@ export {
   getBusinessForUser,
   requireBusinessContextForRequest,
   requireBusinessContextForUser,
+  requireServiceBusinessContextForUser,
   requireBusinessForUser,
   type BusinessScopedUser,
   type BusinessWithModeProfile,

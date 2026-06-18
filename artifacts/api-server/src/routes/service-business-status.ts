@@ -17,7 +17,7 @@ import {
   requireBodyObject,
 } from "../features/service-business/service-business.validators.js";
 import { writeServiceBusinessAuditLog } from "../features/service-business/service-business.audit.js";
-import { requireBusinessContextForUser } from "../lib/business-context/index.js";
+import { requireServiceBusinessContextForUser } from "../lib/business-context/index.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
@@ -34,7 +34,7 @@ async function handleServiceStatusUpdate(req: Request, res: Response) {
     );
     if (!user) return;
 
-    const businessContext = await requireBusinessContextForUser(user);
+    const businessContext = await requireServiceBusinessContextForUser(user);
     const body = requireBodyObject(req.body);
     const nextStatus = parseServiceBusinessWorkflowStatus(body?.nextStatus ?? body?.status);
     const note = getText(body?.note);

@@ -1,13 +1,9 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  pricingInputs,
-  serviceConfigDraft,
-  serviceJobs,
-  serviceMetrics,
-  servicePipeline,
-} from "./service-business-workspace-data";
+import { serviceBusinessApi } from "./service-business-api";
+import type { ServiceBusinessSummaryResponse } from "./service-business-api-contract-types";
 import type {
+  ServiceBusinessJob,
   ServiceBusinessPriority,
   ServiceBusinessWorkflowStatus,
 } from "./service-business-workspace-types";
@@ -17,77 +13,100 @@ import type {
   ServiceBusinessWorkspaceTab,
 } from "./service-business-workspace-view-types";
 
-const readinessChecks = [
-  "Create service request and job schema before enabling mutations.",
-  "Define service status transition rules before exposing action buttons.",
-  "Connect quotation, invoice, payment, and cashflow through one contract.",
-  "Keep permission keys under custom-business.* until backend authorization exists.",
-  "Do not reuse non-service workflow states for service jobs.",
-] as const;
-
-function uniqueValues<T extends string>(values: readonly T[]) {
-  return Array.from(new Set(values));
-}
+export type WorkspaceLoadStatus = "loading" | "ready" | "error";
 
 export function useServiceBusinessWorkspace() {
+  const [loadStatus, setLoadStatus] = useState<WorkspaceLoadStatus>("loading");
+  const [jobs, setJobs] = useState<readonly ServiceBusinessJob[]>([]);
+  const [summary, setSummary] = useState<ServiceBusinessSummaryResponse | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] =
-    useState<ServiceBusinessStatusFilter>("all");
-  const [priorityFilter, setPriorityFilter] =
-    useState<ServiceBusinessPriorityFilter>("all");
-  const [activeTab, setActiveTab] =
-    useState<ServiceBusinessWorkspaceTab>("overview");
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(
-    serviceJobs[0]?.id ?? null,
-  );
+  const [statusFilter, setStatusFilter] = useState<ServiceBusinessStatusFilter>("all");
+  const [priorityFilter, setPriorityFilter] = useState<ServiceBusinessPriorityFilter>("all");
+  const [activeTab, setActiveTab] = useState<ServiceBusinessWorkspaceTab>("overview");
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const initialSelectedRef = useRef(false);
 
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const load = useCallback(async (isReload = false) => {
+    if (isReload) {
+      setIsRefreshing(true);
+    } else {
+      setLoadStatus("loading");
+    }
+    setErrorMessage(null);
 
-  const filteredJobs = useMemo(
-    () =>
-      serviceJobs.filter((job) => {
-        const matchesSearch =
-          normalizedSearchQuery === "" ||
-          [
-            job.requestCode,
-            job.title,
-            job.customerName,
-            job.customerSegment,
-            job.serviceCategory,
-            job.assignedTo,
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(normalizedSearchQuery);
+    try {
+      const [jobsResult, summaryResult] = await Promise.all([
+        serviceBusinessApi.listJobs(),
+        serviceBusinessApi.getSummary(),
+      ]);
+      setJobs(jobsResult);
+      setSummary(summaryResult);
+      setLoadStatus("ready");
+    } catch {
+      setLoadStatus("error");
+      setErrorMessage("Failed to load service workspace. Check your connection and try again.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
 
-        const matchesStatus =
-          statusFilter === "all" || job.status === statusFilter;
-        const matchesPriority =
-          priorityFilter === "all" || job.priority === priorityFilter;
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-        return matchesSearch && matchesStatus && matchesPriority;
-      }),
-    [normalizedSearchQuery, priorityFilter, statusFilter],
-  );
+  useEffect(() => {
+    if (!initialSelectedRef.current && jobs.length > 0) {
+      initialSelectedRef.current = true;
+      setSelectedJobId(jobs[0]?.id ?? null);
+    }
+  }, [jobs]);
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const filteredJobs = useMemo(() => {
+    if (loadStatus !== "ready") return [];
+    return jobs.filter((job) => {
+      const matchesSearch =
+        normalizedSearch === "" ||
+        [
+          job.requestCode,
+          job.title,
+          job.customerName,
+          job.customerSegment,
+          job.serviceCategory,
+          job.assignedTo,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedSearch);
+
+      const matchesStatus = statusFilter === "all" || job.status === statusFilter;
+      const matchesPriority = priorityFilter === "all" || job.priority === priorityFilter;
+
+      return matchesSearch && matchesStatus && matchesPriority;
+    });
+  }, [jobs, normalizedSearch, statusFilter, priorityFilter, loadStatus]);
 
   const availableStatuses = useMemo(
-    () => uniqueValues(serviceJobs.map((job) => job.status)) as ServiceBusinessWorkflowStatus[],
-    [],
+    () => Array.from(new Set(jobs.map((j) => j.status))) as ServiceBusinessWorkflowStatus[],
+    [jobs],
   );
 
   const availablePriorities = useMemo(
-    () => uniqueValues(serviceJobs.map((job) => job.priority)) as ServiceBusinessPriority[],
-    [],
+    () => Array.from(new Set(jobs.map((j) => j.priority))) as ServiceBusinessPriority[],
+    [jobs],
   );
 
-  const selectedJob = useMemo(() => {
-    if (filteredJobs.length === 0) return null;
-    return (
-      filteredJobs.find((job) => job.id === selectedJobId) ??
-      filteredJobs[0] ??
-      null
-    );
-  }, [filteredJobs, selectedJobId]);
+  const selectedJob = useMemo(
+    () =>
+      filteredJobs.length === 0
+        ? null
+        : (filteredJobs.find((j) => j.id === selectedJobId) ?? filteredJobs[0] ?? null),
+    [filteredJobs, selectedJobId],
+  );
 
   function resetFilters() {
     setSearchQuery("");
@@ -95,20 +114,23 @@ export function useServiceBusinessWorkspace() {
     setPriorityFilter("all");
   }
 
+  function reload() {
+    return load(true);
+  }
+
   return {
-    status: "mocked" as const,
+    loadStatus,
+    isRefreshing,
+    errorMessage,
     activeTab,
     availablePriorities,
     availableStatuses,
-    configDraft: serviceConfigDraft,
     filteredJobs,
-    jobs: serviceJobs,
-    metrics: serviceMetrics,
-    pipeline: servicePipeline,
-    pricingInputs,
+    jobs,
+    summary,
     priorityFilter,
-    readinessChecks,
     resetFilters,
+    reload,
     searchQuery,
     selectedJob,
     selectedJobId: selectedJob?.id ?? null,

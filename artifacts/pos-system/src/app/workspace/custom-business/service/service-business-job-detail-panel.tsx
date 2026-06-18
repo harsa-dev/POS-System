@@ -9,15 +9,22 @@ import {
   getServicePriorityTone,
   getServiceStatusTone,
 } from "./service-business-workspace-domain";
-import type { ServiceBusinessJob } from "./service-business-workspace-types";
+import type {
+  ServiceBusinessJob,
+  ServiceBusinessWorkflowStatus,
+} from "./service-business-workspace-types";
 import { ServicePill, ServiceSectionCard } from "./service-business-workspace-ui";
 
 export function ServiceBusinessJobDetailPanel({
+  isUpdating,
   job,
   onClose,
+  onUpdateStatus,
 }: {
+  isUpdating: boolean;
   job: ServiceBusinessJob | null;
   onClose: () => void;
+  onUpdateStatus: (nextStatus: ServiceBusinessWorkflowStatus) => void;
 }) {
   if (!job) return null;
 
@@ -26,8 +33,8 @@ export function ServiceBusinessJobDetailPanel({
 
   return (
     <ServiceSectionCard
-      title="Selected service job detail"
-      description="Read-only detail panel for the selected mock service job. Backend mutation can attach here later without changing the surrounding workspace."
+      title="Service job detail"
+      description="Detail view for the selected service job. Use the actions panel to advance the workflow."
     >
       <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -35,12 +42,8 @@ export function ServiceBusinessJobDetailPanel({
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-neutral-400">
               {viewModel.requestCode}
             </p>
-            <h3 className="mt-1 text-lg font-bold text-neutral-950">
-              {viewModel.title}
-            </h3>
-            <p className="mt-1 text-sm leading-6 text-neutral-600">
-              {viewModel.customerLabel}
-            </p>
+            <h3 className="mt-1 text-lg font-bold text-neutral-950">{viewModel.title}</h3>
+            <p className="mt-1 text-sm leading-6 text-neutral-600">{viewModel.customerLabel}</p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             <ServicePill className={getServiceStatusTone(job.status)}>
@@ -82,7 +85,11 @@ export function ServiceBusinessJobDetailPanel({
             </dl>
           </div>
 
-          <ServiceBusinessActionRail job={job} />
+          <ServiceBusinessActionRail
+            isUpdating={isUpdating}
+            job={job}
+            onUpdateStatus={onUpdateStatus}
+          />
         </div>
 
         <div className="mt-5">

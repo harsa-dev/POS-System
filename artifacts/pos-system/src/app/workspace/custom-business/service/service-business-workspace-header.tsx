@@ -1,4 +1,4 @@
-import { FilePlus2, ReceiptText, Search, SlidersHorizontal } from "lucide-react";
+import { FilePlus2, Search, SlidersHorizontal } from "lucide-react";
 
 import {
   getServicePriorityLabel,
@@ -22,7 +22,6 @@ const workspaceTabs: readonly {
   { id: "jobs", label: "Jobs" },
   { id: "quotations", label: "Quotations" },
   { id: "invoices", label: "Invoices" },
-  { id: "config", label: "Config" },
 ];
 
 export function ServiceBusinessWorkspaceHeader({
@@ -30,9 +29,9 @@ export function ServiceBusinessWorkspaceHeader({
   availablePriorities,
   availableStatuses,
   filteredCount,
+  isRefreshing,
   onActiveTabChange,
-  onOpenQuotationPreview,
-  onOpenRequestPreview,
+  onOpenNewRequest,
   onPriorityFilterChange,
   onResetFilters,
   onSearchQueryChange,
@@ -46,9 +45,9 @@ export function ServiceBusinessWorkspaceHeader({
   availablePriorities: readonly ServiceBusinessPriority[];
   availableStatuses: readonly ServiceBusinessWorkflowStatus[];
   filteredCount: number;
+  isRefreshing: boolean;
   onActiveTabChange: (tab: ServiceBusinessWorkspaceTab) => void;
-  onOpenQuotationPreview: () => void;
-  onOpenRequestPreview: () => void;
+  onOpenNewRequest: () => void;
   onPriorityFilterChange: (priority: ServiceBusinessPriorityFilter) => void;
   onResetFilters: () => void;
   onSearchQueryChange: (query: string) => void;
@@ -65,32 +64,22 @@ export function ServiceBusinessWorkspaceHeader({
     <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <div className="inline-flex rounded-full bg-neutral-100 px-3 py-1 text-xs font-bold text-neutral-600">
-            Mock interaction layer
-          </div>
-          <h2 className="mt-3 text-xl font-bold text-neutral-950">
-            Service workspace control center
-          </h2>
+          <h2 className="text-xl font-bold text-neutral-950">Service workspace</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">
-            Search, filter, and preview service workflows without touching backend data. Preview forms are local-only and cannot submit.
+            Search, filter, and manage service jobs. Select a job to view details and take actions.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {isRefreshing ? (
+            <span className="text-xs font-semibold text-neutral-400">Refreshing…</span>
+          ) : null}
           <button
             type="button"
-            onClick={onOpenRequestPreview}
+            onClick={onOpenNewRequest}
             className="inline-flex items-center gap-2 rounded-xl bg-neutral-950 px-3 py-2 text-sm font-semibold text-white"
           >
             <FilePlus2 className="h-4 w-4" />
-            Request preview
-          </button>
-          <button
-            type="button"
-            onClick={onOpenQuotationPreview}
-            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-700"
-          >
-            <ReceiptText className="h-4 w-4" />
-            Quote preview
+            New request
           </button>
         </div>
       </div>
@@ -98,7 +87,6 @@ export function ServiceBusinessWorkspaceHeader({
       <div className="mt-5 flex flex-wrap gap-2">
         {workspaceTabs.map((tab) => {
           const isActive = activeTab === tab.id;
-
           return (
             <button
               key={tab.id}
@@ -122,7 +110,7 @@ export function ServiceBusinessWorkspaceHeader({
           <input
             value={searchQuery}
             onChange={(event) => onSearchQueryChange(event.target.value)}
-            placeholder="Search by request, customer, title, or category..."
+            placeholder="Search by request, customer, title, or category…"
             className="h-11 w-full rounded-xl border border-neutral-200 bg-white pl-10 pr-3 text-sm outline-none ring-0 placeholder:text-neutral-400 focus:border-neutral-400"
           />
         </label>
@@ -169,7 +157,7 @@ export function ServiceBusinessWorkspaceHeader({
       </div>
 
       <p className="mt-3 text-xs font-semibold text-neutral-500">
-        Showing {filteredCount} of {totalCount} mocked service jobs.
+        Showing {filteredCount} of {totalCount} service jobs
       </p>
     </section>
   );

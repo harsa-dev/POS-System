@@ -1,4 +1,4 @@
-import { CheckCircle2, LockKeyhole, MoveRight, XCircle } from "lucide-react";
+import { CheckCircle2, MoveRight, XCircle } from "lucide-react";
 
 import {
   countMetTransitionRequirements,
@@ -9,57 +9,61 @@ import {
   getServiceTransitionSummary,
 } from "./service-business-status-transitions";
 import { getServiceStatusLabel } from "./service-business-workspace-domain";
-import type { ServiceBusinessJob } from "./service-business-workspace-types";
+import type {
+  ServiceBusinessJob,
+  ServiceBusinessWorkflowStatus,
+} from "./service-business-workspace-types";
 
-export function ServiceBusinessActionRail({ job }: { job: ServiceBusinessJob }) {
+export function ServiceBusinessActionRail({
+  isUpdating,
+  job,
+  onUpdateStatus,
+}: {
+  isUpdating: boolean;
+  job: ServiceBusinessJob;
+  onUpdateStatus: (nextStatus: ServiceBusinessWorkflowStatus) => void;
+}) {
   const actions = getServiceTransitionActions(job.status);
   const transitionSummary = getServiceTransitionSummary(job.status);
 
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h4 className="text-sm font-bold text-neutral-950">Action preview</h4>
-          <p className="mt-1 text-xs leading-5 text-neutral-500">
-            Current: {getServiceStatusLabel(job.status)} · {transitionSummary}
-          </p>
-        </div>
-        <div className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-bold text-neutral-500">
-          Disabled
-        </div>
+      <div>
+        <h4 className="text-sm font-bold text-neutral-950">Actions</h4>
+        <p className="mt-1 text-xs leading-5 text-neutral-500">
+          Current: {getServiceStatusLabel(job.status)} · {transitionSummary}
+        </p>
       </div>
 
       {actions.length > 0 ? (
         <div className="mt-4 space-y-3">
           {actions.map((action) => {
-            const requirements = getServiceTransitionRequirements(
-              job,
-              action.nextStatus,
-            );
+            const requirements = getServiceTransitionRequirements(job, action.nextStatus);
             const metCount = countMetTransitionRequirements(requirements);
+            const allMet = metCount === requirements.length;
 
             return (
               <div
                 key={action.id}
-                className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-3"
+                className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3"
               >
                 <button
-                  disabled
                   type="button"
-                  className="flex w-full cursor-not-allowed items-start justify-between gap-3 text-left"
+                  disabled={isUpdating || !allMet}
+                  onClick={() => onUpdateStatus(action.nextStatus)}
+                  className="flex w-full items-start justify-between gap-3 text-left disabled:cursor-not-allowed"
                 >
                   <span>
-                    <span className="block text-sm font-bold text-neutral-500">
+                    <span className="block text-sm font-bold text-neutral-800">
                       {action.label}
                     </span>
-                    <span className="mt-1 block text-xs leading-5 text-neutral-400">
-                      Needs {action.requiredPermission}
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-neutral-400">
-                      {action.disabledReason}
+                    <span className="mt-1 block text-xs leading-5 text-neutral-500">
+                      {action.requiredPermission}
                     </span>
                   </span>
-                  <MoveRight className="mt-1 h-4 w-4 shrink-0 text-neutral-400" />
+                  <MoveRight
+                    className={`mt-1 h-4 w-4 shrink-0 ${allMet && !isUpdating ? "text-neutral-800" : "text-neutral-300"}`}
+                  />
                 </button>
 
                 {requirements.length > 0 ? (
@@ -79,9 +83,7 @@ export function ServiceBusinessActionRail({ job }: { job: ServiceBusinessJob }) 
                             <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                           )}
                           <span>
-                            <span className="font-semibold text-neutral-800">
-                              {item.label}
-                            </span>
+                            <span className="font-semibold text-neutral-800">{item.label}</span>
                             {!item.isMet ? (
                               <span className="mt-0.5 block text-neutral-500">
                                 {item.missingReason}
@@ -98,9 +100,8 @@ export function ServiceBusinessActionRail({ job }: { job: ServiceBusinessJob }) 
           })}
         </div>
       ) : (
-        <div className="mt-4 flex gap-3 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-4 text-sm leading-6 text-neutral-500">
-          <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0" />
-          No next action in the current mock transition map.
+        <div className="mt-4 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-4 text-sm leading-6 text-neutral-500">
+          No further transitions available for this status.
         </div>
       )}
     </div>

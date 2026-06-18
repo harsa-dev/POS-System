@@ -21,7 +21,7 @@ import {
   requireBodyObject,
 } from "../features/service-business/service-business.validators.js";
 import { writeServiceBusinessAuditLog } from "../features/service-business/service-business.audit.js";
-import { requireBusinessContextForUser } from "../lib/business-context/index.js";
+import { requireServiceBusinessContextForUser } from "../lib/business-context/index.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
@@ -34,7 +34,7 @@ router.get("/custom-business/service/workflow/statuses", async (req, res) => {
     const user = await requireServiceBusinessPermission(req, res, SERVICE_BUSINESS_PERMISSIONS.view);
     if (!user) return;
 
-    await requireBusinessContextForUser(user);
+    await requireServiceBusinessContextForUser(user);
 
     return successResponse(res, {
       data: presentServiceWorkflowStatuses(),
@@ -49,7 +49,7 @@ router.get("/custom-business/service/jobs/:id/transition-preview", async (req, r
     const user = await requireServiceBusinessPermission(req, res, SERVICE_BUSINESS_PERMISSIONS.view);
     if (!user) return;
 
-    const businessContext = await requireBusinessContextForUser(user);
+    const businessContext = await requireServiceBusinessContextForUser(user);
     const nextStatus = parseServiceBusinessWorkflowStatus(req.query.nextStatus);
 
     if (!nextStatus) {
@@ -89,7 +89,7 @@ router.patch("/custom-business/service/jobs/:id/guarded-status", async (req, res
     );
     if (!user) return;
 
-    const businessContext = await requireBusinessContextForUser(user);
+    const businessContext = await requireServiceBusinessContextForUser(user);
     const body = requireBodyObject(req.body);
     const nextStatus = parseServiceBusinessWorkflowStatus(body?.nextStatus ?? body?.status);
     const note = getText(body?.note);

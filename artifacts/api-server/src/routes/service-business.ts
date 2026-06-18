@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import type { Prisma } from "@prisma/client";
 
-import { requireBusinessContextForUser } from "../lib/business-context/index.js";
+import { requireServiceBusinessContextForUser } from "../lib/business-context/index.js";
 import { errorCodes } from "../lib/errors/error-codes.js";
 import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
@@ -62,7 +62,7 @@ async function getServiceRequestContext(
   const user = await requireServiceBusinessPermission(req, res, permission);
   if (!user) return null;
 
-  const businessContext = await requireBusinessContextForUser(user);
+  const businessContext = await requireServiceBusinessContextForUser(user);
 
   return {
     actorId: user.id,

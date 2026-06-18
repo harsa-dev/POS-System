@@ -99,6 +99,25 @@ export async function requireBusinessContextForUser(user: BusinessScopedUser) {
   return createBusinessContext(business);
 }
 
+export async function requireServiceBusinessContextForUser(user: BusinessScopedUser) {
+  const business = await prisma.business.findFirst({
+    where: isOwnerRole(user.role)
+      ? { ownerId: user.id, mode: "SERVICE", isActive: true }
+      : { id: user.businessId ?? "", isActive: true },
+    include: { restaurant: true },
+  });
+
+  if (!business) {
+    throw new AppError({
+      statusCode: 404,
+      code: errorCodes.businessNotFound,
+      message: "Service business not found for this account.",
+    });
+  }
+
+  return createBusinessContext(business);
+}
+
 export async function getBusinessContextForRequest(
   _req: Request,
   user: BusinessScopedUser,
