@@ -107,6 +107,12 @@ async function countUnsyncedOrders(
   return rows[0]?.count ?? 0;
 }
 
+/**
+ * Counts COGS stock movements where unitCostSnapshot IS NULL.
+ * These are movements that lack a persisted historical cost and will cause
+ * COGS to be understated or estimated from current item cost (less accurate).
+ * A non-zero count here means the cost snapshot repair panel should be visited.
+ */
 async function countMissingCostSnapshots(
   db: Db,
   businessId: string,
@@ -115,7 +121,6 @@ async function countMissingCostSnapshots(
   const rows = await db.$queryRaw<CountRow[]>`
     SELECT COUNT(*)::int AS "count"
     FROM "StockMovement" sm
-    LEFT JOIN "InventoryItem" ii ON ii."id" = sm."inventoryItemId"
     WHERE sm."businessId" = ${businessId}
       AND sm."createdAt" >= ${query.from}
       AND sm."createdAt" <= ${query.to}
@@ -124,7 +129,7 @@ async function countMissingCostSnapshots(
         sm."reason"::text = 'RECIPE_USAGE'
         OR sm."sourceType"::text IN ('ORDER', 'RECIPE')
       )
-      AND (ii."id" IS NULL OR ii."costPerUnit" <= 0);
+      AND sm."unitCostSnapshot" IS NULL;
   `;
 
   return rows[0]?.count ?? 0;
@@ -220,6 +225,12 @@ async function listUnsyncedOrders(
   return rows.map(toDetailRow);
 }
 
+/**
+ * Lists COGS movements where unitCostSnapshot IS NULL.
+ * These are movements missing a persisted historical cost at movement time.
+ * The amount shown is an estimate using current item cost — not a reliable
+ * historical figure. Use the cost snapshot repair panel to fix them.
+ */
 async function listMissingCostSnapshots(
   db: Db,
   businessId: string,
@@ -231,7 +242,11 @@ async function listMissingCostSnapshots(
       sm."createdAt" AS "date",
       COALESCE(sm."sourceType"::text, 'STOCK_MOVEMENT') AS "sourceType",
       COALESCE(ii."name", sm."inventoryItemId") AS "reference",
-      COALESCE(sm."note", 'COGS stock movement without usable inventory cost') AS "description",
+      CASE
+        WHEN COALESCE(ii."costPerUnit", 0) > 0
+          THEN 'COGS movement missing cost snapshot — repairable from current item cost'
+        ELSE 'COGS movement missing cost snapshot — item cost must be set first'
+      END AS "description",
       ROUND(ABS(sm."quantity") * COALESCE(ii."costPerUnit", 0))::bigint AS "amount",
       COALESCE(sm."reason"::text, sm."type"::text) AS "status"
     FROM "StockMovement" sm
@@ -244,7 +259,7 @@ async function listMissingCostSnapshots(
         sm."reason"::text = 'RECIPE_USAGE'
         OR sm."sourceType"::text IN ('ORDER', 'RECIPE')
       )
-      AND (ii."id" IS NULL OR ii."costPerUnit" <= 0)
+      AND sm."unitCostSnapshot" IS NULL
     ORDER BY sm."createdAt" DESC
     LIMIT 50;
   `;
@@ -336,9 +351,9 @@ function buildIssues(input: {
   if (input.missingCostSnapshotCount > 0) {
     issues.push({
       key: "missing_cost_snapshots",
-      title: "COGS movements missing usable inventory cost",
+      title: "COGS movements missing cost snapshot",
       description:
-        "Some inventory movements used for COGS do not have linked inventory cost.",
+        "Some COGS stock movements are missing a persisted cost snapshot. COGS may be estimated from current item cost. Use the cost snapshot repair panel to backfill.",
       severity: "warning",
       count: input.missingCostSnapshotCount,
     });

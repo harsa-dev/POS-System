@@ -421,8 +421,8 @@ export function SalesAnalyticsSyncedReconciliationDrilldownPanel() {
             />
             <ReconciliationDetailSection
               id="sales-reconciliation-missing-cost-snapshots"
-              title="Missing Usable Inventory Cost"
-              description="Recipe usage stock movements without linked inventory cost. Update inventory item costs before trusting COGS."
+              title="COGS Movements Missing Cost Snapshot"
+              description="Recipe usage stock movements without a persisted cost snapshot. Use the cost snapshot repair panel to backfill the historical cost."
               rows={reconciliation.missingCostSnapshots}
             />
             <ReconciliationDetailSection

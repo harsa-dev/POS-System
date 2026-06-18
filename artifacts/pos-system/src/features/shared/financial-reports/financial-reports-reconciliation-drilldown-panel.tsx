@@ -137,7 +137,7 @@ function openIssueTarget(
       from: periodContext.from,
       to: periodContext.to,
       sourceIssue: "missing_cost_snapshots",
-      message: `Financial reconciliation review: missing usable COGS inventory cost (${periodContext.label}).`,
+      message: `Financial reconciliation review: COGS movements missing cost snapshot (${periodContext.label}).`,
     });
     return;
   }
@@ -267,7 +267,7 @@ export function FinancialReportsReconciliationDrilldownPanel() {
       {
         ...issueTargets.missing_cost_snapshots,
         rows: reconciliation.missingCostSnapshots,
-        emptyMessage: "No COGS movements missing usable inventory cost.",
+        emptyMessage: "No COGS movements missing a cost snapshot.",
       },
       {
         ...issueTargets.pending_cashflow_entries,

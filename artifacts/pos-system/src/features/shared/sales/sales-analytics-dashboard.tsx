@@ -296,8 +296,8 @@ function SalesReconciliationPanel({
         rows={reconciliation.paymentTotalMismatches}
       />
       <ReconciliationDetailTable
-        title="Missing Usable Inventory Cost"
-        description="Recipe usage stock movements without linked inventory cost."
+        title="COGS Movements Missing Cost Snapshot"
+        description="Recipe usage stock movements without a persisted cost snapshot. COGS may be estimated from current item cost."
         rows={reconciliation.missingCostSnapshots}
       />
       <ReconciliationDetailTable

@@ -29,13 +29,10 @@ const stockMovementReasonValues = new Set<string>(STOCK_MOVEMENT_REASONS);
 const stockMovementSourceValues = new Set<string>(STOCK_MOVEMENT_SOURCES);
 
 type InventoryMovementReportSort = "NEWEST" | "OLDEST" | "HIGHEST_QUANTITY" | "HIGHEST_VALUE";
-type StockMovementSnapshotFields = Readonly<{
-  previousStock?: number | null;
-  newStock?: number | null;
-  unitCostSnapshot?: number | null;
-}>;
-type StockMovementWithItem = Prisma.StockMovementGetPayload<{ include: { inventoryItem: true } }> &
-  StockMovementSnapshotFields;
+
+// StockMovement now includes previousStock, newStock, unitCostSnapshot, and
+// totalCostSnapshot directly from the Prisma schema. No manual intersection needed.
+type StockMovementWithItem = Prisma.StockMovementGetPayload<{ include: { inventoryItem: true } }>;
 type InventoryMovementReportRow = ReturnType<typeof toMovementReportRow>;
 
 function parseFormat(value: unknown) {
@@ -112,8 +109,14 @@ function getReportQuery(req: { query: Record<string, unknown> }) {
 }
 
 function toMovementReportRow(movement: StockMovementWithItem) {
-  const unitCost = movement.unitCostSnapshot ?? movement.inventoryItem.costPerUnit ?? 0;
-  const movementValue = Math.round(unitCost * movement.quantity);
+  // Prefer the persisted unitCostSnapshot (historical cost at movement time).
+  // Fall back to the current item costPerUnit as an estimate when the snapshot
+  // is absent — this is always labeled as a fallback in the DTO.
+  const unitCostRaw = movement.unitCostSnapshot ?? null;
+  const unitCost = unitCostRaw !== null
+    ? Number(unitCostRaw)
+    : (movement.inventoryItem.costPerUnit ?? 0);
+  const movementValue = Math.round(unitCost * Math.abs(movement.quantity));
 
   return {
     id: movement.id,
@@ -133,7 +136,7 @@ function toMovementReportRow(movement: StockMovementWithItem) {
     note: movement.note ?? null,
     previousStock: movement.previousStock ?? null,
     newStock: movement.newStock ?? null,
-    unitCostSnapshot: movement.unitCostSnapshot ?? null,
+    unitCostSnapshot: unitCostRaw !== null ? Number(unitCostRaw) : null,
     fallbackCostPerUnit: movement.inventoryItem.costPerUnit,
     movementValue,
     createdAt: movement.createdAt.toISOString(),

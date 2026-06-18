@@ -71,7 +71,7 @@ function buildRepairFeedbackPayload(
     repairedValue: result.repairedValue,
     repairedMovementIds: result.repairedMovementIds,
     completedAt: new Date().toISOString(),
-    message: `${formatNumber(result.repairedCount)} movement(s) reviewed from Inventory cost quality review.`,
+    message: `${formatNumber(result.repairedCount)} movement(s) backfilled from cost snapshot repair.`,
   };
 }
 
@@ -147,12 +147,12 @@ export function InventoryCostSnapshotRepairPanel() {
       const feedbackPayload = buildRepairFeedbackPayload(payload, response.data);
       setLastRepairFeedback(feedbackPayload);
       setSuccessMessage(
-        `${formatNumber(response.data.repairedCount)} movement(s) reviewed · ${formatCurrency(response.data.repairedValue)} COGS value restored. Review Financial Reports reconciliation after updating item costs.`,
+        `${formatNumber(response.data.repairedCount)} movement(s) backfilled with current item cost as snapshot · ${formatCurrency(response.data.repairedValue)} COGS value restored. Review Financial Reports reconciliation to confirm.`,
       );
       await loadPreview();
     } catch (error) {
       setErrorMessage(
-        getApiErrorMessage(error, "Unable to review inventory cost quality."),
+        getApiErrorMessage(error, "Unable to backfill cost snapshots."),
       );
     } finally {
       setIsRepairing(false);
@@ -257,7 +257,7 @@ export function InventoryCostSnapshotRepairPanel() {
               onClick={() => void handleBackfill()}
               disabled={isLoading || isRepairing || repairableRows.length === 0}
             >
-              {isRepairing ? "Reviewing..." : "Review Selected"}
+              {isRepairing ? "Backfilling..." : "Backfill Snapshots"}
             </DashboardActionButton>
           </DashboardActions>
         }

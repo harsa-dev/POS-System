@@ -154,7 +154,9 @@ export function toSalesAnalyticsSourceHealthDto(
     warnings.push("Some paid lifecycle orders have no paid payment row.");
   }
   if (healthWithoutWarnings.stockMovementsMissingCostSnapshot > 0) {
-    warnings.push("Some stock movements are missing usable inventory cost, so COGS may be understated.");
+    warnings.push(
+      "Some COGS stock movements are missing a cost snapshot. COGS for these movements is estimated from current item cost. Open the cost snapshot repair panel to backfill.",
+    );
   }
   if (healthWithoutWarnings.stockMovementsWithoutOrderSource > 0) {
     warnings.push(

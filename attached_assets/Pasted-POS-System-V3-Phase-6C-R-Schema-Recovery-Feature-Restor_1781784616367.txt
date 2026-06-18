@@ -1,0 +1,533 @@
+POS System V3 Phase 6C-R: Schema Recovery, Feature Restoration, and Proper Prisma Design
+Context
+
+Phase 6C was implemented, but the result went in the wrong direction.
+
+Problem:
+
+Instead of designing/fixing missing schema properly, the implementation changed existing feature behavior to fit the current incomplete schema.
+Some live functionality was downgraded or reworded around missing columns/models.
+unitCostSnapshot usage was removed because the schema did not have it.
+COGS was redirected to InventoryItem.costPerUnit.
+Inventory cost snapshot repair was changed to report missing usable inventory cost.
+UI wording changed from snapshot repair language to “Missing Usable Inventory Cost.”
+Prisma validate/generate passed, but that does not prove the schema is complete.
+Full frontend typecheck still fails elsewhere.
+The current goal is to recover the intended feature behavior and design the missing database contract properly.
+
+This task is a correction pass.
+
+Do not push, branch, commit, or open PR.
+Work locally only.
+
+Main Goal
+
+Fix Phase 6C properly.
+
+The goal is not to make code fit an incomplete schema.
+The goal is to make the schema, backend, and frontend match the intended product behavior.
+
+You must:
+
+Review every Phase 6C change.
+Identify changes that downgraded or weakened existing features.
+Restore feature behavior if it was incorrectly removed.
+Add or adjust Prisma tables/fields/enums where the product requires them.
+Align backend services with the corrected schema.
+Align frontend API contracts with backend DTOs.
+Remove unsafe casts/workarounds.
+Keep the schema minimal but correct.
+Run Prisma validate/generate.
+Document migration commands and risks honestly.
+
+This phase is incomplete if it only renames UI copy or avoids schema changes.
+
+Non-Negotiable Correction Rule
+
+If a feature needs persistent data, do not remove the feature just because the schema is missing.
+
+Instead:
+
+Decide whether the feature is truly part of the active product.
+If active, design the minimum correct Prisma schema for it.
+Update backend services to use that schema.
+Update frontend contracts to match.
+Add migration instructions.
+Only mark as planned/unsupported if the feature is not supposed to exist yet.
+
+Do not downgrade active functionality just to avoid schema work.
+
+Current Canonical Modes
+restaurant
+retail
+raw-material
+custom-business
+
+Rules:
+
+restaurant, retail, and raw-material are active.
+custom-business is planned/guarded only.
+Do not reintroduce fnb, warehouse, or service as active runtime IDs.
+Old mode repair may exist only at documented storage migration boundary.
+Part 1: Review Phase 6C Changes First
+
+Before editing new code, inspect the actual Phase 6C diff.
+
+Review these areas:
+
+docs/v3-phase-6c-prisma-schema-integrity.md
+backend sales analytics services
+backend payment integrity services
+backend financial report services
+backend reconciliation services
+inventory cost snapshot repair logic
+stock movement / inventory movement queries
+frontend sales/financial/inventory panels
+Prisma schema
+Prisma migrations
+
+Specifically inspect the changes related to:
+
+businessId
+restaurantId
+unitCostSnapshot
+InventoryItem.costPerUnit
+COGS
+cost snapshot
+inventory cost repair
+Missing Usable Inventory Cost
+Retail Prisma delegate casts
+raw-material Prisma delegate casts
+
+For each Phase 6C change, classify:
+
+Correct fix, keep it.
+Correct but incomplete, extend it.
+Wrong downgrade, revert or redesign.
+Temporary workaround, replace with proper schema/API fix.
+Documentation-only, verify accuracy.
+
+Do not continue until this classification is done.
+
+Part 2: Restore Intended Feature Behavior
+
+Audit whether Phase 6C weakened active features.
+
+Check:
+
+Inventory Cost Snapshot
+
+Determine whether the product expects stored historical cost snapshots.
+
+If yes:
+
+restore the feature concept
+add proper schema support
+update backend service
+update API contract
+update UI copy
+
+If no:
+
+document why it is not part of active product
+ensure no UI/API claims it exists
+COGS / HPP
+
+Determine whether COGS/HPP is active for:
+
+Restaurant
+Retail
+Raw Material
+
+If active:
+
+add the minimum schema required
+calculate from persisted cost snapshots or movement records
+do not rely on current mutable InventoryItem.costPerUnit for historical COGS unless explicitly documented as an approximation
+
+If planned:
+
+hide or mark planned honestly
+Financial Reports
+
+If financial reports are active:
+
+ensure they use reliable persisted cost/revenue data
+do not fake profit if cost schema is missing
+do not remove active finance panels unless they are truly unsupported
+Inventory Movement Reports
+
+If movement reports are active:
+
+movement records must contain enough data for historical reporting
+if unit cost at movement time is needed, schema must store it
+Part 3: Prisma Schema Design
+
+Design the minimum schema needed for active features.
+
+Do not add random enterprise bloat.
+Add only what current active features need.
+
+Potential schema additions if justified:
+
+Stock Movement Cost Snapshot
+
+If inventory movement reporting or COGS needs historical cost at movement time:
+
+model StockMovement {
+  // existing fields...
+
+  unitCostSnapshot Decimal?
+  totalCostSnapshot Decimal?
+}
+
+or equivalent field names matching existing conventions.
+
+Rules:
+
+unitCostSnapshot stores the unit cost at the moment of movement.
+totalCostSnapshot can be derived but may be stored if reports need stable historical totals.
+Do not use current mutable item cost for historical movement reporting unless intentionally documented.
+Inventory Cost Ledger
+
+If a separate ledger is cleaner than adding fields to movement:
+
+model InventoryCostLedger {
+  id              String   @id @default(cuid())
+  businessId      String
+  inventoryItemId String
+  stockMovementId String?
+  quantity        Decimal
+  unitCost        Decimal
+  totalCost       Decimal
+  sourceType      String
+  sourceId        String?
+  createdAt       DateTime @default(now())
+}
+
+Only add this if current reporting needs a separate cost ledger.
+
+Raw Material Costing
+
+Only if Raw Material HPP/COGS is intended active now.
+
+If Raw Material costing is still planned, do not add this yet.
+
+Retail Transaction Costing
+
+Only if Retail sales/margin reports are active and need persisted cost at sale time.
+
+Restaurant COGS
+
+Only if Restaurant financial reports require ingredient/recipe cost at order time.
+
+Part 4: Decide Schema Source of Truth
+
+For each active cost/reporting feature, decide source of truth:
+
+Stock movement snapshot fields
+Inventory cost ledger
+Order item cost snapshot
+Purchase item unit cost
+Existing InventoryItem.costPerUnit as current cost only
+
+Rules:
+
+Current mutable cost can be used for estimates.
+Historical reports need historical snapshots.
+Order-time profit/COGS needs order-time cost snapshot.
+Movement reports need movement-time cost snapshot.
+Do not mix these silently.
+
+Document the decision.
+
+Part 5: Backend Update
+
+After schema decision, update backend.
+
+Check and fix:
+
+sales analytics
+payment integrity
+financial reports
+reconciliation
+inventory movement reports
+inventory movement anomalies
+inventory cost repair
+shared dashboard summaries
+Restaurant reporting
+Retail reporting
+Raw Material reporting if active
+
+Rules:
+
+backend queries must match schema
+no query should reference missing columns
+no service should fake real cost data
+no service should silently use current cost as historical cost unless explicitly labeled
+DTOs must expose correct fields
+response envelopes must stay consistent
+errors must be safe
+tenant/business scoping must remain correct
+Part 6: Frontend Contract Update
+
+Update frontend only after backend contract is clear.
+
+Check:
+
+sales panels
+financial panels
+inventory panels
+shared dashboard panels
+COGS/HPP UI
+cost repair UI
+sample/preview labels
+API clients
+DTO types
+
+Rules:
+
+UI must not say a feature is missing if schema now supports it.
+UI must not show fake historical cost as real.
+UI must clearly distinguish:
+real persisted value
+calculated estimate
+planned feature
+missing data problem
+Do not use wording changes to hide schema problems.
+Part 7: Prisma Migration Safety
+
+If schema changes are made:
+
+Run Prisma validate.
+Run Prisma generate.
+Attempt migration creation only if environment allows.
+If migration cannot run, document exact command.
+
+Preferred migration command:
+
+npx prisma migrate dev --name add_inventory_cost_snapshots
+
+or project-specific equivalent after checking scripts.
+
+If database connection is blocked:
+
+do not fake migration
+document manual command
+keep schema changes clear
+explain deploy risk
+
+Do not run destructive migration.
+Do not reset database.
+Do not drop data.
+
+Part 8: Fix Unsafe Casts Properly
+
+Known risk:
+
+Retail/raw-material Prisma delegate casts may remain.
+
+Search:
+
+as unknown as
+as any
+@ts-ignore
+@ts-expect-error
+Prisma delegate
+delegate cast
+
+Fix them properly.
+
+Preferred:
+
+mode-specific repositories
+explicitly typed Prisma model access
+typed service functions
+typed DTO mappers
+no generic delegate magic unless strictly typed
+
+Do not hide casts in helper functions.
+
+Part 9: Full Contract Comparison
+
+Compare schema → backend → frontend for each active feature affected.
+
+For each feature:
+
+Inventory movement
+Cost snapshot
+COGS/HPP
+Sales analytics
+Financial reports
+Payment integrity
+Reconciliation
+Retail reporting
+Restaurant reporting
+Raw Material reporting
+
+Report:
+
+Prisma fields/models
+backend service
+API DTO
+frontend client/type
+UI display
+status: aligned / fixed / planned / risk
+Part 10: Verification
+
+Run:
+
+npx prisma validate
+npx prisma generate
+
+If migration touched/needed:
+
+npx prisma migrate status
+
+If possible:
+
+npx prisma migrate dev --name <migration_name>
+
+Run TypeScript:
+
+tsc -p artifacts/api-server/tsconfig.json --noEmit
+tsc -p artifacts/pos-system/tsconfig.restaurant.json --noEmit
+tsc -p artifacts/pos-system/tsconfig.retail.json --noEmit
+tsc -p artifacts/pos-system/tsconfig.raw-material.json --noEmit
+tsc -p artifacts/pos-system/tsconfig.service.json --noEmit
+
+Run build if available:
+
+cd artifacts/pos-system
+vite build
+
+If Vite binary is unavailable:
+
+inspect package scripts
+use available local binary
+report blocker honestly
+
+Run:
+
+node scripts/business-mode-switch-check.mjs
+
+Important:
+
+do not claim migration passed if blocked
+do not claim build passed if binary missing
+do not claim full frontend typecheck passed if still failing
+classify blockers honestly
+Part 11: Documentation
+
+Create or update:
+
+docs/v3-phase-6c-r-schema-recovery.md
+
+Include:
+
+Phase 6C changes reviewed.
+Which Phase 6C changes were kept.
+Which Phase 6C changes were reverted/redesigned.
+Schema design decisions.
+Migration status.
+Backend/API contract changes.
+Frontend contract changes.
+Cost snapshot / COGS decision.
+Remaining risks.
+Exact manual migration command if migration could not run.
+
+Docs must not overclaim.
+
+Strict Rules
+Do not remove active features to fit incomplete schema.
+Do not downgrade real features to planned unless product scope says they are planned.
+Do not replace schema work with UI wording changes.
+Do not use current mutable cost as historical cost without labeling it as estimate.
+Do not add schema fields that no active feature uses.
+Do not create destructive migrations.
+Do not reset database.
+Do not use any, as any, as unknown as, @ts-ignore, or @ts-expect-error.
+Do not hide casts in helper wrappers.
+Do not reintroduce old mode IDs.
+Do not fake migration success.
+Do not claim success if schema/backend/frontend contract is not aligned.
+Do not push, branch, commit, or open PR.
+Completion Gate
+
+This phase is not complete unless:
+
+Phase 6C changes were reviewed.
+Wrong downgrades were reverted or redesigned.
+Active cost/reporting features have proper schema support or are explicitly documented as planned.
+Prisma validate passed or blocker is classified.
+Prisma generate passed or blocker is classified.
+Migration status/creation was attempted or blocker is classified.
+Backend services match schema.
+Frontend API contracts match backend DTOs.
+Unsafe Prisma casts were removed or documented with exact reason.
+No active feature was removed just to avoid schema work.
+Final Report Format
+
+Return this exact report:
+
+Phase 6C-R Schema Recovery Report
+1. Summary
+2. Docs read
+3. Phase 6C change review
+
+For each change:
+
+keep / revert / redesign
+reason
+4. Feature restoration
+features restored
+features kept planned
+features redesigned
+5. Schema design decisions
+models/fields added
+models/fields not added and why
+source of truth for cost/COGS/reporting
+6. Prisma changes
+schema changed or not changed
+exact changes
+migration status
+generate/validate status
+7. Backend/API changes
+files changed
+queries changed
+DTO changes
+response changes
+remaining risks
+8. Frontend contract/UI changes
+files changed
+UI wording restored/updated
+API client/type changes
+remaining risks
+9. Unsafe cast cleanup
+casts found
+casts removed
+casts remaining and why
+10. Contract alignment matrix
+
+For each feature:
+
+Prisma
+backend
+frontend
+UI
+status
+11. Commands run
+
+For each:
+
+command
+passed/failed/blocked/timed out
+notes
+12. Migration/deploy notes
+migration created or not
+safe manual command
+deploy risk
+13. Remaining risks
+14. Next recommended task
+
+Give only one next task.

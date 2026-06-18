@@ -453,13 +453,13 @@ function ReconciliationPanel({
             />
           </DashboardPanel>
 
-          <DashboardPanel title="Missing Usable Inventory Cost">
+          <DashboardPanel title="COGS Movements Missing Cost Snapshot">
             <DataTable
               columns={detailColumns}
               data={reconciliation.missingCostSnapshots}
               getRowKey={(row) => row.id}
               minWidth={860}
-              emptyMessage="No COGS movements missing usable inventory cost."
+              emptyMessage="No COGS movements missing a cost snapshot."
             />
           </DashboardPanel>
 

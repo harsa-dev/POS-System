@@ -120,16 +120,27 @@ function orderItemWhere(businessId: string, query: SalesAnalyticsQuery) {
   return Prisma.sql`${Prisma.join(filters, " AND ")}`;
 }
 
+/**
+ * COGS CTE: prefers unitCostSnapshot (historical cost captured at movement time)
+ * and falls back to costPerUnit (current mutable item cost) only when the
+ * snapshot is absent. Movements with neither are excluded from COGS totals and
+ * counted in the source-health missing-snapshot metric.
+ */
 function orderCogsCte(businessId: string) {
   return Prisma.sql`
     SELECT
       sm."sourceId" AS "orderId",
-      COALESCE(SUM(ABS(sm.quantity) * ii."costPerUnit"), 0)::double precision AS cogs
+      COALESCE(
+        SUM(
+          ABS(sm.quantity) * COALESCE(sm."unitCostSnapshot", ii."costPerUnit"::numeric)
+        ),
+        0
+      )::double precision AS cogs
     FROM "StockMovement" sm
     INNER JOIN "InventoryItem" ii ON ii.id = sm."inventoryItemId"
     WHERE sm."businessId" = ${businessId}
       AND sm."sourceId" IS NOT NULL
-      AND ii."costPerUnit" > 0
+      AND (sm."unitCostSnapshot" > 0 OR ii."costPerUnit" > 0)
       AND sm.reason = ${StockMovementReason.RECIPE_USAGE}
     GROUP BY sm."sourceId"
   `;
@@ -333,6 +344,10 @@ export async function listSalesTransactionRows(
   `;
 }
 
+/**
+ * COGS by order IDs: prefers unitCostSnapshot, falls back to costPerUnit.
+ * Orders with movements that have neither are excluded from COGS totals.
+ */
 export async function getCogsByOrderIds(
   prisma: PrismaClient,
   businessId: string,
@@ -343,17 +358,28 @@ export async function getCogsByOrderIds(
   return prisma.$queryRaw<SalesCogsByOrderRow[]>`
     SELECT
       sm."sourceId" AS "orderId",
-      COALESCE(SUM(ABS(sm.quantity) * ii."costPerUnit"), 0)::double precision AS cogs
+      COALESCE(
+        SUM(
+          ABS(sm.quantity) * COALESCE(sm."unitCostSnapshot", ii."costPerUnit"::numeric)
+        ),
+        0
+      )::double precision AS cogs
     FROM "StockMovement" sm
     INNER JOIN "InventoryItem" ii ON ii.id = sm."inventoryItemId"
     WHERE sm."businessId" = ${businessId}
       AND sm."sourceId" IN (${Prisma.join(orderIds)})
-      AND ii."costPerUnit" > 0
+      AND (sm."unitCostSnapshot" > 0 OR ii."costPerUnit" > 0)
       AND sm.reason = ${StockMovementReason.RECIPE_USAGE}
     GROUP BY sm."sourceId"
   `;
 }
 
+/**
+ * Source health: stockMovementsMissingCostSnapshot counts movements where
+ * unitCostSnapshot IS NULL (the persisted historical cost is absent).
+ * This is the canonical definition of a "missing cost snapshot" — it is
+ * separate from whether the item currently has a costPerUnit.
+ */
 export async function getSalesSourceHealth(
   prisma: PrismaClient,
   businessId: string,
@@ -373,9 +399,8 @@ export async function getSalesSourceHealth(
       (
         SELECT COUNT(sm.id)::int
         FROM "StockMovement" sm
-        LEFT JOIN "InventoryItem" ii ON ii.id = sm."inventoryItemId"
         WHERE ${stockMovementWhere(businessId, query)}
-          AND (ii.id IS NULL OR ii."costPerUnit" <= 0)
+          AND sm."unitCostSnapshot" IS NULL
       ) AS "stockMovementsMissingCostSnapshot",
       (
         SELECT COUNT(sm.id)::int

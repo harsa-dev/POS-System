@@ -813,6 +813,18 @@ model StockMovement {
   createdById     String?
   /// Legacy alias for createdById used by old services.
   actorId         String?
+  /// Stock level immediately before this movement was applied.
+  previousStock   Float?
+  /// Stock level immediately after this movement was applied.
+  newStock        Float?
+  /// Unit cost captured at movement time for historical COGS reporting.
+  /// Null for movements that predate cost-snapshot tracking or were created
+  /// without a cost context. Use InventoryItem.costPerUnit as a fallback
+  /// estimate only — label it as an estimate in any UI or report.
+  unitCostSnapshot  Decimal?
+  /// Total cost at movement time: ABS(quantity) * unitCostSnapshot.
+  /// Stored for efficiency so reports do not need to recalculate.
+  totalCostSnapshot Decimal?
   createdAt       DateTime             @default(now())
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
@@ -832,6 +844,7 @@ model StockMovement {
   @@index([businessId, reason])
   @@index([businessId, source])
   @@index([source, sourceId])
+  @@index([unitCostSnapshot])
 }
 
 model ServiceRequest {

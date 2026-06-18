@@ -40,13 +40,10 @@ type InventoryMovementAnomalyType = (typeof anomalyTypes)[number];
 type InventoryMovementAnomalySeverity = (typeof severityValues)[number];
 type InventoryMovementAnomalyReviewStatus = (typeof reviewStatuses)[number];
 type InventoryMovementAnomalyReviewFilter = "UNREVIEWED" | InventoryMovementAnomalyReviewStatus;
-type StockMovementSnapshotFields = Readonly<{
-  previousStock?: number | null;
-  newStock?: number | null;
-  unitCostSnapshot?: number | null;
-}>;
-type StockMovementWithItem = Prisma.StockMovementGetPayload<{ include: { inventoryItem: true } }> &
-  StockMovementSnapshotFields;
+
+// StockMovement now includes previousStock, newStock, unitCostSnapshot, and
+// totalCostSnapshot directly from the Prisma schema. No manual intersection needed.
+type StockMovementWithItem = Prisma.StockMovementGetPayload<{ include: { inventoryItem: true } }>;
 type InventoryMovementAnomalyRow = ReturnType<typeof toAnomalyRow> & {
   reviewStatus: InventoryMovementAnomalyReviewStatus | null;
   reviewNote: string | null;
@@ -185,16 +182,27 @@ async function ensureInventoryMovementAnomalyReviewTable() {
   `;
 }
 
-function movementUnitCost(movement: StockMovementWithItem) {
-  return movement.unitCostSnapshot ?? movement.inventoryItem.costPerUnit ?? 0;
+function movementUnitCostNumber(movement: StockMovementWithItem): number {
+  // Prefer the persisted snapshot (historical cost at movement time).
+  // Fall back to current item cost as an estimate when snapshot is absent.
+  if (movement.unitCostSnapshot !== null && movement.unitCostSnapshot !== undefined) {
+    return Number(movement.unitCostSnapshot);
+  }
+  return movement.inventoryItem.costPerUnit ?? 0;
 }
 
 function movementValue(movement: StockMovementWithItem) {
-  return Math.round(movementUnitCost(movement) * movement.quantity);
+  return Math.round(movementUnitCostNumber(movement) * Math.abs(movement.quantity));
 }
 
+/**
+ * A movement is missing a cost snapshot when it is an OUT movement and
+ * unitCostSnapshot is NULL (the persisted historical cost was never written).
+ * Fallback to costPerUnit is used for value estimation but is not reliable
+ * for historical COGS reporting.
+ */
 function isMissingCostSnapshot(movement: StockMovementWithItem) {
-  return movement.type === "OUT" && (!movement.unitCostSnapshot || movement.unitCostSnapshot <= 0);
+  return movement.type === "OUT" && movement.unitCostSnapshot === null;
 }
 
 function isSuspiciousAdjustment(movement: StockMovementWithItem, adjustmentThreshold: number) {
@@ -241,11 +249,11 @@ function anomalyDefinitions(movement: StockMovementWithItem, thresholds: {
       severity: hasFallbackCost ? "WARNING" : "CRITICAL",
       title: "Missing unit cost snapshot",
       description: hasFallbackCost
-        ? "COGS movement has no historical unit cost snapshot but current item cost can be used as a repair fallback."
-        : "COGS movement has no unit cost snapshot and the item currently has no usable cost per unit.",
+        ? "COGS movement has no historical unit cost snapshot. Current item cost can be used as a repair fallback — open the cost snapshot repair panel."
+        : "COGS movement has no unit cost snapshot and the item currently has no usable cost per unit. Set the item cost first.",
       recommendedAction: hasFallbackCost
         ? "Open the cost snapshot repair panel and backfill repairable movements."
-        : "Set the item cost first, then rerun cost snapshot repair.",
+        : "Set the item cost in the Inventory table first, then rerun cost snapshot repair.",
     });
   }
 
@@ -278,6 +286,9 @@ function toAnomalyRow(
   definition: ReturnType<typeof anomalyDefinitions>[number],
 ) {
   const value = movementValue(movement);
+  const unitCostSnapshotNumber = movement.unitCostSnapshot !== null && movement.unitCostSnapshot !== undefined
+    ? Number(movement.unitCostSnapshot)
+    : null;
 
   return {
     id: `${movement.id}:${definition.type}`,
@@ -303,7 +314,7 @@ function toAnomalyRow(
     note: movement.note ?? null,
     previousStock: movement.previousStock ?? null,
     newStock: movement.newStock ?? null,
-    unitCostSnapshot: movement.unitCostSnapshot ?? null,
+    unitCostSnapshot: unitCostSnapshotNumber,
     fallbackCostPerUnit: movement.inventoryItem.costPerUnit,
     movementValue: value,
     createdAt: movement.createdAt.toISOString(),

@@ -17,6 +17,13 @@ const router = Router();
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 250;
 
+/**
+ * REPAIRABLE: unitCostSnapshot IS NULL but the item has a usable costPerUnit.
+ *   The backfill can write the current item cost into the snapshot field.
+ *
+ * NEEDS_ITEM_COST: unitCostSnapshot IS NULL and the item has no usable cost.
+ *   The user must set the item cost first, then rerun the repair.
+ */
 type RepairStatus = "REPAIRABLE" | "NEEDS_ITEM_COST";
 
 type CostSnapshotRepairRow = {
@@ -125,6 +132,17 @@ function toRepairDto(row: CostSnapshotRepairRow) {
   };
 }
 
+/**
+ * Lists StockMovement records where unitCostSnapshot IS NULL and the movement
+ * was used for COGS (reason = RECIPE_USAGE or source = ORDER/RECIPE).
+ *
+ * Classifies each row:
+ *   REPAIRABLE       — item has costPerUnit > 0; backfill can write the snapshot.
+ *   NEEDS_ITEM_COST  — item has no usable cost; user must set it first.
+ *
+ * When repairableOnly = true, only REPAIRABLE rows are returned (used by the
+ * backfill endpoint to find candidates it can actually fix).
+ */
 async function listMissingCostSnapshots(params: {
   businessId: string;
   from?: Date;
@@ -135,8 +153,9 @@ async function listMissingCostSnapshots(params: {
 }) {
   const periodFilter = buildPeriodFilter(params.from, params.to);
   const idFilter = buildIdFilter(params.movementIds);
+  // When repairableOnly, restrict to rows the backfill can repair (item has cost).
   const repairableFilter = params.repairableOnly
-    ? Prisma.sql`AND false`
+    ? Prisma.sql`AND ii."costPerUnit" > 0`
     : Prisma.empty;
   const limit = params.limit ?? DEFAULT_LIMIT;
 
@@ -150,13 +169,17 @@ async function listMissingCostSnapshots(params: {
       sm."sourceType"::text AS "sourceType",
       sm."sourceId" AS "sourceId",
       sm."reason"::text AS "reason",
-      NULL::integer AS "currentSnapshot",
-      ii."costPerUnit" AS "itemCost",
+      sm."unitCostSnapshot"::double precision AS "currentSnapshot",
+      COALESCE(ii."costPerUnit", 0) AS "itemCost",
       ROUND(ABS(sm."quantity") * COALESCE(ii."costPerUnit", 0)) AS "estimatedCost",
-      'NEEDS_ITEM_COST' AS "repairStatus"
+      CASE
+        WHEN COALESCE(ii."costPerUnit", 0) > 0 THEN 'REPAIRABLE'
+        ELSE 'NEEDS_ITEM_COST'
+      END AS "repairStatus"
     FROM "StockMovement" sm
     LEFT JOIN "InventoryItem" ii ON ii."id" = sm."inventoryItemId"
     WHERE sm."businessId" = ${params.businessId}
+      AND sm."unitCostSnapshot" IS NULL
       ${periodFilter}
       ${idFilter}
       ${repairableFilter}
@@ -165,7 +188,6 @@ async function listMissingCostSnapshots(params: {
         sm."reason"::text = 'RECIPE_USAGE'
         OR sm."sourceType"::text IN ('ORDER', 'RECIPE')
       )
-      AND (ii."id" IS NULL OR ii."costPerUnit" <= 0)
     ORDER BY sm."createdAt" DESC
     LIMIT ${limit};
   `;
@@ -220,6 +242,21 @@ router.get("/inventory-cost-snapshot-repairs", async (req, res) => {
   }
 });
 
+/**
+ * Backfill: write unitCostSnapshot and totalCostSnapshot for REPAIRABLE movements.
+ *
+ * For each candidate movement where unitCostSnapshot IS NULL and the linked
+ * InventoryItem has costPerUnit > 0, sets:
+ *   unitCostSnapshot  = ii.costPerUnit          (current item cost as repair value)
+ *   totalCostSnapshot = ABS(quantity) * ii.costPerUnit
+ *
+ * This is a best-effort historical repair using the current item cost as a
+ * proxy. It is not a perfect historical cost but is better than NULL for
+ * COGS reporting. The UI labels this as "repaired from item cost".
+ *
+ * Movements where the item has no cost are skipped and returned as
+ * skippedMovementIds. The user must set the item cost first, then rerun.
+ */
 router.post("/inventory-cost-snapshot-repairs/backfill", async (req, res) => {
   try {
     const user = await requireRole(req, res, ALL_ROLES);
@@ -242,14 +279,52 @@ router.post("/inventory-cost-snapshot-repairs/backfill", async (req, res) => {
       limit,
     });
 
+    const repairableIds = candidates
+      .filter((row) => row.repairStatus === "REPAIRABLE")
+      .map((row) => row.movementId);
+
+    const skippedIds = candidates
+      .filter((row) => row.repairStatus === "NEEDS_ITEM_COST")
+      .map((row) => row.movementId);
+
+    let repairedCount = 0;
+    let repairedValue = 0;
+
+    if (repairableIds.length > 0) {
+      // Write unitCostSnapshot and totalCostSnapshot for each repairable movement.
+      // We use a raw UPDATE joining InventoryItem to capture the cost at repair time.
+      const updateResult = await prisma.$executeRaw`
+        UPDATE "StockMovement" sm
+        SET
+          "unitCostSnapshot"  = ii."costPerUnit"::numeric,
+          "totalCostSnapshot" = ROUND(ABS(sm."quantity") * ii."costPerUnit"::numeric)
+        FROM "InventoryItem" ii
+        WHERE sm."inventoryItemId" = ii."id"
+          AND sm."id" IN (${Prisma.join(repairableIds)})
+          AND sm."businessId" = ${businessContext.businessId}
+          AND sm."unitCostSnapshot" IS NULL
+          AND ii."costPerUnit" > 0
+      `;
+
+      repairedCount = updateResult;
+
+      // Sum the estimated repair value from the candidate list (already calculated).
+      repairedValue = candidates
+        .filter((row) => row.repairStatus === "REPAIRABLE")
+        .reduce((sum, row) => sum + row.estimatedCost, 0);
+    }
+
     return successResponse(res, {
       data: {
-        repairedCount: 0,
-        repairedValue: 0,
-        repairedMovementIds: [],
-        skippedMovementIds: candidates.map((row) => row.movementId),
+        repairedCount,
+        repairedValue,
+        repairedMovementIds: repairableIds.slice(0, repairedCount),
+        skippedMovementIds: skippedIds,
       },
-      message: "No cost snapshot column exists in the current V3 schema; update inventory item costs instead.",
+      message:
+        repairedCount > 0
+          ? `${repairedCount} movement(s) repaired with current item cost as snapshot. COGS reports will reflect the restored values.`
+          : "No movements were repaired. Ensure inventory items have cost set above zero, then retry.",
     });
   } catch (error) {
     return handleApiError(res, error);

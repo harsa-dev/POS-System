@@ -1,0 +1,2 @@
+- [StockMovement cost snapshot fields](stock-movement-cost-snapshot.md) — unitCostSnapshot/totalCostSnapshot/previousStock/newStock are in schema; COGS must prefer snapshot over costPerUnit.
+- [Prisma migrate dev shadow DB failure](prisma-shadow-db-workaround.md) — shadow DB cannot replay all migrations; use direct SQL + migrate resolve --applied pattern.
