@@ -8,7 +8,12 @@ import type {
   RetailInventoryRiskDto,
   RetailPersistedCheckoutDto,
   RetailProductDto,
+  RetailPromotionDto,
   RetailReceivingQueueDto,
+  RetailSaleDto,
+  RetailStockAdjustInput,
+  RetailStockAdjustResultDto,
+  RetailStockMovementDto,
   RetailSupplierDto,
 } from "./retail.types.js";
 
@@ -491,5 +496,158 @@ export const retailPrismaRepository = {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       },
     );
+  },
+
+  async listSales(scope, options = {}): Promise<RetailSaleDto[]> {
+    const limit = options.limit ?? 50;
+    const sales = await prisma.retailSale.findMany({
+      where: { businessId: scope.businessId },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: {
+        id: true,
+        receiptNumber: true,
+        paymentMethod: true,
+        subtotal: true,
+        discountTotal: true,
+        taxIncluded: true,
+        total: true,
+        grossProfit: true,
+        status: true,
+        createdAt: true,
+        _count: { select: { items: true } },
+      },
+    });
+    return sales.map((sale) => ({
+      id: sale.id,
+      receiptNumber: sale.receiptNumber,
+      paymentMethod: sale.paymentMethod,
+      subtotal: toNumber(sale.subtotal),
+      discountTotal: toNumber(sale.discountTotal),
+      taxIncluded: toNumber(sale.taxIncluded),
+      total: toNumber(sale.total),
+      grossProfit: toNumber(sale.grossProfit),
+      status: sale.status,
+      createdAt: sale.createdAt.toISOString(),
+      itemCount: sale._count.items,
+    }));
+  },
+
+  async listStockMovements(scope, options = {}): Promise<RetailStockMovementDto[]> {
+    const limit = options.limit ?? 50;
+    const movements = await prisma.retailStockMovement.findMany({
+      where: { businessId: scope.businessId },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: {
+        id: true,
+        productId: true,
+        product: { select: { name: true, sku: true } },
+        type: true,
+        reason: true,
+        source: true,
+        quantity: true,
+        beforeQuantity: true,
+        afterQuantity: true,
+        note: true,
+        createdAt: true,
+      },
+    });
+    return movements.map((m) => ({
+      id: m.id,
+      productId: m.productId,
+      productName: m.product.name,
+      sku: m.product.sku,
+      type: m.type,
+      reason: m.reason,
+      source: m.source,
+      quantity: m.quantity,
+      beforeQuantity: m.beforeQuantity,
+      afterQuantity: m.afterQuantity,
+      note: m.note,
+      createdAt: m.createdAt.toISOString(),
+    }));
+  },
+
+  async adjustStock(scope, actor, input): Promise<RetailStockAdjustResultDto> {
+    const product = await prisma.retailProduct.findFirst({
+      where: { businessId: scope.businessId, id: input.productId, isActive: true },
+      select: { id: true, sku: true, currentStock: true },
+    });
+    if (!product) throw new Error(`Retail product ${input.productId} not found.`);
+
+    const beforeQuantity = product.currentStock;
+    const afterQuantity = Math.max(0, beforeQuantity + input.quantityDelta);
+    const now = new Date();
+    const movementId = createId();
+
+    await prisma.$transaction([
+      prisma.retailProduct.update({
+        where: { id: product.id },
+        data: { currentStock: afterQuantity, updatedAt: now },
+      }),
+      prisma.retailStockMovement.create({
+        data: {
+          id: movementId,
+          businessId: scope.businessId,
+          productId: product.id,
+          type: input.quantityDelta >= 0 ? "in" : "out",
+          reason: "adjustment",
+          source: "retail_opname",
+          quantity: Math.abs(input.quantityDelta),
+          beforeQuantity,
+          afterQuantity,
+          note: input.note ?? input.reason,
+          createdById: actor.id,
+          createdAt: now,
+        },
+      }),
+    ]);
+
+    return { movementId, productId: product.id, sku: product.sku, beforeQuantity, afterQuantity, quantityDelta: input.quantityDelta };
+  },
+
+  async listPromotions(scope): Promise<RetailPromotionDto[]> {
+    const promos = await prisma.retailPromotion.findMany({
+      where: { businessId: scope.businessId },
+      orderBy: { startsAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        discountPercent: true,
+        targetCategory: true,
+        startsAt: true,
+        endsAt: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+    return promos.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      discountPercent: p.discountPercent,
+      targetCategory: p.targetCategory,
+      startsAt: p.startsAt.toISOString(),
+      endsAt: p.endsAt.toISOString(),
+      isActive: p.isActive,
+      createdAt: p.createdAt.toISOString(),
+    }));
+  },
+
+  async togglePromotion(scope, promotionId) {
+    const promo = await prisma.retailPromotion.findFirst({
+      where: { businessId: scope.businessId, id: promotionId },
+      select: { id: true, isActive: true },
+    });
+    if (!promo) return null;
+
+    const updated = await prisma.retailPromotion.update({
+      where: { id: promotionId },
+      data: { isActive: !promo.isActive, updatedAt: new Date() },
+      select: { id: true, isActive: true },
+    });
+    return updated;
   },
 } satisfies RetailRepository;

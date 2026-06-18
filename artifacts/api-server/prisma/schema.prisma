@@ -86,6 +86,7 @@ model Business {
   retailSales                 RetailSale[]
   retailStockMovements        RetailStockMovement[]
   retailReturns               RetailReturn[]
+  retailPromotions            RetailPromotion[]
   hppBatches                  HppBatch[]
 
 
@@ -556,6 +557,27 @@ model RetailStockMovement {
   @@index([reason])
   @@index([source])
   @@index([createdAt])
+}
+
+model RetailPromotion {
+  id              String   @id @default(cuid())
+  businessId      String
+  name            String
+  description     String   @default("")
+  discountPercent Int      @default(0)
+  targetCategory  String   @default("")
+  startsAt        DateTime
+  endsAt          DateTime
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([isActive])
+  @@index([startsAt])
+  @@index([endsAt])
 }
 
 model RawMaterialSupplier {

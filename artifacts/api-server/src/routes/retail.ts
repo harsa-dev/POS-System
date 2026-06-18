@@ -8,8 +8,10 @@ import { handleApiError } from "../lib/errors/handle-api-error.js";
 import { errorResponse } from "../lib/responses/error-response.js";
 import { successResponse } from "../lib/responses/success-response.js";
 import {
+  RETAIL_ADJUSTMENT_ROLES,
   RETAIL_CANCELLATION_ROLES,
   RETAIL_CHECKOUT_ROLES,
+  RETAIL_MANAGER_ROLES,
   RETAIL_READ_ROLES,
   RETAIL_RECEIVING_ROLES,
   RETAIL_RETURN_PREVIEW_ROLES,
@@ -26,6 +28,7 @@ import type {
   RetailSaleCancellationInput,
   RetailSalePreviewInput,
   RetailSharedDashboardId,
+  RetailStockAdjustInput,
 } from "../services/retail/retail.types.js";
 
 const router: IRouter = Router();
@@ -75,6 +78,12 @@ function isSalePreviewInput(value: unknown): value is RetailSalePreviewInput {
   if (!value || typeof value !== "object") return false;
   const candidate = value as { lines?: unknown };
   return Array.isArray(candidate.lines);
+}
+
+function isStockAdjustInput(value: unknown): value is RetailStockAdjustInput {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { productId?: unknown; quantityDelta?: unknown; reason?: unknown };
+  return typeof candidate.productId === "string" && typeof candidate.quantityDelta === "number" && typeof candidate.reason === "string";
 }
 
 function isSaleCancellationInput(value: unknown): value is RetailSaleCancellationInput {
@@ -476,6 +485,111 @@ router.post("/retail/returns", async (req, res) => {
       message: data.persisted
         ? "Retail return persisted and refund workflow posted."
         : "Retail return requires manager review before persistence.",
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/retail/sales", async (req, res) => {
+  try {
+    const context = await getRetailRequestContext(req, res);
+    if (!context) return;
+
+    const limit = typeof req.query.limit === "string" ? Math.min(Number(req.query.limit) || 50, 200) : 50;
+
+    return successResponse(res, {
+      data: await retailService.listSales(context.scope, { limit }),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/retail/stock-movements", async (req, res) => {
+  try {
+    const context = await getRetailRequestContext(req, res);
+    if (!context) return;
+
+    const limit = typeof req.query.limit === "string" ? Math.min(Number(req.query.limit) || 50, 200) : 50;
+
+    return successResponse(res, {
+      data: await retailService.listStockMovements(context.scope, { limit }),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.post("/retail/stock/adjust", async (req, res) => {
+  try {
+    const context = await getRetailRequestContext(req, res, RETAIL_ADJUSTMENT_ROLES);
+    if (!context) return;
+
+    if (!isStockAdjustInput(req.body)) {
+      return errorResponse(res, {
+        status: 400,
+        code: errorCodes.validationError,
+        message: "Request body must contain productId (string), quantityDelta (number), and reason (string).",
+      });
+    }
+
+    const data = await retailService.adjustStock(context.scope, context.actor, req.body);
+
+    return successResponse(res, {
+      status: 201,
+      data,
+      message: `Stock adjusted: ${data.sku} ${data.beforeQuantity} → ${data.afterQuantity}.`,
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/retail/suppliers", async (req, res) => {
+  try {
+    const context = await getRetailRequestContext(req, res);
+    if (!context) return;
+
+    return successResponse(res, {
+      data: await retailService.listProducts(context.scope, {}),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.get("/retail/promotions", async (req, res) => {
+  try {
+    const context = await getRetailRequestContext(req, res);
+    if (!context) return;
+
+    return successResponse(res, {
+      data: await retailService.listPromotions(context.scope),
+    });
+  } catch (error) {
+    return handleApiError(res, error);
+  }
+});
+
+router.patch("/retail/promotions/:id/toggle", async (req, res) => {
+  try {
+    const context = await getRetailRequestContext(req, res, RETAIL_MANAGER_ROLES);
+    if (!context) return;
+
+    const data = await retailService.togglePromotion(context.scope, req.params.id);
+
+    if (!data) {
+      return errorResponse(res, {
+        status: 404,
+        code: errorCodes.notFound,
+        message: "Retail promotion was not found.",
+      });
+    }
+
+    return successResponse(res, {
+      data,
+      message: `Promotion ${data.isActive ? "activated" : "deactivated"}.`,
     });
   } catch (error) {
     return handleApiError(res, error);

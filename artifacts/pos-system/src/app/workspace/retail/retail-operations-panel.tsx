@@ -1,10 +1,5 @@
-import {
-  AlertTriangle,
-  ClipboardCheck,
-  ReceiptText,
-  ShieldCheck,
-  TrendingUp,
-} from "lucide-react";
+import { AlertTriangle, ClipboardCheck, ReceiptText, ShieldCheck, TrendingUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,23 +9,27 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  formatRetailCurrency,
-  retailActivityTimeline,
-  retailDailyReport,
-  retailInventoryRiskReport,
-  retailManagerReviewQueue,
-  retailOperationInsights,
-  retailReceiptPreview,
-  type RetailOperationSeverity,
-} from "@/features/retail/core-system";
+import { retailApi } from "@/lib/api/retail-api";
 
-const severityTone: Record<RetailOperationSeverity, string> = {
+const severityTone = {
   good: "border-emerald-200 bg-emerald-50 text-emerald-700",
   info: "border-blue-200 bg-blue-50 text-blue-700",
   warning: "border-amber-200 bg-amber-50 text-amber-700",
   critical: "border-rose-200 bg-rose-50 text-rose-700",
-};
+} as const;
+
+const movementTypeTone = {
+  in: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  out: "border-rose-200 bg-rose-50 text-rose-700",
+} as const;
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("id-ID", {
@@ -41,27 +40,62 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
-function OperationInsightGrid() {
+function DashboardInsightGrid() {
+  const { data: dashboard } = useQuery({
+    queryKey: ["retail-dashboard"],
+    queryFn: () => retailApi.getDashboard(),
+  });
+
+  if (!dashboard) return null;
+
+  const insights = [
+    {
+      id: "revenue",
+      title: "Today revenue preview",
+      value: formatCurrency(dashboard.summary.todayRevenue),
+      description: "Projected from retail checkout service and active products.",
+      severity: "good" as const,
+    },
+    {
+      id: "profit",
+      title: "Gross profit preview",
+      value: formatCurrency(dashboard.summary.grossProfit),
+      description: "Margin from cost vs. sell price across active SKUs.",
+      severity: dashboard.summary.grossProfit > 0 ? ("good" as const) : ("warning" as const),
+    },
+    {
+      id: "stock-alerts",
+      title: "Stock alerts",
+      value: String(dashboard.summary.stockAlerts),
+      description: "Products at or below reorder point. Review receiving queue.",
+      severity: dashboard.summary.stockAlerts === 0 ? ("good" as const) : dashboard.summary.stockAlerts < 3 ? ("warning" as const) : ("critical" as const),
+    },
+    {
+      id: "receiving",
+      title: "Pending receiving",
+      value: String(dashboard.summary.pendingReceiving),
+      description: "Open supplier receiving orders not yet fully received.",
+      severity: dashboard.summary.pendingReceiving === 0 ? ("good" as const) : ("info" as const),
+    },
+  ];
+
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {retailOperationInsights.map((insight) => (
+      {insights.map((insight) => (
         <Card key={insight.id} className="rounded-xl bg-white">
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <CardDescription>{insight.title}</CardDescription>
-                <CardTitle className="mt-1 text-2xl">{insight.value}</CardTitle>
+                <p className="mt-1 text-2xl font-bold text-neutral-950">{insight.value}</p>
               </div>
               <Badge variant="outline" className={severityTone[insight.severity]}>
                 {insight.severity}
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent>
             <p className="text-sm leading-6 text-neutral-500">{insight.description}</p>
-            <p className="rounded-lg border border-neutral-100 bg-neutral-50 p-3 text-xs leading-5 text-neutral-600">
-              {insight.action}
-            </p>
           </CardContent>
         </Card>
       ))}
@@ -69,32 +103,41 @@ function OperationInsightGrid() {
   );
 }
 
-function DailyReportPanel() {
-  const reportRows = [
-    ["Business date", retailDailyReport.businessDate],
-    ["Paid transactions", String(retailDailyReport.paidTransactionCount)],
-    ["Items sold", String(retailDailyReport.itemSoldCount)],
-    ["Average basket", formatRetailCurrency(retailDailyReport.averageBasket)],
-    ["Discount total", formatRetailCurrency(retailDailyReport.discountTotal)],
-    ["Tax included", formatRetailCurrency(retailDailyReport.taxIncluded)],
-    ["Gross profit", formatRetailCurrency(retailDailyReport.grossProfit)],
-    ["Register variance", formatRetailCurrency(retailDailyReport.registerVariance)],
-  ] as const;
+function RecentSalesPanel() {
+  const { data: sales = [] } = useQuery({
+    queryKey: ["retail-sales"],
+    queryFn: () => retailApi.listSales(10),
+  });
+
+  if (sales.length === 0) return null;
+
+  const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
+  const totalProfit = sales.reduce((sum, s) => sum + s.grossProfit, 0);
 
   return (
     <Card className="rounded-xl bg-white">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5" aria-hidden="true" />
-          Daily retail report mock
+          <ReceiptText className="h-5 w-5" aria-hidden="true" />
+          Recent sales
         </CardTitle>
-        <CardDescription>Sales, margin, discount, tax, and register preview. Still frontend-only, mercifully.</CardDescription>
+        <CardDescription>
+          Last {sales.length} transactions · {formatCurrency(totalRevenue)} revenue · {formatCurrency(totalProfit)} gross profit
+        </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-2 text-sm text-neutral-600">
-        {reportRows.map(([label, value]) => (
-          <div key={label} className="flex justify-between gap-4 rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2">
-            <span>{label}</span>
-            <span className="font-semibold text-neutral-950">{value}</span>
+      <CardContent className="space-y-2">
+        {sales.map((sale) => (
+          <div key={sale.id} className="flex items-center justify-between gap-3 rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2 text-sm">
+            <div>
+              <span className="font-medium text-neutral-950">{sale.receiptNumber}</span>
+              <span className="ml-2 text-neutral-400">{sale.paymentMethod}</span>
+            </div>
+            <div className="flex items-center gap-3 text-right">
+              <span className="font-semibold text-neutral-950">{formatCurrency(sale.total)}</span>
+              <Badge variant="outline" className={sale.status === "completed" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-neutral-200 bg-neutral-50 text-neutral-600"}>
+                {sale.status}
+              </Badge>
+            </div>
           </div>
         ))}
       </CardContent>
@@ -102,82 +145,63 @@ function DailyReportPanel() {
   );
 }
 
-function ReceiptPreviewPanel() {
-  return (
+function InventoryRiskPanel() {
+  const { data: risks = [] } = useQuery({
+    queryKey: ["retail-inventory-risks"],
+    queryFn: () => retailApi.listInventoryRisks(),
+  });
+
+  if (risks.length === 0) return (
     <Card className="rounded-xl bg-white">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <ReceiptText className="h-5 w-5" aria-hidden="true" />
-          Receipt preview
+          <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+          Inventory risk
         </CardTitle>
-        <CardDescription>
-          {retailReceiptPreview.receiptNumber} · {retailReceiptPreview.cashierName} · {retailReceiptPreview.paymentMethod}
-        </CardDescription>
+        <CardDescription>No products at or below reorder point.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-3">
-          {retailReceiptPreview.lines.map((line) => (
-            <div key={`${line.sku}-${line.quantity}`} className="rounded-lg border border-neutral-100 p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-medium text-neutral-950">{line.productName}</p>
-                  <p className="mt-1 font-mono text-xs text-neutral-500">{line.sku}</p>
-                </div>
-                <p className="text-right text-sm font-semibold text-neutral-950">{formatRetailCurrency(line.lineTotal)}</p>
-              </div>
-              <p className="mt-2 text-xs text-neutral-500">
-                {line.quantity} × {formatRetailCurrency(line.unitPrice)} · discount {line.discountPercent}%
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-2 rounded-lg border border-neutral-100 bg-neutral-50 p-3 text-sm text-neutral-600">
-          <div className="flex justify-between gap-4"><span>Subtotal</span><span>{formatRetailCurrency(retailReceiptPreview.subtotal)}</span></div>
-          <div className="flex justify-between gap-4"><span>Discount</span><span>-{formatRetailCurrency(retailReceiptPreview.discountTotal)}</span></div>
-          <div className="flex justify-between gap-4"><span>Tax included</span><span>{formatRetailCurrency(retailReceiptPreview.taxIncluded)}</span></div>
-          <div className="flex justify-between gap-4"><span>Profit preview</span><span>{formatRetailCurrency(retailReceiptPreview.profitPreview)}</span></div>
-          <div className="flex justify-between gap-4 border-t pt-2 font-bold text-neutral-950"><span>Payable</span><span>{formatRetailCurrency(retailReceiptPreview.payable)}</span></div>
+      <CardContent>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+          All SKUs are above their reorder point. Stock is healthy.
         </div>
       </CardContent>
     </Card>
   );
-}
 
-function InventoryRiskPanel() {
   return (
     <Card className="rounded-xl bg-white xl:col-span-2">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5" aria-hidden="true" />
-          Inventory risk and purchase suggestion
+          Inventory risk — reorder suggestions
         </CardTitle>
-        <CardDescription>Mock reorder intelligence before purchase order and stock movement API exist.</CardDescription>
+        <CardDescription>{risks.length} SKUs at or below reorder point.</CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-left text-sm">
+        <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b text-xs uppercase tracking-[0.12em] text-neutral-400">
             <tr>
               <th className="py-3 pr-4">SKU</th>
               <th className="py-3 pr-4">Product</th>
-              <th className="py-3 pr-4">Stock</th>
-              <th className="py-3 pr-4">Recommended order</th>
+              <th className="py-3 pr-4">Stock / Reorder</th>
+              <th className="py-3 pr-4">Suggest order</th>
               <th className="py-3 pr-4">Est. cost</th>
               <th className="py-3 pr-4">Risk</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
-            {retailInventoryRiskReport.map((risk) => (
+            {risks.map((risk) => (
               <tr key={risk.productId}>
                 <td className="py-3 pr-4 font-mono text-xs text-neutral-600">{risk.sku}</td>
+                <td className="py-3 pr-4 font-medium text-neutral-950">{risk.name}</td>
+                <td className="py-3 pr-4 text-neutral-700">{risk.currentStock} / {risk.reorderPoint}</td>
+                <td className="py-3 pr-4 font-semibold text-neutral-950">+{risk.suggestedOrderQty}</td>
+                <td className="py-3 pr-4 text-neutral-700">{formatCurrency(risk.estimatedCost)}</td>
                 <td className="py-3 pr-4">
-                  <div className="font-medium text-neutral-950">{risk.name}</div>
-                  <div className="text-xs text-neutral-500">{risk.category} · {risk.reason}</div>
+                  <Badge variant="outline" className={risk.currentStock <= 0 ? severityTone.critical : severityTone.warning}>
+                    {risk.currentStock <= 0 ? "critical" : "warning"}
+                  </Badge>
                 </td>
-                <td className="py-3 pr-4 text-neutral-700">{risk.currentStock}/{risk.reorderPoint}</td>
-                <td className="py-3 pr-4 font-semibold text-neutral-950">+{risk.recommendedOrderQuantity}</td>
-                <td className="py-3 pr-4 text-neutral-700">{formatRetailCurrency(risk.estimatedRestockCost)}</td>
-                <td className="py-3 pr-4"><Badge variant="outline" className={severityTone[risk.severity]}>{risk.severity}</Badge></td>
               </tr>
             ))}
           </tbody>
@@ -187,27 +211,43 @@ function InventoryRiskPanel() {
   );
 }
 
-function ManagerReviewPanel() {
+function StockMovementPanel() {
+  const { data: movements = [] } = useQuery({
+    queryKey: ["retail-stock-movements"],
+    queryFn: () => retailApi.listStockMovements(8),
+  });
+
+  if (movements.length === 0) return null;
+
   return (
     <Card className="rounded-xl bg-white">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5" aria-hidden="true" />
-          Manager review queue
+          Recent stock movements
         </CardTitle>
-        <CardDescription>Approval surfaces prepared before real permission checks exist.</CardDescription>
+        <CardDescription>Latest {movements.length} inventory mutations from the API.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {retailManagerReviewQueue.map((item) => (
-          <div key={item.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+      <CardContent className="space-y-2">
+        {movements.map((m) => (
+          <div key={m.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-medium text-neutral-950">{item.title}</p>
-                <p className="mt-1 text-sm leading-6 text-neutral-500">{item.description}</p>
+                <p className="font-medium text-neutral-950">{m.productName}</p>
+                <p className="mt-0.5 text-xs text-neutral-500">
+                  {m.sku} · {m.reason} · {formatDateTime(m.createdAt)}
+                </p>
               </div>
-              <Badge variant="outline" className={severityTone[item.severity]}>{item.value}</Badge>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-neutral-950">
+                  {m.type === "out" ? "-" : "+"}{m.quantity}
+                </span>
+                <Badge variant="outline" className={movementTypeTone[m.type as keyof typeof movementTypeTone] ?? "border-neutral-200 bg-neutral-50 text-neutral-600"}>
+                  {m.type}
+                </Badge>
+              </div>
             </div>
-            <p className="mt-3 text-xs leading-5 text-neutral-500">{item.action}</p>
+            <p className="mt-2 text-xs text-neutral-400">{m.beforeQuantity} → {m.afterQuantity}</p>
           </div>
         ))}
       </CardContent>
@@ -216,17 +256,53 @@ function ManagerReviewPanel() {
 }
 
 function ActivityTimelinePanel() {
+  const { data: sales = [] } = useQuery({
+    queryKey: ["retail-sales"],
+    queryFn: () => retailApi.listSales(6),
+  });
+  const { data: movements = [] } = useQuery({
+    queryKey: ["retail-stock-movements"],
+    queryFn: () => retailApi.listStockMovements(6),
+  });
+
+  type TimelineEvent = {
+    id: string;
+    title: string;
+    description: string;
+    timestamp: string;
+    severity: "good" | "info" | "warning";
+  };
+
+  const events: TimelineEvent[] = [
+    ...sales.map((s) => ({
+      id: `sale-${s.id}`,
+      title: `Sale ${s.receiptNumber}`,
+      description: `${s.paymentMethod} · ${formatCurrency(s.total)} · ${s.itemCount} items`,
+      timestamp: s.createdAt,
+      severity: "good" as const,
+    })),
+    ...movements.map((m) => ({
+      id: `mov-${m.id}`,
+      title: `${m.type === "out" ? "Stock out" : "Stock in"} — ${m.sku}`,
+      description: `${m.reason} · ${m.beforeQuantity} → ${m.afterQuantity}`,
+      timestamp: m.createdAt,
+      severity: (m.reason === "adjustment" ? "info" : m.type === "out" ? "warning" : "good") as "good" | "info" | "warning",
+    })),
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 6);
+
+  if (events.length === 0) return null;
+
   return (
     <Card className="rounded-xl bg-white xl:col-span-2">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ClipboardCheck className="h-5 w-5" aria-hidden="true" />
-          Operational activity timeline
+          Activity timeline
         </CardTitle>
-        <CardDescription>Cashier, receiving, and stock count events merged into one local timeline.</CardDescription>
+        <CardDescription>Sales and stock events merged from the API.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 md:grid-cols-2">
-        {retailActivityTimeline.slice(0, 6).map((event) => (
+        {events.map((event) => (
           <div key={event.id} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
             <div className="flex items-center justify-between gap-3">
               <p className="font-medium text-neutral-950">{event.title}</p>
@@ -244,28 +320,17 @@ function ActivityTimelinePanel() {
 export function RetailOperationsPanel() {
   return (
     <section className="space-y-6">
-      <Card className="rounded-xl border-blue-100 bg-blue-50">
-        <CardHeader>
-          <CardTitle>Retail operations layer</CardTitle>
-          <CardDescription>
-            This phase adds local business calculations, manager review surfaces, receipt preview, inventory risk, and activity timeline without touching API or Prisma schema.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <DashboardInsightGrid />
 
-      <OperationInsightGrid />
-
-      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <DailyReportPanel />
-        <ReceiptPreviewPanel />
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <RecentSalesPanel />
+        <StockMovementPanel />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
         <InventoryRiskPanel />
-        <ManagerReviewPanel />
+        <ActivityTimelinePanel />
       </div>
-
-      <ActivityTimelinePanel />
     </section>
   );
 }

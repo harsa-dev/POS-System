@@ -16,6 +16,7 @@ import type {
   RetailSharedDashboardDto,
   RetailSharedDashboardId,
   RetailSharedDashboardRowDto,
+  RetailStockAdjustInput,
 } from "./retail.types.js";
 
 const defaultPaymentMethod: RetailCheckoutPaymentMethod = "cash";
@@ -394,6 +395,26 @@ export const retailService = {
       input,
       preview,
     });
+  },
+
+  listSales(scope: RetailBusinessScope, options?: { limit?: number }) {
+    return retailRepository.listSales(scope, options);
+  },
+
+  listStockMovements(scope: RetailBusinessScope, options?: { limit?: number }) {
+    return retailRepository.listStockMovements(scope, options);
+  },
+
+  adjustStock(scope: RetailBusinessScope, actor: RetailActor, input: RetailStockAdjustInput) {
+    return retailRepository.adjustStock(scope, actor, input);
+  },
+
+  listPromotions(scope: RetailBusinessScope) {
+    return retailRepository.listPromotions(scope);
+  },
+
+  togglePromotion(scope: RetailBusinessScope, promotionId: string) {
+    return retailRepository.togglePromotion(scope, promotionId);
   },
 
   async getCommandCenter(scope: RetailBusinessScope): Promise<RetailCommandCenterDto> {

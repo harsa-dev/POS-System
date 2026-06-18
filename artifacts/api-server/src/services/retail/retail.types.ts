@@ -240,3 +240,60 @@ export type RetailSharedDashboardDto = {
   bridgeNote: string;
   source: "prisma";
 };
+
+export type RetailSaleDto = {
+  id: string;
+  receiptNumber: string;
+  paymentMethod: string;
+  subtotal: number;
+  discountTotal: number;
+  taxIncluded: number;
+  total: number;
+  grossProfit: number;
+  status: string;
+  createdAt: string;
+  itemCount: number;
+};
+
+export type RetailStockMovementDto = {
+  id: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  type: string;
+  reason: string;
+  source: string;
+  quantity: number;
+  beforeQuantity: number;
+  afterQuantity: number;
+  note: string | null;
+  createdAt: string;
+};
+
+export type RetailPromotionDto = {
+  id: string;
+  name: string;
+  description: string;
+  discountPercent: number;
+  targetCategory: string;
+  startsAt: string;
+  endsAt: string;
+  isActive: boolean;
+  createdAt: string;
+};
+
+export type RetailStockAdjustInput = {
+  productId: string;
+  quantityDelta: number;
+  reason: string;
+  note?: string;
+};
+
+export type RetailStockAdjustResultDto = {
+  movementId: string;
+  productId: string;
+  sku: string;
+  beforeQuantity: number;
+  afterQuantity: number;
+  quantityDelta: number;
+};
