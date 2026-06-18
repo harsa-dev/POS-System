@@ -1,2 +1,3 @@
 - [StockMovement cost snapshot fields](stock-movement-cost-snapshot.md) — unitCostSnapshot/totalCostSnapshot/previousStock/newStock are in schema; COGS must prefer snapshot over costPerUnit.
 - [Prisma migrate dev shadow DB failure](prisma-shadow-db-workaround.md) — shadow DB cannot replay all migrations; use direct SQL + migrate resolve --applied pattern.
+- [Retail mode demo setup](retail-mode-setup.md) — how to seed the retail business, which modules are API-wired vs mock-only, and why 100% is not achievable.

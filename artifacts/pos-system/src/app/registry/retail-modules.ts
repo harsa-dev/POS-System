@@ -6,7 +6,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "cashier",
     label: "Retail Cashier",
-    description: "Mock retail cashier workspace for barcode-first fast checkout.",
+    description: "Barcode-first retail cashier. Fetches live products from the Prisma API and persists checkouts with stock deduction and cashflow entry.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -21,7 +21,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "catalog",
     label: "Product Catalog",
-    description: "Mock retail product catalog workspace for SKU and variant management.",
+    description: "Retail product catalog. Fetches live SKU, barcode, stock, and shelf data from the Prisma API with stock-status filtering.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -36,7 +36,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "barcode",
     label: "Barcode / SKU",
-    description: "Mock barcode and SKU workflow metadata for retail item lookup.",
+    description: "Barcode and SKU lookup workspace. Interactive barcode scan simulation backed by the retail product catalog.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -51,7 +51,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "receiving",
     label: "Receiving",
-    description: "Mock retail receiving workspace for supplier stock intake.",
+    description: "Supplier stock intake workspace. Fetches the receiving queue from the Prisma API and enforces guarded status transitions (draft → ordered → partial → received).",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -66,7 +66,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "stock-opname",
     label: "Stock Opname",
-    description: "Mock retail stock count and adjustment workspace.",
+    description: "Retail stock count and adjustment workspace. Interactive mock — no dedicated stock-count API endpoints exist yet.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -81,7 +81,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "shelf-management",
     label: "Shelf Management",
-    description: "Mock retail shelf, rack, and bin location workspace.",
+    description: "Retail shelf, rack, and bin location workspace. Interactive mock — no dedicated shelf-management API endpoints exist yet.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -96,7 +96,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "promotions",
     label: "Promotions",
-    description: "Mock retail promotion and discount rule workspace.",
+    description: "Retail promotion and discount rule workspace. Interactive mock — no dedicated promotions API endpoints exist yet.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -111,7 +111,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "customers-loyalty",
     label: "Customers & Loyalty",
-    description: "Mock customer CRM, member points, repeat rate, and loyalty liability dashboard.",
+    description: "Customer CRM, member points, repeat rate, and loyalty liability dashboard. Retail Growth layer — demo data only.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -126,7 +126,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "returns-exchanges",
     label: "Returns & Exchanges",
-    description: "Mock return desk for refunds, exchanges, return reasons, and approval review.",
+    description: "Return desk wired to the Prisma API. Previews restockability and manager review requirements, then persists the return with stock reversal and cashflow entry.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -141,7 +141,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "staff-shifts",
     label: "Retail Staff & Shifts",
-    description: "Mock retail staff shifts, register variance, handover, and staff performance dashboard.",
+    description: "Retail staff shifts, register variance, handover, and staff performance dashboard. Retail Growth layer — demo data only.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -156,7 +156,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "forecasting",
     label: "Forecasting",
-    description: "Mock retail demand planning, reorder, dead stock, fast mover, and purchase budget dashboard.",
+    description: "Retail demand planning, reorder, dead stock, fast mover, and purchase budget dashboard. Retail Growth layer — demo data only.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -171,7 +171,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "multi-location",
     label: "Multi-location",
-    description: "Mock branch dashboard for outlet comparison, transfer needs, and branch stock health.",
+    description: "Branch dashboard for outlet comparison, transfer needs, and branch stock health. Retail Enterprise layer — demo data only.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -186,7 +186,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "omnichannel",
     label: "Omnichannel Orders",
-    description: "Mock online channel, marketplace, pickup, and stock reservation dashboard.",
+    description: "Online channel, marketplace, pickup, and stock reservation dashboard. Retail Enterprise layer — demo data only.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,
@@ -201,7 +201,7 @@ export const retailModules: readonly V3ModuleMetadata[] = [
   {
     id: "audit-controls",
     label: "Audit Controls",
-    description: "Mock review dashboard for voids, refunds, price overrides, stock variance, and approvals.",
+    description: "Review dashboard for voids, refunds, price overrides, stock variance, and approvals. Retail Enterprise layer — demo data only.",
     layer: "retail",
     status: "active",
     supportedModes: retailMode,

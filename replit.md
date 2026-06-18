@@ -50,9 +50,14 @@ A complete restaurant POS with: login/register, dashboard overview, checkout/ord
 
 ## Demo accounts (password: `password123`)
 
+### Restaurant mode (business id: `biz-demo-restaurant`)
 - `owner@test.com` — OWNER role (full access)
 - `manager@test.com` — MANAGER role
-- `cashier@test.com` — CASHIER role
+- `operator@test.com` — OPERATOR role
+
+### Retail mode (business id: `biz-demo-retail`)
+- `retail@test.com` — OWNER role (full access, 6 products, 3 suppliers seeded)
+- `retail.manager@test.com` — MANAGER role (can approve returns)
 
 ## User preferences
 

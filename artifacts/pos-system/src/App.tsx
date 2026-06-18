@@ -73,6 +73,9 @@ const RetailGrowthWorkspace = lazy(() =>
     default: module.RetailGrowthWorkspace,
   })),
 );
+const RetailReturnsApiWorkspace = lazy(() =>
+  import("@/app/workspace/retail/retail-returns-api-workspace"),
+);
 const RawMaterialWorkspace = lazy(() => import("@/app/workspace/raw-material/raw-material-workspace"));
 
 const queryClient = new QueryClient({
@@ -332,7 +335,7 @@ function ProtectedAppRoutes() {
           <Route path="/v3/retail/shelf-management"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="shelf-management" /></ModeProtectedRoute></Route>
           <Route path="/v3/retail/promotions"><ModeProtectedRoute requiredMode="retail"><RetailWorkspace moduleId="promotions" /></ModeProtectedRoute></Route>
           <Route path="/v3/retail/customers-loyalty"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="customers-loyalty" /></ModeProtectedRoute></Route>
-          <Route path="/v3/retail/returns-exchanges"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="returns-exchanges" /></ModeProtectedRoute></Route>
+          <Route path="/v3/retail/returns-exchanges"><ModeProtectedRoute requiredMode="retail"><RetailReturnsApiWorkspace /></ModeProtectedRoute></Route>
           <Route path="/v3/retail/staff-shifts"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="staff-shifts" /></ModeProtectedRoute></Route>
           <Route path="/v3/retail/multi-location"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="multi-location" /></ModeProtectedRoute></Route>
           <Route path="/v3/retail/omnichannel"><ModeProtectedRoute requiredMode="retail"><RetailGrowthWorkspace moduleId="omnichannel" /></ModeProtectedRoute></Route>
