@@ -1,18 +1,19 @@
 import type { Request, Response } from "express";
 import type { Role } from "../../lib/auth.js";
 
-import { requireRole } from "../../lib/auth.js";
+import { requireModeAccess, requireRole } from "../../lib/auth.js";
+import { permissionKeys, type PermissionKey } from "../../services/permissions/permission-registry.js";
 
 export const SERVICE_BUSINESS_PERMISSIONS = {
-  view: "custom-business.service.view",
-  requestCreate: "custom-business.service.request.create",
-  jobStatusUpdate: "custom-business.service.job.status.update",
-  costCreate: "custom-business.service.cost.create",
-  quoteCreate: "custom-business.service.quote.create",
-  quoteApprove: "custom-business.service.quote.approve",
-  invoiceCreate: "custom-business.service.invoice.create",
-  invoicePaymentRecord: "custom-business.service.invoice.payment.record",
-} as const;
+  view: permissionKeys.service.dashboard.view,
+  requestCreate: permissionKeys.service.jobs.create,
+  jobStatusUpdate: permissionKeys.service.jobs.update,
+  costCreate: permissionKeys.service.costs.create,
+  quoteCreate: permissionKeys.service.quotes.create,
+  quoteApprove: permissionKeys.service.quotes.approve,
+  invoiceCreate: permissionKeys.service.invoices.create,
+  invoicePaymentRecord: permissionKeys.service.invoices.recordPayment,
+} as const satisfies Record<string, PermissionKey>;
 
 export type ServiceBusinessPermission =
   (typeof SERVICE_BUSINESS_PERMISSIONS)[keyof typeof SERVICE_BUSINESS_PERMISSIONS];
@@ -42,5 +43,10 @@ export async function requireServiceBusinessPermission(
   res: Response,
   permission: ServiceBusinessPermission,
 ) {
-  return requireRole(req, res, getServiceBusinessPermissionRoles(permission));
+  const user = await requireRole(req, res, getServiceBusinessPermissionRoles(permission));
+  if (!user) return null;
+
+  await requireModeAccess(user, "custom-business");
+
+  return user;
 }
